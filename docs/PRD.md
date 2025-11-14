@@ -2,7 +2,8 @@
 
 **Author:** Niki
 **Date:** 2025-11-14
-**Version:** 1.0
+**Version:** 1.1 (Updated for Cloud-Native Architecture)
+**Last Updated:** 2025-11-14
 
 ---
 
@@ -20,7 +21,7 @@ Success is measured by sustained engagement (3x/week transaction logging, 70%+ r
 
 **Simplicity Without Sacrifice:** Focused feature set that avoids overwhelming users while delivering powerful insights. 30-second transaction entry, glanceable dashboards, and immediate visual feedback create sustainable habits rather than abandoned spreadsheets.
 
-**Privacy-First Architecture:** Built for personal use with data ownership as a core principle, not a data-harvesting platform. Local-first approach with user-controlled data export.
+**Privacy-First Architecture:** Built for personal use with data ownership as a core principle, not a data-harvesting platform. Bank-level security with Row Level Security (RLS) ensures your data is isolated and protected, with user-controlled data export for true ownership.
 
 ---
 
@@ -194,23 +195,24 @@ As a responsive web application, Smart Budget must deliver an excellent experien
 
 ### Data Architecture
 
-**Local-First Approach:**
-- Primary data storage on user's device (localStorage/IndexedDB)
-- No mandatory account creation or cloud sync for MVP
-- Data remains under user control with export capability
-- Optional cloud backup for Phase 2
+**Cloud-Native Approach:**
+- Secure cloud database (Supabase PostgreSQL) with Row Level Security (RLS)
+- User authentication required for data access and privacy isolation
+- Multi-device sync automatically enabled (access from phone, tablet, desktop)
+- Data export capability ensures user ownership and portability
 
 **Data Persistence:**
-- Transactions persisted immediately on entry
+- Transactions persisted immediately on entry to cloud database
 - No data loss on browser refresh or device restart
 - Transaction history retained indefinitely unless user deletes
+- Automatic sync across all logged-in devices
 
 ### API Architecture (Backend Requirements)
 
 **RESTful API Design:**
 - Standard HTTP methods (GET, POST, PUT, DELETE)
 - JSON request/response format
-- Stateless authentication (JWT or session tokens for Phase 2 if cloud sync added)
+- Stateless authentication (JWT tokens via Supabase Auth)
 
 **Key Endpoints (MVP scope):**
 - Transaction CRUD operations
@@ -281,7 +283,7 @@ The UX must reinforce the core value proposition: simple, fast, insightful. Ever
 
 These requirements define WHAT capabilities Smart Budget Application must provide. They represent the complete inventory of user-facing and system capabilities needed to deliver the product vision.
 
-**Organization:** Requirements are grouped by capability area and numbered sequentially (FR1-FR47). Each FR states a testable capability at the appropriate altitude (WHAT exists, not HOW it's implemented).
+**Organization:** Requirements are grouped by capability area and numbered sequentially (FR1-FR52). Each FR states a testable capability at the appropriate altitude (WHAT exists, not HOW it's implemented).
 
 ### Transaction Management
 
@@ -367,17 +369,29 @@ These requirements define WHAT capabilities Smart Budget Application must provid
 
 ### Data Ownership & Export
 
-**FR38:** System stores all user data locally on the user's device (browser storage)
+**FR38:** System stores all user data securely in cloud database with Row Level Security (RLS) ensuring data isolation per user
 
 **FR39:** Users can export complete transaction data to CSV format
 
 **FR40:** Users can export financial reports to PDF format
 
-**FR41:** System provides clear indication of where data is stored and how it's protected
+**FR41:** System provides clear indication of where data is stored (cloud with RLS) and how it's protected
 
-**FR42:** Data persists across browser sessions and device restarts
+**FR42:** Data persists across browser sessions, device restarts, and syncs across all user devices
 
-**FR43:** System warns users before data storage limits are approached
+**FR43:** Data automatically syncs across all devices where user is logged in
+
+### User Authentication & Account Management
+
+**FR48:** Users can create accounts using email/password or social login providers (Google, GitHub)
+
+**FR49:** Users can securely log in and log out of their accounts
+
+**FR50:** Users can reset forgotten passwords via email verification
+
+**FR51:** System maintains secure user sessions with automatic timeout after inactivity
+
+**FR52:** Users can access their account from multiple devices using the same credentials
 
 ### User Interface & Navigation
 
@@ -387,14 +401,15 @@ These requirements define WHAT capabilities Smart Budget Application must provid
 
 **FR46:** System provides visual feedback for all user actions (button states, loading indicators, success/error messages)
 
-**FR47:** Application functions offline for transaction entry and viewing cached data
+**FR47:** Application caches data for offline viewing of previously loaded transactions and dashboard (Phase 2: offline transaction entry with sync)
 
 ---
 
 **Completeness Validation:**
 ✅ All MVP scope capabilities covered (Transaction Management, Categories, Dashboard, AI)
-✅ Web application specific capabilities included (responsive, offline, data storage)
-✅ Data ownership requirements captured (export, local storage, user control)
+✅ Web application specific capabilities included (responsive, offline caching, cloud storage)
+✅ Authentication and account management requirements captured (FR48-FR52)
+✅ Data ownership requirements captured (export, cloud storage with RLS, multi-device sync)
 ✅ UX requirements translated to functional capabilities (speed, feedback, mobile support)
 ✅ Each FR is testable and implementation-agnostic
 
@@ -422,29 +437,40 @@ Performance directly impacts user engagement and habit formation. Slow applicati
 **Resource Usage:**
 - Application bundle size: < 500KB gzipped (initial load)
 - Memory footprint: < 100MB for typical usage (1 year of transactions)
-- Browser storage: Efficient use of IndexedDB, support for 50MB+ datasets
+- Efficient caching strategy to minimize network requests
 
 ### Security & Privacy
 
 Financial data is sensitive. Security and privacy are core to user trust.
 
 **Data Protection:**
-- All data stored locally on user's device (no server transmission by default)
+- All data stored in secure cloud database (Supabase PostgreSQL) with encryption at rest and in transit (HTTPS)
+- Row Level Security (RLS) ensures strict data isolation - users can only access their own financial data
 - Sensitive financial data never logged to console or error tracking
 - No third-party analytics or tracking scripts that could access financial data
-- Data export files are user-initiated only (no automatic uploads)
+- Data export files are user-initiated only (CSV, PDF download)
 
-**Browser Security:**
+**Authentication Security:**
+- Secure password hashing with industry-standard algorithms (bcrypt/scrypt)
+- JWT-based authentication with secure token storage
+- Support for social login providers (OAuth 2.0) - Google, GitHub
+- Session timeout after 30 days of inactivity
+- Password reset via secure email verification
+
+**Application Security:**
 - Application follows OWASP secure coding practices
 - Protection against XSS (Cross-Site Scripting) attacks via input sanitization
-- Protection against injection attacks in search/filter operations
-- Secure handling of local storage (no sensitive data in localStorage, use IndexedDB with encryption consideration for Phase 2)
+- Protection against SQL injection via parameterized queries and ORM
+- Protection against CSRF attacks via token validation
+- Secure API endpoints with authentication required for all data access
 
 **Privacy Principles:**
-- No user accounts required for MVP (single-user, local-only)
-- No collection of personal identifiable information
+- User authentication required for data access and privacy isolation
+- Minimal collection of personal information (email only for authentication)
 - No behavioral tracking or analytics on user spending data
-- Clear privacy policy explaining local-first data architecture
+- No selling or sharing of financial data with third parties
+- Clear privacy policy explaining cloud storage, RLS, and data protection measures
+- Right to data export (CSV, PDF) and account deletion
 
 ### Usability
 
@@ -516,8 +542,8 @@ This PRD defines WHAT to build. The next phase decomposes these requirements int
 
 ### Required Next Step: Epic & Story Breakdown
 
-The 47 functional requirements must be organized into implementable epics and bite-sized user stories. This breakdown will:
-- Group related FRs into cohesive epics (estimated 4-6 epics for MVP)
+The 52 functional requirements must be organized into implementable epics and bite-sized user stories. This breakdown will:
+- Group related FRs into cohesive epics (estimated 5-7 epics for MVP)
 - Create user stories with acceptance criteria for each FR
 - Establish dependency relationships and implementation sequence
 - Provide estimation guidance for development effort
@@ -529,18 +555,18 @@ The 47 functional requirements must be organized into implementable epics and bi
 **UX Design (Conditional - High Priority):**
 Since this application has significant UI components and visual intelligence is a core differentiator, UX design is highly recommended before architecture.
 
-**Action:** Run workflow `/bmad:bmm:workflows:create-ux-design`
+**Action:** Run workflow `/bmad:bmm:workflows:create-ux-design` ✅ **COMPLETED** - See [docs/ux-design-specification.md](docs/ux-design-specification.md)
 
 **Architecture (Required):**
 Technical architecture will make key decisions on:
-- Frontend framework selection (React/Vue/Svelte)
-- Chart library selection
+- Frontend framework selection (Next.js/React/Vue)
+- Chart library selection (Recharts/Chart.js/D3)
 - State management approach
-- Data storage strategy (IndexedDB implementation)
+- Database and backend architecture (Supabase/Firebase/custom)
+- Authentication provider selection
 - AI/ML implementation (rule-based vs. ML model)
-- PWA implementation approach
 
-**Action:** Run workflow `/bmad:bmm:workflows:architecture`
+**Action:** Run workflow `/bmad:bmm:workflows:architecture` ✅ **COMPLETED** - See [docs/architecture.md](docs/architecture.md)
 
 ---
 
@@ -560,18 +586,23 @@ Technical architecture will make key decisions on:
 ## Next Steps
 
 1. **Epic & Story Breakdown** (Required) - Run: `/bmad:bmm:workflows:create-epics-and-stories`
-   - Decomposes 47 FRs into implementable stories
+   - Decomposes 52 FRs into implementable stories
    - Creates development roadmap
 
-2. **UX Design** (Highly Recommended) - Run: `/bmad:bmm:workflows:create-ux-design`
-   - Designs dashboard layouts and visualizations
-   - Creates transaction entry flow
-   - Defines mobile and desktop experiences
+2. ✅ **UX Design** (COMPLETED) - See: [docs/ux-design-specification.md](docs/ux-design-specification.md)
+   - Dashboard layouts and visualizations designed
+   - Transaction entry flow created (20-30 second target)
+   - Mobile and desktop experiences defined
 
-3. **Architecture** (Required) - Run: `/bmad:bmm:workflows:architecture`
-   - Selects technology stack
-   - Designs data architecture
-   - Plans AI implementation approach
+3. ✅ **Architecture** (COMPLETED) - See: [docs/architecture.md](docs/architecture.md)
+   - Technology stack selected (Next.js + Supabase + Chakra UI)
+   - Data architecture designed (PostgreSQL with RLS)
+   - AI implementation planned (rule-based engine)
+
+4. ✅ **Solutioning Gate Check** (COMPLETED) - See: [docs/implementation-readiness-report-2025-11-14.md](docs/implementation-readiness-report-2025-11-14.md)
+   - PRD ↔ Architecture ↔ UX alignment validated
+   - Gaps and risks identified with mitigation strategies
+   - Project ready for implementation phase
 
 ---
 

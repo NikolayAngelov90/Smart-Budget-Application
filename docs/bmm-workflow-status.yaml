@@ -34,7 +34,7 @@ workflow_status:
   architecture: docs/architecture.md  # agent: architect
   test-design: recommended  # agent: tea
   validate-architecture: optional  # agent: architect
-  solutioning-gate-check: required  # agent: architect
+  solutioning-gate-check: docs/implementation-readiness-report-2025-11-14.md  # agent: architect
 
   # Phase 3: Implementation
   sprint-planning: required  # agent: sm
