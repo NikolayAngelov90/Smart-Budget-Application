@@ -36,5 +36,8 @@ workflow_status:
   validate-architecture: optional  # agent: architect
   solutioning-gate-check: docs/implementation-readiness-report-2025-11-14.md  # agent: architect
 
+  # Phase 2.5: Epic Breakdown
+  create-epics-and-stories: docs/epics.md  # agent: pm
+
   # Phase 3: Implementation
   sprint-planning: required  # agent: sm
