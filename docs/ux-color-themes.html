@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Budget - Color Theme Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #f5f5f5;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #1a202c;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #718096;
+        }
+
+        .themes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .theme-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        }
+
+        .theme-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .theme-header h2 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .theme-description {
+            color: #718096;
+            margin-bottom: 0.5rem;
+        }
+
+        .theme-best-for {
+            font-size: 0.9rem;
+            color: #4a5568;
+            background: #f7fafc;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .color-swatch {
+            text-align: center;
+        }
+
+        .color-box {
+            height: 80px;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .color-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.25rem;
+        }
+
+        .color-hex {
+            font-size: 0.7rem;
+            color: #718096;
+            font-family: 'Courier New', monospace;
+        }
+
+        .components-preview {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .components-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .input-demo {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .input-demo:focus {
+            outline: none;
+            border-color: var(--theme-primary);
+        }
+
+        .card-demo {
+            padding: 1.5rem;
+            border-radius: 12px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 1rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        /* Theme 1: Trust Blue */
+        .theme-1 .theme-header h2 { color: #2b6cb0; }
+        .theme-1 .btn-primary {
+            background: #2b6cb0;
+            color: white;
+        }
+        .theme-1 .btn-secondary {
+            background: #edf2f7;
+            color: #2b6cb0;
+        }
+        .theme-1 .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #38a169;
+        }
+        .theme-1 .alert-warning {
+            background: #feebc8;
+            color: #7c2d12;
+            border-left: 4px solid #dd6b20;
+        }
+        .theme-1 .card-demo {
+            border-left: 4px solid #2b6cb0;
+        }
+
+        /* Theme 2: Growth Green */
+        .theme-2 .theme-header h2 { color: #2f855a; }
+        .theme-2 .btn-primary {
+            background: #2f855a;
+            color: white;
+        }
+        .theme-2 .btn-secondary {
+            background: #f0fff4;
+            color: #2f855a;
+        }
+        .theme-2 .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #38a169;
+        }
+        .theme-2 .alert-warning {
+            background: #fef5e7;
+            color: #744210;
+            border-left: 4px solid #d69e2e;
+        }
+        .theme-2 .card-demo {
+            border-left: 4px solid #2f855a;
+        }
+
+        /* Theme 3: Clarity Purple */
+        .theme-3 .theme-header h2 { color: #6b46c1; }
+        .theme-3 .btn-primary {
+            background: #6b46c1;
+            color: white;
+        }
+        .theme-3 .btn-secondary {
+            background: #faf5ff;
+            color: #6b46c1;
+        }
+        .theme-3 .alert-success {
+            background: #d3f9d8;
+            color: #1e4620;
+            border-left: 4px solid #48bb78;
+        }
+        .theme-3 .alert-warning {
+            background: #fffaeb;
+            color: #7c2d12;
+            border-left: 4px solid #ed8936;
+        }
+        .theme-3 .card-demo {
+            border-left: 4px solid #6b46c1;
+        }
+
+        /* Theme 4: Modern Slate */
+        .theme-4 .theme-header h2 { color: #2d3748; }
+        .theme-4 .btn-primary {
+            background: #2d3748;
+            color: white;
+        }
+        .theme-4 .btn-secondary {
+            background: #edf2f7;
+            color: #2d3748;
+        }
+        .theme-4 .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #48bb78;
+        }
+        .theme-4 .alert-warning {
+            background: #fed7d7;
+            color: #742a2a;
+            border-left: 4px solid #e53e3e;
+        }
+        .theme-4 .card-demo {
+            border-left: 4px solid #4299e1;
+        }
+
+        @media (max-width: 768px) {
+            .themes-grid {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 1.75rem;
+            }
+            body {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Smart Budget Application</h1>
+        <p>Color Theme Explorer - Choose the visual foundation that best reflects your financial coaching vision</p>
+    </div>
+
+    <div class="themes-grid">
+        <!-- Theme 1: Trust Blue -->
+        <div class="theme-card theme-1">
+            <div class="theme-header">
+                <h2>1. Trust Blue</h2>
+                <p class="theme-description">Professional, reliable, and trustworthy - inspired by banking and financial institutions</p>
+                <span class="theme-best-for">Best for: Traditional finance users seeking security and stability</span>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #2b6cb0;"></div>
+                    <div class="color-label">Primary</div>
+                    <div class="color-hex">#2b6cb0</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #4299e1;"></div>
+                    <div class="color-label">Accent</div>
+                    <div class="color-hex">#4299e1</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #38a169;"></div>
+                    <div class="color-label">Success</div>
+                    <div class="color-hex">#38a169</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #dd6b20;"></div>
+                    <div class="color-label">Warning</div>
+                    <div class="color-hex">#dd6b20</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #e53e3e;"></div>
+                    <div class="color-label">Error</div>
+                    <div class="color-hex">#e53e3e</div>
+                </div>
+            </div>
+
+            <div class="components-preview">
+                <h3 class="components-title">Component Examples</h3>
+
+                <div class="button-group">
+                    <button class="btn btn-primary">Add Transaction</button>
+                    <button class="btn btn-secondary">View Insights</button>
+                </div>
+
+                <input type="text" class="input-demo" placeholder="Search transactions..." style="border-color: #cbd5e0;">
+
+                <div class="card-demo">
+                    <strong>Monthly Summary</strong><br>
+                    <small style="color: #718096;">Total spending this month: $2,450</small>
+                </div>
+
+                <div class="alert alert-success">
+                    ✓ You're under budget in Dining! Great work.
+                </div>
+
+                <div class="alert alert-warning">
+                    ⚠ You've spent 40% more on Entertainment this month
+                </div>
+            </div>
+        </div>
+
+        <!-- Theme 2: Growth Green -->
+        <div class="theme-card theme-2">
+            <div class="theme-header">
+                <h2>2. Growth Green</h2>
+                <p class="theme-description">Optimistic, growth-focused, and eco-conscious - emphasizes savings and progress</p>
+                <span class="theme-best-for">Best for: Users focused on building wealth and achieving financial goals</span>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #2f855a;"></div>
+                    <div class="color-label">Primary</div>
+                    <div class="color-hex">#2f855a</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #48bb78;"></div>
+                    <div class="color-label">Accent</div>
+                    <div class="color-hex">#48bb78</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #38a169;"></div>
+                    <div class="color-label">Success</div>
+                    <div class="color-hex">#38a169</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #d69e2e;"></div>
+                    <div class="color-label">Warning</div>
+                    <div class="color-hex">#d69e2e</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #e53e3e;"></div>
+                    <div class="color-label">Error</div>
+                    <div class="color-hex">#e53e3e</div>
+                </div>
+            </div>
+
+            <div class="components-preview">
+                <h3 class="components-title">Component Examples</h3>
+
+                <div class="button-group">
+                    <button class="btn btn-primary">Add Transaction</button>
+                    <button class="btn btn-secondary">View Insights</button>
+                </div>
+
+                <input type="text" class="input-demo" placeholder="Search transactions..." style="border-color: #cbd5e0;">
+
+                <div class="card-demo">
+                    <strong>Monthly Summary</strong><br>
+                    <small style="color: #718096;">Total spending this month: $2,450</small>
+                </div>
+
+                <div class="alert alert-success">
+                    ✓ You're under budget in Dining! Great work.
+                </div>
+
+                <div class="alert alert-warning">
+                    ⚠ You've spent 40% more on Entertainment this month
+                </div>
+            </div>
+        </div>
+
+        <!-- Theme 3: Clarity Purple -->
+        <div class="theme-card theme-3">
+            <div class="theme-header">
+                <h2>3. Clarity Purple</h2>
+                <p class="theme-description">Creative, insightful, and modern - emphasizes AI intelligence and innovation</p>
+                <span class="theme-best-for">Best for: Tech-savvy users who value AI insights and modern interfaces</span>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #6b46c1;"></div>
+                    <div class="color-label">Primary</div>
+                    <div class="color-hex">#6b46c1</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #9f7aea;"></div>
+                    <div class="color-label">Accent</div>
+                    <div class="color-hex">#9f7aea</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #48bb78;"></div>
+                    <div class="color-label">Success</div>
+                    <div class="color-hex">#48bb78</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #ed8936;"></div>
+                    <div class="color-label">Warning</div>
+                    <div class="color-hex">#ed8936</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #e53e3e;"></div>
+                    <div class="color-label">Error</div>
+                    <div class="color-hex">#e53e3e</div>
+                </div>
+            </div>
+
+            <div class="components-preview">
+                <h3 class="components-title">Component Examples</h3>
+
+                <div class="button-group">
+                    <button class="btn btn-primary">Add Transaction</button>
+                    <button class="btn btn-secondary">View Insights</button>
+                </div>
+
+                <input type="text" class="input-demo" placeholder="Search transactions..." style="border-color: #cbd5e0;">
+
+                <div class="card-demo">
+                    <strong>Monthly Summary</strong><br>
+                    <small style="color: #718096;">Total spending this month: $2,450</small>
+                </div>
+
+                <div class="alert alert-success">
+                    ✓ You're under budget in Dining! Great work.
+                </div>
+
+                <div class="alert alert-warning">
+                    ⚠ You've spent 40% more on Entertainment this month
+                </div>
+            </div>
+        </div>
+
+        <!-- Theme 4: Modern Slate -->
+        <div class="theme-card theme-4">
+            <div class="theme-header">
+                <h2>4. Modern Slate</h2>
+                <p class="theme-description">Minimal, sophisticated, and versatile - focuses on content over decoration</p>
+                <span class="theme-best-for">Best for: Users who prefer clean, distraction-free interfaces</span>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #2d3748;"></div>
+                    <div class="color-label">Primary</div>
+                    <div class="color-hex">#2d3748</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #4299e1;"></div>
+                    <div class="color-label">Accent</div>
+                    <div class="color-hex">#4299e1</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #48bb78;"></div>
+                    <div class="color-label">Success</div>
+                    <div class="color-hex">#48bb78</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #ed8936;"></div>
+                    <div class="color-label">Warning</div>
+                    <div class="color-hex">#ed8936</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #e53e3e;"></div>
+                    <div class="color-label">Error</div>
+                    <div class="color-hex">#e53e3e</div>
+                </div>
+            </div>
+
+            <div class="components-preview">
+                <h3 class="components-title">Component Examples</h3>
+
+                <div class="button-group">
+                    <button class="btn btn-primary">Add Transaction</button>
+                    <button class="btn btn-secondary">View Insights</button>
+                </div>
+
+                <input type="text" class="input-demo" placeholder="Search transactions..." style="border-color: #cbd5e0;">
+
+                <div class="card-demo">
+                    <strong>Monthly Summary</strong><br>
+                    <small style="color: #718096;">Total spending this month: $2,450</small>
+                </div>
+
+                <div class="alert alert-success">
+                    ✓ You're under budget in Dining! Great work.
+                </div>
+
+                <div class="alert alert-warning">
+                    ⚠ You've spent 40% more on Entertainment this month
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

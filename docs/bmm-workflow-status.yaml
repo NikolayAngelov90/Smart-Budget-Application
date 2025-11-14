@@ -26,9 +26,9 @@ workflow_status:
   product-brief: docs/product-brief-Smart-Budget-Application-2025-11-14.md  # agent: analyst
 
   # Phase 1: Planning
-  prd: required  # agent: pm
+  prd: docs/PRD.md  # agent: pm
   validate-prd: optional  # agent: pm
-  create-ux-design: conditional  # agent: ux-designer
+  create-ux-design: docs/ux-design-specification.md  # agent: ux-designer
 
   # Phase 2: Solutioning
   architecture: required  # agent: architect

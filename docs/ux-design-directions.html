@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Budget - Design Direction Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #1a202c;
+            color: #e2e8f0;
+        }
+
+        .showcase-header {
+            background: #2d3748;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .showcase-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .showcase-header p {
+            color: #a0aec0;
+        }
+
+        .navigation {
+            background: #2d3748;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .nav-buttons button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin: 0 0.25rem;
+            transition: background 0.2s;
+        }
+
+        .nav-buttons button:hover {
+            background: #3182ce;
+        }
+
+        .nav-buttons button:disabled {
+            background: #4a5568;
+            cursor: not-allowed;
+        }
+
+        .direction-counter {
+            font-size: 1.1rem;
+            color: #cbd5e0;
+        }
+
+        .mockup-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .direction {
+            display: none;
+        }
+
+        .direction.active {
+            display: block;
+        }
+
+        .direction-info {
+            background: #2d3748;
+            padding: 1.5rem;
+            border-radius: 12px 12px 0 0;
+            margin-bottom: 0;
+        }
+
+        .direction-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            color: #4299e1;
+        }
+
+        .direction-personality {
+            font-size: 1.1rem;
+            color: #cbd5e0;
+            margin-bottom: 1rem;
+        }
+
+        .direction-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .detail-item {
+            background: #1a202c;
+            padding: 0.75rem;
+            border-radius: 6px;
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #a0aec0;
+            margin-bottom: 0.25rem;
+        }
+
+        .detail-value {
+            font-size: 0.9rem;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        .mockup-frame {
+            background: white;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+            overflow: hidden;
+            min-height: 700px;
+        }
+
+        /* Dashboard mockup styles */
+        .dashboard {
+            display: flex;
+            height: 700px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2d3748;
+            color: white;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-compact {
+            width: 80px;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            color: #4299e1;
+        }
+
+        .nav-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #cbd5e0;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: #4a5568;
+            color: white;
+        }
+
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 0.75rem;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .main-content {
+            flex: 1;
+            background: #f7fafc;
+            overflow-y: auto;
+        }
+
+        .content-header {
+            background: white;
+            padding: 2rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .content-title {
+            font-size: 1.75rem;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .content-subtitle {
+            color: #718096;
+        }
+
+        .content-body {
+            padding: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #718096;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .stat-change {
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .chart-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+
+        .chart-placeholder {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 250px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .insights-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .insight-card {
+            background: #f7fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid #4299e1;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #4299e1;
+            color: white;
+            font-size: 1.5rem;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+
+        .transaction-list {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .transaction-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+
+        .quick-action-btn {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="showcase-header">
+        <h1>Smart Budget Application - Design Directions</h1>
+        <p>Explore 6 different UX approaches for your financial dashboard</p>
+    </div>
+
+    <div class="navigation">
+        <div class="nav-buttons">
+            <button onclick="previousDirection()">← Previous</button>
+            <button onclick="nextDirection()">Next →</button>
+        </div>
+        <div class="direction-counter">
+            Direction <span id="current">1</span> of 6
+        </div>
+        <div class="nav-buttons">
+            <button onclick="toggleCompare()">Compare View</button>
+        </div>
+    </div>
+
+    <div class="mockup-container">
+        <!-- Direction 1: Sidebar + Visual First -->
+        <div class="direction active" id="direction-1">
+            <div class="direction-info">
+                <h2 class="direction-title">1. Visual Intelligence Dashboard</h2>
+                <p class="direction-personality">Professional & Data-Driven | Charts-first approach for insight-hungry users</p>
+                <div class="direction-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Layout</div>
+                        <div class="detail-value">Sidebar Navigation</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Density</div>
+                        <div class="detail-value">Balanced</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Focus</div>
+                        <div class="detail-value">Data Visualization</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Best For</div>
+                        <div class="detail-value">Desktop Power Users</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mockup-frame">
+                <div class="dashboard">
+                    <div class="sidebar">
+                        <div class="logo">💰 Smart Budget</div>
+                        <div class="nav-item active">📊 Dashboard</div>
+                        <div class="nav-item">💳 Transactions</div>
+                        <div class="nav-item">🏷️ Categories</div>
+                        <div class="nav-item">🤖 AI Insights</div>
+                        <div class="nav-item">⚙️ Settings</div>
+                    </div>
+                    <div class="main-content">
+                        <div class="content-header">
+                            <h1 class="content-title">Financial Dashboard</h1>
+                            <p class="content-subtitle">Your complete financial overview at a glance</p>
+                        </div>
+                        <div class="content-body">
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-label">Total Balance</div>
+                                    <div class="stat-value">$8,450</div>
+                                    <div class="stat-change" style="color: #38a169;">↑ $320 this month</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Monthly Income</div>
+                                    <div class="stat-value">$5,200</div>
+                                    <div class="stat-change" style="color: #718096;">Same as last month</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Monthly Expenses</div>
+                                    <div class="stat-value">$3,680</div>
+                                    <div class="stat-change" style="color: #e53e3e;">↑ 12% vs last month</div>
+                                </div>
+                            </div>
+
+                            <div class="chart-section">
+                                <h3 class="chart-title">Spending by Category</h3>
+                                <div class="chart-placeholder">📊 Interactive Pie Chart Visualization</div>
+                            </div>
+
+                            <div class="chart-section">
+                                <h3 class="chart-title">Spending Trends (6 Months)</h3>
+                                <div class="chart-placeholder">📈 Interactive Line Chart Visualization</div>
+                            </div>
+
+                            <div class="insights-section">
+                                <h3 class="chart-title">🤖 AI Insights for You</h3>
+                                <div class="insight-card">
+                                    <strong>Dining spending increased 40%</strong><br>
+                                    <small style="color: #718096;">You spent $480 on Dining this month, up from $340 last month. Consider setting a $400 monthly limit.</small>
+                                </div>
+                                <div class="insight-card">
+                                    <strong>Great progress on Entertainment!</strong><br>
+                                    <small style="color: #718096;">You're under budget by $85. Keep it up!</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="fab">+</button>
+            </div>
+        </div>
+
+        <!-- Direction 2: Clean Minimal -->
+        <div class="direction" id="direction-2">
+            <div class="direction-info">
+                <h2 class="direction-title">2. Clean Simplicity</h2>
+                <p class="direction-personality">Minimal & Focused | Spacious layout emphasizing key metrics</p>
+                <div class="direction-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Layout</div>
+                        <div class="detail-value">Top Navigation</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Density</div>
+                        <div class="detail-value">Spacious</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Focus</div>
+                        <div class="detail-value">Key Metrics First</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Best For</div>
+                        <div class="detail-value">First-time Users</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mockup-frame">
+                <div class="dashboard" style="flex-direction: column;">
+                    <div class="top-nav">
+                        <div class="logo" style="color: #2d3748;">💰 Smart Budget</div>
+                        <div style="display: flex; gap: 2rem; color: #718096;">
+                            <span style="color: #4299e1; font-weight: 600;">Dashboard</span>
+                            <span>Transactions</span>
+                            <span>Insights</span>
+                            <span>Settings</span>
+                        </div>
+                        <button class="quick-action-btn">+ Add Transaction</button>
+                    </div>
+                    <div class="main-content">
+                        <div style="padding: 3rem; max-width: 1200px; margin: 0 auto;">
+                            <h1 style="font-size: 2.5rem; color: #2d3748; margin-bottom: 3rem;">Welcome back, Niki</h1>
+
+                            <div class="stats-grid" style="margin-bottom: 3rem;">
+                                <div class="stat-card" style="text-align: center; padding: 2rem;">
+                                    <div class="stat-label">This Month</div>
+                                    <div class="stat-value" style="font-size: 3rem; color: #38a169;">+$1,520</div>
+                                    <div class="stat-change" style="color: #718096;">Income: $5,200 | Spent: $3,680</div>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                                <div class="chart-section">
+                                    <h3 class="chart-title">Where Your Money Goes</h3>
+                                    <div class="chart-placeholder" style="height: 300px;">📊 Category Breakdown Chart</div>
+                                </div>
+
+                                <div class="insights-section">
+                                    <h3 class="chart-title">🤖 AI Coaching</h3>
+                                    <div class="insight-card" style="margin-bottom: 1rem; padding: 1.5rem;">
+                                        <strong style="font-size: 1.1rem;">You're doing great!</strong><br>
+                                        <p style="color: #718096; margin-top: 0.5rem;">On track to save $1,500 this month. Your spending is 15% lower than last month.</p>
+                                    </div>
+                                    <div class="insight-card" style="padding: 1.5rem;">
+                                        <strong style="font-size: 1.1rem;">Watch Dining expenses</strong><br>
+                                        <p style="color: #718096; margin-top: 0.5rem;">Up $140 from last month. Try meal prep this week?</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 3: Mobile-First Bottom Nav -->
+        <div class="direction" id="direction-3">
+            <div class="direction-info">
+                <h2 class="direction-title">3. Mobile-First Touch</h2>
+                <p class="direction-personality">Friendly & Accessible | Bottom navigation for thumb-friendly mobile use</p>
+                <div class="direction-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Layout</div>
+                        <div class="detail-value">Bottom Navigation</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Density</div>
+                        <div class="detail-value">Compact</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Focus</div>
+                        <div class="detail-value">Mobile Gestures</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Best For</div>
+                        <div class="detail-value">Mobile-Primary Users</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mockup-frame">
+                <div class="dashboard" style="flex-direction: column;">
+                    <div class="top-nav" style="border-bottom: none; padding: 1.5rem 1.5rem 0 1.5rem;">
+                        <div>
+                            <h2 style="color: #2d3748; font-size: 1.5rem;">Dashboard</h2>
+                            <p style="color: #718096; font-size: 0.9rem;">January 2025</p>
+                        </div>
+                        <button style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #f7fafc; cursor: pointer;">👤</button>
+                    </div>
+                    <div class="main-content" style="padding-bottom: 80px;">
+                        <div style="padding: 1.5rem;">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; margin-bottom: 1.5rem;">
+                                <div style="font-size: 0.9rem; opacity: 0.9;">Current Balance</div>
+                                <div style="font-size: 2.5rem; font-weight: bold; margin: 0.5rem 0;">$8,450</div>
+                                <div style="font-size: 0.9rem; opacity: 0.9;">↑ $320 this month</div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                                <div class="stat-card" style="text-align: center;">
+                                    <div class="stat-label">Income</div>
+                                    <div class="stat-value" style="font-size: 1.5rem; color: #38a169;">$5,200</div>
+                                </div>
+                                <div class="stat-card" style="text-align: center;">
+                                    <div class="stat-label">Expenses</div>
+                                    <div class="stat-value" style="font-size: 1.5rem; color: #e53e3e;">$3,680</div>
+                                </div>
+                            </div>
+
+                            <div class="chart-section">
+                                <h3 class="chart-title">Top Categories</h3>
+                                <div class="transaction-item" style="border-bottom: 1px solid #e2e8f0; padding: 1rem 0;">
+                                    <div>
+                                        <div style="font-weight: 500; color: #2d3748;">🍽️ Dining</div>
+                                        <div style="font-size: 0.875rem; color: #718096;">32% of budget</div>
+                                    </div>
+                                    <div style="font-weight: 600; color: #2d3748;">$1,180</div>
+                                </div>
+                                <div class="transaction-item" style="border-bottom: 1px solid #e2e8f0; padding: 1rem 0;">
+                                    <div>
+                                        <div style="font-weight: 500; color: #2d3748;">🚗 Transport</div>
+                                        <div style="font-size: 0.875rem; color: #718096;">22% of budget</div>
+                                    </div>
+                                    <div style="font-weight: 600; color: #2d3748;">$810</div>
+                                </div>
+                                <div class="transaction-item" style="padding: 1rem 0;">
+                                    <div>
+                                        <div style="font-weight: 500; color: #2d3748;">🎬 Entertainment</div>
+                                        <div style="font-size: 0.875rem; color: #718096;">15% of budget</div>
+                                    </div>
+                                    <div style="font-weight: 600; color: #2d3748;">$550</div>
+                                </div>
+                            </div>
+
+                            <div class="insight-card" style="background: #fffbeb; border-left-color: #f59e0b;">
+                                <strong>💡 Quick Tip</strong><br>
+                                <small>You're spending less on Transport this month. Great job!</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bottom-nav">
+                        <div style="text-align: center; color: #4299e1;">
+                            <div style="font-size: 1.5rem;">📊</div>
+                            <div style="font-size: 0.75rem; margin-top: 0.25rem;">Dashboard</div>
+                        </div>
+                        <div style="text-align: center; color: #a0aec0;">
+                            <div style="font-size: 1.5rem;">💳</div>
+                            <div style="font-size: 0.75rem; margin-top: 0.25rem;">Transactions</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <button style="width: 56px; height: 56px; border-radius: 50%; background: #4299e1; color: white; border: none; font-size: 1.5rem; margin-top: -28px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">+</button>
+                        </div>
+                        <div style="text-align: center; color: #a0aec0;">
+                            <div style="font-size: 1.5rem;">🤖</div>
+                            <div style="font-size: 0.75rem; margin-top: 0.25rem;">Insights</div>
+                        </div>
+                        <div style="text-align: center; color: #a0aec0;">
+                            <div style="font-size: 1.5rem;">⚙️</div>
+                            <div style="font-size: 0.75rem; margin-top: 0.25rem;">Settings</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 4: Dense Information -->
+        <div class="direction" id="direction-4">
+            <div class="direction-info">
+                <h2 class="direction-title">4. Information Dense Dashboard</h2>
+                <p class="direction-personality">Efficient & Comprehensive | Maximum information in minimal space</p>
+                <div class="direction-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Layout</div>
+                        <div class="detail-value">Compact Sidebar</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Density</div>
+                        <div class="detail-value">Dense</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Focus</div>
+                        <div class="detail-value">Multi-column Grid</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Best For</div>
+                        <div class="detail-value">Power Users</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mockup-frame">
+                <div class="dashboard">
+                    <div class="sidebar sidebar-compact" style="padding: 1rem 0.5rem;">
+                        <div style="text-align: center; font-size: 1.5rem; margin-bottom: 1.5rem;">💰</div>
+                        <div class="nav-item active" style="text-align: center; padding: 0.75rem 0.5rem;">📊</div>
+                        <div class="nav-item" style="text-align: center; padding: 0.75rem 0.5rem;">💳</div>
+                        <div class="nav-item" style="text-align: center; padding: 0.75rem 0.5rem;">🏷️</div>
+                        <div class="nav-item" style="text-align: center; padding: 0.75rem 0.5rem;">🤖</div>
+                        <div class="nav-item" style="text-align: center; padding: 0.75rem 0.5rem;">⚙️</div>
+                    </div>
+                    <div class="main-content">
+                        <div class="top-nav" style="padding: 1rem 1.5rem; border-bottom: 2px solid #e2e8f0;">
+                            <h1 style="font-size: 1.25rem; color: #2d3748;">Dashboard</h1>
+                            <button class="quick-action-btn" style="padding: 0.5rem 1rem; font-size: 0.875rem;">+ Quick Add</button>
+                        </div>
+                        <div style="padding: 1.5rem; display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+                            <div>
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                                    <div class="stat-card" style="padding: 1rem;">
+                                        <div class="stat-label" style="font-size: 0.75rem;">Balance</div>
+                                        <div class="stat-value" style="font-size: 1.5rem;">$8,450</div>
+                                    </div>
+                                    <div class="stat-card" style="padding: 1rem;">
+                                        <div class="stat-label" style="font-size: 0.75rem;">Income</div>
+                                        <div class="stat-value" style="font-size: 1.5rem; color: #38a169;">$5,200</div>
+                                    </div>
+                                    <div class="stat-card" style="padding: 1rem;">
+                                        <div class="stat-label" style="font-size: 0.75rem;">Expenses</div>
+                                        <div class="stat-value" style="font-size: 1.5rem; color: #e53e3e;">$3,680</div>
+                                    </div>
+                                </div>
+
+                                <div class="chart-section" style="padding: 1rem; margin-bottom: 1rem;">
+                                    <h3 class="chart-title" style="font-size: 0.875rem;">Spending Trends</h3>
+                                    <div class="chart-placeholder" style="height: 180px; font-size: 0.8rem;">📈 6-Month Trend Line</div>
+                                </div>
+
+                                <div class="transaction-list">
+                                    <div style="padding: 1rem 1.5rem; background: #f7fafc; border-bottom: 1px solid #e2e8f0;">
+                                        <strong style="font-size: 0.875rem;">Recent Transactions</strong>
+                                    </div>
+                                    <div class="transaction-item" style="padding: 0.75rem 1.5rem;">
+                                        <div>
+                                            <div style="font-size: 0.875rem; font-weight: 500;">Grocery Store</div>
+                                            <div style="font-size: 0.75rem; color: #718096;">Food • Today</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #e53e3e;">-$85.40</div>
+                                    </div>
+                                    <div class="transaction-item" style="padding: 0.75rem 1.5rem;">
+                                        <div>
+                                            <div style="font-size: 0.875rem; font-weight: 500;">Freelance Payment</div>
+                                            <div style="font-size: 0.75rem; color: #718096;">Income • Yesterday</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #38a169;">+$1,200</div>
+                                    </div>
+                                    <div class="transaction-item" style="padding: 0.75rem 1.5rem;">
+                                        <div>
+                                            <div style="font-size: 0.875rem; font-weight: 500;">Netflix</div>
+                                            <div style="font-size: 0.75rem; color: #718096;">Entertainment • Jan 10</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #e53e3e;">-$15.99</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="chart-section" style="padding: 1rem; margin-bottom: 1rem;">
+                                    <h3 class="chart-title" style="font-size: 0.875rem;">Categories</h3>
+                                    <div class="chart-placeholder" style="height: 200px; font-size: 0.8rem;">📊 Pie Chart</div>
+                                </div>
+
+                                <div class="insights-section" style="padding: 1rem;">
+                                    <h3 class="chart-title" style="font-size: 0.875rem;">🤖 AI Insights</h3>
+                                    <div class="insight-card" style="padding: 0.75rem; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                        <strong>Dining +40%</strong><br>
+                                        <small style="color: #718096;">Consider $400 limit</small>
+                                    </div>
+                                    <div class="insight-card" style="padding: 0.75rem; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                        <strong>Under budget</strong><br>
+                                        <small style="color: #718096;">Entertainment -$85</small>
+                                    </div>
+                                    <div class="insight-card" style="padding: 0.75rem; font-size: 0.875rem;">
+                                        <strong>On track</strong><br>
+                                        <small style="color: #718096;">Saving $1,520 this month</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 5: Card-Based Flow -->
+        <div class="direction" id="direction-5">
+            <div class="direction-info">
+                <h2 class="direction-title">5. Card-Based Flow</h2>
+                <p class="direction-personality">Modern & Scannable | Card layout for easy information scanning</p>
+                <div class="direction-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Layout</div>
+                        <div class="detail-value">Card Grid</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Density</div>
+                        <div class="detail-value">Balanced</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Focus</div>
+                        <div class="detail-value">Visual Hierarchy</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Best For</div>
+                        <div class="detail-value">Visual Learners</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mockup-frame">
+                <div class="dashboard" style="flex-direction: column;">
+                    <div class="top-nav">
+                        <div class="logo" style="color: #2d3748;">💰 Smart Budget</div>
+                        <div style="display: flex; gap: 2rem; color: #718096;">
+                            <span style="color: #4299e1; font-weight: 600;">Dashboard</span>
+                            <span>Transactions</span>
+                            <span>Insights</span>
+                        </div>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <span style="color: #718096; font-size: 0.9rem;">January 2025</span>
+                            <button style="width: 36px; height: 36px; border-radius: 50%; border: none; background: #f7fafc;">👤</button>
+                        </div>
+                    </div>
+                    <div class="main-content">
+                        <div style="padding: 2rem; max-width: 1200px; margin: 0 auto;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                                <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem;">
+                                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Net This Month</div>
+                                    <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;">+$1,520</div>
+                                    <div style="font-size: 0.875rem; opacity: 0.9;">Income $5,200 - Expenses $3,680</div>
+                                </div>
+
+                                <div class="stat-card" style="padding: 2rem;">
+                                    <div style="font-size: 0.875rem; color: #718096; margin-bottom: 0.5rem;">Total Balance</div>
+                                    <div style="font-size: 2.5rem; font-weight: bold; color: #2d3748; margin-bottom: 0.5rem;">$8,450</div>
+                                    <div style="font-size: 0.875rem; color: #38a169;">↑ $320 from last month</div>
+                                </div>
+
+                                <div class="stat-card" style="padding: 2rem; background: #fffbeb;">
+                                    <div style="font-size: 0.875rem; color: #92400e; margin-bottom: 0.5rem;">🤖 AI Insight</div>
+                                    <div style="font-size: 1.1rem; font-weight: 600; color: #78350f; margin-bottom: 0.5rem;">Dining up 40%</div>
+                                    <div style="font-size: 0.875rem; color: #92400e;">Try setting a $400 monthly limit</div>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+                                <div class="chart-section">
+                                    <h3 class="chart-title">Spending Over Time</h3>
+                                    <div class="chart-placeholder">📈 Interactive Trend Chart</div>
+                                </div>
+
+                                <div class="chart-section">
+                                    <h3 class="chart-title">Top Categories</h3>
+                                    <div style="padding: 1rem 0;">
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                            <div>
+                                                <div style="font-weight: 500;">🍽️ Dining</div>
+                                                <div style="font-size: 0.875rem; color: #718096;">32%</div>
+                                            </div>
+                                            <div style="font-weight: 600;">$1,180</div>
+                                        </div>
+                                        <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; margin-bottom: 1.5rem;">
+                                            <div style="width: 32%; height: 100%; background: #4299e1; border-radius: 4px;"></div>
+                                        </div>
+
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                            <div>
+                                                <div style="font-weight: 500;">🚗 Transport</div>
+                                                <div style="font-size: 0.875rem; color: #718096;">22%</div>
+                                            </div>
+                                            <div style="font-weight: 600;">$810</div>
+                                        </div>
+                                        <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; margin-bottom: 1.5rem;">
+                                            <div style="width: 22%; height: 100%; background: #48bb78; border-radius: 4px;"></div>
+                                        </div>
+
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                            <div>
+                                                <div style="font-weight: 500;">🎬 Entertainment</div>
+                                                <div style="font-size: 0.875rem; color: #718096;">15%</div>
+                                            </div>
+                                            <div style="font-weight: 600;">$550</div>
+                                        </div>
+                                        <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px;">
+                                            <div style="width: 15%; height: 100%; background: #9f7aea; border-radius: 4px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="insights-section" style="margin-top: 1.5rem;">
+                                <h3 class="chart-title">More AI Insights for You</h3>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="insight-card">
+                                        <strong>Entertainment on track</strong><br>
+                                        <small style="color: #718096;">You're $85 under budget. Keep it up!</small>
+                                    </div>
+                                    <div class="insight-card">
+                                        <strong>Great savings progress</strong><br>
+                                        <small style="color: #718096;">You're saving 29% of your income this month</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="fab">+</button>
+            </div>
+        </div>
+
+        <!-- Direction 6: List-Based Efficiency -->
+        <div class="direction" id="direction-6">
+            <div class="direction-info">
+                <h2 class="direction-title">6. Transaction-Centric List</h2>
+                <p class="direction-personality">Efficient & Detailed | List-first approach for transaction-heavy users</p>
+                <div class="direction-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Layout</div>
+                        <div class="detail-value">Sidebar + List Focus</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Density</div>
+                        <div class="detail-value">Dense</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Focus</div>
+                        <div class="detail-value">Transaction History</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Best For</div>
+                        <div class="detail-value">Detail-Oriented Users</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mockup-frame">
+                <div class="dashboard">
+                    <div class="sidebar">
+                        <div class="logo">💰 Smart Budget</div>
+                        <div class="nav-item active">📊 Dashboard</div>
+                        <div class="nav-item">💳 Transactions</div>
+                        <div class="nav-item">🏷️ Categories</div>
+                        <div class="nav-item">🤖 AI Insights</div>
+                        <div style="margin-top: auto;">
+                            <div style="background: #1a202c; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="font-size: 0.75rem; color: #a0aec0; margin-bottom: 0.25rem;">Quick Stats</div>
+                                <div style="font-size: 1.25rem; font-weight: bold;">$8,450</div>
+                                <div style="font-size: 0.75rem; color: #48bb78; margin-top: 0.25rem;">+$320 this month</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="main-content">
+                        <div class="content-header" style="padding: 1.5rem 2rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h1 class="content-title" style="font-size: 1.5rem;">Overview</h1>
+                                    <p class="content-subtitle">January 2025 • Income $5,200 | Expenses $3,680</p>
+                                </div>
+                                <button class="quick-action-btn">+ Add Transaction</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; height: calc(100% - 100px);">
+                            <div style="flex: 2; padding: 1.5rem; background: white; border-right: 1px solid #e2e8f0; overflow-y: auto;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 style="font-size: 1.1rem; font-weight: 600;">Recent Transactions</h3>
+                                    <input type="text" placeholder="Search..." style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.875rem;">
+                                </div>
+                                <div class="transaction-list">
+                                    <div class="transaction-item">
+                                        <div>
+                                            <div style="font-weight: 500;">Whole Foods</div>
+                                            <div style="font-size: 0.875rem; color: #718096;">Food & Groceries • Today 2:34 PM</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #e53e3e;">-$85.40</div>
+                                    </div>
+                                    <div class="transaction-item">
+                                        <div>
+                                            <div style="font-weight: 500;">Freelance Project Payment</div>
+                                            <div style="font-size: 0.875rem; color: #718096;">Income • Yesterday 9:15 AM</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #38a169;">+$1,200.00</div>
+                                    </div>
+                                    <div class="transaction-item">
+                                        <div>
+                                            <div style="font-weight: 500;">Uber Ride</div>
+                                            <div style="font-size: 0.875rem; color: #718096;">Transport • Jan 12 6:45 PM</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #e53e3e;">-$24.50</div>
+                                    </div>
+                                    <div class="transaction-item">
+                                        <div>
+                                            <div style="font-weight: 500;">Netflix Subscription</div>
+                                            <div style="font-size: 0.875rem; color: #718096;">Entertainment • Jan 10</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #e53e3e;">-$15.99</div>
+                                    </div>
+                                    <div class="transaction-item">
+                                        <div>
+                                            <div style="font-weight: 500;">Restaurant Dinner</div>
+                                            <div style="font-size: 0.875rem; color: #718096;">Dining • Jan 9 7:20 PM</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #e53e3e;">-$68.75</div>
+                                    </div>
+                                    <div class="transaction-item">
+                                        <div>
+                                            <div style="font-weight: 500;">Gas Station</div>
+                                            <div style="font-size: 0.875rem; color: #718096;">Transport • Jan 8</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #e53e3e;">-$45.00</div>
+                                    </div>
+                                    <div class="transaction-item">
+                                        <div>
+                                            <div style="font-weight: 500;">Monthly Salary</div>
+                                            <div style="font-size: 0.875rem; color: #718096;">Income • Jan 1</div>
+                                        </div>
+                                        <div style="font-weight: 600; color: #38a169;">+$4,000.00</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="flex: 1; padding: 1.5rem; background: #f7fafc; overflow-y: auto;">
+                                <div class="chart-section" style="background: white; margin-bottom: 1rem; padding: 1rem;">
+                                    <h3 class="chart-title" style="font-size: 0.875rem;">Category Breakdown</h3>
+                                    <div class="chart-placeholder" style="height: 150px; font-size: 0.8rem;">📊 Chart</div>
+                                </div>
+
+                                <div class="insights-section" style="background: white; padding: 1rem;">
+                                    <h3 class="chart-title" style="font-size: 0.875rem;">🤖 Insights</h3>
+                                    <div class="insight-card" style="padding: 0.75rem; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                        <strong>Dining increased</strong><br>
+                                        <small style="color: #718096;">40% higher than last month</small>
+                                    </div>
+                                    <div class="insight-card" style="padding: 0.75rem; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                        <strong>Great job!</strong><br>
+                                        <small style="color: #718096;">Entertainment under budget</small>
+                                    </div>
+                                    <div class="insight-card" style="padding: 0.75rem; font-size: 0.875rem;">
+                                        <strong>On track</strong><br>
+                                        <small style="color: #718096;">Saving $1,520 this month</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDirection = 1;
+        const totalDirections = 6;
+
+        function showDirection(num) {
+            document.querySelectorAll('.direction').forEach(dir => {
+                dir.classList.remove('active');
+            });
+            document.getElementById(`direction-${num}`).classList.add('active');
+            document.getElementById('current').textContent = num;
+
+            document.querySelectorAll('.nav-buttons button')[0].disabled = num === 1;
+            document.querySelectorAll('.nav-buttons button')[1].disabled = num === totalDirections;
+        }
+
+        function nextDirection() {
+            if (currentDirection < totalDirections) {
+                currentDirection++;
+                showDirection(currentDirection);
+            }
+        }
+
+        function previousDirection() {
+            if (currentDirection > 1) {
+                currentDirection--;
+                showDirection(currentDirection);
+            }
+        }
+
+        function toggleCompare() {
+            alert('Compare mode would show 2-3 directions side-by-side. For MVP, use navigation to compare mentally.');
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextDirection();
+            if (e.key === 'ArrowLeft') previousDirection();
+        });
+    </script>
+</body>
+</html>
