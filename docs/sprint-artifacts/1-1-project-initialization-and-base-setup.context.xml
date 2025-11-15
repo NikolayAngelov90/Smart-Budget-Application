@@ -162,7 +162,7 @@
       <test id="AC-1.1" type="manual">Run `npm run dev` and verify application starts without console errors - check browser console and terminal output</test>
       <test id="AC-1.2" type="ci">Run `npm run type-check` in CI pipeline - verify exit code 0, no TypeScript errors reported</test>
       <test id="AC-1.3" type="ci">Run `npm run lint` in CI pipeline - verify ESLint passes with no errors or warnings</test>
-      <test id="AC-1.4" type="manual">Visual inspection - open browser to localhost:3000, verify Trust Blue color (#2b6cb0) appears in UI components</test>
+      <test id="AC-1.4" type="manual">Visual inspection - open browser to localhost:3001, verify Trust Blue color (#2b6cb0) appears in UI components</test>
       <test id="AC-1.5" type="manual">File system check - verify src/app/(auth)/ and src/app/(dashboard)/ directories exist with proper structure</test>
       <test id="AC-1.6" type="manual">Browser test - verify Chakra UI Button component renders with correct styling and Trust Blue theme</test>
       <test id="AC-1.7" type="manual">Git check - verify .gitignore excludes node_modules/, .next/, .env.local using `git status` after creating these files</test>
