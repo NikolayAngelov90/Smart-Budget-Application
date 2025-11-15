@@ -141,6 +141,11 @@ dmypy.json
 .node_repl_history
 *.tsbuildinfo
 
+# Next.js
+.next/
+out/
+next-env.d.ts
+
 # IDE specific
 .vscode/settings.json
 .vscode/launch.json

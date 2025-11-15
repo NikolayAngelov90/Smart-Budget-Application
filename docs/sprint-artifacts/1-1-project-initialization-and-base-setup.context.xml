@@ -1,0 +1,172 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1</storyId>
+    <title>Project Initialization and Base Setup</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-15</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/1-1-project-initialization-and-base-setup.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a developer</asA>
+    <iWant>the Next.js + Chakra UI project scaffolding with proper configuration</iWant>
+    <soThat>I have a solid foundation to build all features on</soThat>
+    <tasks>
+      - Task 1: Initialize Next.js project from Nextarter Chakra starter (AC: #1, #2, #3)
+      - Task 2: Configure TypeScript with strict mode (AC: #2)
+      - Task 3: Configure ESLint and Prettier (AC: #3)
+      - Task 4: Set up project directory structure (AC: #5)
+      - Task 5: Configure Chakra UI Trust Blue theme (AC: #4, #6)
+      - Task 6: Create basic layout components (AC: #5)
+      - Task 7: Verify development server and application (AC: #1, #6)
+      - Task 8: Initialize Git repository (AC: #7)
+      - Task 9: Run all quality checks (AC: #2, #3)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    - AC-1.1: Project runs successfully in development mode (npm run dev) with no console errors
+    - AC-1.2: TypeScript is enabled with strict mode and all type checks pass (npm run type-check)
+    - AC-1.3: ESLint and Prettier are configured and passing (npm run lint)
+    - AC-1.4: Chakra UI Trust Blue theme (#2b6cb0) is configured and rendering correctly
+    - AC-1.5: Next.js App Router project structure established with (auth) and (dashboard) route groups
+    - AC-1.6: Application loads at localhost with proper Chakra UI components rendering
+    - AC-1.7: Git repository initialized with proper .gitignore (node_modules, .env.local excluded)
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Technical Architecture - Project Initialization</title>
+        <section>Project Initialization (lines 34-40)</section>
+        <snippet>First implementation story should execute: npx create-next-app@latest smart-budget-application --example https://github.com/agustinusnathaniel/nextarter-chakra. This establishes the base architecture with decisions on Language/TypeScript, Styling (Chakra UI), and project structure.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Technical Architecture - Project Structure</title>
+        <section>Project Structure (lines 66-203)</section>
+        <snippet>Complete Next.js App Router structure with route groups: (auth) for authentication pages and (dashboard) for main application. Feature-based organization in src/components with layout, transactions, dashboard, categories subdirectories. Theme customization in src/theme/ including colors.ts for Trust Blue palette.</snippet>
+      </doc>
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design - Trust Blue Color Theme</title>
+        <section>Visual Foundation - Color System (lines 135-175)</section>
+        <snippet>Primary color #2b6cb0 (Trust Blue) for main actions and brand elements. Complete color palette includes semantic colors for success (#38a169), warning (#dd6b20), error (#e53e3e). Typography uses system font stack with Trust Blue theme applied via Chakra UI.</snippet>
+      </doc>
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design - Design System Choice</title>
+        <section>Design System Foundation (lines 33-64)</section>
+        <snippet>Chakra UI v2.8+ selected for built-in accessibility (WCAG 2.1 compliant), excellent developer experience, moderate bundle size meeting <500KB gzipped requirement. Provides 50+ components out of the box including layout, forms, feedback, and navigation components.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic 1 - Story 1.1 Details</title>
+        <section>Story 1.1: Project Initialization and Base Setup (lines 122-149)</section>
+        <snippet>Initialize Next.js project using Nextarter Chakra starter. Configure TypeScript strict mode, ESLint and Prettier. Set up src/ directory structure with app/, components/, lib/, types/, theme/ folders. Create initial Chakra theme with Trust Blue color palette. Verify dependencies: Next.js 15+, Chakra UI 2.8+, TypeScript 5+.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-1.md</path>
+        <title>Epic 1 Technical Specification</title>
+        <section>Story 1.1 Workflow (lines 240-246)</section>
+        <snippet>Developer runs npx create-next-app with Nextarter Chakra template. Template creates project structure with Next.js + Chakra UI pre-configured. Configure TypeScript strict mode in tsconfig.json. Run npm run dev to verify setup. Commit initial project to Git.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-1.md</path>
+        <title>Epic 1 - Acceptance Criteria</title>
+        <section>Acceptance Criteria (lines 355-365)</section>
+        <snippet>AC-1.1: Project runs in dev mode with no errors. AC-1.2: TypeScript strict mode enabled, type checks pass. AC-1.3: ESLint and Prettier configured and passing. AC-1.4: Trust Blue theme (#2b6cb0) configured. AC-1.5: Next.js App Router structure with (auth) and (dashboard) route groups.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <note>No existing code - this is the first story that creates the project foundation</note>
+      <note>Will create: src/app/, src/components/, src/lib/, src/types/, src/theme/ directories</note>
+      <note>Will configure: tsconfig.json, .eslintrc.json, .prettierrc, next.config.js</note>
+    </code>
+    <dependencies>
+      <framework name="Next.js" version="15+" reason="App Router pattern for SSR/SSG, API routes, optimal React DX">
+        <package>next</package>
+        <package>react</package>
+        <package>react-dom</package>
+      </framework>
+      <framework name="Chakra UI" version="2.8+" reason="WCAG 2.1 compliant, customizable, Trust Blue theme support">
+        <package>@chakra-ui/react</package>
+        <package>@emotion/react</package>
+        <package>@emotion/styled</package>
+        <package>framer-motion</package>
+      </framework>
+      <tooling>
+        <package>typescript</package>
+        <package>eslint</package>
+        <package>eslint-config-next</package>
+        <package>prettier</package>
+      </tooling>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">MUST use Next.js App Router (not Pages Router) - ADR-001</constraint>
+    <constraint type="architecture">MUST use TypeScript strict mode - non-negotiable per architecture</constraint>
+    <constraint type="architecture">MUST use Chakra UI version 2.8+ for theme v2 API</constraint>
+    <constraint type="architecture">Project structure MUST support feature-based organization</constraint>
+    <constraint type="development">ESLint and Prettier MUST be configured before any code is written</constraint>
+    <constraint type="development">Git repository MUST exclude node_modules/, .next/, .env.local, out/, build/</constraint>
+    <constraint type="theme">Primary brand color MUST be Trust Blue (#2b6cb0) throughout application</constraint>
+    <constraint type="performance">Initial setup MUST complete in under 5 minutes</constraint>
+    <constraint type="quality">All type checks MUST pass (npm run type-check) before story completion</constraint>
+    <constraint type="quality">All lint checks MUST pass (npm run lint) before story completion</constraint>
+  </constraints>
+  <interfaces>
+    <note>No API interfaces in this story - infrastructure only</note>
+    <note>Component interfaces will be defined in subsequent stories</note>
+    <note>Project structure interface:</note>
+    <structure>
+      smart-budget-application/
+      ├── src/
+      │   ├── app/                # Next.js App Router
+      │   │   ├── (auth)/         # Auth route group
+      │   │   ├── (dashboard)/    # Dashboard route group
+      │   │   ├── api/            # API routes (empty initially)
+      │   │   ├── layout.tsx      # Root layout
+      │   │   ├── providers.tsx   # Chakra Provider
+      │   │   └── globals.css     # Global styles
+      │   ├── components/         # React components
+      │   │   ├── layout/         # Layout components
+      │   │   └── common/         # Reusable components
+      │   ├── lib/                # Business logic (empty initially)
+      │   ├── types/              # TypeScript types (empty initially)
+      │   └── theme/              # Chakra UI theme
+      │       ├── index.ts        # Main theme export
+      │       ├── colors.ts       # Trust Blue palette
+      │       └── components/     # Component overrides
+      ├── public/                 # Static assets
+      ├── .gitignore
+      ├── package.json
+      ├── tsconfig.json
+      ├── next.config.js
+      └── README.md
+    </structure>
+  </interfaces>
+  <tests>
+    <standards>
+      For this infrastructure story, testing focuses on manual verification and build validation rather than automated tests. The testing framework (Jest + React Testing Library) will be configured but minimal tests are required. Future stories will expand automated test coverage. All testing must follow the standards from the architecture document: Jest for unit tests, React Testing Library for component tests.
+    </standards>
+    <locations>
+      <location>src/__tests__/ - Unit and component tests (to be created in future stories)</location>
+      <location>Manual verification for this story - no automated tests required for infrastructure setup</location>
+    </locations>
+    <ideas>
+      <test id="AC-1.1" type="manual">Run `npm run dev` and verify application starts without console errors - check browser console and terminal output</test>
+      <test id="AC-1.2" type="ci">Run `npm run type-check` in CI pipeline - verify exit code 0, no TypeScript errors reported</test>
+      <test id="AC-1.3" type="ci">Run `npm run lint` in CI pipeline - verify ESLint passes with no errors or warnings</test>
+      <test id="AC-1.4" type="manual">Visual inspection - open browser to localhost:3000, verify Trust Blue color (#2b6cb0) appears in UI components</test>
+      <test id="AC-1.5" type="manual">File system check - verify src/app/(auth)/ and src/app/(dashboard)/ directories exist with proper structure</test>
+      <test id="AC-1.6" type="manual">Browser test - verify Chakra UI Button component renders with correct styling and Trust Blue theme</test>
+      <test id="AC-1.7" type="manual">Git check - verify .gitignore excludes node_modules/, .next/, .env.local using `git status` after creating these files</test>
+      <test id="build" type="ci">Run `npm run build` - verify production build succeeds with no errors</test>
+    </ideas>
+  </tests>
+</story-context>
