@@ -1,90 +1,29 @@
 # Dependencies
 node_modules/
-*.egg-info/
-dist/
-build/
-.venv/
-venv/
-env/
-__pycache__/
-*.py[cod]
-*$py.class
-.Python
-pip-log.txt
-pip-delete-this-directory.txt
+/.pnp
+.pnp.js
 
-# IDE & Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-*.sublime-workspace
-*.sublime-project
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-
-# AI Model & API Keys
+# Environment Variables
 .env
 .env.local
 .env.*.local
-keys/
-secrets/
-*.key
-*.pem
-api-keys/
 
-# Claude, Gemini, Codex Configuration
+# AI Configuration & Workflow
+.bmad/
 .claude/
 .gemini/
-.codex/
-claude_config.json
-gemini_config.json
-codex_config.json
-ai_models/
-ml_models/
-*.model
-*.pkl
-*.h5
-*.pt
-*.pth
 
-# Data & Database
-data/
-*.csv
-*.xlsx
-*.xls
-*.sqlite
-*.sqlite3
-*.db
-*.json.bak
-backup/
-dumps/
-cache/
-*.log
-
-# Build & Distribution
-dist/
-build/
-*.egg-info/
-.eggs/
-wheels/
-*.whl
-*.tar.gz
-*.zip
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.hypothesis/
-coverage.xml
+# IDE & Editor
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.iml
+*.sublime-workspace
+*.sublime-project
+.c9/
+*.launch
+.settings/
 
 # OS
 Thumbs.db
@@ -92,14 +31,26 @@ Thumbs.db
 .AppleDouble
 .LSOverride
 *.directory
+desktop.ini
 
-# Temporary Files
-*.tmp
-*.temp
-*.bak
+# Editor Temporary Files
 *.swp
+*.swo
 *~
 .#*
+*.tmp
+*.bak
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Testing
+.coverage
+.nyc_output
+coverage/
 
 # Logs
 logs/
@@ -107,33 +58,7 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# Package Manager
-package-lock.json
-yarn.lock
-poetry.lock
-Pipfile.lock
-
-# Local Development
-local/
-localhost/
-dev/
-.local/
-
-# Output & Artifacts
-output/
-results/
-reports/
-artifacts/
-dist/
-
-# Python
-*.egg
-.mypy_cache/
-.dmypy.json
-dmypy.json
-.pyre/
-.pytype/
+lerna-debug.log*
 
 # Node
 .npm
@@ -141,20 +66,21 @@ dmypy.json
 .node_repl_history
 *.tsbuildinfo
 
-# Next.js
-.next/
-out/
-next-env.d.ts
+# Package Manager Locks (uncomment if you prefer to commit)
+# Recommended: Keep lock files to maintain consistency
+# package-lock.json
+# yarn.lock
 
-# IDE specific
-.vscode/settings.json
-.vscode/launch.json
-.idea/
-*.iml
+# Local Development
+.local/
+local/
 
-# CI/CD
-.github/workflows/secrets.yml
-.gitlab-ci.yml.local
+# Data & Database
+data/
+*.db
+*.sqlite
+*.sqlite3
 
-# OS-specific
-desktop.ini
+# Build Output
+*.egg
+.mypy_cache/
