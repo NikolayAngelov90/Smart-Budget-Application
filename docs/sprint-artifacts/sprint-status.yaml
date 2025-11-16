@@ -1,4 +1,4 @@
-# generated: 2025-11-15
+# generated: 2025-11-16
 # project: Smart-Budget-Application
 # project_key: smart-budget-application
 # tracking_system: file-system
@@ -29,7 +29,7 @@
 # - SM typically drafts next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', SM reviews, then Dev moves to 'done'
 
-generated: 2025-11-15
+generated: 2025-11-16
 project: Smart-Budget-Application
 project_key: smart-budget-application
 tracking_system: file-system
@@ -40,16 +40,16 @@ development_status:
   1-1-project-initialization-and-base-setup: done
   1-2-supabase-project-setup-and-database-schema: done
   1-3-authentication-configuration-and-middleware: done
-  1-4-deployment-pipeline-and-environment-setup: review
+  1-4-deployment-pipeline-and-environment-setup: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-user-registration-with-email-password: backlog
-  2-2-social-login-google-and-github: backlog
-  2-3-login-with-email-password: backlog
-  2-4-password-reset-flow: backlog
-  2-5-session-management-and-auto-logout: backlog
-  2-6-first-time-user-onboarding: backlog
+  epic-2: contexted
+  2-1-user-registration-with-email-password: done
+  2-2-social-login-google-and-github: ready-for-dev
+  2-3-login-with-email-password: ready-for-dev
+  2-4-password-reset-flow: ready-for-dev
+  2-5-session-management-and-auto-logout: ready-for-dev
+  2-6-first-time-user-onboarding: ready-for-dev
   epic-2-retrospective: optional
 
   epic-3: backlog
