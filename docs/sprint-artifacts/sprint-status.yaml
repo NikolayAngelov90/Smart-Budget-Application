@@ -46,17 +46,17 @@ development_status:
   epic-2: contexted
   2-1-user-registration-with-email-password: done
   2-2-social-login-google-and-github: done
-  2-3-login-with-email-password: ready-for-dev
-  2-4-password-reset-flow: ready-for-dev
-  2-5-session-management-and-auto-logout: ready-for-dev
-  2-6-first-time-user-onboarding: ready-for-dev
+  2-3-login-with-email-password: done
+  2-4-password-reset-flow: done
+  2-5-session-management-and-auto-logout: done
+  2-6-first-time-user-onboarding: done
   epic-2-retrospective: optional
 
   epic-3: backlog
-  3-1-quick-transaction-entry-modal-income-and-expense: backlog
-  3-2-transaction-list-view-with-filtering-and-search: backlog
-  3-3-edit-and-delete-transactions: backlog
-  3-4-transaction-data-persistence-and-sync: backlog
+  3-1-quick-transaction-entry-modal-income-and-expense: drafted
+  3-2-transaction-list-view-with-filtering-and-search: drafted
+  3-3-edit-and-delete-transactions: drafted
+  3-4-transaction-data-persistence-and-sync: drafted
   epic-3-retrospective: optional
 
   epic-4: backlog

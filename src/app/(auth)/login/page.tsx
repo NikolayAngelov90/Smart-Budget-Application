@@ -62,7 +62,11 @@ export default function LoginPage() {
 
     // Basic validation
     const newErrors: { email?: string; password?: string } = {};
-    if (!email) newErrors.email = 'Email is required';
+    if (!email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Email address is invalid';
+    }
     if (!password) newErrors.password = 'Password is required';
 
     if (Object.keys(newErrors).length > 0) {
@@ -79,12 +83,22 @@ export default function LoginPage() {
       });
 
       if (error) {
+        // Specific error handling for different scenarios
+        let errorDescription = 'Network error - please try again';
+
+        if (error.message === 'Invalid login credentials') {
+          errorDescription = 'Invalid email or password';
+        } else if (
+          error.message === 'Email not confirmed' ||
+          error.message.includes('not verified') ||
+          error.message.includes('confirm your email')
+        ) {
+          errorDescription = 'Please verify your email first';
+        }
+
         toast({
           title: 'Login failed',
-          description:
-            error.message === 'Invalid login credentials'
-              ? 'Invalid email or password'
-              : 'Network error - please try again',
+          description: errorDescription,
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -295,9 +309,9 @@ export default function LoginPage() {
             </FormControl>
 
             {/* Forgot Password Link */}
-            <Box textAlign="right">
+            <Box display="flex" justifyContent="flex-end" alignItems="center">
               <Link
-                href="/auth/forgot-password"
+                href="/forgot-password"
                 style={{ color: '#2b6cb0', fontSize: '14px', fontWeight: '600' }}
               >
                 Forgot password?
@@ -312,8 +326,10 @@ export default function LoginPage() {
               color="white"
               _hover={{ bg: '#2c5282' }}
               _active={{ bg: '#2c5282' }}
+              _disabled={{ bg: 'gray.300', cursor: 'not-allowed' }}
               isLoading={isLoading}
               loadingText="Signing in..."
+              isDisabled={!email || !password}
               minH="44px"
               w="full"
               fontWeight="semibold"
