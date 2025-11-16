@@ -1,6 +1,6 @@
 # Story 1.4: Deployment Pipeline and Environment Setup
 
-Status: drafted
+Status: ready-for-dev
 Created: 2025-11-16
 Epic: 1 - Foundation & Infrastructure
 
@@ -262,7 +262,7 @@ This story implements the deployment pipeline as defined in [Epic 1 Tech Spec](t
 
 ### Context Reference
 
-<!-- Path(s) to story context XML will be added here by context workflow -->
+- [Story Context XML](1-4-deployment-pipeline-and-environment-setup.context.xml)
 
 ### Agent Model Used
 

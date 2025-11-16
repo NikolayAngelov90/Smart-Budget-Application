@@ -1,0 +1,188 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>4</storyId>
+    <title>Deployment Pipeline and Environment Setup</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-16</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/1-4-deployment-pipeline-and-environment-setup.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>developer</asA>
+    <iWant>automated deployment to Vercel with proper environment management</iWant>
+    <soThat>I can ship updates quickly and reliably</soThat>
+    <tasks>
+      - Task 1: Create GitHub repository and push code (AC: #4.1)
+      - Task 2: Connect repository to Vercel (AC: #4.1)
+      - Task 3: Configure Vercel project settings (AC: #4.2, #4.3, #4.7)
+      - Task 4: Configure environment variables in Vercel (AC: #4.5)
+      - Task 5: Deploy to production and verify (AC: #4.2, #4.3, #4.4, #4.6)
+      - Task 6: Test preview deployments (AC: #4.7)
+      - Task 7: Configure custom domain (Optional)
+      - Task 8: Set up deployment monitoring (Optional but recommended)
+      - Task 9: Document deployment process and verify (AC: all)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    - AC-4.1: GitHub repository connected to Vercel
+    - AC-4.2: Automatic deployment triggers on push to main branch
+    - AC-4.3: Production build completes successfully in &lt; 2 minutes
+    - AC-4.4: Application accessible via Vercel production URL
+    - AC-4.5: Environment variables configured in Vercel dashboard
+    - AC-4.6: HTTPS enabled and working (Vercel automatic TLS)
+    - AC-4.7: Preview deployments created for feature branches
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/PRD.md" title="Product Requirements Document">
+        <section name="Implementation Planning">
+          Defines next steps after PRD including deployment requirements.
+        </section>
+      </doc>
+      <doc path="docs/architecture.md" title="Technical Architecture">
+        <section name="Deployment Architecture">
+          Deployment to Vercel with automatic CI/CD pipelines. Production on main branch, preview on feature branches. Build: npm run build. Environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
+        </section>
+        <section name="ADR-005: Deployment Target">
+          Vercel chosen for Next.js hosting, automatic deployment on GitHub pushes, environment variable management.
+        </section>
+      </doc>
+      <doc path="docs/epics.md" title="Epic Breakdown">
+        <section name="Story 1.4: Deployment Pipeline">
+          GitHub repository connected to Vercel, automatic deployments on main push, preview deployments for branches, environment variables configured, HTTPS enabled, build time &lt; 2 minutes.
+        </section>
+      </doc>
+      <doc path="docs/sprint-artifacts/tech-spec-epic-1.md" title="Epic 1 Technical Specification">
+        <section name="AC-4.1 through AC-4.7">
+          Deployment acceptance criteria: GitHub-Vercel connection, automatic deployment triggers, build &lt; 2 min, app accessible via Vercel URL, environment variables configured, HTTPS enabled, preview deployments working.
+        </section>
+        <section name="Workflows and Sequencing - Story 1.4">
+          Push code to GitHub → Connect to Vercel → Configure environment variables → Verify production deployment → Test preview deployments.
+        </section>
+      </doc>
+    </docs>
+    <code>
+      <artifact path="package.json" kind="config" lines="1-40" reason="Build scripts and dependencies for deployment">
+        Contains npm run build script (required for Vercel), Next.js 15.0.0, all dependencies. Dev server on port 3001.
+      </artifact>
+      <artifact path="next.config.ts" kind="config" lines="1-11" reason="Next.js build configuration">
+        Production build configuration with Chakra UI optimization and React strict mode. Will be used by Vercel build process.
+      </artifact>
+      <artifact path="src/middleware.ts" kind="middleware" reason="Authentication middleware that will be deployed">
+        Protects routes and handles authentication. Must work correctly in production deployment.
+      </artifact>
+      <artifact path="src/lib/supabase/client.ts" kind="service" reason="Supabase client using NEXT_PUBLIC env vars">
+        Uses NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables that must be configured in Vercel.
+      </artifact>
+    </code>
+    <dependencies>
+      <runtime>
+        <package name="next" version="^15.0.0">Next.js framework for SSR and production builds</package>
+        <package name="react" version="^18.3.0">React library</package>
+        <package name="@supabase/supabase-js" version="^2.81.1">Supabase client (requires env vars)</package>
+      </runtime>
+      <build>
+        <package name="typescript" version="^5.3.0">TypeScript compiler for type checking during build</package>
+        <package name="eslint" version="^8.56.0">Linting during build</package>
+      </build>
+      <platform>
+        <service name="Vercel">Hosting platform with automatic deployments and environment variable management</service>
+        <service name="GitHub">Version control and CI/CD trigger via push events</service>
+        <service name="Supabase">Backend service requiring environment variables in production</service>
+      </platform>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="performance">Production build must complete in &lt; 2 minutes (AC-4.3)</constraint>
+    <constraint type="security">Environment variables must be configured securely in Vercel dashboard (not in code)</constraint>
+    <constraint type="security">HTTPS must be enabled (Vercel automatic TLS) (AC-4.6)</constraint>
+    <constraint type="architecture">Deployment platform must be Vercel (ADR-005)</constraint>
+    <constraint type="architecture">Automatic deployment on push to main branch (AC-4.2)</constraint>
+    <constraint type="architecture">Preview deployments for all feature branches (AC-4.7)</constraint>
+    <constraint type="configuration">Required environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY</constraint>
+    <constraint type="workflow">No code changes required - this is infrastructure/configuration only</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="Vercel Dashboard" kind="web-ui">
+      <description>Web interface for connecting GitHub repository, configuring environment variables, and monitoring deployments</description>
+      <operations>
+        <operation>Import Git Repository - Connect GitHub repo to Vercel project</operation>
+        <operation>Environment Variables - Configure NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY for Production, Preview, Development</operation>
+        <operation>Deployment Logs - Monitor build progress and verify &lt; 2 minute build time</operation>
+        <operation>Preview Deployments - View preview URLs for feature branches</operation>
+      </operations>
+    </interface>
+    <interface name="GitHub Repository" kind="git">
+      <description>Source code repository that triggers Vercel deployments on push</description>
+      <operations>
+        <operation>git push origin main - Triggers production deployment</operation>
+        <operation>git push origin feature/branch - Triggers preview deployment</operation>
+      </operations>
+    </interface>
+    <interface name="Environment Variables (Runtime)" kind="configuration">
+      <description>Configuration values loaded at runtime from Vercel environment</description>
+      <signature>
+        NEXT_PUBLIC_SUPABASE_URL: string (public, visible to browser)
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: string (public, anon key for RLS)
+        SUPABASE_SERVICE_ROLE_KEY: string (server-only, sensitive!)
+      </signature>
+      <path>Configured in Vercel Dashboard → Project Settings → Environment Variables</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      This story is infrastructure-focused with manual verification only. No automated tests required.
+
+      Manual verification checklist:
+      1. GitHub repository created and code pushed successfully
+      2. Vercel project connected to GitHub repository
+      3. Production deployment succeeds with build logs showing &lt; 2 minute build time
+      4. Application accessible via Vercel production URL
+      5. HTTPS enabled (verify https:// protocol in browser)
+      6. Environment variables configured in Vercel dashboard for all three environments
+      7. Preview deployment created when pushing to feature branch
+      8. Application functions correctly in production (auth works, no missing env vars)
+
+      Testing will be done in subsequent stories (Epic 2+) for features built on this foundation.
+    </standards>
+    <locations>
+      No test files for this infrastructure story. Verification is manual via:
+      - Vercel deployment dashboard
+      - GitHub repository commits
+      - Browser testing of production URL
+    </locations>
+    <ideas>
+      <test id="AC-4.1" description="Verify GitHub repository connected to Vercel">
+        Manual: Check Vercel dashboard shows GitHub repository integration
+      </test>
+      <test id="AC-4.2" description="Verify automatic deployment on main push">
+        Manual: Push commit to main branch, verify deployment triggered in Vercel dashboard
+      </test>
+      <test id="AC-4.3" description="Verify build completes in &lt; 2 minutes">
+        Manual: Check deployment logs in Vercel, measure build duration
+      </test>
+      <test id="AC-4.4" description="Verify application accessible via Vercel URL">
+        Manual: Visit production URL in browser, verify app loads
+      </test>
+      <test id="AC-4.5" description="Verify environment variables configured">
+        Manual: Check Vercel dashboard shows all 3 env vars for Production, Preview, Development environments
+      </test>
+      <test id="AC-4.6" description="Verify HTTPS enabled">
+        Manual: Check browser URL shows https:// and padlock icon
+      </test>
+      <test id="AC-4.7" description="Verify preview deployments work">
+        Manual: Create feature branch, push, verify Vercel creates preview deployment with unique URL
+      </test>
+      <test id="Integration" description="Verify authentication works in production">
+        Manual: Test login/signup flows on production URL to ensure Supabase environment variables are correctly configured
+      </test>
+    </ideas>
+  </tests>
+</story-context>
