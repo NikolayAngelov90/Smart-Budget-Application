@@ -70,9 +70,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Rule 2: Redirect authenticated users from auth pages to dashboard
+  // Rule 2: Redirect authenticated users from auth pages to home
+  // TODO: Change to /dashboard when dashboard is implemented in Epic 5
   if (session && isAuthRoute) {
-    url.pathname = '/dashboard';
+    url.pathname = '/';
     url.searchParams.delete('redirect'); // Clear any redirect params
     return NextResponse.redirect(url);
   }
