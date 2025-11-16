@@ -1,69 +1,337 @@
+'use client';
+
 /**
- * Login Page (Placeholder)
- * Story 1.3: Authentication Configuration and Middleware
+ * Login Page - Email/Password + Social Login
+ * Story 2.2: Social Login (Google and GitHub)
+ * Story 2.3: Login with Email/Password
  *
- * This is a placeholder page for authentication infrastructure testing.
- * Full login UI will be implemented in Epic 2 (Story 2.3: Login with Email/Password).
- *
- * Current Purpose:
- * - Serves as redirect target for unauthenticated users
- * - Allows manual testing of authentication middleware
- * - Provides basic structure for Epic 2 implementation
+ * Implements user login with:
+ * - Email/password authentication
+ * - Google and GitHub OAuth
+ * - Supabase Auth integration
+ * - Chakra UI styling (Trust Blue theme)
+ * - Full accessibility (WCAG 2.1 Level A)
+ * - Responsive design (mobile-first)
  */
 
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Login - Smart Budget',
-  description: 'Sign in to your Smart Budget account',
-};
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import {
+  Box,
+  Button,
+  Container,
+  FormControl,
+  FormLabel,
+  FormErrorMessage,
+  Heading,
+  Input,
+  Text,
+  VStack,
+  InputGroup,
+  InputRightElement,
+  IconButton,
+  useToast,
+  Divider,
+  AbsoluteCenter,
+} from '@chakra-ui/react';
+import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
+import { FaGoogle, FaGithub } from 'react-icons/fa';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const toast = useToast();
+  const supabase = createClient();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
+
+  // Handle email/password login
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Clear previous errors
+    setErrors({});
+
+    // Basic validation
+    const newErrors: { email?: string; password?: string } = {};
+    if (!email) newErrors.email = 'Email is required';
+    if (!password) newErrors.password = 'Password is required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: 'Login failed',
+          description:
+            error.message === 'Invalid login credentials'
+              ? 'Invalid email or password'
+              : 'Network error - please try again',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Success - redirect to dashboard
+      toast({
+        title: 'Welcome back!',
+        description: 'You have successfully logged in.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      router.push('/');
+      router.refresh();
+    } catch {
+      toast({
+        title: 'Unexpected error',
+        description: 'Network error - please try again',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      setIsLoading(false);
+    }
+  };
+
+  // Handle social login (Google and GitHub)
+  const handleSocialLogin = async (provider: 'google' | 'github') => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: 'Authentication failed',
+          description:
+            error.message === 'Authorization cancelled'
+              ? 'You cancelled the authorization'
+              : 'Network error - please try again',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch {
+      toast({
+        title: 'Unexpected error',
+        description: 'Network error - please try again',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-            Sign in to Smart Budget
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Placeholder - Login UI will be implemented in Epic 2
-          </p>
-        </div>
+    <Container maxW="md" py={{ base: '12', md: '24' }} px={{ base: '4', md: '8' }}>
+      <VStack spacing={8} align="stretch">
+        {/* Header */}
+        <VStack spacing={2} textAlign="center">
+          <Heading
+            as="h1"
+            size={{ base: 'xl', md: '2xl' }}
+            color="gray.900"
+            fontWeight="bold"
+          >
+            Welcome back
+          </Heading>
+          <Text color="gray.600" fontSize={{ base: 'sm', md: 'md' }}>
+            Sign in to continue managing your finances
+          </Text>
+        </VStack>
 
-        <div className="mt-8 space-y-6 rounded-lg border border-gray-200 bg-white p-8 shadow">
-          <div className="space-y-4">
-            <p className="text-sm text-gray-700">
-              <strong>Story 1.3:</strong> Authentication Configuration and
-              Middleware
-            </p>
-            <p className="text-sm text-gray-600">
-              This placeholder demonstrates that:
-            </p>
-            <ul className="list-inside list-disc space-y-1 text-sm text-gray-600">
-              <li>Middleware redirects unauthenticated users here</li>
-              <li>Route protection is working correctly</li>
-              <li>OAuth callbacks can redirect back here on error</li>
-            </ul>
-            <p className="mt-4 text-sm text-gray-500">
-              Full login functionality including email/password and social login
-              buttons will be implemented in Epic 2 Stories 2.2 and 2.3.
-            </p>
-          </div>
+        {/* Social Login Buttons */}
+        <VStack spacing={3} align="stretch">
+          <Button
+            size="lg"
+            variant="outline"
+            leftIcon={<FaGoogle />}
+            onClick={() => handleSocialLogin('google')}
+            borderColor="gray.300"
+            _hover={{ bg: 'gray.50', borderColor: '#2b6cb0' }}
+            minH="44px"
+            fontWeight="medium"
+            aria-label="Continue with Google"
+          >
+            Continue with Google
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            leftIcon={<FaGithub />}
+            onClick={() => handleSocialLogin('github')}
+            borderColor="gray.300"
+            _hover={{ bg: 'gray.50', borderColor: '#2b6cb0' }}
+            minH="44px"
+            fontWeight="medium"
+            aria-label="Continue with GitHub"
+          >
+            Continue with GitHub
+          </Button>
+        </VStack>
 
-          <div className="border-t border-gray-200 pt-4">
-            <p className="text-xs text-gray-500">
-              <strong>Next Steps (Epic 2):</strong>
-              <br />
-              Story 2.1: User Registration with Email/Password
-              <br />
-              Story 2.2: Social Login (Google and GitHub)
-              <br />
-              Story 2.3: Login with Email/Password
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Divider with "or" text */}
+        <Box position="relative" padding="4">
+          <Divider />
+          <AbsoluteCenter bg="gray.50" px="4">
+            <Text fontSize="sm" color="gray.500" fontWeight="medium">
+              or continue with email
+            </Text>
+          </AbsoluteCenter>
+        </Box>
+
+        {/* Login Form */}
+        <Box
+          as="form"
+          onSubmit={handleSubmit}
+          bg="white"
+          p={{ base: '6', md: '8' }}
+          borderRadius="lg"
+          boxShadow="lg"
+          border="1px"
+          borderColor="gray.200"
+        >
+          <VStack spacing={5} align="stretch">
+            {/* Email Field */}
+            <FormControl isInvalid={!!errors.email} isRequired>
+              <FormLabel htmlFor="email" fontSize="sm" fontWeight="medium">
+                Email address
+              </FormLabel>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                size="lg"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                aria-label="Email address"
+                aria-required="true"
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? 'email-error' : undefined}
+                autoComplete="email"
+                _focus={{
+                  borderColor: '#2b6cb0',
+                  boxShadow: '0 0 0 1px #2b6cb0',
+                }}
+              />
+              {errors.email && (
+                <FormErrorMessage id="email-error" color="red.500" fontSize="sm">
+                  {errors.email}
+                </FormErrorMessage>
+              )}
+            </FormControl>
+
+            {/* Password Field */}
+            <FormControl isInvalid={!!errors.password} isRequired>
+              <FormLabel htmlFor="password" fontSize="sm" fontWeight="medium">
+                Password
+              </FormLabel>
+              <InputGroup size="lg">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  aria-label="Password"
+                  aria-required="true"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={
+                    errors.password ? 'password-error' : undefined
+                  }
+                  autoComplete="current-password"
+                  _focus={{
+                    borderColor: '#2b6cb0',
+                    boxShadow: '0 0 0 1px #2b6cb0',
+                  }}
+                />
+                <InputRightElement>
+                  <IconButton
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
+                    onClick={() => setShowPassword(!showPassword)}
+                    variant="ghost"
+                    size="sm"
+                    tabIndex={-1}
+                  />
+                </InputRightElement>
+              </InputGroup>
+              {errors.password && (
+                <FormErrorMessage
+                  id="password-error"
+                  color="red.500"
+                  fontSize="sm"
+                >
+                  {errors.password}
+                </FormErrorMessage>
+              )}
+            </FormControl>
+
+            {/* Forgot Password Link */}
+            <Box textAlign="right">
+              <Link
+                href="/auth/forgot-password"
+                style={{ color: '#2b6cb0', fontSize: '14px', fontWeight: '600' }}
+              >
+                Forgot password?
+              </Link>
+            </Box>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              size="lg"
+              bg="#2b6cb0"
+              color="white"
+              _hover={{ bg: '#2c5282' }}
+              _active={{ bg: '#2c5282' }}
+              isLoading={isLoading}
+              loadingText="Signing in..."
+              minH="44px"
+              w="full"
+              fontWeight="semibold"
+              aria-label="Sign in"
+            >
+              Sign in
+            </Button>
+          </VStack>
+        </Box>
+
+        {/* Signup Link */}
+        <Text textAlign="center" fontSize="sm" color="gray.600">
+          Don&apos;t have an account?{' '}
+          <Link href="/signup" style={{ color: '#2b6cb0', fontWeight: '600' }}>
+            Sign up
+          </Link>
+        </Text>
+      </VStack>
+    </Container>
   );
 }

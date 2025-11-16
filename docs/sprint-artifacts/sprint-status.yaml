@@ -45,7 +45,7 @@ development_status:
 
   epic-2: contexted
   2-1-user-registration-with-email-password: done
-  2-2-social-login-google-and-github: ready-for-dev
+  2-2-social-login-google-and-github: done
   2-3-login-with-email-password: ready-for-dev
   2-4-password-reset-flow: ready-for-dev
   2-5-session-management-and-auto-logout: ready-for-dev

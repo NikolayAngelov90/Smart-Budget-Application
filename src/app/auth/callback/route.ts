@@ -1,13 +1,14 @@
 /**
  * OAuth Callback Route Handler
  * Story 1.3: Authentication Configuration and Middleware
+ * Story 2.2: Social Login (Google and GitHub)
  *
  * This route handles OAuth callback redirects from providers (Google, GitHub).
  * After user authorizes with OAuth provider, they're redirected here with a code.
  * We exchange the code for a session and redirect to the dashboard.
  *
  * Flow:
- * 1. User clicks "Sign in with Google/GitHub"
+ * 1. User clicks "Continue with Google/GitHub"
  * 2. Provider redirects to this route with ?code=xxx
  * 3. We exchange code for session
  * 4. Redirect to dashboard on success, login on failure
@@ -39,9 +40,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Success! Redirect to dashboard
+    // Success! Redirect to dashboard (root route)
     // The middleware will handle session validation
-    return NextResponse.redirect(`${origin}/dashboard`);
+    return NextResponse.redirect(`${origin}/`);
   }
 
   // No code present, redirect to login

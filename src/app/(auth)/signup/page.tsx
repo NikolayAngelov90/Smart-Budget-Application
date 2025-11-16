@@ -1,12 +1,14 @@
 'use client';
 
 /**
- * Signup Page - User Registration with Email/Password
+ * Signup Page - User Registration with Email/Password + Social Login
  * Story 2.1: User Registration with Email/Password
+ * Story 2.2: Social Login (Google and GitHub)
  *
- * Implements email/password registration with:
+ * Implements email/password registration and social login with:
  * - React Hook Form + Zod validation
  * - Password strength meter
+ * - Google and GitHub OAuth
  * - Supabase Auth integration
  * - Chakra UI styling (Trust Blue theme)
  * - Full accessibility (WCAG 2.1 Level A)
@@ -35,8 +37,11 @@ import {
   InputRightElement,
   IconButton,
   useToast,
+  Divider,
+  AbsoluteCenter,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
+import { FaGoogle, FaGithub } from 'react-icons/fa';
 import { createClient } from '@/lib/supabase/client';
 
 // Zod validation schema
@@ -185,6 +190,39 @@ export default function SignupPage() {
     }
   };
 
+  // Handle social login (Google and GitHub)
+  const handleSocialLogin = async (provider: 'google' | 'github') => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: 'Authentication failed',
+          description:
+            error.message === 'Authorization cancelled'
+              ? 'You cancelled the authorization'
+              : 'Network error - please try again',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    } catch {
+      toast({
+        title: 'Unexpected error',
+        description: 'Network error - please try again',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
   return (
     <Container maxW="md" py={{ base: '12', md: '24' }} px={{ base: '4', md: '8' }}>
       <VStack spacing={8} align="stretch">
@@ -202,6 +240,46 @@ export default function SignupPage() {
             Start managing your finances with confidence
           </Text>
         </VStack>
+
+        {/* Social Login Buttons */}
+        <VStack spacing={3} align="stretch">
+          <Button
+            size="lg"
+            variant="outline"
+            leftIcon={<FaGoogle />}
+            onClick={() => handleSocialLogin('google')}
+            borderColor="gray.300"
+            _hover={{ bg: 'gray.50', borderColor: '#2b6cb0' }}
+            minH="44px"
+            fontWeight="medium"
+            aria-label="Continue with Google"
+          >
+            Continue with Google
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            leftIcon={<FaGithub />}
+            onClick={() => handleSocialLogin('github')}
+            borderColor="gray.300"
+            _hover={{ bg: 'gray.50', borderColor: '#2b6cb0' }}
+            minH="44px"
+            fontWeight="medium"
+            aria-label="Continue with GitHub"
+          >
+            Continue with GitHub
+          </Button>
+        </VStack>
+
+        {/* Divider with "or" text */}
+        <Box position="relative" padding="4">
+          <Divider />
+          <AbsoluteCenter bg="gray.50" px="4">
+            <Text fontSize="sm" color="gray.500" fontWeight="medium">
+              or continue with email
+            </Text>
+          </AbsoluteCenter>
+        </Box>
 
         {/* Signup Form */}
         <Box
