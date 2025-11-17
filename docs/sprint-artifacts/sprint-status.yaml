@@ -53,10 +53,10 @@ development_status:
   epic-2-retrospective: optional
 
   epic-3: backlog
-  3-1-quick-transaction-entry-modal-income-and-expense: drafted
-  3-2-transaction-list-view-with-filtering-and-search: drafted
-  3-3-edit-and-delete-transactions: drafted
-  3-4-transaction-data-persistence-and-sync: drafted
+  3-1-quick-transaction-entry-modal-income-and-expense: done
+  3-2-transaction-list-view-with-filtering-and-search: in-progress
+  3-3-edit-and-delete-transactions: ready-for-dev
+  3-4-transaction-data-persistence-and-sync: ready-for-dev
   epic-3-retrospective: optional
 
   epic-4: backlog

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   // If there's a code, exchange it for a session
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
       console.error('OAuth callback error:', error.message);
@@ -38,6 +38,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         `${origin}/login?error=auth_failed&message=${encodeURIComponent(error.message)}`
       );
+    }
+
+    // Check if this is a new user and seed default categories
+    if (data?.user) {
+      const userId = data.user.id;
+
+      // Check if user has any categories (to determine if they're new)
+      const { data: existingCategories } = await supabase
+        .from('categories')
+        .select('id')
+        .limit(1);
+
+      // If no categories exist, seed default categories for this new user
+      if (!existingCategories || existingCategories.length === 0) {
+        try {
+          await supabase.rpc('seed_user_categories', {
+            target_user_id: userId,
+          });
+          console.log('✅ Default categories seeded for new user:', userId);
+        } catch (seedError) {
+          console.error('❌ Failed to seed categories:', seedError);
+          // Don't block login for seeding failure - categories can be added later
+        }
+      }
     }
 
     // Success! Redirect to dashboard (root route)
