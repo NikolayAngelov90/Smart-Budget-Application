@@ -52,15 +52,15 @@ development_status:
   2-6-first-time-user-onboarding: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
+  epic-3: contexted
   3-1-quick-transaction-entry-modal-income-and-expense: done
-  3-2-transaction-list-view-with-filtering-and-search: in-progress
-  3-3-edit-and-delete-transactions: ready-for-dev
-  3-4-transaction-data-persistence-and-sync: ready-for-dev
+  3-2-transaction-list-view-with-filtering-and-search: done
+  3-3-edit-and-delete-transactions: done
+  3-4-transaction-data-persistence-and-sync: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-seed-default-categories-on-user-signup: backlog
+  epic-4: contexted
+  4-1-seed-default-categories-on-user-signup: in-progress
   4-2-create-custom-categories: backlog
   4-3-edit-and-delete-custom-categories: backlog
   4-4-category-color-coding-and-visual-display: backlog

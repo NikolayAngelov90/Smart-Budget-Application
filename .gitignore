@@ -5,11 +5,15 @@ node_modules/
 
 # Environment Variables
 .env
+.env*.local
 .env.local
-.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.backup
+.env.save
 
-# AI Configuration & Workflow
-.bmad/
+# Personal IDE AI Configuration
 .claude/
 .gemini/
 
@@ -46,11 +50,20 @@ desktop.ini
 out/
 build/
 dist/
+.vercel
+.turbo
+*.tsbuildinfo
+next-env.d.ts
 
 # Testing
 .coverage
 .nyc_output
 coverage/
+*.lcov
+test-results/
+playwright-report/
+playwright/.cache/
+.playwright/
 
 # Logs
 logs/
@@ -64,7 +77,6 @@ lerna-debug.log*
 .npm
 .eslintcache
 .node_repl_history
-*.tsbuildinfo
 
 # Package Manager Locks (uncomment if you prefer to commit)
 # Recommended: Keep lock files to maintain consistency
@@ -80,6 +92,11 @@ data/
 *.db
 *.sqlite
 *.sqlite3
+
+# Supabase
+.supabase/
+supabase/.branches/
+supabase/.temp/
 
 # Build Output
 *.egg

@@ -1,0 +1,205 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>1</storyId>
+    <title>Seed Default Categories on User Signup</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-22</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-1-seed-default-categories-on-user-signup.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a new user</asA>
+    <iWant>11 predefined categories automatically created when I sign up</iWant>
+    <soThat>I can immediately start categorizing transactions without manual setup</soThat>
+    <tasks>
+### Data Model & Seed Data
+- Task 1: Define DEFAULT_CATEGORIES constant with 11 categories (7 expense: Dining, Transport, Entertainment, Utilities, Shopping, Healthcare, Rent; 4 income: Salary, Freelance, Investment, Gift)
+- Task 2: Create SeedCategoriesService with seedDefaultCategories(userId) function implementing idempotent seeding logic
+- Task 3: Add TypeScript types (SeedCategoryInput, SeedResult) to types/category.types.ts
+
+### Seeding Service Implementation
+- Task 4: Create onboarding API endpoint at src/app/api/auth/onboarding/route.ts with POST handler
+- Task 5: Integrate onboarding call into signup workflow (src/app/(auth)/signup/page.tsx) after successful user creation
+
+### Error Handling & Testing
+- Task 6: Implement comprehensive error handling (Supabase errors, duplicates, partial failures, logging)
+- Task 7: Test seeding (idempotency, performance < 500ms, RLS policies, TypeScript/ESLint validation)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+**AC1: Default Categories Seeding (from Tech Spec AC1 - PRD FR11, FR12)**
+- Given a new user completes signup
+- When the user account is created
+- Then 11 predefined categories are automatically seeded (7 expense, 4 income)
+- And predefined categories have is_predefined = true
+- And categories are available immediately on first transaction entry
+- And each category has name, color (hex), and type assigned
+- And seeding is idempotent (doesn't duplicate if run multiple times)
+
+**AC2: Category Seeding Implementation**
+- Given the category seeding service
+- When invoked with a user_id
+- Then it checks if categories already exist for that user
+- And only seeds categories if none exist (prevent duplicates)
+- And all 11 categories are inserted in a single transaction
+- And seeding completes within 500ms
+
+**AC3: Integration with Signup Flow**
+- Given a user completes the signup process
+- When the signup callback executes
+- Then the category seeding service is called automatically
+- And seeding occurs before user sees the dashboard
+- And errors during seeding don't block signup completion (logged, retry later)
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification: Category Management</title>
+        <section>Default Categories (Seed Data)</section>
+        <snippet>Defines DEFAULT_CATEGORIES array with 11 categories: 7 expense (Dining #f56565, Transport #4299e1, Entertainment #9f7aea, Utilities #48bb78, Shopping #ed8936, Healthcare #38b2ac, Rent #e53e3e) and 4 income (Salary #38a169, Freelance #4299e1, Investment #9f7aea, Gift #f56565). Each has name, color (hex), type, and is_predefined=true flag.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification: Category Management</title>
+        <section>Workflow 1: User Signup → Category Seeding</section>
+        <snippet>Workflow: User completes signup → Supabase creates auth.users record → Onboarding API checks for existing categories → If none exist: Bulk insert DEFAULT_CATEGORIES with user_id → User navigates to transactions with categories available. Seeding must complete within 500ms.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification: Category Management</title>
+        <section>Acceptance Criteria AC1</section>
+        <snippet>AC1: Given new user completes signup, When user account created, Then 11 predefined categories automatically seeded (7 expense, 4 income), And predefined categories have is_predefined=true, And categories available immediately on first transaction entry.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>Database Schema - Categories Table</section>
+        <snippet>categories table with columns: id (UUID PK), user_id (UUID FK → auth.users ON DELETE CASCADE), name (VARCHAR 100), color (VARCHAR 7, hex format), type (transaction_type ENUM), is_predefined (BOOLEAN), created_at (TIMESTAMPTZ). UNIQUE constraint on (user_id, name, type). Indexes: idx_categories_user_id, idx_categories_type. RLS policies: SELECT (all), INSERT (all), UPDATE (is_predefined=false only), DELETE (is_predefined=false only).</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Category Visual Design</section>
+        <snippet>Categories displayed with color badges throughout application for visual consistency. Color codes must meet WCAG AA contrast requirements. CategoryBadge component shows category name with color dot indicator.</snippet>
+      </artifact>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/lib/supabase/server.ts</path>
+        <kind>service</kind>
+        <symbol>createClient</symbol>
+        <lines>45-69</lines>
+        <reason>Established pattern for server-side Supabase client initialization. Use this pattern in seeding service and onboarding API endpoint. Properly handles cookies for Next.js 15+ server environment with type-safe database schema.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/(auth)/signup/page.tsx</path>
+        <kind>page</kind>
+        <symbol>SignupPage</symbol>
+        <lines>127-191</lines>
+        <reason>Integration point for onboarding API call. After successful supabase.auth.signUp (line 131-137), add POST /api/auth/onboarding call before redirect to verify-email (line 180). Implement retry logic and non-blocking error handling as specified in AC3.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/categories/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>GET /api/categories</symbol>
+        <lines>47-168</lines>
+        <reason>Existing categories API with server-side auth pattern (lines 49-59). Reuse authentication pattern for onboarding endpoint. Shows how to query categories with RLS policies and usage stats. New endpoint will be POST /api/auth/onboarding.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/database.types.ts</path>
+        <kind>types</kind>
+        <symbol>Database</symbol>
+        <lines>1-end</lines>
+        <reason>Database type definitions generated from Supabase schema. Reference for Category type structure. Will need to add SeedCategoryInput and SeedResult types to types/category.types.ts (may not exist yet).</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="@supabase/ssr" version="0.7.0" critical="true">Server-side Supabase client for API routes and server components. Use createServerClient pattern from lib/supabase/server.ts</package>
+        <package name="@supabase/supabase-js" version="2.81.1" critical="true">Supabase client library for database operations with RLS enforcement</package>
+        <package name="next" version="15.0.0" critical="true">Next.js framework - use App Router for API routes (app/api/auth/onboarding/route.ts)</package>
+        <package name="typescript" version="5.3.0" critical="true">TypeScript with strict mode enabled - type-check required before completion</package>
+        <package name="zod" version="4.1.12" critical="false">Schema validation library (optional for request validation in onboarding endpoint)</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Use RLS policies for all database access - no manual user_id filtering required (RLS enforces auth.uid() = user_id automatically)</constraint>
+    <constraint>Seeding must be idempotent: Check if categories exist before insert to prevent duplicates on retry or multiple calls</constraint>
+    <constraint>Performance target: Bulk seed operation must complete within 500ms (single atomic transaction for all 11 categories)</constraint>
+    <constraint>Use established Supabase server client pattern from lib/supabase/server.ts for all server-side database operations</constraint>
+    <constraint>Seeding failure must NOT block signup completion: Log errors, allow user to proceed (can add custom categories manually later)</constraint>
+    <constraint>All 11 categories must have is_predefined=true flag to protect from user edits/deletes via RLS UPDATE/DELETE policies</constraint>
+    <constraint>Follow existing code structure: Services in lib/services/, Constants in lib/utils/, API routes in app/api/, Types in types/</constraint>
+    <constraint>TypeScript strict mode required: Run 'npx tsc --noEmit' and 'npx next lint' before marking story complete</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/categories</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/categories?type={income|expense}
+Response 200: { data: Category[], count: number }
+Response 401: { error: 'Unauthorized' }
+Category: { id, name, color, type, is_predefined, last_used_at?, usage_count? }</signature>
+      <path>src/app/api/categories/route.ts</path>
+      <notes>Existing endpoint. Will be used by frontend to fetch seeded categories after signup.</notes>
+    </interface>
+    <interface>
+      <name>POST /api/auth/onboarding</name>
+      <kind>REST endpoint (to be created)</kind>
+      <signature>POST /api/auth/onboarding
+Request: { } (user_id from session)
+Response 200: { success: true, count: number, categories: Category[] }
+Response 400: { error: 'Unauthorized' }
+Response 500: { error: 'Failed to seed categories' }</signature>
+      <path>src/app/api/auth/onboarding/route.ts (CREATE)</path>
+      <notes>New endpoint to trigger category seeding. Called from signup page after successful user creation. Extracts user_id from Supabase Auth session, calls seedDefaultCategories service.</notes>
+    </interface>
+    <interface>
+      <name>seedDefaultCategories</name>
+      <kind>Service function (to be created)</kind>
+      <signature>async function seedDefaultCategories(userId: string): Promise&lt;SeedResult&gt;
+SeedResult: { success: boolean; count: number; categories?: Category[] }
+Throws: Error on failure (caller should handle retry logic)</signature>
+      <path>src/lib/services/seedCategoriesService.ts (CREATE)</path>
+      <notes>Core seeding logic. Check if user has categories (SELECT COUNT). If 0, bulk insert DEFAULT_CATEGORIES with user_id and is_predefined=true. Use Supabase transaction for atomicity. Return seeded categories on success.</notes>
+    </interface>
+    <interface>
+      <name>DEFAULT_CATEGORIES</name>
+      <kind>Constant array</kind>
+      <signature>const DEFAULT_CATEGORIES: Array&lt;{ name: string; color: string; type: 'income' | 'expense' }&gt;
+11 items: 7 expense (Dining #f56565, Transport #4299e1, Entertainment #9f7aea, Utilities #48bb78, Shopping #ed8936, Healthcare #38b2ac, Rent #e53e3e), 4 income (Salary #38a169, Freelance #4299e1, Investment #9f7aea, Gift #f56565)</signature>
+      <path>src/lib/utils/constants.ts (CREATE)</path>
+      <notes>Source of truth for default categories. Exported for use in seeding service. Each category has name (string), color (hex string #RRGGBB), type ('income' | 'expense').</notes>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+TypeScript strict mode with type-check validation (npx tsc --noEmit). ESLint validation (npx next lint). Test RLS policies ensure data isolation. Test idempotency by calling seeding twice and verifying no duplicates. Test performance with target < 500ms for bulk insert of 11 categories. Test error handling for Supabase connection failures and duplicate errors. Integration tests for full signup → seeding → category availability workflow.
+    </standards>
+    <locations>
+- Unit tests: src/lib/services/__tests__/seedCategoriesService.test.ts (if test framework configured)
+- Integration tests: src/app/api/auth/onboarding/__tests__/route.test.ts
+- E2E tests: tests/e2e/signup-with-categories.spec.ts (Playwright/Cypress pattern)
+- Manual testing: Signup flow in browser with network tab monitoring
+    </locations>
+    <ideas>
+      <test acRef="AC1">Test new user signup creates exactly 11 categories with correct properties (name, color, type, is_predefined=true)</test>
+      <test acRef="AC2">Test idempotency: Call seedDefaultCategories twice for same user, verify only 11 categories exist (no duplicates)</test>
+      <test acRef="AC2">Test performance: Measure bulk insert time, assert < 500ms completion</test>
+      <test acRef="AC3">Test integration: Complete signup flow, verify onboarding API called, verify categories appear in GET /api/categories immediately</test>
+      <test acRef="AC3">Test error handling: Mock Supabase connection failure, verify signup still succeeds with logged error</test>
+      <test acRef="AC1">Test RLS policies: Verify user A cannot see user B's seeded categories via GET /api/categories</test>
+      <test acRef="AC1">Test color format: Verify all 11 categories have valid hex colors matching #RRGGBB pattern</test>
+      <test acRef="AC2">Test database constraints: Verify UNIQUE(user_id, name, type) prevents duplicate category names per type</test>
+    </ideas>
+  </tests>
+</story-context>

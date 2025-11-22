@@ -97,16 +97,36 @@ const transactionSchema = z.object({
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
+// Transaction interface for edit mode
+interface Transaction {
+  id: string;
+  amount: number;
+  type: TransactionType;
+  category_id: string;
+  date: string;
+  notes?: string | null;
+  category: {
+    id: string;
+    name: string;
+    color: string;
+    type: TransactionType;
+  };
+}
+
 interface TransactionEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  mode?: 'create' | 'edit';
+  transaction?: Transaction | null;
 }
 
 export default function TransactionEntryModal({
   isOpen,
   onClose,
   onSuccess,
+  mode = 'create',
+  transaction = null,
 }: TransactionEntryModalProps) {
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -169,12 +189,34 @@ export default function TransactionEntryModal({
     }
   }, [transactionType, toast]);
 
-  // Fetch categories when modal opens
+  // Fetch categories when modal opens or type changes
   useEffect(() => {
     if (isOpen) {
       fetchCategories();
     }
   }, [isOpen, fetchCategories]);
+
+  // Pre-fill form when editing a transaction
+  useEffect(() => {
+    if (isOpen && mode === 'edit' && transaction) {
+      reset({
+        amount: transaction.amount.toFixed(2),
+        type: transaction.type,
+        category_id: transaction.category_id,
+        date: transaction.date,
+        notes: transaction.notes || '',
+      });
+    } else if (isOpen && mode === 'create') {
+      // Reset to default values for create mode
+      reset({
+        amount: '',
+        type: 'expense',
+        category_id: '',
+        date: format(new Date(), 'yyyy-MM-dd'),
+        notes: '',
+      });
+    }
+  }, [isOpen, mode, transaction, reset]);
 
   // Quick date setter functions
   const setQuickDate = (daysAgo: number) => {
@@ -187,39 +229,59 @@ export default function TransactionEntryModal({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parseFloat(data.amount),
-          type: data.type,
-          category_id: data.category_id,
-          date: data.date,
-          notes: data.notes || undefined,
-        }),
-      });
+      let response;
+
+      if (mode === 'edit' && transaction) {
+        // Update existing transaction
+        response = await fetch(`/api/transactions/${transaction.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: parseFloat(data.amount),
+            type: data.type,
+            category_id: data.category_id,
+            date: data.date,
+            notes: data.notes || undefined,
+          }),
+        });
+      } else {
+        // Create new transaction
+        response = await fetch('/api/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: parseFloat(data.amount),
+            type: data.type,
+            category_id: data.category_id,
+            date: data.date,
+            notes: data.notes || undefined,
+          }),
+        });
+      }
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create transaction');
+        throw new Error(error.error || `Failed to ${mode === 'edit' ? 'update' : 'create'} transaction`);
       }
 
       // Success!
       toast({
-        title: 'Transaction added successfully',
+        title: mode === 'edit' ? 'Transaction updated successfully' : 'Transaction added successfully',
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
 
-      // Reset form for next entry
-      reset({
-        amount: '',
-        type: 'expense',
-        category_id: '',
-        date: format(new Date(), 'yyyy-MM-dd'),
-        notes: '',
-      });
+      // Reset form only if creating (for quick next entry)
+      if (mode === 'create') {
+        reset({
+          amount: '',
+          type: 'expense',
+          category_id: '',
+          date: format(new Date(), 'yyyy-MM-dd'),
+          notes: '',
+        });
+      }
 
       // Call success callback (e.g., to refresh transaction list)
       if (onSuccess) {
@@ -229,7 +291,7 @@ export default function TransactionEntryModal({
       // Close modal
       onClose();
     } catch (error) {
-      console.error('Error creating transaction:', error);
+      console.error(`Error ${mode === 'edit' ? 'updating' : 'creating'} transaction:`, error);
       toast({
         title: 'Failed to save transaction',
         description: error instanceof Error ? error.message : 'Network error - please try again',
@@ -257,7 +319,7 @@ export default function TransactionEntryModal({
     >
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>Add Transaction</ModalHeader>
+        <ModalHeader>{mode === 'edit' ? 'Edit Transaction' : 'Add Transaction'}</ModalHeader>
         <ModalCloseButton />
 
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -428,7 +490,7 @@ export default function TransactionEntryModal({
               loadingText="Saving..."
               minH="44px"
             >
-              Save
+              {mode === 'edit' ? 'Save' : 'Add'}
             </Button>
           </ModalFooter>
         </form>

@@ -75,6 +75,12 @@ phases:
         output: "Integration architecture - solution design for THIS project"
         note: "HIGHLY RECOMMENDED: Distills massive brownfield context into focused solution design. Prevents agent confusion."
 
+      - id: "create-epics-and-stories"
+        required: true
+        agent: "pm"
+        command: "create-epics-and-stories"
+        note: "Required: Break down PRD into implementable epics and stories with full context (PRD + UX + Architecture)"
+
       - id: "test-design"
         recommended: true
         agent: "tea"
@@ -87,11 +93,11 @@ phases:
         agent: "architect"
         command: "validate-architecture"
 
-      - id: "solutioning-gate-check"
+      - id: "implementation-readiness"
         required: true
         agent: "architect"
-        command: "solutioning-gate-check"
-        note: "Validates PRD + UX + Architecture (if created) cohesion"
+        command: "implementation-readiness"
+        note: "Validates PRD + UX + Architecture + Epics cohesion before implementation"
 
   - phase: 3
     name: "Implementation"

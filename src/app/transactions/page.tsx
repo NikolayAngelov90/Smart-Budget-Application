@@ -14,7 +14,7 @@
  * - Mobile-responsive design
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Container,
@@ -35,11 +35,21 @@ import {
   IconButton,
   Flex,
   SimpleGrid,
+  useDisclosure,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
+  useToast,
 } from '@chakra-ui/react';
-import { CloseIcon, SearchIcon } from '@chakra-ui/icons';
+import { CloseIcon, SearchIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
+import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
+import { createClient } from '@/lib/supabase/client';
 
 // Types
 interface Category {
@@ -53,6 +63,7 @@ interface Transaction {
   id: string;
   amount: number;
   type: 'income' | 'expense';
+  category_id: string;
   date: string;
   notes: string | null;
   created_at: string;
@@ -80,8 +91,24 @@ export default function TransactionsPage() {
   const [endDate, setEndDate] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+
+  // Edit modal state
+  const { isOpen: isEditModalOpen, onOpen: onEditModalOpen, onClose: onEditModalClose } = useDisclosure();
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  // Delete confirmation state
+  const { isOpen: isDeleteAlertOpen, onOpen: onDeleteAlertOpen, onClose: onDeleteAlertClose } = useDisclosure();
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // Toast for undo functionality
+  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Network status tracking (Task 6)
+  const [isOnline, setIsOnline] = useState(true);
 
   // Debounce search query (300ms delay)
   useEffect(() => {
@@ -107,14 +134,22 @@ export default function TransactionsPage() {
     return params.toString();
   }, [startDate, endDate, categoryFilter, typeFilter, debouncedSearch]);
 
-  // Fetch transactions
+  // Fetch transactions with optimized SWR configuration
   const {
     data: transactionsResponse,
     error: transactionsError,
     isLoading: transactionsLoading,
+    mutate,
   } = useSWR<TransactionResponse>(
     `/api/transactions?${buildQueryString()}`,
-    fetcher
+    fetcher,
+    {
+      revalidateOnFocus: true, // Sync when tab regains focus
+      revalidateOnReconnect: true, // Sync when internet reconnects
+      dedupingInterval: 2000, // Prevent excessive requests (2 seconds)
+      errorRetryCount: 3, // Retry failed requests up to 3 times
+      focusThrottleInterval: 5000, // Throttle focus revalidation (5 seconds)
+    }
   );
 
   // Fetch categories for filter dropdown
@@ -122,6 +157,86 @@ export default function TransactionsPage() {
     '/api/categories',
     fetcher
   );
+
+  // Real-time sync via Supabase Realtime subscriptions (Tasks 2-3)
+  useEffect(() => {
+    const supabase = createClient();
+
+    // Subscribe to real-time changes on transactions table
+    const channel = supabase
+      .channel('transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'transactions',
+        },
+        (payload) => {
+          console.log('Real-time event received:', payload.eventType);
+
+          // Revalidate SWR cache to fetch fresh data with all relationships
+          // This ensures category details and other joins are included
+          mutate();
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Real-time sync active');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Real-time channel error');
+        } else if (status === 'TIMED_OUT') {
+          console.error('⏱️ Real-time subscription timed out');
+        }
+      });
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('🔌 Unsubscribing from real-time channel');
+      supabase.removeChannel(channel);
+    };
+  }, [mutate]); // Only depend on mutate, not filters
+
+  // Network status monitoring (Task 6)
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      console.log('🌐 Connection restored');
+      toast({
+        title: 'Connection restored',
+        description: 'Your data will sync automatically',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      // Auto-retry: revalidate data when connection restored
+      mutate();
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      console.log('📡 Connection lost');
+      toast({
+        title: 'Connection lost',
+        description: 'Changes will sync when connection is restored',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+    };
+
+    // Set initial status
+    setIsOnline(navigator.onLine);
+
+    // Listen for connection changes
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [toast, mutate]);
 
   // Check if any filters are active
   const hasActiveFilters =
@@ -134,6 +249,159 @@ export default function TransactionsPage() {
     setCategoryFilter('');
     setTypeFilter('all');
     setSearchQuery('');
+  };
+
+  // Edit transaction handler
+  const handleEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    onEditModalOpen();
+  };
+
+  // Handle successful edit
+  const handleEditSuccess = () => {
+    mutate(); // Refresh transactions list
+    setEditingTransaction(null);
+  };
+
+  // Delete transaction handler - shows confirmation dialog
+  const handleDelete = (transaction: Transaction) => {
+    setDeletingTransaction(transaction);
+    onDeleteAlertOpen();
+  };
+
+  // Confirm delete with optimistic update and undo
+  const confirmDelete = async () => {
+    if (!deletingTransaction) return;
+
+    const transactionToDelete = deletingTransaction;
+    setIsDeleting(true);
+
+    try {
+      // Optimistic update: remove from cache immediately
+      mutate(
+        (currentData: TransactionResponse | undefined) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            data: currentData.data.filter((t: Transaction) => t.id !== transactionToDelete.id),
+            count: currentData.count - 1,
+          };
+        },
+        false // Don't revalidate yet
+      );
+
+      // Close alert dialog
+      onDeleteAlertClose();
+      setDeletingTransaction(null);
+
+      // Store deleted transaction for undo
+      let isUndone = false;
+
+      // Show success toast with undo button
+      toast({
+        title: 'Transaction deleted successfully',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        position: 'bottom',
+        render: ({ onClose }) => (
+          <Box p={4} bg="green.500" borderRadius="md" color="white">
+            <HStack justify="space-between">
+              <Text>Transaction deleted successfully</Text>
+              <Button
+                size="sm"
+                variant="solid"
+                bg="white"
+                color="green.500"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  isUndone = true;
+                  onClose();
+
+                  // Restore transaction via POST (recreate)
+                  try {
+                    const response = await fetch('/api/transactions', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        amount: transactionToDelete.amount,
+                        type: transactionToDelete.type,
+                        category_id: transactionToDelete.category_id,
+                        date: transactionToDelete.date,
+                        notes: transactionToDelete.notes || undefined,
+                      }),
+                    });
+
+                    if (response.ok) {
+                      // Refresh list
+                      mutate();
+                      toast({
+                        title: 'Transaction restored',
+                        status: 'success',
+                        duration: 2000,
+                      });
+                    } else {
+                      throw new Error('Failed to restore');
+                    }
+                  } catch (error) {
+                    console.error('Error restoring transaction:', error);
+                    toast({
+                      title: 'Failed to restore transaction',
+                      status: 'error',
+                      duration: 3000,
+                    });
+                    // Revert optimistic update
+                    mutate();
+                  }
+                }}
+              >
+                Undo
+              </Button>
+            </HStack>
+          </Box>
+        ),
+      });
+
+      // Set timeout to actually delete after 5 seconds
+      setTimeout(async () => {
+        if (isUndone) return;
+
+        // Actually delete from server
+        try {
+          const response = await fetch(`/api/transactions/${transactionToDelete.id}`, {
+            method: 'DELETE',
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to delete transaction');
+          }
+
+          // Revalidate to ensure consistency
+          mutate();
+        } catch (error) {
+          console.error('Error deleting transaction:', error);
+          // Rollback optimistic update
+          mutate();
+          toast({
+            title: 'Failed to delete transaction',
+            description: 'The transaction has been restored',
+            status: 'error',
+            duration: 5000,
+          });
+        }
+      }, 5000);
+    } catch (error) {
+      console.error('Error in delete flow:', error);
+      // Rollback optimistic update
+      mutate();
+      toast({
+        title: 'Failed to delete transaction',
+        status: 'error',
+        duration: 3000,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Format amount with color-coding
@@ -203,6 +471,24 @@ export default function TransactionsPage() {
         <Heading as="h1" size="xl" mb={6} color="gray.800">
           Transactions
         </Heading>
+
+        {/* Offline Indicator Banner (Task 6) */}
+        {!isOnline && (
+          <Box
+            bg="orange.100"
+            border="1px"
+            borderColor="orange.300"
+            borderRadius="md"
+            p={3}
+            mb={4}
+          >
+            <HStack>
+              <Text fontSize="sm" fontWeight="medium" color="orange.800">
+                📡 You're offline - Changes will sync when connection is restored
+              </Text>
+            </HStack>
+          </Box>
+        )}
 
         {/* Filter Controls */}
         <Card mb={6}>
@@ -357,7 +643,7 @@ export default function TransactionsPage() {
                 return (
                   <Card
                     key={transaction.id}
-                    _hover={{ shadow: 'md', cursor: 'pointer' }}
+                    _hover={{ shadow: 'md' }}
                     transition="all 0.2s"
                   >
                     <CardBody>
@@ -402,6 +688,34 @@ export default function TransactionsPage() {
                           )}
                         </VStack>
 
+                        {/* Middle: Action Buttons */}
+                        <HStack spacing={2}>
+                          <IconButton
+                            aria-label="Edit transaction"
+                            icon={<EditIcon />}
+                            size="sm"
+                            variant="ghost"
+                            colorScheme="blue"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(transaction);
+                            }}
+                            _hover={{ bg: 'blue.50' }}
+                          />
+                          <IconButton
+                            aria-label="Delete transaction"
+                            icon={<DeleteIcon />}
+                            size="sm"
+                            variant="ghost"
+                            colorScheme="red"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(transaction);
+                            }}
+                            _hover={{ bg: 'red.50' }}
+                          />
+                        </HStack>
+
                         {/* Right: Amount */}
                         <Text
                           fontSize={{ base: 'xl', md: '2xl' }}
@@ -419,6 +733,55 @@ export default function TransactionsPage() {
             </VStack>
           )}
       </Container>
+
+      {/* Edit Transaction Modal */}
+      <TransactionEntryModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          onEditModalClose();
+          setEditingTransaction(null);
+        }}
+        onSuccess={handleEditSuccess}
+        mode="edit"
+        transaction={editingTransaction}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isDeleteAlertOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onDeleteAlertClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete Transaction
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Delete this transaction? This cannot be undone.
+              <Text mt={2} fontSize="sm" color="gray.600">
+                (You will have 5 seconds to undo after deletion)
+              </Text>
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onDeleteAlertClose} isDisabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button
+                colorScheme="red"
+                onClick={confirmDelete}
+                ml={3}
+                isLoading={isDeleting}
+                loadingText="Deleting..."
+              >
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </AppLayout>
   );
 }
