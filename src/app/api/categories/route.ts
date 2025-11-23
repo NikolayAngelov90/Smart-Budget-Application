@@ -1,8 +1,7 @@
 /**
  * Categories API Route
- * Story 3.1: Quick Transaction Entry Modal
- *
- * Provides GET endpoint for fetching user categories with recent usage tracking
+ * Story 3.1: Quick Transaction Entry Modal (GET endpoint)
+ * Story 4.2: Create Custom Categories (POST endpoint)
  *
  * GET /api/categories
  * - Returns all categories for authenticated user
@@ -10,10 +9,16 @@
  * - Orders by recent usage (from transaction history)
  * - Falls back to alphabetical order for categories never used
  *
+ * POST /api/categories
+ * - Creates a new custom category
+ * - Validates name, color, and type
+ * - Enforces UNIQUE constraint (user_id, name, type)
+ * - Returns 409 if duplicate category name exists for type
+ *
  * Response format:
  * {
- *   data: Category[],
- *   count: number
+ *   data: Category[] | Category,
+ *   count?: number
  * }
  *
  * Category schema:
@@ -31,6 +36,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { z } from 'zod';
 
 /**
  * GET /api/categories
@@ -160,6 +166,134 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Unexpected error in GET /api/categories:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// Validation schema for category creation
+const createCategorySchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Category name is required')
+    .max(100, 'Category name too long')
+    .trim()
+    .refine((val) => /^[a-zA-Z0-9\s]+$/.test(val), {
+      message: 'Only letters, numbers, and spaces allowed',
+    }),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color format'),
+  type: z.enum(['income', 'expense']),
+});
+
+/**
+ * POST /api/categories
+ * Creates a new custom category
+ *
+ * Request body:
+ * - name: string (1-100 chars, alphanumeric + spaces)
+ * - color: string (hex format #RRGGBB)
+ * - type: 'income' | 'expense'
+ *
+ * Returns:
+ * - 201: Created with category data
+ * - 400: Validation error
+ * - 401: Unauthorized (no session)
+ * - 409: Duplicate category name for type
+ * - 500: Server error
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+
+    // Check authentication
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Parse and validate request body
+    const body = await request.json();
+    const validation = createCategorySchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: 'Validation error',
+          details: validation.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    const { name, color, type } = validation.data;
+
+    // Check for duplicate category name (for this user and type)
+    // The UNIQUE constraint (user_id, name, type) will also catch this at DB level
+    const { data: existing, error: checkError } = await supabase
+      .from('categories')
+      .select('id, name')
+      .eq('user_id', user.id)
+      .eq('name', name)
+      .eq('type', type)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Error checking duplicate category:', checkError);
+      return NextResponse.json(
+        { error: 'Failed to validate category' },
+        { status: 500 }
+      );
+    }
+
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Category name already exists for this type' },
+        { status: 409 }
+      );
+    }
+
+    // Insert new category
+    const { data: newCategory, error: insertError } = await supabase
+      .from('categories')
+      .insert({
+        user_id: user.id,
+        name,
+        color,
+        type,
+        is_predefined: false,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error creating category:', insertError);
+
+      // Check if it's a unique constraint violation (fallback in case pre-check missed it)
+      if (insertError.code === '23505') {
+        return NextResponse.json(
+          { error: 'Category name already exists for this type' },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json(
+        { error: 'Failed to create category' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      { data: newCategory },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Unexpected error in POST /api/categories:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

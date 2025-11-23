@@ -27,6 +27,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { seedDefaultCategories } from '@/lib/services/seedCategoriesService';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 /**
  * POST /api/auth/onboarding
@@ -52,6 +53,18 @@ export async function POST() {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Validate userId is a valid UUID (Code Review Finding #2)
+    const userIdSchema = z.string().uuid();
+    const validation = userIdSchema.safeParse(user.id);
+
+    if (!validation.success) {
+      console.error('Invalid userId format:', user.id);
+      return NextResponse.json(
+        { error: 'Invalid user ID format' },
+        { status: 400 }
       );
     }
 

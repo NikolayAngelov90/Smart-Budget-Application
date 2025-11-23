@@ -1,0 +1,345 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>2</storyId>
+    <title>Create Custom Categories</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-23</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-2-create-custom-categories.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to create my own custom categories with names and colors</iWant>
+    <soThat>I can organize transactions according to my personal spending patterns</soThat>
+    <tasks>
+- Create /app/(dashboard)/categories/page.tsx - category management page
+- Create CategoryModal component with React Hook Form + Zod validation
+- Implement color picker with 12 predefined theme colors
+- Add navigation link to categories page from sidebar/settings
+- Implement form validation (required fields, uniqueness)
+- Create POST /api/categories endpoint if not exists
+- Integrate optimistic UI updates with SWR
+- Add success toast notifications
+- Implement error handling (duplicate names, network errors)
+- Ensure mobile responsive design (full-screen modal)
+- Test keyboard accessibility (Tab navigation, Enter to submit)
+- Verify new categories appear in transaction dropdown
+- Test integration with transaction entry modal
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+AC1: Category Management Page Access
+- Given I need a category not in the predefined list
+- When I navigate to categories page from Settings or sidebar
+- Then "Manage Categories" page is accessible
+
+AC2: Category Creation Modal
+- Given I am on the categories management page
+- When I click "Add Category" button
+- Then a category creation modal opens with:
+  - Category name input field (max 100 characters)
+  - Category type selector: Expense or Income (segmented control)
+  - Color picker showing 12 predefined color options from theme palette
+  - Color preview shown next to name field
+  - "Save" button disabled until name and color selected
+
+AC3: Form Validation
+- Given I am creating a custom category
+- When I submit the form
+- Then category name is validated: not empty, unique per user per type, no special characters beyond spaces
+- And hex color validation ensures valid format (#RRGGBB)
+- And duplicate names for the same type show error: "Category name already exists"
+
+AC4: Category Persistence
+- Given I have created a custom category with name, color, and type
+- When the category is saved via POST /api/categories
+- Then the category is saved to the database with is_predefined = false
+- And the category appears immediately in category list (optimistic UI)
+- And the category is available in transaction entry dropdown immediately
+
+AC5: Success Feedback
+- Given I successfully create a category
+- When the save operation completes
+- Then a success toast shows: "Category '[name]' created successfully"
+- And the modal closes automatically
+
+AC6: Accessibility and Mobile
+- Given I am using the category creation form
+- When I interact with it
+- Then the form is fully keyboard accessible (Tab, Enter to submit)
+- And on mobile, the modal displays as full-screen for small devices
+
+AC7: Error Handling
+- Given I attempt to create a category
+- When an error occurs (duplicate name, network error)
+- Then appropriate inline error messages are displayed in red
+- And the form remains open for correction
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification: Category Management</title>
+        <section>Workflow 2: Create Custom Category</section>
+        <snippet>Workflow defines: User → CategoryManager UI → Click "Add Category" → Fill form (name, color picker, type radio) → Submit → Frontend validation (React Hook Form + Zod) → POST /api/categories → API validates & inserts with is_predefined=false → Frontend updates via SWR mutate → Success toast → Close modal</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>AC2: Create Custom Category</section>
+        <snippet>Acceptance Criteria states: authenticated user on categories management page creates custom category with name, color, and type → category saved to database with is_predefined = false → appears in all category selectors → duplicate names prevented via unique constraint error → hex color validation ensures valid format (#RRGGBB)</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Data Models and Contracts - TypeScript Interfaces</section>
+        <snippet>Category interface defines: id (UUID), user_id, name (string), color (hex string #RRGGBB), type (TransactionType), is_predefined (boolean), created_at. CreateCategoryInput interface requires: name, color, type. Validation Rules use Zod schema: name min(1) max(100) trim, color regex(/^#[0-9A-Fa-f]{6}$/), type enum(['income', 'expense'])</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>APIs and Interfaces - POST /api/categories</section>
+        <snippet>POST /api/categories endpoint accepts request body: { name: string (1-100 chars), color: string (hex #RRGGBB), type: 'income'|'expense' }. Returns 201 with created Category on success. Error responses: 400 (validation error), 401 (unauthorized), 409 (duplicate name for type), 500 (server error)</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>Database Schema - Categories Table</section>
+        <snippet>Categories table with RLS policies: SELECT, INSERT, UPDATE (non-predefined only), DELETE (non-predefined only). UNIQUE constraint on (user_id, name, type) prevents duplicate category names per type. Foreign key relationship with transactions table.</snippet>
+      </artifact>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/app/api/categories/route.ts</path>
+        <kind>API Route</kind>
+        <symbol>GET /api/categories</symbol>
+        <lines>1-169</lines>
+        <reason>Existing GET endpoint for fetching categories. Story 4.2 will add POST handler to same file for creating categories. Shows established pattern for auth, error handling, and response format.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/category.types.ts</path>
+        <kind>Type Definitions</kind>
+        <symbol>Category, CreateCategoryInput, TransactionType</symbol>
+        <lines>1-89</lines>
+        <reason>Contains all TypeScript interfaces needed for category creation: Category entity, CreateCategoryInput for POST body, TransactionType enum. Already defined in Story 4.1.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/supabase/server.ts</path>
+        <kind>Service</kind>
+        <symbol>createClient</symbol>
+        <lines>N/A</lines>
+        <reason>Server-side Supabase client factory used in all API routes. Required for database operations in POST /api/categories endpoint.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/utils/constants.ts</path>
+        <kind>Constants</kind>
+        <symbol>DEFAULT_CATEGORIES</symbol>
+        <lines>1-40</lines>
+        <reason>Contains predefined categories seeded in Story 4.1. Provides reference for color palette and category structure. Story 4.2 creates custom categories that complement these defaults.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package>react-hook-form</package>
+        <version>7.66.0</version>
+        <usage>Form state management for category creation modal</usage>
+      </node>
+      <node>
+        <package>zod</package>
+        <version>4.1.12</version>
+        <usage>Schema validation for category name, color, and type</usage>
+      </node>
+      <node>
+        <package>@hookform/resolvers</package>
+        <version>5.2.2</version>
+        <usage>Zod resolver integration with React Hook Form</usage>
+      </node>
+      <node>
+        <package>@chakra-ui/react</package>
+        <version>2.8.0</version>
+        <usage>UI components: Modal, Form controls, Button, Toast, ColorPicker/Input</usage>
+      </node>
+      <node>
+        <package>swr</package>
+        <version>2.3.6</version>
+        <usage>Optimistic UI updates via mutate() after category creation</usage>
+      </node>
+      <node>
+        <package>@supabase/supabase-js</package>
+        <version>2.81.1</version>
+        <usage>Database client for POST /api/categories endpoint</usage>
+      </node>
+      <node>
+        <package>@supabase/ssr</package>
+        <version>0.7.0</version>
+        <usage>Server-side authentication middleware for API route</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Use React Hook Form for form state management - established pattern from Epic 3 transactions</constraint>
+    <constraint>Use Zod for validation schema - consistent with existing API validation approach</constraint>
+    <constraint>Implement optimistic UI updates using SWR mutate - required for <200ms perceived creation time per NFR</constraint>
+    <constraint>Follow Next.js 15 App Router conventions - API route in app/api/categories/route.ts</constraint>
+    <constraint>Use Chakra UI components - consistent with existing UI component library (Modal, Form, Button, Toast)</constraint>
+    <constraint>Enforce RLS policies at database level - all API operations must use authenticated Supabase client</constraint>
+    <constraint>Color picker must show 12 predefined theme colors - Trust Blue, coral red, purple, teal, orange, green variants</constraint>
+    <constraint>Category name unique constraint enforced per (user_id, name, type) - handle 409 Conflict responses gracefully</constraint>
+    <constraint>Mobile-first responsive design - modal should be full-screen on small devices</constraint>
+    <constraint>Keyboard accessibility required - Tab navigation, Enter to submit, Escape to close modal</constraint>
+    <constraint>Performance target: Category creation completes in <200ms perceived time via optimistic update</constraint>
+    <constraint>Error messages must be user-friendly - avoid technical jargon, provide actionable guidance</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>POST /api/categories</name>
+      <kind>REST API Endpoint</kind>
+      <signature>POST /api/categories
+Request Headers: Cookie (session)
+Request Body: { name: string, color: string, type: 'income'|'expense' }
+Response 201: { data: Category }
+Response 400: { error: string, details: object }
+Response 401: { error: 'Unauthorized' }
+Response 409: { error: 'Category name already exists for this type' }
+Response 500: { error: 'Internal server error' }</signature>
+      <path>src/app/api/categories/route.ts</path>
+    </interface>
+    <interface>
+      <name>CategoryModal Component</name>
+      <kind>React Component</kind>
+      <signature>interface CategoryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: (category: Category) => void;
+}
+
+Component renders modal with:
+- React Hook Form for state
+- Zod validation schema
+- Name input (max 100 chars)
+- Type selector (income/expense segmented control)
+- Color picker (12 preset colors)
+- Submit button (disabled until valid)
+- Toast notification on success
+- Optimistic UI update via SWR mutate</signature>
+      <path>src/components/categories/CategoryModal.tsx (to be created)</path>
+    </interface>
+    <interface>
+      <name>Categories Management Page</name>
+      <kind>Next.js Page Component</kind>
+      <signature>Page component at /categories route
+- Lists all user categories (predefined + custom)
+- "Add Category" button opens CategoryModal
+- Integrates with SWR for data fetching
+- Uses existing GET /api/categories endpoint
+- Mobile responsive layout</signature>
+      <path>src/app/(dashboard)/categories/page.tsx (to be created)</path>
+    </interface>
+    <interface>
+      <name>createCategorySchema (Zod)</name>
+      <kind>Validation Schema</kind>
+      <signature>const createCategorySchema = z.object({
+  name: z.string().min(1, 'Category name is required').max(100, 'Category name too long').trim(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color'),
+  type: z.enum(['income', 'expense'])
+});</signature>
+      <path>src/app/api/categories/route.ts or shared validation file</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+Testing follows established patterns from Epic 3 (Transactions):
+- TypeScript type-check via `npx tsc --noEmit` before deployment
+- ESLint validation via `npx next lint`
+- Manual integration testing for API endpoints and UI flows
+- Form validation testing: required fields, format validation, error messages
+- Accessibility testing: keyboard navigation, screen reader compatibility
+- Mobile responsiveness testing on various viewport sizes
+    </standards>
+    <locations>
+- API route tests would go in: src/app/api/categories/__tests__/ (if test framework added later)
+- Component tests would go in: src/components/categories/__tests__/ (if test framework added later)
+- Current approach: Manual testing with TypeScript/ESLint validation as baseline
+    </locations>
+    <ideas>
+      <test id="T1" maps-to-ac="AC1, AC2">
+**Test**: Category Management Page and Modal Opening
+- Navigate to /categories page from dashboard
+- Verify page renders category list
+- Click "Add Category" button
+- Verify CategoryModal opens with all form fields
+- Verify "Save" button is disabled initially
+      </test>
+      <test id="T2" maps-to-ac="AC2, AC3">
+**Test**: Form Validation - Required Fields
+- Open CategoryModal
+- Leave name empty, select color and type
+- Attempt submit
+- Verify error message: "Category name is required"
+- Fill name, clear color
+- Verify error for color format
+      </test>
+      <test id="T3" maps-to-ac="AC3, AC7">
+**Test**: Duplicate Category Name Validation
+- Create category "Groceries" as expense type
+- Attempt to create another "Groceries" as expense
+- Verify 409 error response
+- Verify UI shows: "Category name already exists"
+- Verify modal remains open for correction
+      </test>
+      <test id="T4" maps-to-ac="AC4, AC5">
+**Test**: Successful Category Creation with Optimistic UI
+- Fill valid category: name="Groceries", color="#48bb78", type="expense"
+- Click Save
+- Verify optimistic update: category appears in list immediately
+- Verify POST /api/categories call succeeds (201)
+- Verify success toast: "Category 'Groceries' created successfully"
+- Verify modal auto-closes
+- Verify category persists after page refresh
+      </test>
+      <test id="T5" maps-to-ac="AC4">
+**Test**: Category Available in Transaction Dropdown
+- Create custom category "Coffee" (expense)
+- Navigate to transactions page
+- Open transaction entry modal
+- Select expense type
+- Verify "Coffee" category appears in dropdown
+- Verify category can be selected and saved with transaction
+      </test>
+      <test id="T6" maps-to-ac="AC6">
+**Test**: Keyboard Accessibility
+- Open CategoryModal
+- Use Tab key to navigate through fields (name → type → color → save)
+- Fill form using keyboard only
+- Press Enter on Save button
+- Verify form submits successfully
+- Press Escape key
+- Verify modal closes
+      </test>
+      <test id="T7" maps-to-ac="AC6">
+**Test**: Mobile Responsive Modal
+- Open CategoryModal on mobile viewport (< 768px)
+- Verify modal displays as full-screen
+- Verify all form controls are accessible and properly sized
+- Verify color picker works on touch devices
+- Submit form and verify success
+      </test>
+      <test id="T8" maps-to-ac="AC7">
+**Test**: Network Error Handling
+- Simulate network failure (disconnect or mock API error)
+- Attempt to create category
+- Verify error message displays: "Failed to create category. Please try again."
+- Verify modal remains open
+- Restore network and retry
+- Verify success on second attempt
+      </test>
+    </ideas>
+  </tests>
+</story-context>
