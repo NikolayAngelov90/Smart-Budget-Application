@@ -50,6 +50,7 @@ import {
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { CategoryModal } from '@/components/categories/CategoryModal';
+import { CategoryBadge } from '@/components/categories/CategoryBadge';
 import type { Category } from '@/types/category.types';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -357,21 +358,12 @@ function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <HStack spacing={3}>
-        {/* Color Badge */}
-        <Box
-          w={4}
-          h={4}
-          borderRadius="full"
-          bg={category.color}
-          flexShrink={0}
-        />
+      <HStack spacing={3} justify="space-between">
+        {/* Category Badge with colored background */}
+        <HStack spacing={3} flex={1}>
+          <CategoryBadge category={category} variant="badge" size="md" />
 
-        <VStack align="start" spacing={0} flex={1}>
-          <Text fontWeight="semibold" fontSize="md">
-            {category.name}
-          </Text>
-          <HStack spacing={2} mt={1}>
+          <HStack spacing={2}>
             <Badge
               colorScheme={category.type === 'income' ? 'green' : 'red'}
               fontSize="xs"
@@ -384,7 +376,7 @@ function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) {
               </Badge>
             )}
           </HStack>
-        </VStack>
+        </HStack>
 
         {/* Edit and Delete Buttons for Custom Categories */}
         {!category.is_predefined && (

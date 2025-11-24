@@ -63,8 +63,8 @@ development_status:
   4-1-seed-default-categories-on-user-signup: done
   4-2-create-custom-categories: done
   4-3-edit-and-delete-custom-categories: done
-  4-4-category-color-coding-and-visual-display: ready-for-dev
-  4-5-recently-used-categories-quick-access: backlog
+  4-4-category-color-coding-and-visual-display: done
+  4-5-recently-used-categories-quick-access: done
   epic-4-retrospective: optional
 
   epic-5: backlog

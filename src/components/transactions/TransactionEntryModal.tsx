@@ -46,7 +46,6 @@ import {
   FormLabel,
   FormErrorMessage,
   Input,
-  Select,
   Textarea,
   VStack,
   HStack,
@@ -56,6 +55,7 @@ import {
   Spinner,
 } from '@chakra-ui/react';
 import { format, subDays } from 'date-fns';
+import { CategoryMenu } from '@/components/categories/CategoryMenu';
 
 // Transaction type
 type TransactionType = 'expense' | 'income';
@@ -131,6 +131,7 @@ export default function TransactionEntryModal({
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [recentCategories, setRecentCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   const {
@@ -170,6 +171,7 @@ export default function TransactionEntryModal({
       if (response.ok) {
         const data = await response.json();
         setCategories(data.data || []);
+        setRecentCategories(data.recent || []); // Story 4.5: Use recent categories from API
       } else {
         toast({
           title: 'Failed to load categories',
@@ -304,10 +306,6 @@ export default function TransactionEntryModal({
     }
   };
 
-  // Split categories into recent and all
-  const recentCategories = categories.filter((cat) => cat.last_used_at).slice(0, 5);
-  const hasRecentCategories = recentCategories.length > 0;
-
   return (
     <Modal
       isOpen={isOpen}
@@ -385,33 +383,15 @@ export default function TransactionEntryModal({
                     <Text ml={3}>Loading categories...</Text>
                   </Box>
                 ) : (
-                  <Select
-                    id="category_id"
+                  <CategoryMenu
+                    categories={categories}
+                    value={watch('category_id')}
+                    onChange={(categoryId) => setValue('category_id', categoryId, { shouldValidate: true })}
                     placeholder="Select a category"
+                    isInvalid={!!errors.category_id}
                     size="lg"
-                    {...register('category_id')}
-                    _focus={{
-                      borderColor: '#2b6cb0',
-                      boxShadow: '0 0 0 1px #2b6cb0',
-                    }}
-                  >
-                    {hasRecentCategories && (
-                      <optgroup label="Recently Used">
-                        {recentCategories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    <optgroup label={hasRecentCategories ? 'All Categories' : 'Categories'}>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </Select>
+                    recentCategories={recentCategories}
+                  />
                 )}
                 {errors.category_id && (
                   <FormErrorMessage>{errors.category_id.message}</FormErrorMessage>

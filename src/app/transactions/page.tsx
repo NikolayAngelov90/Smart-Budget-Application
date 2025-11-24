@@ -49,6 +49,7 @@ import useSWR from 'swr';
 import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
+import { CategoryBadge } from '@/components/categories/CategoryBadge';
 import { createClient } from '@/lib/supabase/client';
 
 // Types
@@ -669,17 +670,11 @@ export default function TransactionsPage() {
                             </Badge>
                           </HStack>
 
-                          <HStack spacing={2}>
-                            <Box
-                              w="12px"
-                              h="12px"
-                              borderRadius="full"
-                              bg={transaction.category.color}
-                            />
-                            <Text fontSize="md" fontWeight="medium" color="gray.800">
-                              {transaction.category.name}
-                            </Text>
-                          </HStack>
+                          <CategoryBadge
+                            category={transaction.category}
+                            variant="dot"
+                            size="md"
+                          />
 
                           {transaction.notes && (
                             <Text fontSize="sm" color="gray.600">

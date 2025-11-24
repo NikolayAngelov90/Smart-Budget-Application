@@ -142,26 +142,26 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Sort by recent usage (most recent first), then alphabetically
-    categoriesWithUsage.sort((a, b) => {
-      // Categories with usage come first
-      if (a.last_used_at && !b.last_used_at) return -1;
-      if (!a.last_used_at && b.last_used_at) return 1;
-
-      // If both have usage, sort by most recent
-      if (a.last_used_at && b.last_used_at) {
+    // Story 4.5: Extract recent categories (top 5 by usage)
+    const recentCategories = categoriesWithUsage
+      .filter((cat) => cat.last_used_at !== null)
+      .sort((a, b) => {
+        // Sort by most recent usage
         return (
-          new Date(b.last_used_at).getTime() -
-          new Date(a.last_used_at).getTime()
+          new Date(b.last_used_at!).getTime() -
+          new Date(a.last_used_at!).getTime()
         );
-      }
+      })
+      .slice(0, 5); // Limit to 5 most recent
 
-      // If neither have usage, sort alphabetically
-      return a.name.localeCompare(b.name);
-    });
+    // Sort all categories alphabetically for main list
+    const allCategoriesSorted = [...categoriesWithUsage].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
 
     return NextResponse.json({
-      data: categoriesWithUsage,
+      data: allCategoriesSorted,
+      recent: recentCategories,
       count: categoriesWithUsage.length,
     });
   } catch (error) {
