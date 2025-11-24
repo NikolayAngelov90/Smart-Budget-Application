@@ -68,14 +68,14 @@ development_status:
   epic-4-retrospective: optional
 
   epic-5: contexted
-  5-1-dashboard-layout-and-navigation: backlog
-  5-2-financial-summary-cards-statcards: backlog
-  5-3-monthly-spending-by-category-pie-donut-chart: backlog
-  5-4-spending-trends-over-time-line-chart: backlog
-  5-5-month-over-month-comparison-highlights: backlog
-  5-6-chart-interactivity-and-drill-down: backlog
-  5-7-dashboard-performance-and-loading-states: backlog
-  5-8-responsive-dashboard-for-mobile-and-tablet: backlog
+  5-1-dashboard-layout-and-navigation: review
+  5-2-financial-summary-cards-statcards: drafted
+  5-3-monthly-spending-by-category-pie-donut-chart: drafted
+  5-4-spending-trends-over-time-line-chart: drafted
+  5-5-month-over-month-comparison-highlights: drafted
+  5-6-chart-interactivity-and-drill-down: drafted
+  5-7-dashboard-performance-and-loading-states: drafted
+  5-8-responsive-dashboard-for-mobile-and-tablet: drafted
   epic-5-retrospective: optional
 
   epic-6: backlog

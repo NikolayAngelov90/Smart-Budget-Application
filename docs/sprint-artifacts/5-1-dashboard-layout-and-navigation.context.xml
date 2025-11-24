@@ -1,0 +1,254 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>1</storyId>
+    <title>Dashboard Layout and Navigation</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-24</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-1-dashboard-layout-and-navigation.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>a responsive dashboard with sidebar navigation</iWant>
+    <soThat>I can access all features and see my financial overview immediately</soThat>
+    <tasks>
+      - Create dashboard layout structure (AC: 1, 2, 3, 7, 8)
+        - Implement `/app/(dashboard)/layout.tsx` with sidebar wrapper
+        - Set dashboard as default route (`/app/(dashboard)/page.tsx`)
+        - Create responsive Flex layout with sidebar and main content area
+      - Build Sidebar component (AC: 2, 3, 4, 5)
+        - Create `src/components/layout/Sidebar.tsx` (ALREADY EXISTS - needs enhancement)
+        - Add navigation items: Dashboard, Transactions, Categories, Insights, Settings
+        - Implement active link highlighting (Trust Blue + 4px left border)
+        - Add collapsible/expand functionality for tablet
+        - Use Next.js `usePathname()` for active state detection (ALREADY IMPLEMENTED)
+      - Build MobileNav component (AC: 6)
+        - Enhance `src/components/layout/MobileNav.tsx` (EXISTS as placeholder)
+        - Implement Chakra UI Drawer for mobile menu
+        - Add hamburger IconButton trigger in header
+        - Display same navigation items as desktop sidebar
+      - Implement header component (AC: 7)
+        - Enhance `src/components/layout/Header.tsx` (ALREADY EXISTS - needs enhancements)
+        - Add app logo, user avatar/name display
+        - Add logout button functionality
+        - Make header sticky on scroll (optional enhancement)
+      - Implement responsive breakpoints (AC: 8, 9, 10)
+        - Mobile breakpoint (<768px): single column, hide sidebar
+        - Tablet breakpoint (768-1023px): icon-only collapsible sidebar
+        - Desktop breakpoint (≥1024px): full 250px sidebar
+        - Use Chakra UI `useBreakpointValue` hook
+        - Set max-width 1200px for main content (centered)
+      - Add accessibility features (AC: 11, 12)
+        - Ensure all navigation keyboard accessible (Tab, Enter)
+        - Add ARIA labels for screen readers
+        - Test with screen reader (announce "Dashboard page")
+        - Ensure focus states visible on all interactive elements
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    **Given** I log in to the application
+    **When** I land on the dashboard
+    **Then** I see a comprehensive financial overview with easy navigation
+
+    **And** Dashboard is the default landing page after login (`/` or `/dashboard`)
+    **And** Sidebar navigation on left (250px width on desktop)
+    **And** Sidebar shows navigation items: Dashboard, Transactions, Categories, Insights, Settings
+    **And** Active nav item highlighted with Trust Blue color + left border (4px)
+    **And** Sidebar collapsible on tablet (icon-only mode)
+    **And** Mobile: sidebar hidden, hamburger menu icon in header opens drawer
+    **And** Header shows app logo, user avatar/name, logout button
+    **And** Main content area responsive (fills remaining space)
+    **And** Mobile (<768px): single column, bottom navigation bar optional
+    **And** Tablet (768-1023px): collapsible sidebar, single column content
+    **And** Desktop (≥1024px): full sidebar, multi-column dashboard grid
+    **And** All navigation keyboard accessible (Tab, Enter to activate)
+    **And** Screen reader announces current page ("Dashboard page")
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR18</section>
+        <snippet>Dashboard is default landing page after login, loads within 60 seconds. Core PRD promise of visual spending insights.</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR44-FR46</section>
+        <snippet>Responsive design requirements: mobile 320px minimum, tablet 768px breakpoint, desktop 1024px+. Touch targets 44x44px minimum on mobile.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Technical Architecture</title>
+        <section>Frontend Architecture</section>
+        <snippet>Next.js 15+ App Router with route groups for authenticated pages. Chakra UI 2.8+ for components with Trust Blue theme. Mobile-first responsive design.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Technical Architecture</title>
+        <section>Project Structure</section>
+        <snippet>Dashboard pages under src/app/(dashboard)/ route group. Layout component at src/app/(dashboard)/layout.tsx provides consistent wrapper. Shared layout components in src/components/layout/.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>Frontend Architecture</section>
+        <snippet>Dashboard layout component at src/app/(dashboard)/layout.tsx with sidebar navigation. Sidebar component (250px desktop), MobileNav (Drawer for mobile), Header (logo, user info, logout).</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>Performance Strategy</section>
+        <snippet>Layout component wraps all dashboard pages (renders once). No data fetching in layout (only structure). Use CSS Grid/Flexbox for layout (no JavaScript reflows).</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/components/layout/Sidebar.tsx</path>
+        <kind>component</kind>
+        <symbol>Sidebar</symbol>
+        <lines>1-71</lines>
+        <reason>EXISTING sidebar component with basic navigation (Dashboard, Transactions, Categories). Needs enhancement: add Insights/Settings, Trust Blue active styling with 4px left border, tablet collapsible mode.</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/layout/AppLayout.tsx</path>
+        <kind>component</kind>
+        <symbol>AppLayout</symbol>
+        <lines>1-50</lines>
+        <reason>EXISTING layout wrapper with Sidebar, Header, MobileNav. Shows sidebar on desktop (md+), hides on mobile. Pattern to follow for dashboard-specific layout.</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/layout/MobileNav.tsx</path>
+        <kind>component</kind>
+        <symbol>MobileNav</symbol>
+        <lines>1-24</lines>
+        <reason>EXISTS as placeholder. Needs full implementation: Chakra Drawer, hamburger trigger, navigation items matching desktop sidebar.</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/layout/Header.tsx</path>
+        <kind>component</kind>
+        <symbol>Header</symbol>
+        <lines>1-16</lines>
+        <reason>EXISTING header with Trust Blue background and app title. Needs enhancement: add user avatar/name, logout button, optional sticky positioning.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/layout.tsx</path>
+        <kind>layout</kind>
+        <symbol>RootLayout</symbol>
+        <lines>1-23</lines>
+        <reason>Root layout with Providers wrapper. Dashboard layout will nest within this. Reference for metadata and provider setup.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/providers.tsx</path>
+        <kind>context</kind>
+        <symbol>Providers</symbol>
+        <lines>N/A</lines>
+        <reason>Chakra UI and SWR providers setup. Reference for theme configuration and responsive utilities.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/supabase/client.ts</path>
+        <kind>service</kind>
+        <symbol>createClient</symbol>
+        <lines>N/A</lines>
+        <reason>Supabase client for logout functionality. Use for Header logout button implementation.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="@chakra-ui/react" version="^2.8.0" />
+        <package name="@chakra-ui/next-js" version="^2.2.0" />
+        <package name="@chakra-ui/icons" version="^2.2.4" />
+        <package name="next" version="^15.0.0" />
+        <package name="react" version="^18.3.0" />
+        <package name="react-icons" version="^5.5.0" />
+        <package name="framer-motion" version="^10.16.0" />
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - **Next.js App Router Pattern**: Use route groups `(dashboard)` for authenticated dashboard pages. Layout component at `src/app/(dashboard)/layout.tsx` wraps all dashboard pages.
+    - **Chakra UI Breakpoints**: `base` (<768px mobile), `md` (768px tablet), `lg` (1024px desktop). Use responsive props: `display={{ base: 'none', md: 'block' }}`.
+    - **Trust Blue Theme**: Active navigation items use Trust Blue color (`trustBlue.500` or `blue.600`) with 4px left border accent.
+    - **Responsive Strategy**: Mobile-first approach. Sidebar hidden on mobile (show Drawer on hamburger click), icon-only collapsible on tablet, full 250px on desktop.
+    - **Performance**: Layout component renders once, wraps all pages. No data fetching in layout. Use CSS Grid/Flexbox (no JavaScript layout calculations).
+    - **Accessibility**: WCAG 2.1 Level A minimum. All navigation keyboard accessible (Tab, Enter). ARIA labels for screen readers. Screen reader announces current page.
+    - **Navigation Pattern**: Use Next.js `usePathname()` hook for active state detection. Client-side navigation with `<Link>` from `next/link`.
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>Chakra UI Box Component</name>
+      <kind>React Component</kind>
+      <signature>&lt;Box display={{ base: 'none', md: 'block' }} w="250px" bg="gray.50" h="full" p={4}&gt;...&lt;/Box&gt;</signature>
+      <path>@chakra-ui/react</path>
+    </interface>
+    <interface>
+      <name>Chakra UI Flex Component</name>
+      <kind>React Component</kind>
+      <signature>&lt;Flex direction="column" minH="100vh"&gt;...&lt;/Flex&gt;</signature>
+      <path>@chakra-ui/react</path>
+    </interface>
+    <interface>
+      <name>Chakra UI Drawer Component</name>
+      <kind>React Component</kind>
+      <signature>&lt;Drawer isOpen={isOpen} onClose={onClose} placement="left"&gt;&lt;DrawerOverlay /&gt;&lt;DrawerContent&gt;...&lt;/DrawerContent&gt;&lt;/Drawer&gt;</signature>
+      <path>@chakra-ui/react</path>
+    </interface>
+    <interface>
+      <name>Chakra UI useBreakpointValue Hook</name>
+      <kind>React Hook</kind>
+      <signature>const value = useBreakpointValue({ base: 'mobile', md: 'tablet', lg: 'desktop' })</signature>
+      <path>@chakra-ui/react</path>
+    </interface>
+    <interface>
+      <name>Next.js usePathname Hook</name>
+      <kind>React Hook</kind>
+      <signature>const pathname = usePathname() // Returns current path, e.g., "/dashboard"</signature>
+      <path>next/navigation</path>
+    </interface>
+    <interface>
+      <name>Next.js Link Component</name>
+      <kind>React Component</kind>
+      <signature>&lt;Link href="/dashboard"&gt;Dashboard&lt;/Link&gt;</signature>
+      <path>next/link</path>
+    </interface>
+    <interface>
+      <name>Navigation Items Array</name>
+      <kind>Data Structure</kind>
+      <signature>const navItems = [{ name: 'Dashboard', href: '/', icon: ViewIcon }, { name: 'Transactions', href: '/transactions', icon: EditIcon }, ...]</signature>
+      <path>src/components/layout/Sidebar.tsx:8-24</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Manual testing using browser DevTools and responsive design mode. Test across breakpoints: 320px (iPhone SE), 390px (iPhone 12), 768px (iPad), 1024px (iPad Pro), 1440px (Desktop). Verify keyboard navigation (Tab, Enter) and screen reader announcements (NVDA, JAWS, VoiceOver). No automated tests yet for layout components.
+    </standards>
+    <locations>
+      - Manual testing in browser
+      - DevTools device emulation
+      - Physical device testing (optional)
+    </locations>
+    <ideas>
+      - **AC1**: Dashboard loads at `/` and `/dashboard` routes
+      - **AC2**: Sidebar visible on desktop (250px width), hidden on mobile
+      - **AC3**: Navigation items: Dashboard, Transactions, Categories, Insights, Settings
+      - **AC4**: Active page highlighted (Trust Blue + 4px left border)
+      - **AC5**: Tablet collapsible sidebar (icon-only mode)
+      - **AC6**: Mobile hamburger menu opens Drawer with navigation
+      - **AC7**: Header shows logo, user avatar/name, logout button
+      - **AC8**: Main content area fills remaining space responsively
+      - **AC9**: Mobile single column layout (<768px)
+      - **AC10**: Tablet collapsible sidebar (768-1023px)
+      - **AC11**: Desktop full sidebar (≥1024px)
+      - **AC12**: Keyboard navigation works (Tab, Enter)
+      - **AC13**: Screen reader announces "Dashboard page"
+    </ideas>
+  </tests>
+</story-context>

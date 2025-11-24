@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, useDisclosure } from '@chakra-ui/react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
@@ -14,6 +14,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { isOpen: isMobileNavOpen, onOpen: onMobileNavOpen, onClose: onMobileNavClose } = useDisclosure();
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
@@ -24,16 +25,18 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <Flex direction="column" minH="100vh">
-      <Header />
+      <Header onMenuClick={onMobileNavOpen} />
       <Flex flex={1}>
         <Box display={{ base: 'none', md: 'block' }}>
           <Sidebar />
         </Box>
-        <Box flex={1} p={6}>
+        <Box flex={1} p={6} maxW="1200px" mx="auto" w="full">
           {children}
         </Box>
       </Flex>
-      <MobileNav />
+
+      {/* Mobile Navigation Drawer */}
+      <MobileNav isOpen={isMobileNavOpen} onClose={onMobileNavClose} />
 
       {/* Floating Action Button - Always visible on all pages */}
       <FloatingActionButton onClick={handleOpenModal} />
