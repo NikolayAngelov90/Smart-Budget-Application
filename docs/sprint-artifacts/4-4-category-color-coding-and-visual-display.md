@@ -54,7 +54,17 @@ So that I can quickly identify transaction types visually.
 
 **Dependencies:**
 - Depends on Story 4.1-4.3 (categories exist with colors)
-- Integration with Story 5.3-5.4 (dashboard charts)
+- Integration with Story 5.3-5.4 (dashboard charts) - DEFERRED to Epic 5
 - Visual consistency across entire application
 
+**Scope Adjustment:**
+- Dashboard chart integration (AC mentioning charts) deferred to Epic 5 (Stories 5.3-5.4 don't exist yet)
+- Focus on: CategoryBadge component, transaction list colors, dropdown color indicators, WCAG AA compliance
+
+## Dev Agent Record
+
+### Context Reference
+- [Story Context XML](4-4-category-color-coding-and-visual-display.context.xml)
+
 ## Status
+ready-for-dev

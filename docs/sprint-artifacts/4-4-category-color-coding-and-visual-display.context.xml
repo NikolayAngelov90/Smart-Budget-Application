@@ -1,0 +1,197 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>4</storyId>
+    <title>Category Color-Coding and Visual Display</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-24</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-4-category-color-coding-and-visual-display.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>categories displayed with color-coding throughout the app</iWant>
+    <soThat>I can quickly identify transaction types visually</soThat>
+    <tasks>
+      - Create `CategoryBadge` component for consistent category display
+      - Implement color dots in transaction cards (list and entry modal)
+      - Add color coding to transaction entry category dropdown
+      - Integrate category colors with dashboard chart components (DEFER to Epic 5)
+      - Update category management page to show colored badges
+      - Ensure color system consistency across all components
+      - Test color contrast for WCAG AA compliance (3:1 minimum)
+      - Test with color-blinders: ensure adequate visual distinction
+      - Verify mobile responsiveness and minimum sizes
+      - Test color picker previews match actual usage
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    - **Given** I view transactions, dashboard, or category list **When** Categories are displayed **Then** Each category shows its assigned color for quick visual recognition
+    - **And** Transaction list: each transaction shows category color dot (12px circle) next to name
+    - **And** Transaction entry modal: category dropdown shows color dot before each category name
+    - **And** Category dropdown lists: recent categories first, then alphabetical with color indicators
+    - **And** Dashboard charts: categories displayed with their assigned colors in pie/donut and line charts (DEFER to Epic 5 - Story 5.3-5.4)
+    - **And** Category management page: categories displayed as colored badges (color background/white text)
+    - **And** Category color used consistently across entire application (transaction cards, filters, etc.)
+    - **And** Color contrast meets WCAG AA standards (3:1 minimum for UI components)
+    - **And** Color-blind friendly: categories distinguished by both color and pattern (striped overlays optional)
+    - **And** Category badges show color as left border (4px) or background with proper contrast
+    - **And** Mobile and desktop: color-coding equally visible on all screen sizes (minimum 8px indicators)
+    - **And** Color picker shows previews with same visual treatment as actual usage
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification - Category Management</title>
+        <section>CategoryBadge Component (Architecture §Services and Modules)</section>
+        <snippet>CategoryBadge component: Visual category display with name + color dot, used across transactions, forms, and dashboard. Chakra UI Badge with color props.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart Budget Application - Technical Architecture</title>
+        <section>Custom Components #2, #3, #5 (lines 205-214)</section>
+        <snippet>Custom components include CategorySelector (#3) for quick category selection with recent categories first, and ChartContainer (#5) for Recharts with loading/error states.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification - Category Management</title>
+        <section>Default Categories with Colors (lines 149-167)</section>
+        <snippet>11 predefined categories with hex colors: Dining (#f56565), Transport (#4299e1), Entertainment (#9f7aea), etc. All stored as hex format in database.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/components/categories/CategoryModal.tsx</path>
+        <kind>modal component</kind>
+        <symbol>CategoryModal, PRESET_COLORS</symbol>
+        <lines>64-77</lines>
+        <reason>Contains 12 preset colors used throughout the app. CategoryModal shows color picker - need to ensure same visual treatment as actual usage per AC.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/categories/page.tsx</path>
+        <kind>page component</kind>
+        <symbol>CategoryCard</symbol>
+        <lines>344-417</lines>
+        <reason>Already displays color dots in category cards (lines 360-368). Pattern to reuse: Box w={4} h={4} borderRadius="full" bg={category.color}</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/transactions/TransactionEntryModal.tsx</path>
+        <kind>modal component</kind>
+        <symbol>TransactionEntryModal</symbol>
+        <lines>388-414</lines>
+        <reason>Uses native Select dropdown for categories (NO color indicators currently). Need to replace with custom Menu component or add color preview next to dropdown.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/category.types.ts</path>
+        <kind>type definitions</kind>
+        <symbol>Category</symbol>
+        <lines>1-89</lines>
+        <reason>Category interface includes color field (hex string). All category operations preserve color data.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package>@chakra-ui/react</package>
+        <version>^2.8.0</version>
+        <use>Badge, Tag, Menu, MenuButton, MenuItem components for color-coded displays</use>
+      </node>
+      <node>
+        <package>@chakra-ui/icons</package>
+        <version>^2.2.4</version>
+        <use>Circle icon or custom Box for color dots</use>
+      </node>
+      <node>
+        <package>recharts</package>
+        <version>^2.12.0</version>
+        <use>DEFER to Epic 5 - Dashboard charts with category colors (Story 5.3-5.4)</use>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>CategoryBadge must be created as reusable component in src/components/categories/CategoryBadge.tsx</constraint>
+    <constraint>Color dots must be minimum 8px visible on mobile, 12px recommended for transactions</constraint>
+    <constraint>Native HTML Select cannot render custom content - must use Chakra UI Menu for color indicators in dropdown</constraint>
+    <constraint>WCAG AA contrast ratio 3:1 minimum for UI components - test all 12 preset colors</constraint>
+    <constraint>Yellow (#ecc94b) and light colors may fail contrast on white background - add border or adjust palette</constraint>
+    <constraint>Dashboard chart integration (AC mentioning pie/donut charts) DEFERRED to Epic 5 Stories 5.3-5.4 - charts don't exist yet</constraint>
+    <constraint>Color stored as hex string in database - apply via bg prop or style attribute</constraint>
+    <constraint>Consistent visual treatment: if CategoryModal shows color preview as filled circle, all other displays should match</constraint>
+    <constraint>Transaction list component location unknown - need to find/verify before adding color indicators</constraint>
+    <constraint>Mobile: Touch targets minimum 44x44px, color dots should be easily visible on small screens</constraint>
+    <constraint>Color-blind accessibility: Consider adding icons or patterns as backup visual indicators (optional enhancement)</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>CategoryBadge Component</name>
+      <kind>React component</kind>
+      <signature>CategoryBadge({ category, variant?, size? })</signature>
+      <path>src/components/categories/CategoryBadge.tsx (to be created)</path>
+      <details>
+        Props:
+          - category: Category object with { id, name, color, type }
+          - variant?: 'dot' | 'badge' | 'border' (default: 'dot')
+            • 'dot': Color circle + name (for dropdowns, lists)
+            • 'badge': Colored background Badge (for category page)
+            • 'border': Left border accent (alternative)
+          - size?: 'sm' | 'md' | 'lg' (default: 'md')
+
+        Variants:
+          - dot: HStack with Box (borderRadius="full" bg={color}) + Text
+          - badge: Chakra Badge with bg={color} and contrasting text color
+          - border: Box with borderLeft="4px" borderColor={color}
+
+        WCAG AA: Ensure 3:1 contrast ratio for badge variant (text vs background)
+      </details>
+    </interface>
+    <interface>
+      <name>Custom Category Menu</name>
+      <kind>Chakra UI Menu component</kind>
+      <signature>CategoryMenu({ categories, value, onChange, type })</signature>
+      <path>src/components/categories/CategoryMenu.tsx (to be created)</path>
+      <details>
+        Replace native Select in TransactionEntryModal with custom Menu component
+        Props:
+          - categories: Category[]
+          - value: string (selected category_id)
+          - onChange: (categoryId: string) => void
+          - type: 'income' | 'expense' (for filtering)
+
+        Implementation:
+          MenuButton: Shows selected category with color dot
+          MenuList: Maps categories to MenuItem with CategoryBadge variant="dot"
+          Recently-used: Group at top with divider (reuse existing logic)
+
+        Accessibility: Keyboard navigation (Arrow keys), Enter to select, Escape to close
+      </details>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Project follows manual testing + static analysis approach. TypeScript strict mode compilation (tsc --noEmit) and ESLint validation (next lint) are required before marking story complete. No automated unit/integration test framework currently configured. Focus on comprehensive manual testing with WCAG AA contrast validation.
+    </standards>
+    <locations>
+      N/A - No automated test files currently. Manual testing workflow documented in story acceptance criteria.
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test color indicators visible in transaction list, category dropdown, and category management page</idea>
+      <idea ac="AC2">Test transaction list shows 12px color dots next to category names (find transaction list component first)</idea>
+      <idea ac="AC3">Test TransactionEntryModal dropdown shows color dots before each category name (custom Menu implementation)</idea>
+      <idea ac="AC4">Test recently-used categories appear first with color indicators in dropdown</idea>
+      <idea ac="AC5">DEFERRED: Dashboard charts integration (Epic 5 dependency)</idea>
+      <idea ac="AC6">Test category management page displays colored badges (likely already done in Story 4.2)</idea>
+      <idea ac="AC7">Test color consistency across all components (CategoryBadge reuse ensures this)</idea>
+      <idea ac="AC8">WCAG AA Test: Use contrast checker tool on all 12 preset colors against white/dark backgrounds (3:1 minimum)</idea>
+      <idea ac="AC9">Color-blind Test: View app with color-blindness simulation tools (Color Oracle, browser extensions)</idea>
+      <idea ac="AC10">Test badge variants: left border (4px) and background colors both meet accessibility standards</idea>
+      <idea ac="AC11">Mobile Test: Color dots minimum 8px visible on iPhone SE (375px width), easily tappable targets</idea>
+      <idea ac="AC12">Test CategoryModal color picker preview matches CategoryBadge display (same visual treatment)</idea>
+    </ideas>
+  </tests>
+</story-context>
