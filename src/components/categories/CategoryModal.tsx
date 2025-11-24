@@ -3,21 +3,24 @@
 /**
  * Category Modal Component
  * Story 4.2: Create Custom Categories
+ * Story 4.3: Edit and Delete Custom Categories
  *
- * Modal for creating custom categories with:
+ * Modal for creating and editing custom categories with:
  * - Name input (max 100 characters)
- * - Type selector (Income/Expense)
+ * - Type selector (Income/Expense) - read-only in edit mode
  * - Color picker (12 predefined theme colors)
  * - Form validation via React Hook Form + Zod
  * - Optimistic UI updates
  * - Error handling for duplicates and network issues
  * - Full keyboard accessibility
  * - Mobile responsive (full-screen on small devices)
+ * - Edit mode: pre-fills form with existing category data
  */
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useEffect } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -41,7 +44,7 @@ import {
 import { useState } from 'react';
 import type { Category } from '@/types/category.types';
 
-// Validation schema
+// Validation schema (used for both create and edit)
 const createCategorySchema = z.object({
   name: z
     .string()
@@ -77,9 +80,17 @@ interface CategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (category: Category) => void;
+  editMode?: boolean;
+  category?: Category | null;
 }
 
-export function CategoryModal({ isOpen, onClose, onSuccess }: CategoryModalProps) {
+export function CategoryModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  editMode = false,
+  category = null,
+}: CategoryModalProps) {
   const [selectedColor, setSelectedColor] = useState<string>(PRESET_COLORS[0].value);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -103,6 +114,20 @@ export function CategoryModal({ isOpen, onClose, onSuccess }: CategoryModalProps
 
   const selectedType = watch('type');
 
+  // Pre-fill form when in edit mode
+  useEffect(() => {
+    if (editMode && category && isOpen) {
+      setValue('name', category.name);
+      setValue('color', category.color);
+      setValue('type', category.type);
+      setSelectedColor(category.color);
+    } else if (!editMode && isOpen) {
+      // Reset to defaults when opening in create mode
+      reset();
+      setSelectedColor(PRESET_COLORS[0].value);
+    }
+  }, [editMode, category, isOpen, setValue, reset]);
+
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
     setValue('color', color, { shouldValidate: true });
@@ -113,15 +138,18 @@ export function CategoryModal({ isOpen, onClose, onSuccess }: CategoryModalProps
     setApiError(null);
 
     try {
-      const response = await fetch('/api/categories', {
-        method: 'POST',
+      const url = editMode && category ? `/api/categories/${category.id}` : '/api/categories';
+      const method = editMode ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           name: data.name,
           color: data.color,
-          type: data.type,
+          ...(editMode ? {} : { type: data.type }), // Type only sent in create mode
         }),
       });
 
@@ -130,8 +158,10 @@ export function CategoryModal({ isOpen, onClose, onSuccess }: CategoryModalProps
       if (!response.ok) {
         if (response.status === 409) {
           setApiError('Category name already exists for this type');
+        } else if (response.status === 403) {
+          setApiError('Cannot modify predefined categories');
         } else {
-          setApiError(result.error || 'Failed to create category');
+          setApiError(result.error || `Failed to ${editMode ? 'update' : 'create'} category`);
         }
         setIsSubmitting(false);
         return;
@@ -148,11 +178,11 @@ export function CategoryModal({ isOpen, onClose, onSuccess }: CategoryModalProps
       setApiError(null);
       onClose();
     } catch (error) {
-      console.error('Category creation error:', error);
+      console.error(`Category ${editMode ? 'update' : 'creation'} error:`, error);
       setApiError('Network error. Please try again.');
       toast({
         title: 'Network Error',
-        description: 'Failed to create category. Please check your connection.',
+        description: `Failed to ${editMode ? 'update' : 'create'} category. Please check your connection.`,
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -178,7 +208,7 @@ export function CategoryModal({ isOpen, onClose, onSuccess }: CategoryModalProps
     >
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>Add Category</ModalHeader>
+        <ModalHeader>{editMode ? 'Edit Category' : 'Add Category'}</ModalHeader>
         <ModalCloseButton />
 
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -216,6 +246,8 @@ export function CategoryModal({ isOpen, onClose, onSuccess }: CategoryModalProps
                     colorScheme={selectedType === 'expense' ? 'red' : 'gray'}
                     onClick={() => setValue('type', 'expense', { shouldValidate: true })}
                     type="button"
+                    isDisabled={editMode}
+                    cursor={editMode ? 'not-allowed' : 'pointer'}
                   >
                     Expense
                   </Button>
@@ -225,10 +257,17 @@ export function CategoryModal({ isOpen, onClose, onSuccess }: CategoryModalProps
                     colorScheme={selectedType === 'income' ? 'green' : 'gray'}
                     onClick={() => setValue('type', 'income', { shouldValidate: true })}
                     type="button"
+                    isDisabled={editMode}
+                    cursor={editMode ? 'not-allowed' : 'pointer'}
                   >
                     Income
                   </Button>
                 </HStack>
+                {editMode && (
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    Category type cannot be changed after creation
+                  </Text>
+                )}
                 <FormErrorMessage>{errors.type?.message}</FormErrorMessage>
               </FormControl>
 
@@ -294,8 +333,9 @@ export function CategoryModal({ isOpen, onClose, onSuccess }: CategoryModalProps
               type="submit"
               isLoading={isSubmitting}
               isDisabled={!isValid || isSubmitting}
+              loadingText={editMode ? 'Updating...' : 'Saving...'}
             >
-              Save
+              {editMode ? 'Update' : 'Save'}
             </Button>
           </ModalFooter>
         </form>

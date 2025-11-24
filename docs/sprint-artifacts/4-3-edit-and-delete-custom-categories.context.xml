@@ -1,0 +1,284 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>3</storyId>
+    <title>Edit and Delete Custom Categories</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-23</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-3-edit-and-delete-custom-categories.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>edit or delete my custom categories</iWant>
+    <soThat>I can reorganize my spending classification as needed</soThat>
+    <tasks>
+      - Add edit and delete buttons to category cards
+      - Implement edit mode for CategoryModal (reuse component)
+      - Create PUT /api/categories/:id endpoint for updates
+      - Create DELETE /api/categories/:id endpoint for deletion
+      - Protect predefined categories from edit/delete (UI/RBAC)
+      - Implement confirmation modal for delete operations
+      - Query transaction count before deletion
+      - Show warning about transaction impacts on delete
+      - Handle orphaned transactions (mark as uncategorized)
+      - Implement optimistic UI updates for edit/delete
+      - Add success/error toast notifications
+      - Test mobile responsive design (long-press menus)
+      - Implement keyboard accessibility for all interactions
+      - Test edge cases: delete categories with/without transactions
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    - **Given** I have custom categories **When** I edit or delete a category **Then** Changes are reflected across all transactions
+    - **And** Each custom category card has edit (pencil icon) and delete (trash icon) buttons on hover
+    - **And** Predefined categories show "Default" badge instead of action buttons and are grayed out
+    - **And** Clicking edit opens category modal pre-filled with current values (name, color, type)
+    - **And** Name and color editable, type read-only (cannot change expense ↔ income)
+    - **And** "Save" updates category via `PUT /api/categories/:id`
+    - **And** Update reflected immediately across all transactions using that category
+    - **And** Delete button triggers confirmation modal: "Delete 'Dining' category? 47 transactions use this category and will become uncategorized."
+    - **And** Confirmation modal has "Cancel" and "Delete Anyway" buttons (red styling on destructive)
+    - **And** If transactions exist, warn: "Transactions become uncategorized and can be re-categorized later"
+    - **And** Clicking "Delete Anyway" removes category via `DELETE /api/categories/:id`
+    - **And** Transactions with deleted category become "Uncategorized" (null category_id)
+    - **And** Cannot delete predefined categories (buttons hidden/disabled)
+    - **And** Success toasts: "Category updated successfully" or "Category deleted successfully"
+    - **And** Mobile: long-press menu on cards, full-screen modals
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification - Category Management</title>
+        <section>PUT /api/categories/:id (lines 206-225)</section>
+        <snippet>PUT endpoint for updating custom categories. Partial update with name and/or color. Returns 403 if predefined, 409 if duplicate name exists.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification - Category Management</title>
+        <section>DELETE /api/categories/:id (lines 227-240)</section>
+        <snippet>DELETE endpoint for removing custom categories. Returns 400 if transactions exist, 403 if predefined category. Requires transaction count check before deletion.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification - Category Management</title>
+        <section>Workflow 3: Update Custom Category (lines 291-307)</section>
+        <snippet>User clicks edit → Modal pre-filled → PUT /api/categories/:id → Verify not predefined → UPDATE database → SWR mutate + success toast</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification - Category Management</title>
+        <section>Workflow 4: Delete Custom Category (lines 310-327)</section>
+        <snippet>User clicks delete → Confirmation dialog → DELETE /api/categories/:id → Check transaction count → If count > 0 return 400 error → Guide user to reassign first → DELETE if no transactions → SWR mutate + success toast</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart Budget Application - Technical Architecture</title>
+        <section>React Best Practices and Patterns</section>
+        <snippet>React Hook Form + Zod for forms, SWR for data fetching with optimistic updates, Chakra UI components for accessibility, TypeScript strict mode</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/app/categories/page.tsx</path>
+        <kind>page component</kind>
+        <symbol>CategoriesPage, CategoryCard</symbol>
+        <lines>1-235</lines>
+        <reason>Existing categories management page. Need to add edit/delete buttons to CategoryCard component (lines 192-234). Currently only displays categories - needs action buttons for non-predefined categories.</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/categories/CategoryModal.tsx</path>
+        <kind>modal component</kind>
+        <symbol>CategoryModal</symbol>
+        <lines>1-306</lines>
+        <reason>Existing modal for creating categories. Need to extend with editMode prop to pre-fill form with existing category data. Type selector should be read-only in edit mode. Form already has React Hook Form + Zod validation.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/categories/route.ts</path>
+        <kind>API route</kind>
+        <symbol>GET, POST handlers</symbol>
+        <lines>1-300</lines>
+        <reason>Existing API route with GET and POST handlers. Need to add PUT and DELETE handlers for category updates and deletions. Existing patterns for authentication and validation should be followed.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/category.types.ts</path>
+        <kind>type definitions</kind>
+        <symbol>Category, UpdateCategoryInput, TransactionType</symbol>
+        <lines>1-89</lines>
+        <reason>Type definitions already include UpdateCategoryInput interface (lines 74-77) for PUT endpoint. Category interface has is_predefined flag for protecting predefined categories.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package>@chakra-ui/react</package>
+        <version>^2.8.0</version>
+        <use>UI components (IconButton, Modal, AlertDialog for confirmation)</use>
+      </node>
+      <node>
+        <package>@chakra-ui/icons</package>
+        <version>^2.2.4</version>
+        <use>EditIcon, DeleteIcon for action buttons</use>
+      </node>
+      <node>
+        <package>react-hook-form</package>
+        <version>^7.66.0</version>
+        <use>Form state management for edit modal</use>
+      </node>
+      <node>
+        <package>zod</package>
+        <version>^4.1.12</version>
+        <use>Validation schema for edit form</use>
+      </node>
+      <node>
+        <package>swr</package>
+        <version>^2.3.6</version>
+        <use>Data fetching, cache management, optimistic UI updates with rollback</use>
+      </node>
+      <node>
+        <package>@supabase/supabase-js</package>
+        <version>^2.81.1</version>
+        <use>Database operations for PUT/DELETE endpoints</use>
+      </node>
+      <node>
+        <package>next</package>
+        <version>^15.0.0</version>
+        <use>App Router for API routes and dynamic routing</use>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Predefined categories (is_predefined=true) cannot be edited or deleted - buttons must be hidden/disabled</constraint>
+    <constraint>Type field is read-only during edit - cannot change category from expense to income or vice versa</constraint>
+    <constraint>Must query transaction count before deletion: SELECT COUNT(*) FROM transactions WHERE category_id = ?</constraint>
+    <constraint>If transaction count > 0, prevent deletion and show error message guiding user</constraint>
+    <constraint>Transactions with deleted category become "Uncategorized" (category_id = null) - handle gracefully in UI</constraint>
+    <constraint>Optimistic UI updates with rollback on error - if API fails, revert UI changes using SWR</constraint>
+    <constraint>Edit and delete buttons appear on hover for desktop, always visible on mobile/touch devices</constraint>
+    <constraint>Confirmation modal required before deletion with transaction count displayed</constraint>
+    <constraint>Delete button in confirmation modal must have red/destructive styling (colorScheme="red")</constraint>
+    <constraint>All operations must respect Row Level Security (RLS) - only user's own categories</constraint>
+    <constraint>PUT endpoint returns 403 for predefined categories, DELETE endpoint returns 400 if transactions exist</constraint>
+    <constraint>Mobile: Larger touch targets (44x44px minimum), full-screen modals on small devices</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>PUT /api/categories/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>PUT /api/categories/:id { name?: string; color?: string; }</signature>
+      <path>src/app/api/categories/[id]/route.ts (to be created)</path>
+      <details>
+        Authentication: Required (Supabase auth.getUser())
+        Request Body: Partial update with name and/or color (UpdateCategoryInput type)
+        Validation: Zod schema for name (1-100 chars, alphanumeric + spaces) and color (hex format #RRGGBB)
+        Business Logic:
+          - Verify category exists and belongs to user
+          - Check is_predefined=false (return 403 if true)
+          - Check for duplicate name (return 409 if exists)
+          - UPDATE categories SET name=?, color=? WHERE id=? AND user_id=?
+        Responses:
+          200: { data: Category } - Updated category object
+          400: { error: 'Validation error', details: {...} }
+          401: { error: 'Unauthorized' }
+          403: { error: 'Cannot modify predefined categories' }
+          404: { error: 'Category not found' }
+          409: { error: 'Category name already exists' }
+          500: { error: 'Internal server error' }
+      </details>
+    </interface>
+    <interface>
+      <name>DELETE /api/categories/:id</name>
+      <kind>REST endpoint</kind>
+      <signature>DELETE /api/categories/:id</signature>
+      <path>src/app/api/categories/[id]/route.ts (to be created)</path>
+      <details>
+        Authentication: Required (Supabase auth.getUser())
+        Business Logic:
+          - Verify category exists and belongs to user
+          - Check is_predefined=false (return 403 if true)
+          - Query transaction count: SELECT COUNT(*) FROM transactions WHERE category_id=?
+          - If count > 0: Return 400 error with transaction count
+          - UPDATE transactions SET category_id=null WHERE category_id=? (handle orphaned transactions)
+          - DELETE FROM categories WHERE id=? AND user_id=?
+        Responses:
+          200: { success: true, message: 'Category deleted successfully' }
+          400: { error: 'Category has X transactions. Delete or reassign transactions first.' }
+          401: { error: 'Unauthorized' }
+          403: { error: 'Cannot delete predefined categories' }
+          404: { error: 'Category not found' }
+          500: { error: 'Internal server error' }
+        Note: Current implementation prevents deletion if transactions exist (per story AC). Future enhancement: allow deletion with automatic reassignment to null.
+      </details>
+    </interface>
+    <interface>
+      <name>CategoryModal - Edit Mode</name>
+      <kind>React component prop</kind>
+      <signature>CategoryModal({ editMode?: boolean; category?: Category; onSuccess: (category: Category) => void; ... })</signature>
+      <path>src/components/categories/CategoryModal.tsx (extend existing)</path>
+      <details>
+        New Props:
+          - editMode?: boolean - If true, modal is in edit mode vs create mode
+          - category?: Category - Existing category data to pre-fill form (required if editMode=true)
+        Behavior Changes in Edit Mode:
+          - Modal title: "Edit Category" instead of "Add Category"
+          - Form pre-filled with category.name, category.color, category.type
+          - Type selector disabled/read-only (HStack with disabled buttons)
+          - Submit button: "Update" instead of "Save"
+          - API call: PUT /api/categories/:id instead of POST /api/categories
+          - Success toast: "Category updated successfully"
+        Form validation remains same: Zod schema with name, color, type validations
+      </details>
+    </interface>
+    <interface>
+      <name>DeleteConfirmationModal</name>
+      <kind>React component</kind>
+      <signature>DeleteConfirmationModal({ isOpen: boolean; onClose: () => void; onConfirm: () => void; category: Category; transactionCount: number; })</signature>
+      <path>src/components/categories/DeleteConfirmationModal.tsx (to be created)</path>
+      <details>
+        Chakra UI AlertDialog component for destructive action confirmation
+        Props:
+          - isOpen: boolean - Modal visibility state
+          - onClose: () => void - Close handler (Cancel button)
+          - onConfirm: () => void - Confirm handler (Delete Anyway button)
+          - category: Category - Category being deleted (for display name)
+          - transactionCount: number - Number of transactions using this category
+        Display:
+          - Title: "Delete Category?"
+          - Body: "Delete '{category.name}' category? {transactionCount} transactions use this category and will become uncategorized. Transactions can be re-categorized later."
+          - Buttons: "Cancel" (ghost) and "Delete Anyway" (colorScheme="red")
+        Accessibility: Focus on Cancel by default, ESC key closes without deletion
+      </details>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Project follows manual testing + static analysis approach. TypeScript strict mode compilation (tsc --noEmit) and ESLint validation (next lint) are required before marking story complete. No automated unit/integration test framework currently configured. Focus on comprehensive manual testing with keyboard accessibility verification.
+    </standards>
+    <locations>
+      N/A - No automated test files currently. Manual testing workflow documented in story acceptance criteria.
+    </locations>
+    <ideas>
+      <idea ac="AC1">Test edit button appears on hover for custom categories, hidden for predefined categories</idea>
+      <idea ac="AC2">Test delete button appears on hover for custom categories, hidden for predefined categories</idea>
+      <idea ac="AC3">Test clicking edit opens modal pre-filled with correct name, color, and type values</idea>
+      <idea ac="AC4">Test type selector is read-only/disabled in edit mode, cannot change expense ↔ income</idea>
+      <idea ac="AC5">Test successful category update via PUT endpoint, verify UI updates immediately</idea>
+      <idea ac="AC6">Test duplicate name validation on edit returns 409 error with proper message</idea>
+      <idea ac="AC7">Test clicking delete shows confirmation modal with transaction count</idea>
+      <idea ac="AC8">Test delete confirmation modal for category with 0 transactions proceeds successfully</idea>
+      <idea ac="AC9">Test delete confirmation modal for category with >0 transactions shows warning message</idea>
+      <idea ac="AC10">Test clicking "Delete Anyway" removes category and sets transactions to null category_id</idea>
+      <idea ac="AC11">Test attempting to edit predefined category returns 403 error</idea>
+      <idea ac="AC12">Test attempting to delete predefined category returns 403 error</idea>
+      <idea ac="AC13">Test optimistic UI rollback on API error - category reverts to original state</idea>
+      <idea ac="AC14">Test mobile: Edit/delete buttons always visible on touch devices, not just on hover</idea>
+      <idea ac="AC15">Test keyboard accessibility: Tab to navigate, Enter to activate edit/delete</idea>
+    </ideas>
+  </tests>
+</story-context>
