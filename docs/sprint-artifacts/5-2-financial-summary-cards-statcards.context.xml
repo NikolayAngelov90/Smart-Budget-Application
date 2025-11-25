@@ -1,0 +1,280 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>2</storyId>
+    <title>Financial Summary Cards (StatCards)</title>
+    <status>review</status>
+    <generatedAt>2025-11-25</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-2-financial-summary-cards-statcards.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to see key financial metrics at the top of my dashboard</iWant>
+    <soThat>I can quickly assess my current financial status</soThat>
+    <tasks>
+      - Create StatCard component (AC: 1, 2, 3, 4, 5)
+        - Create `src/components/dashboard/StatCard.tsx`
+        - Implement props interface: `{ label, value, trend, trendLabel, colorScheme, icon, isLoading }`
+        - Use Chakra UI `Stat`, `StatLabel`, `StatNumber`, `StatHelpText`, `StatArrow` components
+        - Add responsive font sizing (2.5-3rem on desktop, 2rem on mobile)
+        - Implement trend arrow (up/down) based on positive/negative trend
+        - Add color scheme logic (green for positive, red for negative)
+        - Add skeleton loading state
+      - Create DashboardStats component (AC: 1, 2)
+        - Create `src/components/dashboard/DashboardStats.tsx`
+        - Implement responsive grid: 3 columns desktop, 1 column mobile
+        - Render 3 StatCards: Balance, Income, Expenses
+        - Use SWR hook to fetch dashboard stats
+        - Handle loading and error states
+      - Create dashboard stats API endpoint (AC: 6, 7, 8)
+        - Create `src/app/api/dashboard/stats/route.ts`
+        - Implement GET handler with authentication
+        - Query current month income/expense aggregation from Supabase
+        - Query previous month for trend calculation
+        - Calculate balance: income - expenses
+        - Calculate trends: ((current - previous) / previous) * 100
+        - Return JSON response with balance, income, expenses, trends
+      - Create useDashboardStats custom hook (AC: 8, 9)
+        - Create `src/lib/hooks/useDashboardStats.ts`
+        - Implement SWR hook wrapping `/api/dashboard/stats`
+        - Add 5-second deduplication interval
+        - Add automatic revalidation on focus
+        - Return `{ data, error, isLoading, mutate }`
+      - Implement currency formatting utility (AC: 5)
+        - Add to `src/lib/utils/currency.ts` (or create if doesn't exist)
+        - Use `Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })`
+        - Format all amounts with $ and 2 decimals
+      - Add real-time updates (AC: 9)
+        - Subscribe to Supabase Realtime on transactions table changes
+        - Trigger SWR revalidation on transaction insert/update/delete
+        - Ensure updates appear within 300ms
+      - Integrate StatCards into dashboard page (AC: 1)
+        - Import DashboardStats into `src/app/dashboard/page.tsx`
+        - Render at top of dashboard (above charts)
+        - Ensure proper spacing and responsive layout
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    **Given** I view the dashboard
+    **When** The page loads
+    **Then** I see three StatCards showing Total Balance, Monthly Income, and Monthly Expenses
+
+    **And** Three StatCards displayed horizontally on desktop, stacked vertically on mobile
+    **And** StatCard #1: Total Balance (Income - Expenses for current month)
+      - Large number (2.5-3rem font), bold
+      - Trend indicator: up/down arrow + percentage vs last month
+      - Green if positive balance, red if negative
+    **And** StatCard #2: Monthly Income (sum of income transactions this month)
+      - Large number with + prefix (e.g., +$5,000.00)
+      - Green color (success theme)
+      - Trend vs last month
+    **And** StatCard #3: Monthly Expenses (sum of expense transactions this month)
+      - Large number with - prefix (e.g., -$3,500.00)
+      - Red color (error theme)
+      - Trend vs last month
+    **And** All amounts formatted with currency symbol ($) and 2 decimals
+    **And** Trend calculations: ((currentMonth - lastMonth) / lastMonth) * 100
+    **And** Empty state: "$0.00" if no transactions
+    **And** Cards load within 1 second (data fetched server-side or cached)
+    **And** Cards update immediately when transactions added/edited (real-time via SWR)
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR19, FR20, FR25</section>
+        <snippet>Dashboard shows Total Balance, Monthly Income, Monthly Expenses. Each metric shows trend indicator (percentage change vs last month). Dashboard loads within 2 seconds.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>StatCard Component, DashboardStats Component, Dashboard Stats API</section>
+        <snippet>StatCard: `{ label, value, trend, trendLabel, colorScheme }` props. DashboardStats aggregates 3 StatCards. API endpoint: GET /api/dashboard/stats returns `{ balance, income, expenses, trends }`.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Technical Architecture</title>
+        <section>Dashboard Components, SWR Usage</section>
+        <snippet>Use SWR for client-side caching with 5-second deduplication. Chakra UI Stat component for metrics. Server-side aggregation in Supabase for performance.</snippet>
+      </doc>
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Financial Summary Cards</section>
+        <snippet>Visual design specs: Balance (green/red based on value), Income (green with + prefix), Expenses (red with - prefix). Font sizes: 2.5-3rem desktop, 2rem mobile. Trend arrows with percentage.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/lib/hooks/useInactivityLogout.ts</path>
+        <kind>hook</kind>
+        <symbol>useInactivityLogout</symbol>
+        <lines>1-100</lines>
+        <reason>EXISTING custom hook pattern. Reference for implementing useDashboardStats hook with similar structure (useState, useEffect, return object).</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/utils/constants.ts</path>
+        <kind>utility</kind>
+        <symbol>constants</symbol>
+        <lines>1-50</lines>
+        <reason>EXISTING constants file. May contain category defaults or other constants. Reference for adding currency formatting constants if needed.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/dashboard/page.tsx</path>
+        <kind>page</kind>
+        <symbol>DashboardPage</symbol>
+        <lines>1-47</lines>
+        <reason>EXISTING dashboard page (placeholder from Story 5.1). This is where DashboardStats component will be integrated.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/supabase/client.ts</path>
+        <kind>service</kind>
+        <symbol>createClient</symbol>
+        <lines>N/A</lines>
+        <reason>Supabase client for database queries and Realtime subscriptions. Used in API route for aggregation queries and in hooks for real-time updates.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/transaction.types.ts</path>
+        <kind>types</kind>
+        <symbol>Transaction</symbol>
+        <lines>N/A</lines>
+        <reason>Transaction type definitions. Reference for understanding transaction structure (amount, type, date, etc.) needed for aggregation queries.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="@chakra-ui/react" version="^2.8.0">
+          <component>Stat, StatLabel, StatNumber, StatHelpText, StatArrow</component>
+          <component>Skeleton, SimpleGrid, Box</component>
+        </package>
+        <package name="swr" version="^2.0.0">
+          <component>useSWR hook for data fetching and caching</component>
+        </package>
+        <package name="@supabase/supabase-js" version="latest">
+          <component>Realtime subscriptions for live updates</component>
+        </package>
+        <package name="date-fns" version="^2.30.0">
+          <component>Date manipulation for month calculations</component>
+        </package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - **Chakra UI Stat Component**: Use `Stat`, `StatLabel`, `StatNumber`, `StatHelpText`, `StatArrow` for consistent metrics display. StatArrow automatically handles up/down icons based on type prop.
+    - **SWR Pattern**: Follow existing hook pattern (useInactivityLogout as reference). Configure with `{ dedupingInterval: 5000, revalidateOnFocus: true }`.
+    - **Currency Formatting**: Use `Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })` for consistent $ formatting with 2 decimals.
+    - **Responsive Layout**: SimpleGrid with `columns={{ base: 1, lg: 3 }}` for 3 columns desktop, 1 column mobile.
+    - **Performance**: Database-level aggregation using SQL SUM() with CASE expressions. Single query per time period. Client-side caching via SWR.
+    - **Real-time Updates**: Subscribe to Supabase Realtime `transactions` table. Trigger SWR mutate() on insert/update/delete events.
+    - **Trend Calculation**: Formula: `((currentMonth - lastMonth) / lastMonth) * 100`. Handle division by zero (return 0 or N/A if lastMonth = 0).
+    - **Color Scheme**: Balance (green if positive, red if negative), Income (green always), Expenses (red always). Use Chakra's `colorScheme` prop with 'green' or 'red'.
+    - **API Authentication**: Verify user session in API route using `createClient().auth.getUser()`. Return 401 if unauthorized.
+    - **TypeScript Interfaces**: Define clear interfaces for API response, component props, and hook return types.
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>StatCardProps</name>
+      <kind>React Component Props</kind>
+      <signature>interface StatCardProps {
+  label: string;
+  value: string;
+  trend: number;
+  trendLabel: string;
+  colorScheme: 'green' | 'red';
+  icon?: React.ReactElement;
+  isLoading?: boolean;
+}</signature>
+      <path>src/components/dashboard/StatCard.tsx</path>
+    </interface>
+    <interface>
+      <name>DashboardStatsResponse</name>
+      <kind>API Response Type</kind>
+      <signature>interface DashboardStatsResponse {
+  balance: number;
+  income: {
+    current: number;
+    previous: number;
+    trend: number;
+  };
+  expenses: {
+    current: number;
+    previous: number;
+    trend: number;
+  };
+  month: string; // YYYY-MM format
+}</signature>
+      <path>src/app/api/dashboard/stats/route.ts</path>
+    </interface>
+    <interface>
+      <name>useDashboardStats</name>
+      <kind>React Hook</kind>
+      <signature>function useDashboardStats(month?: string): {
+  data: DashboardStatsResponse | undefined;
+  error: Error | undefined;
+  isLoading: boolean;
+  mutate: () => void;
+}</signature>
+      <path>src/lib/hooks/useDashboardStats.ts</path>
+    </interface>
+    <interface>
+      <name>Chakra UI Stat Component</name>
+      <kind>React Component</kind>
+      <signature>&lt;Stat&gt;
+  &lt;StatLabel&gt;Label&lt;/StatLabel&gt;
+  &lt;StatNumber&gt;$1,234.56&lt;/StatNumber&gt;
+  &lt;StatHelpText&gt;
+    &lt;StatArrow type='increase' /&gt;
+    23.36%
+  &lt;/StatHelpText&gt;
+&lt;/Stat&gt;</signature>
+      <path>@chakra-ui/react</path>
+    </interface>
+    <interface>
+      <name>Currency Formatter</name>
+      <kind>Utility Function</kind>
+      <signature>function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+}</signature>
+      <path>src/lib/utils/currency.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Manual testing using browser DevTools. Verify card display, data accuracy, trend calculations, and real-time updates. Test responsive breakpoints: 320px (mobile), 768px (tablet), 1024px+ (desktop). SQL query testing in Supabase SQL Editor to verify aggregation accuracy. No automated unit tests required for MVP (manual testing sufficient).
+    </standards>
+    <locations>
+      - Manual testing in browser with DevTools
+      - Supabase SQL Editor for query validation
+      - Network tab to verify API response format
+      - React DevTools to inspect component state
+    </locations>
+    <ideas>
+      - **AC1**: Three StatCards visible on dashboard load
+      - **AC2**: Horizontal layout desktop (3 columns), vertical mobile (1 column)
+      - **AC3**: Balance = Income - Expenses, displays correctly
+      - **AC4**: Income shows sum with + prefix, green color
+      - **AC5**: Expenses shows sum with - prefix, red color
+      - **AC6**: All amounts formatted with $ and 2 decimals (e.g., $1,234.56)
+      - **AC7**: Trend percentage calculated: ((current - previous) / previous) * 100
+      - **AC8**: Empty state shows $0.00 when no transactions
+      - **AC9**: Cards load within 1 second
+      - **AC10**: Real-time update: add transaction → cards update <300ms
+      - **SQL Test**: Verify aggregation query returns correct totals for current/previous months
+      - **Edge Case**: Division by zero when lastMonth = 0 (should show 0% or N/A)
+      - **Edge Case**: Negative income or positive expenses (verify color logic still works)
+    </ideas>
+  </tests>
+</story-context>

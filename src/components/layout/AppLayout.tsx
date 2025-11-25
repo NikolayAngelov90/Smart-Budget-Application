@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Box, Flex, useDisclosure } from '@chakra-ui/react';
+import { useState, useEffect } from 'react';
+import { Box, Flex, useDisclosure, useBreakpointValue } from '@chakra-ui/react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
@@ -12,9 +12,38 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
+const SIDEBAR_COLLAPSE_KEY = 'sidebar-collapsed';
+
 export function AppLayout({ children }: AppLayoutProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { isOpen: isMobileNavOpen, onOpen: onMobileNavOpen, onClose: onMobileNavClose } = useDisclosure();
+
+  // Responsive default: collapsed on tablet (md), expanded on desktop (lg)
+  const defaultCollapsed = useBreakpointValue({ base: false, md: true, lg: false }) ?? false;
+
+  // Sidebar collapse state with localStorage persistence
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(defaultCollapsed);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load saved preference from localStorage on mount
+  useEffect(() => {
+    const savedCollapsed = localStorage.getItem(SIDEBAR_COLLAPSE_KEY);
+    if (savedCollapsed !== null) {
+      setIsSidebarCollapsed(savedCollapsed === 'true');
+    } else {
+      setIsSidebarCollapsed(defaultCollapsed);
+    }
+    setIsInitialized(true);
+  }, [defaultCollapsed]);
+
+  // Update localStorage when collapse state changes
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed((prev) => {
+      const newValue = !prev;
+      localStorage.setItem(SIDEBAR_COLLAPSE_KEY, String(newValue));
+      return newValue;
+    });
+  };
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
@@ -28,7 +57,12 @@ export function AppLayout({ children }: AppLayoutProps) {
       <Header onMenuClick={onMobileNavOpen} />
       <Flex flex={1}>
         <Box display={{ base: 'none', md: 'block' }}>
-          <Sidebar />
+          {isInitialized && (
+            <Sidebar
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapse={toggleSidebarCollapse}
+            />
+          )}
         </Box>
         <Box flex={1} p={6} maxW="1200px" mx="auto" w="full">
           {children}

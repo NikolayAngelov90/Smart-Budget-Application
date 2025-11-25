@@ -1,7 +1,7 @@
 'use client';
 
-import { Box, VStack, Link as ChakraLink, Icon, HStack, Text } from '@chakra-ui/react';
-import { ViewIcon, EditIcon, AtSignIcon, InfoIcon, SettingsIcon } from '@chakra-ui/icons';
+import { Box, VStack, Link as ChakraLink, Icon, HStack, Text, IconButton, Tooltip } from '@chakra-ui/react';
+import { ViewIcon, EditIcon, AtSignIcon, InfoIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -33,56 +33,88 @@ const navItems = [
   },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+}
+
+export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
 
   return (
     <Box
       as="nav"
-      w="250px"
+      w={isCollapsed ? '60px' : '250px'}
       bg="gray.50"
       h="full"
-      p={4}
+      p={isCollapsed ? 2 : 4}
       borderRight="1px"
       borderColor="gray.200"
       aria-label="Main navigation"
+      transition="width 0.3s ease, padding 0.3s ease"
+      position="relative"
     >
-      <VStack align="stretch" spacing={1}>
+      {/* Toggle Button */}
+      {onToggleCollapse && (
+        <Box position="absolute" top={2} right={-3} zIndex={1}>
+          <Tooltip label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} placement="right">
+            <IconButton
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              icon={isCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+              size="sm"
+              onClick={onToggleCollapse}
+              colorScheme="trustBlue"
+              variant="solid"
+              borderRadius="full"
+              boxShadow="md"
+            />
+          </Tooltip>
+        </Box>
+      )}
+
+      <VStack align="stretch" spacing={1} mt={onToggleCollapse ? 8 : 0}>
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <ChakraLink
+            <Tooltip
               key={item.href}
-              as={Link}
-              href={item.href}
-              _hover={{ textDecoration: 'none' }}
-              aria-current={isActive ? 'page' : undefined}
+              label={isCollapsed ? item.name : ''}
+              placement="right"
+              isDisabled={!isCollapsed}
             >
-              <HStack
-                spacing={3}
-                p={3}
-                borderRadius="md"
-                bg={isActive ? 'blue.50' : 'transparent'}
-                color={isActive ? 'trustBlue.500' : 'gray.700'}
-                fontWeight={isActive ? 'semibold' : 'medium'}
-                borderLeft="4px"
-                borderLeftColor={isActive ? 'trustBlue.500' : 'transparent'}
-                _hover={{
-                  bg: isActive ? 'blue.50' : 'gray.100',
-                  borderLeftColor: isActive ? 'trustBlue.500' : 'gray.300',
-                }}
-                _focus={{
-                  outline: '2px solid',
-                  outlineColor: 'trustBlue.500',
-                  outlineOffset: '2px',
-                }}
-                transition="all 0.2s"
-                tabIndex={0}
+              <ChakraLink
+                as={Link}
+                href={item.href}
+                _hover={{ textDecoration: 'none' }}
+                aria-current={isActive ? 'page' : undefined}
               >
-                <Icon as={item.icon} boxSize={5} />
-                <Text>{item.name}</Text>
-              </HStack>
-            </ChakraLink>
+                <HStack
+                  spacing={isCollapsed ? 0 : 3}
+                  p={3}
+                  borderRadius="md"
+                  bg={isActive ? 'blue.50' : 'transparent'}
+                  color={isActive ? 'trustBlue.500' : 'gray.700'}
+                  fontWeight={isActive ? 'semibold' : 'medium'}
+                  borderLeft="4px"
+                  borderLeftColor={isActive ? 'trustBlue.500' : 'transparent'}
+                  _hover={{
+                    bg: isActive ? 'blue.50' : 'gray.100',
+                    borderLeftColor: isActive ? 'trustBlue.500' : 'gray.300',
+                  }}
+                  _focus={{
+                    outline: '2px solid',
+                    outlineColor: 'trustBlue.500',
+                    outlineOffset: '2px',
+                  }}
+                  transition="all 0.2s"
+                  tabIndex={0}
+                  justifyContent={isCollapsed ? 'center' : 'flex-start'}
+                >
+                  <Icon as={item.icon} boxSize={5} />
+                  {!isCollapsed && <Text>{item.name}</Text>}
+                </HStack>
+              </ChakraLink>
+            </Tooltip>
           );
         })}
       </VStack>
