@@ -330,7 +330,7 @@ export default function TransactionEntryModal({
                   id="amount"
                   type="text"
                   inputMode="decimal"
-                  pattern="[0-9]*"
+                  pattern="^\d+(\.\d{1,2})?$"
                   placeholder="0.00"
                   size="lg"
                   fontSize="2xl"

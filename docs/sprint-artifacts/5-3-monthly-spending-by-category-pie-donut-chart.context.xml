@@ -1,0 +1,222 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>3</storyId>
+    <title>Monthly Spending by Category (Pie/Donut Chart)</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-25</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-3-monthly-spending-by-category-pie-donut-chart.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to see a visual breakdown of my monthly spending by category in a pie or donut chart</iWant>
+    <soThat>I can quickly identify which categories consume the most of my budget</soThat>
+
+    <tasks>
+      - Create CategorySpendingChart component with Recharts PieChart
+        - Use PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend components
+        - Implement donut chart style (innerRadius prop)
+        - Add responsive sizing (300px height minimum, full width)
+        - Use category colors from database for chart segments
+        - Show percentage and amount in tooltip
+        - Add legend with category names
+      - Create API endpoint /api/dashboard/spending-by-category
+        - Implement GET handler with authentication
+        - Query current month expenses grouped by category
+        - Calculate total and percentage for each category
+        - Return sorted by amount descending
+        - Include category metadata (name, color, icon)
+      - Create useSpendingByCategory SWR hook
+        - Implement SWR hook wrapping /api/dashboard/spending-by-category
+        - Add 5-second deduplication interval
+        - Return data, error, isLoading, mutate
+      - Integrate CategorySpendingChart into dashboard page
+        - Import and render below StatCards
+        - Wrap in container with title "Spending by Category"
+        - Handle empty state (no transactions)
+        - Add loading skeleton
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">Pie/donut chart displays current month expense categories</criterion>
+    <criterion id="AC2">Each segment colored using category color from database</criterion>
+    <criterion id="AC3">Hover tooltip shows: Category name, $ amount, percentage of total</criterion>
+    <criterion id="AC4">Legend displays all categories with color indicators</criterion>
+    <criterion id="AC5">Chart responsive: 300px min height, adapts to container width</criterion>
+    <criterion id="AC6">Empty state: "No expenses this month" message with icon</criterion>
+    <criterion id="AC7">Chart updates immediately when transactions added/edited</criterion>
+    <criterion id="AC8">Categories sorted by spending amount (highest first)</criterion>
+  </acceptanceCriteria>
+
+  <interfaces>
+    <interface>
+      <name>CategorySpendingChartProps</name>
+      <kind>React Component Props</kind>
+      <signature>interface CategorySpendingChartProps {
+  month?: string; // YYYY-MM format, defaults to current month
+  chartType?: 'pie' | 'donut'; // Default: 'donut'
+  height?: number; // Default: 300
+}</signature>
+    </interface>
+
+    <interface>
+      <name>SpendingByCategoryResponse</name>
+      <kind>API Response Type</kind>
+      <signature>interface SpendingByCategoryResponse {
+  month: string; // YYYY-MM format
+  total: number; // Total expenses for the month
+  categories: Array<{
+    category_id: string;
+    category_name: string;
+    category_color: string;
+    amount: number;
+    percentage: number; // 0-100
+    transaction_count: number;
+  }>;
+}</signature>
+    </interface>
+
+    <interface>
+      <name>ChartDataPoint</name>
+      <kind>Internal Chart Data</kind>
+      <signature>interface ChartDataPoint {
+  name: string; // Category name
+  value: number; // Amount
+  color: string; // Category color
+  percentage: number;
+}</signature>
+    </interface>
+  </interfaces>
+
+  <constraints>
+    <constraint>Use Recharts library (already installed from tech spec)</constraint>
+    <constraint>Match existing dashboard styling (white cards, gray borders, shadows)</constraint>
+    <constraint>Reuse CategoryBadge component for consistent category display</constraint>
+    <constraint>Follow SWR pattern from Story 5.2 (useDashboardStats hook)</constraint>
+    <constraint>Use formatCurrency utility from Story 5.2</constraint>
+    <constraint>Server-side aggregation in API route (no client-side calculation)</constraint>
+    <constraint>Chart must load within 1 second (cached via SWR)</constraint>
+    <constraint>Accessible: ARIA labels, keyboard navigation support</constraint>
+  </constraints>
+
+  <artifacts>
+    <existingCode>
+      <artifact>
+        <path>src/components/dashboard/DashboardStats.tsx</path>
+        <kind>component</kind>
+        <symbol>DashboardStats</symbol>
+        <lines>1-106</lines>
+        <reason>EXISTING container for dashboard cards. CategorySpendingChart will be added below this component in the dashboard page.</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/lib/hooks/useDashboardStats.ts</path>
+        <kind>hook</kind>
+        <symbol>useDashboardStats</symbol>
+        <lines>1-69</lines>
+        <reason>EXISTING SWR hook pattern. useSpendingByCategory will follow same structure with 1-second deduplication.</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/lib/utils/currency.ts</path>
+        <kind>utility</kind>
+        <symbol>formatCurrency</symbol>
+        <lines>1-50</lines>
+        <reason>EXISTING currency formatting utility. Will be used in chart tooltips to format amounts.</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/components/categories/CategoryBadge.tsx</path>
+        <kind>component</kind>
+        <symbol>CategoryBadge</symbol>
+        <lines>1-50</lines>
+        <reason>EXISTING category display component with color indicator. May be used in chart legend for consistency.</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/app/api/dashboard/stats/route.ts</path>
+        <kind>api</kind>
+        <symbol>GET</symbol>
+        <lines>1-170</lines>
+        <reason>EXISTING dashboard stats API. Spending-by-category endpoint will follow same authentication and Supabase patterns.</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/app/dashboard/page.tsx</path>
+        <kind>page</kind>
+        <symbol>DashboardPage</symbol>
+        <lines>1-54</lines>
+        <reason>EXISTING dashboard page. CategorySpendingChart will be integrated here below DashboardStats component.</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/types/category.types.ts</path>
+        <kind>types</kind>
+        <symbol>Category</symbol>
+        <lines>1-80</lines>
+        <reason>EXISTING category type definitions. Will be referenced for category data structure in API response.</reason>
+      </artifact>
+    </existingCode>
+
+    <newFilesToCreate>
+      <file>
+        <path>src/components/dashboard/CategorySpendingChart.tsx</path>
+        <purpose>Pie/donut chart visualization showing spending breakdown by category</purpose>
+        <dependencies>recharts, @chakra-ui/react, formatCurrency, useSpendingByCategory</dependencies>
+      </file>
+
+      <file>
+        <path>src/app/api/dashboard/spending-by-category/route.ts</path>
+        <purpose>API endpoint for monthly spending grouped by category</purpose>
+        <dependencies>@supabase/ssr, calculateTrend (if needed)</dependencies>
+      </file>
+
+      <file>
+        <path>src/lib/hooks/useSpendingByCategory.ts</path>
+        <purpose>SWR hook for fetching spending by category data</purpose>
+        <dependencies>swr</dependencies>
+      </file>
+    </newFilesToCreate>
+  </artifacts>
+
+  <testIdeas>
+    <idea ac="AC1">Test chart displays all expense categories from current month transactions</idea>
+    <idea ac="AC2">Test each chart segment uses correct color from category.color field</idea>
+    <idea ac="AC3">Test tooltip shows formatted currency, category name, and percentage on hover</idea>
+    <idea ac="AC4">Test legend renders all categories with matching colors</idea>
+    <idea ac="AC5">Test chart responsive behavior at 320px, 768px, 1024px widths</idea>
+    <idea ac="AC6">Test empty state message displays when no expense transactions exist</idea>
+    <idea ac="AC7">Test chart revalidates via SWR mutate when transaction added (Realtime or manual trigger)</idea>
+    <idea ac="AC8">Test API returns categories sorted by amount descending (highest spending first)</idea>
+  </testIdeas>
+
+  <techContext>
+    <library>
+      <name>Recharts</name>
+      <version>From package.json</version>
+      <usage>PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend components for visualization</usage>
+      <docs>https://recharts.org/en-US/api/PieChart</docs>
+    </library>
+
+    <pattern>
+      <name>SWR Data Fetching</name>
+      <implementation>Custom hook wrapping useSWR with dedupingInterval: 1000, revalidateOnFocus: true</implementation>
+      <example>See useDashboardStats.ts for reference pattern</example>
+    </pattern>
+
+    <pattern>
+      <name>Server-side Aggregation</name>
+      <implementation>Supabase query with SUM() and GROUP BY category_id in API route</implementation>
+      <rationale>Performance - avoid fetching all transactions to client for aggregation</rationale>
+    </pattern>
+
+    <pattern>
+      <name>Real-time Updates</name>
+      <implementation>Supabase Realtime subscription or SWR mutate trigger on transaction changes</implementation>
+      <note>Story 5.2 pattern: Add Realtime listener in component, call mutate() on change event</note>
+    </pattern>
+  </techContext>
+</story-context>

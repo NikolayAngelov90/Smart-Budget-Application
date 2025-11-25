@@ -1,0 +1,265 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>4</storyId>
+    <title>Spending Trends Over Time (Line Chart)</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-25</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-4-spending-trends-over-time-line-chart.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>to see my spending trends over the last 6 months</iWant>
+    <soThat>I can identify patterns and changes in my spending behavior</soThat>
+    <tasks>
+- Create SpendingTrends component (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+  - Create `src/components/dashboard/SpendingTrends.tsx`
+  - Implement Recharts `&lt;LineChart&gt;` with `&lt;ResponsiveContainer&gt;`
+  - Add `&lt;XAxis&gt;` with month labels (e.g., "Jun", "Jul")
+  - Add `&lt;YAxis&gt;` with dollar amounts
+  - Add two `&lt;Line&gt;` components: Income (green stroke) and Expenses (red stroke)
+  - Configure `&lt;Tooltip&gt;` to show "[Month]: Income $X, Expenses $Y"
+  - Add `&lt;CartesianGrid&gt;` for grid lines
+  - Add `&lt;Legend&gt;` showing Income vs Expenses
+  - Set responsive dimensions (300px height, 100% width)
+  - Add empty state handling: "Add transactions to see trends"
+  - Use SWR hook to fetch trends data
+  - Handle mobile: show last 3 months by default or horizontal scroll
+- Create trends API endpoint (AC: 1, 2, 3)
+  - Create `src/app/api/dashboard/trends/route.ts`
+  - Implement GET handler with authentication
+  - Query Supabase: aggregate income/expenses by month for last 6 months
+  - Use SQL `DATE_TRUNC('month', date)` for grouping
+  - Calculate monthly totals: SUM for income, SUM for expenses
+  - Format month labels using date-fns: `format(date, 'MMM')`
+  - Return JSON: `{ months: [{ month, monthLabel, income, expenses, net }], startDate, endDate }`
+- Create useTrends custom hook (AC: 10)
+  - Create `src/lib/hooks/useTrends.ts`
+  - Implement SWR hook wrapping `/api/dashboard/trends?months=6`
+  - Add 5-second deduplication interval
+  - Add Supabase Realtime subscription for transaction changes
+  - Trigger revalidation on data changes
+  - Return `{ data, error, isLoading, mutate }`
+- Create custom tooltip component (AC: 5)
+  - Create `src/components/dashboard/LineChartTooltip.tsx`
+  - Implement Recharts CustomTooltip interface
+  - Display format: "[Month]: Income $X, Expenses $Y"
+  - Use Chakra UI Box for styling
+  - Show tooltip within 100ms of hover
+- Add accessible data table (AC: 12)
+  - Create hidden HTML table with same data
+  - Use ARIA attributes: `aria-label="Spending trends over time"`
+  - Visually hidden CSS class (screen reader accessible)
+  - Table structure: headers (Month, Income, Expenses, Net), data rows
+- Integrate chart into dashboard page (AC: 1)
+  - Import SpendingTrends into `src/app/(dashboard)/page.tsx`
+  - Render below SpendingByCategory chart
+  - Wrap in ChartContainer for loading/error handling
+  - Add section heading: "Spending Trends (Last 6 Months)"
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+**Given** I view the dashboard
+**When** I look at the trends section
+**Then** I see a line chart showing spending over the last 6 months
+
+**And** X-axis shows months (e.g., "Jun", "Jul", "Aug", "Sep", "Oct", "Nov")
+**And** Y-axis shows dollar amounts
+**And** Two lines plotted: Income (green) and Expenses (red)
+**And** Data points show exact amounts on hover
+**And** Tooltip shows: "[Month]: Income $X, Expenses $Y"
+**And** Chart renders responsively (300px height, full width)
+**And** Grid lines for readability
+**And** Legend indicates Income vs Expenses
+**And** Empty state: "Add transactions to see trends"
+**And** Chart updates when transactions added (&lt;300ms)
+**And** Mobile: chart scrolls horizontally if needed, or shows last 3 months by default
+**And** Accessible data table alternative for screen readers
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>Data Models and Contracts</section>
+        <snippet>SpendingTrendsResponse interface: { months: MonthlyTrendData[], startDate, endDate }. MonthlyTrendData: { month, monthLabel, income, expenses, net }. LINE CHART DATA: LineChartDataPoint { month, income, expenses }</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>Component Architecture</section>
+        <snippet>SpendingTrends Component renders Recharts LineChart for income/expense trends with 6-month trend data from API. Returns interactive line chart with tooltips.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>Database Queries</section>
+        <snippet>SQL aggregation: SELECT DATE_TRUNC('month', date) as month, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income, SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expenses FROM transactions WHERE user_id = $1 AND date &gt;= $2 AND date &lt; $3 GROUP BY DATE_TRUNC('month', date) ORDER BY month ASC</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>Frontend Architecture</section>
+        <snippet>Recharts library: PieChart, LineChart, ResponsiveContainer, Tooltip, Legend. Custom components include SpendingTrends. API route: GET /api/dashboard/trends for 6-month income/expense aggregation</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/components/dashboard/CategorySpendingChart.tsx</path>
+        <kind>component</kind>
+        <symbol>CategorySpendingChart</symbol>
+        <lines>1-200</lines>
+        <reason>Reference implementation for Recharts integration, similar pattern for LineChart - shows ResponsiveContainer, Tooltip, Legend, empty state, and Realtime subscription patterns</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/hooks/useSpendingByCategory.ts</path>
+        <kind>hook</kind>
+        <symbol>useSpendingByCategory</symbol>
+        <lines>1-87</lines>
+        <reason>Reference SWR hook pattern to follow for useTrends - shows deduplication interval, revalidation options, and return type</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/hooks/useDashboardStats.ts</path>
+        <kind>hook</kind>
+        <symbol>useDashboardStats</symbol>
+        <lines>1-100</lines>
+        <reason>Another reference SWR hook implementation pattern showing caching and revalidation configuration</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/dashboard/spending-by-category/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>GET</symbol>
+        <lines>1-151</lines>
+        <reason>Reference API route implementation showing authentication, Supabase query patterns, aggregation logic, and response formatting to follow for trends API</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/dashboard/DashboardStats.tsx</path>
+        <kind>component</kind>
+        <symbol>DashboardStats</symbol>
+        <lines>1-112</lines>
+        <reason>Shows Realtime subscription pattern and integration with SWR mutate for immediate updates</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/utils/currency.ts</path>
+        <kind>utility</kind>
+        <symbol>formatCurrency</symbol>
+        <lines>all</lines>
+        <reason>Currency formatting utility to use in tooltip display</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="recharts" version="^2.12.0">Charting library for LineChart visualization</package>
+        <package name="swr" version="^2.x">Data fetching and caching for useTrends hook</package>
+        <package name="@chakra-ui/react" version="^2.x">UI components for layout and styling</package>
+        <package name="date-fns" version="^3.x">Month label formatting (format(date, 'MMM'))</package>
+        <package name="@supabase/supabase-js" version="^2.x">Database queries and Realtime subscriptions</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+- **Architecture Pattern:** Follow existing dashboard component pattern established in Stories 5.2 and 5.3
+- **Data Fetching:** Use SWR with 1-5 second deduplication interval for real-time feel
+- **Realtime Updates:** Subscribe to Supabase transactions table changes and trigger mutate()
+- **Server-side Aggregation:** Perform SQL aggregation in API route, not client-side
+- **Date Handling:** Use SQL DATE_TRUNC('month', date) for month-level grouping
+- **Month Labels:** Format with date-fns: format(date, 'MMM') for abbreviated month names
+- **Responsive Design:** Use Recharts ResponsiveContainer, height 300px, width 100%
+- **Mobile Optimization:** Consider showing 3 months default on small screens or horizontal scroll
+- **Performance Target:** Chart updates within 300ms after transaction changes
+- **Type Safety:** Full TypeScript coverage with proper interfaces matching tech-spec
+- **Testing:** Follow manual testing checklist in story Dev Notes section
+- **Recharts Components:** Use LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+- **Color Scheme:** Income line = green, Expenses line = red (consistent with StatCards)
+- **Empty State:** Display friendly message when no transaction data available
+- **Accessibility:** Provide hidden data table alternative for screen readers
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>MonthlyTrendData</name>
+      <kind>TypeScript Interface</kind>
+      <signature>interface MonthlyTrendData {
+  month: string;                      // YYYY-MM format
+  monthLabel: string;                 // "Jan", "Feb", "Mar" for chart display
+  income: number;                     // Total income for this month
+  expenses: number;                   // Total expenses for this month
+  net: number;                        // income - expenses
+}</signature>
+      <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+    </interface>
+    <interface>
+      <name>SpendingTrendsResponse</name>
+      <kind>API Response</kind>
+      <signature>interface SpendingTrendsResponse {
+  months: MonthlyTrendData[];         // Last N months (default 6)
+  startDate: string;                  // ISO date of first month
+  endDate: string;                    // ISO date of last month
+}</signature>
+      <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+    </interface>
+    <interface>
+      <name>LineChartDataPoint</name>
+      <kind>Recharts Data Format</kind>
+      <signature>interface LineChartDataPoint {
+  month: string;                      // "Jan", "Feb", etc.
+  income: number;                     // Income amount
+  expenses: number;                   // Expenses amount
+}</signature>
+      <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+    </interface>
+    <interface>
+      <name>GET /api/dashboard/trends</name>
+      <kind>REST API Endpoint</kind>
+      <signature>GET /api/dashboard/trends?months=6
+Query Parameters:
+  - months: number (optional, default 6) - Number of months to fetch
+Response: SpendingTrendsResponse
+Status: 200 OK | 401 Unauthorized | 500 Internal Server Error</signature>
+      <path>src/app/api/dashboard/trends/route.ts</path>
+    </interface>
+    <interface>
+      <name>useTrends</name>
+      <kind>React Hook</kind>
+      <signature>function useTrends(months?: number): {
+  data: SpendingTrendsResponse | undefined;
+  error: Error | undefined;
+  isLoading: boolean;
+  mutate: () => void;
+}</signature>
+      <path>src/lib/hooks/useTrends.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+Manual testing is the primary approach for Epic 5 dashboard features. Focus on visual validation, interactivity, and real-time updates. Test charts with various data scenarios (empty, sparse, full 6 months). Verify responsive design across mobile (320px), tablet (768px), and desktop (1200px+) breakpoints. Confirm accessibility with screen reader testing.
+    </standards>
+    <locations>
+      <location>Manual testing: Check each acceptance criterion in development browser</location>
+      <location>SQL validation: Run aggregation queries in Supabase SQL Editor</location>
+      <location>Accessibility: Test with screen reader (NVDA, JAWS, or VoiceOver)</location>
+    </locations>
+    <ideas>
+      <idea ac="AC-1">Verify line chart renders on dashboard with 6 months of data on X-axis</idea>
+      <idea ac="AC-2">Check X-axis displays month labels in format: "Jun", "Jul", "Aug", "Sep", "Oct", "Nov"</idea>
+      <idea ac="AC-3">Verify Y-axis shows dollar amounts with appropriate scale</idea>
+      <idea ac="AC-4">Confirm two lines plotted: Income (green) and Expenses (red) with correct data</idea>
+      <idea ac="AC-5">Test hover interaction: tooltip appears within 100ms showing "[Month]: Income $X, Expenses $Y"</idea>
+      <idea ac="AC-6">Verify chart ResponsiveContainer renders at 300px height, 100% width</idea>
+      <idea ac="AC-7">Check CartesianGrid renders grid lines for readability</idea>
+      <idea ac="AC-8">Confirm Legend displays Income vs Expenses indicators</idea>
+      <idea ac="AC-9">Test empty state: when no transactions exist, displays "Add transactions to see trends"</idea>
+      <idea ac="AC-10">Add a transaction, verify chart updates within 300ms via Realtime + SWR</idea>
+      <idea ac="AC-11">Test mobile responsiveness: chart shows 3 months or horizontal scroll on screens &lt; 768px</idea>
+      <idea ac="AC-12">Verify hidden data table exists with aria-label and screen reader can access it</idea>
+      <idea sql="SQL-Query">Run DATE_TRUNC aggregation query in Supabase to verify monthly income/expenses calculation</idea>
+      <idea perf="Performance">Measure chart render time, confirm API response &lt; 500ms, update &lt; 300ms</idea>
+    </ideas>
+  </tests>
+</story-context>

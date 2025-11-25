@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Box, Flex, useDisclosure, useBreakpointValue } from '@chakra-ui/react';
+import { mutate } from 'swr';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
@@ -47,9 +48,35 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
-  const handleSuccess = () => {
-    // TODO: In future, trigger data refresh for dashboard/transaction list
-    console.log('Transaction created successfully!');
+  const handleSuccess = async () => {
+    console.log('[AppLayout] Transaction success callback triggered - refreshing dashboard...');
+
+    // Small delay to ensure database transaction is committed
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    console.log('[AppLayout] Triggering SWR revalidation for dashboard data...');
+
+    // Force immediate revalidation of dashboard stats (bypasses deduplication)
+    await mutate('/api/dashboard/stats', undefined, { revalidate: true });
+
+    // Force immediate revalidation of spending by category
+    await mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true });
+
+    // Force immediate revalidation of spending trends
+    await mutate('/api/dashboard/trends', undefined, { revalidate: true });
+
+    // Also trigger revalidation with all possible query params
+    await mutate(
+      (key) => typeof key === 'string' && (
+        key.startsWith('/api/dashboard/stats') ||
+        key.startsWith('/api/dashboard/spending-by-category') ||
+        key.startsWith('/api/dashboard/trends')
+      ),
+      undefined,
+      { revalidate: true }
+    );
+
+    console.log('[AppLayout] Dashboard data refresh complete!');
   };
 
   return (

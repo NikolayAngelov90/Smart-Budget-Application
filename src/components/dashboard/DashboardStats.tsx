@@ -31,15 +31,20 @@ export function DashboardStats() {
           schema: 'public',
           table: 'transactions',
         },
-        () => {
-          // Revalidate dashboard stats when any transaction changes
+        (payload) => {
+          console.log('[DashboardStats] Realtime update received:', payload.eventType);
+          // Revalidate dashboard stats immediately when any transaction changes
+          // Force revalidation to bypass cache
           mutate();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[DashboardStats] Realtime subscription status:', status);
+      });
 
     // Cleanup subscription on unmount
     return () => {
+      console.log('[DashboardStats] Cleaning up Realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [supabase, mutate]);

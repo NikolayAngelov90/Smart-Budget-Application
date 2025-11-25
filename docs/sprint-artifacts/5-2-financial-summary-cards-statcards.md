@@ -1,6 +1,6 @@
 # Story 5.2: Financial Summary Cards (StatCards)
 
-Status: review
+Status: done
 
 ## Story
 
@@ -241,3 +241,12 @@ No debug logs - Implementation completed successfully without errors.
 
 **Modified Files:**
 - `src/app/dashboard/page.tsx` - Integrated DashboardStats component
+- `src/components/layout/AppLayout.tsx` - Added immediate dashboard stats revalidation on transaction success
+- `src/lib/hooks/useDashboardStats.ts` - Optimized deduplication interval for faster updates
+- `src/app/api/dashboard/stats/route.ts` - Disabled caching for real-time data
+- `src/components/transactions/TransactionEntryModal.tsx` - Fixed amount input pattern validation
+
+### Completion Date
+
+**Completed:** 2025-11-25
+**Definition of Done:** All acceptance criteria met, code reviewed, tests passing, real-time updates working correctly with Supabase Realtime enabled

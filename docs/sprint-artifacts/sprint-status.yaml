@@ -69,9 +69,9 @@ development_status:
 
   epic-5: contexted
   5-1-dashboard-layout-and-navigation: done
-  5-2-financial-summary-cards-statcards: review
-  5-3-monthly-spending-by-category-pie-donut-chart: drafted
-  5-4-spending-trends-over-time-line-chart: drafted
+  5-2-financial-summary-cards-statcards: done
+  5-3-monthly-spending-by-category-pie-donut-chart: done
+  5-4-spending-trends-over-time-line-chart: review
   5-5-month-over-month-comparison-highlights: drafted
   5-6-chart-interactivity-and-drill-down: drafted
   5-7-dashboard-performance-and-loading-states: drafted

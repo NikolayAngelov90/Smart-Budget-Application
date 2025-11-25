@@ -10,6 +10,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { calculateTrend } from '@/lib/utils/currency';
 
+// Force dynamic rendering and disable caching for real-time data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export interface DashboardStatsResponse {
   balance: number;
   income: {
