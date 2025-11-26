@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Box,
   Container,
@@ -46,7 +47,7 @@ import {
 } from '@chakra-ui/react';
 import { CloseIcon, SearchIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
@@ -87,11 +88,15 @@ interface CategoryResponse {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function TransactionsPage() {
+  // Get URL search params for drill-down navigation (Story 5.5)
+  const searchParams = useSearchParams();
+
   // Filter state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [filtersInitialized, setFiltersInitialized] = useState(false);
 
   // Edit modal state
   const { isOpen: isEditModalOpen, onOpen: onEditModalOpen, onClose: onEditModalClose } = useDisclosure();
@@ -110,6 +115,34 @@ export default function TransactionsPage() {
 
   // Network status tracking (Task 6)
   const [isOnline, setIsOnline] = useState(true);
+
+  // Initialize filters from URL query parameters (Story 5.5 drill-down)
+  useEffect(() => {
+    if (filtersInitialized) return; // Only initialize once
+
+    const categoryParam = searchParams.get('category');
+    const monthParam = searchParams.get('month');
+
+    if (categoryParam) {
+      setCategoryFilter(categoryParam);
+    }
+
+    if (monthParam) {
+      // Parse month in YYYY-MM format and set date range
+      try {
+        const monthDate = new Date(`${monthParam}-01`);
+        const monthStart = startOfMonth(monthDate);
+        const monthEnd = endOfMonth(monthDate);
+
+        setStartDate(format(monthStart, 'yyyy-MM-dd'));
+        setEndDate(format(monthEnd, 'yyyy-MM-dd'));
+      } catch (error) {
+        console.error('Invalid month parameter:', monthParam);
+      }
+    }
+
+    setFiltersInitialized(true);
+  }, [searchParams, filtersInitialized]);
 
   // Debounce search query (300ms delay)
   useEffect(() => {

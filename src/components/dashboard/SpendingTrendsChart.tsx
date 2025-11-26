@@ -17,6 +17,7 @@ import {
   AlertDescription,
   Flex,
   Icon,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import {
   LineChart,
@@ -102,7 +103,8 @@ export function SpendingTrendsChart({
   months = 6,
   height = 300,
 }: SpendingTrendsChartProps) {
-  const { data, error, isLoading, mutate } = useTrends(months);
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  const { data, error, isLoading, mutate } = useTrends(isMobile ? 3 : months);
   const supabase = createClient();
 
   // Subscribe to real-time transaction changes

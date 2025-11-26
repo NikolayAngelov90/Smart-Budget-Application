@@ -1,0 +1,253 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>5</storyId>
+    <title>Month-over-Month Comparison Highlights</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-26</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-5-month-over-month-comparison-highlights.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>to see which categories had significant spending changes this month</iWant>
+    <soThat>I can quickly identify where my spending increased or decreased</soThat>
+    <tasks>
+- Create MonthOverMonth component (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9)
+  - Create `src/components/dashboard/MonthOverMonth.tsx`
+  - Add section title "This Month vs Last Month"
+  - Display list of categories with >20% change
+  - Format: "[Category]: ↑/↓ X% ($current vs $previous)"
+  - Show increases in red, decreases in green
+  - Limit to top 5 most significant changes
+  - Add empty state: "No significant changes this month"
+  - Make items clickable for drill-down to transactions
+  - Use SWR hook to fetch comparison data
+  - Handle loading and error states
+- Create month-over-month API endpoint (AC: 2, 3, 4)
+  - Create `src/app/api/dashboard/month-over-month/route.ts`
+  - Implement GET handler with authentication
+  - Query Supabase using SQL CTEs for current vs previous month
+  - Filter to categories with >20% change
+  - Calculate percentChange: ((current - previous) / previous) * 100
+  - Sort by absolute percent change (descending)
+  - Limit to top 5 results
+  - Return JSON: MonthOverMonthResponse
+- Create useMonthOverMonth custom hook (AC: 8)
+  - Create `src/lib/hooks/useMonthOverMonth.ts`
+  - Implement SWR hook wrapping `/api/dashboard/month-over-month`
+  - Add 5-second deduplication interval
+  - Add Supabase Realtime subscription for transaction changes
+  - Trigger revalidation on data changes
+  - Return `{ data, error, isLoading, mutate }`
+- Add click-to-drill-down navigation (AC: 6)
+  - Use Next.js router to navigate to /transactions
+  - Pass query params: category, startDate, endDate
+  - Filter transactions by selected category and current month
+  - Leverage existing transaction filtering from Story 3.2
+- Integrate into dashboard page (AC: 1)
+  - Import MonthOverMonth into `src/app/(dashboard)/page.tsx`
+  - Render above SpendingByCategory section
+  - Wrap in Card or Box for consistent styling
+  - Add section heading
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+**Given** I view the dashboard
+**When** I look at the comparison section
+**Then** I see "This Month vs Last Month" section
+
+**And** Categories with >20% change are listed
+**And** Increases shown in red with ↑ arrow
+**And** Decreases shown in green with ↓ arrow
+**And** Format: "[Category]: ↑/↓ X% ($current vs $previous)"
+**And** Clickable items that drill down to filtered transactions
+**And** Maximum 5 most significant changes shown
+**And** Updates when transactions added (<300ms)
+**And** Empty state: "No significant changes this month"
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>Data Models and Contracts</section>
+        <snippet>CategoryChangeData interface: { categoryId, categoryName, categoryColor, currentAmount, previousAmount, percentChange }. MonthOverMonthResponse: { changes: CategoryChangeData[], currentMonth, previousMonth }</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>API Endpoints</section>
+        <snippet>GET /api/dashboard/month-over-month?month=2025-11 - Compare current vs previous month spending by category, return significant changes (>20%). Uses SQL CTEs for aggregation.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>Database Queries</section>
+        <snippet>SQL CTEs: WITH current_month AS (SELECT category_id, SUM(amount) FROM transactions WHERE user_id = $1 AND type = 'expense' AND date >= $2 AND date < $3 GROUP BY category_id), previous_month AS (SELECT category_id, SUM(amount) FROM transactions WHERE user_id = $1 AND type = 'expense' AND date >= $4 AND date < $5 GROUP BY category_id)</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification</title>
+        <section>Component Architecture</section>
+        <snippet>MonthOverMonth component displays category spending changes. Uses useMonthOverMonth SWR hook. Integrates with transaction filtering from Story 3.2 for drill-down.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/lib/hooks/useSpendingByCategory.ts</path>
+        <kind>hook</kind>
+        <symbol>useSpendingByCategory</symbol>
+        <lines>1-87</lines>
+        <reason>Reference SWR hook pattern to follow for useMonthOverMonth - shows deduplication interval, revalidation options, and return type</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/hooks/useTrends.ts</path>
+        <kind>hook</kind>
+        <symbol>useTrends</symbol>
+        <lines>1-91</lines>
+        <reason>Another reference SWR hook implementation pattern showing caching and revalidation configuration</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/dashboard/spending-by-category/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>GET</symbol>
+        <lines>1-151</lines>
+        <reason>Reference API route implementation showing authentication, Supabase query patterns, aggregation logic, and response formatting</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/dashboard/trends/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>GET</symbol>
+        <lines>1-149</lines>
+        <reason>Shows date range calculation and month-based aggregation pattern to reference for month-over-month comparison</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/dashboard/DashboardStats.tsx</path>
+        <kind>component</kind>
+        <symbol>DashboardStats</symbol>
+        <lines>1-112</lines>
+        <reason>Shows Realtime subscription pattern and integration with SWR mutate for immediate updates</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/dashboard/CategorySpendingChart.tsx</path>
+        <kind>component</kind>
+        <symbol>CategorySpendingChart</symbol>
+        <lines>1-200</lines>
+        <reason>Reference dashboard component pattern showing empty state handling, loading states, and error handling</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/utils/currency.ts</path>
+        <kind>utility</kind>
+        <symbol>formatCurrency</symbol>
+        <lines>all</lines>
+        <reason>Currency formatting utility to use in comparison display</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="swr" version="^2.x">Data fetching and caching for useMonthOverMonth hook</package>
+        <package name="@chakra-ui/react" version="^2.x">UI components for list, colors, and layout</package>
+        <package name="date-fns" version="^3.x">Date calculations for current/previous month ranges</package>
+        <package name="@supabase/supabase-js" version="^2.x">Database queries and Realtime subscriptions</package>
+        <package name="next" version="^15.x">Navigation router for drill-down to transactions page</package>
+        <package name="react-icons" version="^5.x">Arrow icons for increase/decrease indicators</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+- **Architecture Pattern:** Follow existing dashboard component pattern from Stories 5.2, 5.3, 5.4
+- **Data Fetching:** Use SWR with 5-second deduplication interval for real-time feel
+- **Realtime Updates:** Subscribe to Supabase transactions table changes and trigger mutate()
+- **Server-side Filtering:** Perform SQL aggregation and >20% filtering in API route
+- **SQL Pattern:** Use CTEs (Common Table Expressions) for current vs previous month comparison
+- **Date Handling:** Calculate current month (start of month to now) and previous month (full month)
+- **Percent Calculation:** ((current - previous) / previous) * 100, handle division by zero
+- **Sorting:** Sort by absolute percent change descending, limit to top 5
+- **Color Scheme:** Increases = red (negative), Decreases = green (positive)
+- **Navigation:** Use Next.js router.push with query params for transaction drill-down
+- **Integration:** Leverage transaction filtering from Story 3.2 for drill-down feature
+- **Performance Target:** Updates within 300ms after transaction changes
+- **Type Safety:** Full TypeScript coverage with proper interfaces matching tech-spec
+- **Testing:** Follow manual testing checklist in story Dev Notes section
+- **Empty State:** Show friendly message when no significant changes exist
+- **Error Handling:** Display error alert if API fails, with retry option
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>CategoryChangeData</name>
+      <kind>TypeScript Interface</kind>
+      <signature>interface CategoryChangeData {
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  currentAmount: number;              // Spending this month
+  previousAmount: number;             // Spending last month
+  percentChange: number;              // ((current - previous) / previous) * 100
+}</signature>
+      <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+    </interface>
+    <interface>
+      <name>MonthOverMonthResponse</name>
+      <kind>API Response</kind>
+      <signature>interface MonthOverMonthResponse {
+  changes: CategoryChangeData[];      // Filtered to significant changes (>20%)
+  currentMonth: string;               // YYYY-MM
+  previousMonth: string;              // YYYY-MM
+}</signature>
+      <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+    </interface>
+    <interface>
+      <name>GET /api/dashboard/month-over-month</name>
+      <kind>REST API Endpoint</kind>
+      <signature>GET /api/dashboard/month-over-month?month=2025-11
+Query Parameters:
+  - month: string (optional, default current month) - YYYY-MM format
+Response: MonthOverMonthResponse
+Status: 200 OK | 401 Unauthorized | 500 Internal Server Error</signature>
+      <path>src/app/api/dashboard/month-over-month/route.ts</path>
+    </interface>
+    <interface>
+      <name>useMonthOverMonth</name>
+      <kind>React Hook</kind>
+      <signature>function useMonthOverMonth(month?: string): {
+  data: MonthOverMonthResponse | undefined;
+  error: Error | undefined;
+  isLoading: boolean;
+  mutate: () => void;
+}</signature>
+      <path>src/lib/hooks/useMonthOverMonth.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+Manual testing is the primary approach for Epic 5 dashboard features. Focus on visual validation, interactivity, and real-time updates. Test with various scenarios: no changes, small changes (<20%), significant changes (>20%), all increases, all decreases, mixed. Verify click-to-drill-down navigation works correctly with category filtering.
+    </standards>
+    <locations>
+      <location>Manual testing: Check each acceptance criterion in development browser</location>
+      <location>SQL validation: Run CTE queries in Supabase SQL Editor with test data</location>
+      <location>Navigation testing: Verify drill-down to transactions page with correct filters</location>
+    </locations>
+    <ideas>
+      <idea ac="AC-1">Verify "This Month vs Last Month" section appears on dashboard</idea>
+      <idea ac="AC-2">Check that only categories with >20% change are displayed</idea>
+      <idea ac="AC-3">Verify increases shown in red with ↑ arrow and correct percentage</idea>
+      <idea ac="AC-4">Verify decreases shown in green with ↓ arrow and correct percentage</idea>
+      <idea ac="AC-5">Check format: "[Category Name]: ↑/↓ X% ($current vs $previous)"</idea>
+      <idea ac="AC-6">Test click on item navigates to transactions page with category filter</idea>
+      <idea ac="AC-7">Verify maximum 5 changes shown, sorted by significance</idea>
+      <idea ac="AC-8">Add transaction, verify section updates within 300ms via Realtime</idea>
+      <idea ac="AC-9">Test empty state when no significant changes: displays message</idea>
+      <idea sql="SQL-Query">Run CTE query with test data: verify current/previous month aggregation and percent calculation</idea>
+      <idea edge="Edge-Case">Test division by zero: previous month = $0, current month > $0</idea>
+      <idea edge="Edge-Case">Test new category: appears in current month but not previous (handle gracefully)</idea>
+      <idea perf="Performance">Measure API response time, confirm <500ms, update <300ms</idea>
+    </ideas>
+  </tests>
+</story-context>
