@@ -53,7 +53,7 @@ function ChangeItem({
 
   return (
     <ListItem
-      p={3}
+      p={{ base: 3, md: 4 }}
       borderWidth="1px"
       borderColor="gray.200"
       borderRadius="md"
@@ -67,30 +67,32 @@ function ChangeItem({
         boxShadow: 'md',
       }}
       transition="all 0.2s"
+      minH="44px"
     >
-      <Flex align="center" justify="space-between" gap={3}>
-        <Flex align="center" gap={2} flex={1}>
+      <Flex align="center" justify="space-between" gap={{ base: 2, md: 3 }} flexWrap={{ base: 'wrap', md: 'nowrap' }}>
+        <Flex align="center" gap={2} flex={1} minW="0">
           <Icon
             as={ArrowIcon}
             boxSize={5}
             color={`${colorScheme}.500`}
+            flexShrink={0}
           />
-          <Text fontWeight="medium" fontSize="sm" noOfLines={1}>
+          <Text fontWeight="medium" fontSize={{ base: '0.875rem', lg: '1rem' }} noOfLines={1}>
             {change.categoryName}
           </Text>
         </Flex>
 
-        <Flex align="center" gap={2}>
+        <Flex align="center" gap={2} flexShrink={0}>
           <Badge
             colorScheme={colorScheme}
-            fontSize="sm"
+            fontSize={{ base: '0.75rem', md: '0.875rem' }}
             px={2}
             py={1}
             borderRadius="md"
           >
             {arrow} {Math.abs(change.percentChange).toFixed(0)}%
           </Badge>
-          <Text fontSize="xs" color="gray.600" whiteSpace="nowrap">
+          <Text fontSize={{ base: '0.625rem', md: '0.75rem' }} color="gray.600" whiteSpace="nowrap" display={{ base: 'none', sm: 'block' }}>
             {formatCurrency(change.currentAmount)} vs {formatCurrency(change.previousAmount)}
           </Text>
         </Flex>
@@ -146,7 +148,7 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   if (isLoading) {
     return (
       <Box>
-        <Text fontSize="lg" fontWeight="bold" mb={4}>
+        <Text fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
           This Month vs Last Month
         </Text>
         <Stack spacing={3}>
@@ -162,7 +164,7 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   if (error) {
     return (
       <Box>
-        <Text fontSize="lg" fontWeight="bold" mb={4}>
+        <Text fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
           This Month vs Last Month
         </Text>
         <Alert status="error" borderRadius="md">
@@ -180,7 +182,7 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   if (!data || data.changes.length === 0) {
     return (
       <Box>
-        <Text fontSize="lg" fontWeight="bold" mb={4}>
+        <Text fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
           This Month vs Last Month
         </Text>
         <Flex
@@ -194,10 +196,10 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
           bg="gray.50"
         >
           <Icon as={MdShowChart} boxSize={10} color="gray.400" mb={2} />
-          <Text fontSize="md" fontWeight="medium" color="gray.600">
+          <Text fontSize={{ base: '0.875rem', lg: '1rem' }} fontWeight="medium" color="gray.600">
             No significant changes this month
           </Text>
-          <Text fontSize="sm" color="gray.500" mt={1}>
+          <Text fontSize={{ base: '0.75rem', lg: '0.875rem' }} color="gray.500" mt={1}>
             Spending changes &lt;20% are not shown
           </Text>
         </Flex>
@@ -208,7 +210,7 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   // Render changes list
   return (
     <Box>
-      <Text fontSize="lg" fontWeight="bold" mb={4}>
+      <Text fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
         This Month vs Last Month
       </Text>
       <List spacing={3}>

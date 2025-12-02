@@ -3,11 +3,14 @@
 /**
  * CategorySpendingChart Component
  * Story 5.3: Monthly Spending by Category (Pie/Donut Chart)
+ * Story 5.6: Added onClick handler for drill-down navigation
  *
  * Displays expense breakdown by category using Recharts PieChart
  */
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 import {
   Box,
   Heading,
@@ -42,6 +45,7 @@ interface ChartDataPoint {
   value: number;
   color: string;
   percentage: number;
+  category_id: string;
   [key: string]: string | number; // Index signature for Recharts compatibility
 }
 
@@ -52,6 +56,10 @@ export function CategorySpendingChart({
 }: CategorySpendingChartProps) {
   const { data, error, isLoading, mutate } = useSpendingByCategory(month);
   const supabase = createClient();
+  const router = useRouter();
+
+  // Get current month in YYYY-MM format for drill-down navigation
+  const currentMonth = month || format(new Date(), 'yyyy-MM');
 
   // Subscribe to real-time transaction changes
   useEffect(() => {
@@ -132,7 +140,13 @@ export function CategorySpendingChart({
     value: cat.amount,
     color: cat.category_color,
     percentage: cat.percentage,
+    category_id: cat.category_id,
   }));
+
+  // Handle pie slice click for drill-down navigation (Story 5.6)
+  const handlePieClick = (data: ChartDataPoint) => {
+    router.push(`/transactions?category=${data.category_id}&month=${currentMonth}`);
+  };
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: ChartDataPoint }> }) => {
@@ -192,6 +206,11 @@ export function CategorySpendingChart({
               innerRadius={chartType === 'donut' ? 50 : 0}
               fill="#8884d8"
               dataKey="value"
+              onClick={(data) => handlePieClick(data)}
+              cursor="pointer"
+              role="button"
+              tabIndex={0}
+              aria-label="Category spending chart. Click on a category to view detailed transactions."
             >
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
@@ -207,6 +226,39 @@ export function CategorySpendingChart({
             />
           </PieChart>
         </ResponsiveContainer>
+
+        {/* Accessible data table (visually hidden) */}
+        <table
+          aria-label="Category spending breakdown"
+          style={{
+            position: 'absolute',
+            width: '1px',
+            height: '1px',
+            padding: 0,
+            margin: '-1px',
+            overflow: 'hidden',
+            clip: 'rect(0, 0, 0, 0)',
+            whiteSpace: 'nowrap',
+            border: 0,
+          }}
+        >
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Amount</th>
+              <th>Percentage</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data?.categories.map((cat) => (
+              <tr key={cat.category_id}>
+                <td>{cat.category_name}</td>
+                <td>{formatCurrency(cat.amount)}</td>
+                <td>{cat.percentage.toFixed(1)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </VStack>
     </Box>
   );

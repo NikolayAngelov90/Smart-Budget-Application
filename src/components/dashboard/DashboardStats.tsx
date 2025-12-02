@@ -76,7 +76,7 @@ export function DashboardStats() {
   const expensesTrend = data?.expenses.trend ?? 0;
 
   return (
-    <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6} w="full">
+    <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={{ base: 4, md: 6 }} w="full">
       {/* Total Balance Card */}
       <StatCard
         label="Total Balance"

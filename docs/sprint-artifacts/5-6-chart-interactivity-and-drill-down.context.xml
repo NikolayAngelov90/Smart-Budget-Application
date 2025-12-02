@@ -1,0 +1,290 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>6</storyId>
+    <title>Chart Interactivity and Drill-Down</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-12-02</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-6-chart-interactivity-and-drill-down.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to interact with dashboard charts</iWant>
+    <soThat>I can explore my data in more detail</soThat>
+    <tasks>
+- Add pie chart click navigation (AC: 1)
+  - Modify `src/components/dashboard/CategorySpendingChart.tsx`
+  - Add onClick handler to `<Pie>` component
+  - Extract categoryId and current month from clicked data
+  - Navigate to `/transactions?category=[categoryId]&month=[month]`
+  - Use Next.js `useRouter()` for navigation
+  - Add `cursor: pointer` style to pie slices
+- Add line chart click navigation (AC: 2)
+  - Modify `src/components/dashboard/SpendingTrendsChart.tsx`
+  - Add onClick handler to `<Line>` components
+  - Extract month from clicked data point
+  - Navigate to `/transactions?month=[month]`
+  - Use Next.js `useRouter()` for navigation
+  - Add `cursor: pointer` style to data points
+- Enhance tooltip performance (AC: 3, 4)
+  - Verify tooltips appear within 100ms of hover
+  - Ensure tooltips show exact values (already implemented in Stories 5.3, 5.4)
+  - Test tooltip responsiveness across both charts
+- Add visual cursor feedback (AC: 5)
+  - Add CSS `cursor: pointer` to clickable chart elements
+  - Ensure hover states clearly indicate interactivity
+  - Test across different browsers
+- Implement transaction page filters (AC: 6)
+  - Modify `src/app/transactions/page.tsx` to read query params
+  - Apply category filter from `category` query param
+  - Apply month filter from `month` query param
+  - Pre-filter transaction list on page load
+  - Show active filters in UI
+- Add "Back to Dashboard" link (AC: 7)
+  - Add link/button at top of transaction page
+  - Navigate to `/dashboard` on click
+  - Style as breadcrumb or back button
+  - Show only when navigated from dashboard (optional: check referrer)
+- Implement mobile touch interactions (AC: 8)
+  - Ensure tap works on mobile (onClick handlers compatible)
+  - Show tooltip on tap (first tap shows tooltip, second tap navigates)
+  - Test on iOS and Android devices
+- Add keyboard accessibility (AC: 9)
+  - Ensure charts focusable via Tab key
+  - Add ARIA labels to chart containers
+  - Support Enter key to trigger drill-down
+  - Add keyboard navigation instructions (optional)
+- Add screen reader support (AC: 10)
+  - Add ARIA attributes to chart containers
+  - Announce chart data via accessible data tables (already in 5.3, 5.4)
+  - Announce drill-down availability: "Click to view transactions"
+  - Test with screen reader (NVDA, JAWS, VoiceOver)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+**Given** I view dashboard charts
+**When** I hover or click on chart elements
+**Then** I see detailed information and can drill down
+
+**And** Pie chart: clicking slice navigates to `/transactions?category=[id]&month=[month]`
+**And** Line chart: clicking data point navigates to `/transactions?month=[month]`
+**And** Hovering shows detailed tooltip with exact values
+**And** Tooltips appear within 100ms of hover
+**And** Cursor changes to pointer on clickable chart elements
+**And** Drill-down loads filtered transaction list pre-filtered to category/month
+**And** "Back to Dashboard" link on transaction page to return
+**And** Mobile: tap instead of hover, tooltip appears on tap
+**And** Keyboard accessible: Tab to focus chart, Enter to drill down
+**And** Screen reader: announces chart data and drill-down options
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <!-- Tech Spec Epic 5: Chart Interactivity -->
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification - Analytics Dashboard</title>
+        <section>Chart Interactivity and Drill-Down (Story 5.6)</section>
+        <snippet>Pie Chart Interactivity: onClick handler captures category_id and navigates to /transactions?category={id}&month={month}. Line Chart Interactivity: onClick handler captures month and navigates to /transactions?month={month}. Drill-down loads filtered transaction list pre-filtered to category/month.</snippet>
+      </doc>
+
+      <!-- Architecture -->
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>Navigation Patterns</section>
+        <snippet>Client-side navigation with query params using Next.js App Router. Transaction list filtering supports URL parameters for category and date ranges.</snippet>
+      </doc>
+
+      <!-- UX Design -->
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Chart Interactivity</section>
+        <snippet>Cursor feedback on hover (pointer), drill-down UX pattern navigates same tab with back button. Touch targets minimum 44x44px on mobile.</snippet>
+      </doc>
+
+      <!-- PRD References -->
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR28: Interactive Charts</section>
+        <snippet>Clickable charts drill down to filtered transactions. FR23: Hover tooltips with exact values. FR46: Touch targets 44x44px minimum on mobile.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <!-- Existing Chart Components to Modify -->
+      <artifact>
+        <path>src/components/dashboard/CategorySpendingChart.tsx</path>
+        <kind>component</kind>
+        <symbol>CategorySpendingChart</symbol>
+        <lines>full file</lines>
+        <reason>Pie chart component - needs onClick handler for drill-down to transactions filtered by category and month</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/components/dashboard/SpendingTrendsChart.tsx</path>
+        <kind>component</kind>
+        <symbol>SpendingTrendsChart</symbol>
+        <lines>full file</lines>
+        <reason>Line chart component - needs onClick handler for drill-down to transactions filtered by month</reason>
+      </artifact>
+
+      <!-- Transaction Page (Drill-Down Target) -->
+      <artifact>
+        <path>src/app/transactions/page.tsx</path>
+        <kind>page</kind>
+        <symbol>TransactionsPage</symbol>
+        <lines>full file</lines>
+        <reason>Transaction list page - already reads query params from Story 5.5, needs "Back to Dashboard" link added</reason>
+      </artifact>
+
+      <!-- Existing Navigation Pattern Reference -->
+      <artifact>
+        <path>src/components/dashboard/MonthOverMonth.tsx</path>
+        <kind>component</kind>
+        <symbol>MonthOverMonth</symbol>
+        <lines>140-145</lines>
+        <reason>Reference implementation: Uses useRouter() from next/navigation for drill-down navigation with query params</reason>
+      </artifact>
+
+      <!-- Category Types -->
+      <artifact>
+        <path>src/types/category.types.ts</path>
+        <kind>types</kind>
+        <symbol>Category</symbol>
+        <lines>full file</lines>
+        <reason>Category type definitions for extracting categoryId from chart data</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <ecosystem name="node">
+        <package name="next" version="^15.0.0" />
+        <package name="react" version="^18.0.0" />
+        <package name="recharts" version="^2.x" />
+        <package name="@chakra-ui/react" version="latest" />
+        <package name="date-fns" version="^2.x" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <!-- Recharts onClick Event Handler -->
+    <interface>
+      <name>Recharts onClick Handler</name>
+      <kind>Event Handler</kind>
+      <signature>
+&lt;Pie onClick={(data: any) => handlePieClick(data)} cursor="pointer" /&gt;
+&lt;Line onClick={(data: any) => handleLineClick(data)} cursor="pointer" /&gt;
+
+// Data object structure:
+// Pie chart: { name: string, value: number, payload: { id: string, color: string, ... } }
+// Line chart: { activeLabel: string (month), activePayload: [...] }
+      </signature>
+      <path>node_modules/recharts/types/chart/Pie.d.ts</path>
+    </interface>
+
+    <!-- Next.js useRouter Navigation -->
+    <interface>
+      <name>Next.js App Router Navigation</name>
+      <kind>Hook</kind>
+      <signature>
+import { useRouter } from 'next/navigation';
+
+const router = useRouter();
+router.push('/transactions?category=123&month=2025-11');
+      </signature>
+      <path>next/navigation</path>
+    </interface>
+
+    <!-- URL Query Parameters for Transaction Filtering -->
+    <interface>
+      <name>Transaction Filter Query Params</name>
+      <kind>API Contract</kind>
+      <signature>
+GET /transactions?category={categoryId}&month={YYYY-MM}
+
+// Already implemented in Story 5.5
+// Transactions page reads searchParams and applies filters on mount
+      </signature>
+      <path>src/app/transactions/page.tsx</path>
+    </interface>
+  </interfaces>
+
+  <constraints>
+    <!-- Development Constraints -->
+    <constraint>Use Next.js 15 App Router patterns: client components for interactivity, useRouter from 'next/navigation'</constraint>
+    <constraint>Recharts onClick handlers: event object structure varies by chart type (Pie vs Line)</constraint>
+    <constraint>Transaction page filtering already implemented (Story 5.5): reads category and month query params on mount</constraint>
+    <constraint>Accessibility required: ARIA labels, keyboard support (Tab + Enter), screen reader announcements</constraint>
+    <constraint>Mobile touch: onClick handlers work for tap, consider tooltip-on-first-tap pattern</constraint>
+    <constraint>Performance: Tooltips must appear within 100ms of hover (verify existing implementation)</constraint>
+    <constraint>Cursor feedback: Add cursor: pointer style to clickable chart elements via Recharts props</constraint>
+    <constraint>Navigation pattern: Same-tab navigation (not new tab), browser back button returns to dashboard</constraint>
+    <constraint>Back button: Add "Back to Dashboard" link/breadcrumb at top of transactions page</constraint>
+  </constraints>
+
+  <tests>
+    <standards>
+No unit test framework currently configured (Jest/Vitest). Manual testing required for now. TypeScript compilation and ESLint checks mandatory before marking story complete.
+    </standards>
+
+    <locations>
+      <location>Manual testing checklist documented in story file</location>
+      <location>TypeScript: npm run type-check</location>
+      <location>ESLint: npm run lint</location>
+    </locations>
+
+    <ideas>
+      <!-- AC #1: Pie Chart Click Navigation -->
+      <idea ac="1">
+        Test: Click pie chart slice → verify navigation to /transactions with correct category and month query params
+      </idea>
+
+      <!-- AC #2: Line Chart Click Navigation -->
+      <idea ac="2">
+        Test: Click line chart data point → verify navigation to /transactions with correct month query param
+      </idea>
+
+      <!-- AC #3-4: Tooltip Performance -->
+      <idea ac="3,4">
+        Test: Hover over chart elements → measure tooltip appearance time (should be &lt;100ms), verify exact values displayed
+      </idea>
+
+      <!-- AC #5: Cursor Feedback -->
+      <idea ac="5">
+        Test: Hover over clickable chart elements → verify cursor changes to pointer
+      </idea>
+
+      <!-- AC #6: Drill-down Filtering -->
+      <idea ac="6">
+        Test: After drill-down navigation → verify transaction list is pre-filtered to correct category/month
+      </idea>
+
+      <!-- AC #7: Back to Dashboard -->
+      <idea ac="7">
+        Test: On transactions page after drill-down → verify "Back to Dashboard" link present and functional
+      </idea>
+
+      <!-- AC #8: Mobile Touch -->
+      <idea ac="8">
+        Test: On mobile/tablet → tap chart elements and verify navigation works (test on iOS Safari and Android Chrome)
+      </idea>
+
+      <!-- AC #9: Keyboard Accessibility -->
+      <idea ac="9">
+        Test: Use Tab key to focus charts → press Enter to trigger drill-down navigation
+      </idea>
+
+      <!-- AC #10: Screen Reader -->
+      <idea ac="10">
+        Test: Use screen reader (NVDA/VoiceOver) → verify chart data announced and drill-down capability communicated
+      </idea>
+    </ideas>
+  </tests>
+</story-context>

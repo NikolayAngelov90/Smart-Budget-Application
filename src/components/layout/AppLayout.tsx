@@ -82,7 +82,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <Flex direction="column" minH="100vh">
       <Header onMenuClick={onMobileNavOpen} />
-      <Flex flex={1}>
+      <Flex flex={1} overflow="hidden">
         <Box display={{ base: 'none', md: 'block' }}>
           {isInitialized && (
             <Sidebar
@@ -91,7 +91,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             />
           )}
         </Box>
-        <Box flex={1} p={6} maxW="1200px" mx="auto" w="full">
+        <Box flex={1} p={{ base: 4, md: 6 }} overflowY="auto" overflowX="hidden" w="full">
           {children}
         </Box>
       </Flex>

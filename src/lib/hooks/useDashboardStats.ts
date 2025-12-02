@@ -47,10 +47,12 @@ export function useDashboardStats(month?: string): UseDashboardStatsResult {
     url,
     fetcher,
     {
-      // Deduplicate requests within 1 second for faster updates
-      dedupingInterval: 1000,
+      // Deduplicate requests within 5 seconds for reasonable caching
+      dedupingInterval: 5000,
       // Revalidate when window regains focus
       revalidateOnFocus: true,
+      // Revalidate on network reconnect
+      revalidateOnReconnect: true,
       // Revalidate on mount
       revalidateOnMount: true,
       // Keep previous data while revalidating

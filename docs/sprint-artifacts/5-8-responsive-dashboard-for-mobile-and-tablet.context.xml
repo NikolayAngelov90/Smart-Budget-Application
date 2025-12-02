@@ -1,0 +1,386 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>8</storyId>
+    <title>Responsive Dashboard for Mobile and Tablet</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-12-02</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-8-responsive-dashboard-for-mobile-and-tablet.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>the dashboard to work perfectly on my phone and tablet</iWant>
+    <soThat>I can check my finances on the go</soThat>
+    <tasks>
+- Implement mobile layout (&lt;768px) (AC: 1, 2)
+  - Modify `src/app/dashboard/page.tsx` for single column layout
+  - Use Chakra UI responsive props: `display={{ base: 'block', md: 'flex' }}`
+  - Stack StatCards vertically (full width)
+  - Stack charts vertically (full width)
+  - Ensure touch targets 44x44px minimum (buttons, links)
+  - Test on iPhone SE (320px), iPhone 12 (390px), Pixel 5 (393px)
+- Implement tablet layout (768-1023px) (AC: 1, 3)
+  - Modify `src/app/dashboard/page.tsx` for two-column grid
+  - StatCards: 2-column grid (2 cards on top row, 1 below)
+  - Charts: side-by-side if space allows, otherwise stacked
+  - Use collapsible sidebar from Story 5.1 (icon-only mode)
+  - Test on iPad (768px), iPad Pro (1024px)
+- Implement desktop layout (≥1024px) (AC: 1, 4)
+  - Modify `src/app/dashboard/page.tsx` for optimal desktop layout
+  - StatCards: 3-column grid (all 3 cards in one row)
+  - Charts: side-by-side (pie chart left, line chart right)
+  - Full sidebar visible (250px, from Story 5.1)
+  - Max-width 1200px container, centered
+  - Test on standard desktop (1440px, 1920px) and ultrawide (2560px)
+- Configure responsive breakpoints (AC: 5)
+  - Use Chakra UI breakpoints: `base` (&lt;768px), `md` (768px), `lg` (1024px), `xl` (1280px)
+  - Apply responsive props to all components: `&lt;Box width={{ base: '100%', md: '50%', lg: '33%' }}&gt;`
+  - Verify breakpoint transitions smooth (no flicker)
+- Implement responsive typography (AC: 1, 7)
+  - Use Chakra UI responsive font sizes
+  - H1: `fontSize={{ base: '2rem', lg: '2.5rem' }}`
+  - H2: `fontSize={{ base: '1.5rem', lg: '2rem' }}`
+  - Body: `fontSize={{ base: '0.875rem', lg: '1rem' }}`
+  - Ensure text remains readable on all devices
+- Ensure charts responsive (AC: 8)
+  - Verify Recharts `&lt;ResponsiveContainer&gt;` adapts to container width
+  - Charts render correctly at all sizes (250px to 1200px wide)
+  - Pie chart: legend below on mobile, side on desktop
+  - Line chart: X-axis labels rotate or abbreviate on mobile if needed
+  - Test chart interactivity on mobile (touch events)
+- Implement touch interactions (AC: 6)
+  - Ensure all buttons/links work with touch (tap)
+  - Test chart tap interactions (drill-down from Story 5.6)
+  - Disable pinch-zoom on charts (optional, for fixed layout)
+  - Add touch-friendly padding around interactive elements
+- Prevent horizontal scrolling (AC: 9)
+  - Ensure all components fit within viewport width
+  - Use `overflow-x: hidden` on body if needed
+  - Test on narrow screens (320px iPhone SE)
+  - Verify no elements exceed screen width
+- Cross-device testing (AC: 5)
+  - Test on physical devices: iPhone, Android phone, iPad, desktop
+  - Test on browser DevTools device emulation
+  - Verify breakpoints: 320px, 375px, 768px, 1024px, 1440px, 1920px
+  - Test orientation changes (portrait ↔ landscape)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+**Given** I view the dashboard on different devices
+**When** The screen size changes
+**Then** The layout adapts appropriately
+
+**And** Mobile (&lt;768px):
+  - Single column layout
+  - StatCards stacked vertically
+  - Charts full width, stacked vertically
+  - Bottom navigation or collapsible sidebar
+  - Touch targets 44x44px minimum
+**And** Tablet (768-1023px):
+  - Two-column grid for StatCards
+  - Charts side-by-side or stacked depending on space
+  - Collapsible sidebar (icon-only)
+**And** Desktop (≥1024px):
+  - Full sidebar (250px)
+  - Three-column StatCard grid
+  - Charts side-by-side
+  - Max-width 1200px container
+**And** All breakpoints tested and functional
+**And** Touch interactions work on mobile (swipe, tap, pinch-zoom disabled on charts)
+**And** Fonts scale appropriately (H1: 2.5rem desktop, 2rem mobile)
+**And** Charts render correctly at all sizes
+**And** No horizontal scrolling on mobile
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <!-- Tech Spec Epic 5: Responsive Strategy -->
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification - Analytics Dashboard</title>
+        <section>Responsive Strategy (Story 5.8)</section>
+        <snippet>Mobile/tablet responsive breakpoints: 320px, 768px, 1024px. Fully responsive layout adapting from mobile (320px) through desktop (2560px). All components functional on mobile (320px), tablet (768px), desktop (1024px+).</snippet>
+      </doc>
+
+      <!-- Architecture: Chakra UI Responsive Design -->
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>UI Framework and Responsive Design</section>
+        <snippet>Chakra UI 2.8+ for accessibility, components, and responsive design. Mobile-first approach with progressive enhancement. Breakpoints: base (0px), sm (480px), md (768px), lg (1024px), xl (1280px), 2xl (1536px).</snippet>
+      </doc>
+
+      <!-- PRD: Responsive Requirements -->
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>Non-Functional Requirements</section>
+        <snippet>FR44: Mobile responsive 320px minimum width. FR45: Tablet responsive 768px breakpoint. FR46: Touch targets 44x44px minimum (WCAG accessibility).</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <!-- Dashboard Page (Main Layout) -->
+      <artifact>
+        <path>src/app/dashboard/page.tsx</path>
+        <kind>page</kind>
+        <symbol>DashboardPage</symbol>
+        <lines>full file</lines>
+        <reason>Main dashboard page - needs responsive layout with Chakra UI Grid/Flex and breakpoint-specific props</reason>
+      </artifact>
+
+      <!-- DashboardStats Component (Already has basic responsive) -->
+      <artifact>
+        <path>src/components/dashboard/DashboardStats.tsx</path>
+        <kind>component</kind>
+        <symbol>DashboardStats</symbol>
+        <lines>79</lines>
+        <reason>StatCards container - already has SimpleGrid columns={{ base: 1, lg: 3 }}, needs md breakpoint for tablet (2 columns)</reason>
+      </artifact>
+
+      <!-- Individual Dashboard Components -->
+      <artifact>
+        <path>src/components/dashboard/StatCard.tsx</path>
+        <kind>component</kind>
+        <symbol>StatCard</symbol>
+        <lines>full file</lines>
+        <reason>Stat card component - verify responsive sizing and touch targets</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/components/dashboard/CategorySpendingChart.tsx</path>
+        <kind>component</kind>
+        <symbol>CategorySpendingChart</symbol>
+        <lines>full file</lines>
+        <reason>Pie chart component - ensure ResponsiveContainer adapts, legend position responsive</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/components/dashboard/SpendingTrendsChart.tsx</path>
+        <kind>component</kind>
+        <symbol>SpendingTrendsChart</symbol>
+        <lines>full file</lines>
+        <reason>Line chart component - ensure ResponsiveContainer adapts, X-axis labels responsive</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/components/dashboard/MonthOverMonth.tsx</path>
+        <kind>component</kind>
+        <symbol>MonthOverMonth</symbol>
+        <lines>full file</lines>
+        <reason>Month comparison component - may need responsive list/grid layout</reason>
+      </artifact>
+
+      <!-- Layout Components from Story 5.1 -->
+      <artifact>
+        <path>src/components/layout/Sidebar.tsx</path>
+        <kind>component</kind>
+        <symbol>Sidebar</symbol>
+        <lines>full file</lines>
+        <reason>Sidebar component - verify collapsible behavior and responsive visibility (from Story 5.1)</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/components/layout/MobileNav.tsx</path>
+        <kind>component</kind>
+        <symbol>MobileNav</symbol>
+        <lines>full file</lines>
+        <reason>Mobile navigation - verify drawer behavior on mobile (from Story 5.1)</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <ecosystem name="node">
+        <package name="next" version="^15.0.0" />
+        <package name="react" version="^18.3.0" />
+        <package name="@chakra-ui/react" version="^2.8.0" />
+        <package name="recharts" version="^3.5.0" />
+        <package name="@chakra-ui/icons" version="^2.1.0" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <!-- Chakra UI Responsive Props Interface -->
+    <interface>
+      <name>Chakra UI Responsive Props</name>
+      <kind>Responsive Styling</kind>
+      <signature>
+// Responsive prop syntax
+&lt;Box
+  width={{ base: '100%', md: '50%', lg: '33.33%' }}
+  display={{ base: 'block', md: 'flex' }}
+  fontSize={{ base: '0.875rem', lg: '1rem' }}
+/&gt;
+
+// SimpleGrid responsive columns
+&lt;SimpleGrid
+  columns={{ base: 1, md: 2, lg: 3 }}
+  spacing={{ base: 4, md: 6 }}
+&gt;
+
+// Grid template columns
+&lt;Grid
+  templateColumns={{
+    base: '1fr',
+    md: 'repeat(2, 1fr)',
+    lg: 'repeat(3, 1fr)',
+  }}
+  gap={{ base: 4, md: 6 }}
+/&gt;
+      </signature>
+      <path>@chakra-ui/react</path>
+    </interface>
+
+    <!-- Chakra UI Breakpoints -->
+    <interface>
+      <name>Chakra UI Breakpoints</name>
+      <kind>Configuration</kind>
+      <signature>
+// Default Chakra UI breakpoints
+const breakpoints = {
+  base: '0px',    // Mobile
+  sm: '480px',    // Small mobile
+  md: '768px',    // Tablet
+  lg: '1024px',   // Desktop
+  xl: '1280px',   // Large desktop
+  '2xl': '1536px' // Extra large
+}
+      </signature>
+      <path>@chakra-ui/theme</path>
+    </interface>
+
+    <!-- Recharts ResponsiveContainer -->
+    <interface>
+      <name>Recharts ResponsiveContainer</name>
+      <kind>Component</kind>
+      <signature>
+import { ResponsiveContainer, PieChart, LineChart } from 'recharts';
+
+&lt;ResponsiveContainer width="100%" height={300}&gt;
+  &lt;PieChart&gt;...&lt;/PieChart&gt;
+&lt;/ResponsiveContainer&gt;
+
+// Automatically adapts to parent container width
+// Rerenders on window resize
+      </signature>
+      <path>recharts</path>
+    </interface>
+
+    <!-- useBreakpointValue Hook -->
+    <interface>
+      <name>useBreakpointValue Hook</name>
+      <kind>React Hook</kind>
+      <signature>
+import { useBreakpointValue } from '@chakra-ui/react';
+
+const isMobile = useBreakpointValue({ base: true, md: false });
+const columns = useBreakpointValue({ base: 1, md: 2, lg: 3 });
+const chartHeight = useBreakpointValue({ base: 250, md: 300, lg: 400 });
+      </signature>
+      <path>@chakra-ui/react</path>
+    </interface>
+  </interfaces>
+
+  <constraints>
+    <!-- Responsive Layout Constraints -->
+    <constraint>Mobile layout (&lt;768px): Single column, all components stacked vertically</constraint>
+    <constraint>Tablet layout (768-1023px): Two-column StatCard grid (2 top, 1 bottom), charts side-by-side or stacked</constraint>
+    <constraint>Desktop layout (≥1024px): Three-column StatCard grid, charts side-by-side, max-width 1200px container</constraint>
+    <constraint>Use Chakra UI responsive props syntax: {{ base: value, md: value, lg: value }}</constraint>
+    <constraint>Mobile-first approach: base styles for mobile, progressive enhancement for larger screens</constraint>
+
+    <!-- Touch Interaction Constraints -->
+    <constraint>All interactive elements (buttons, links, chart slices) must have 44x44px minimum touch targets (WCAG 2.1)</constraint>
+    <constraint>Touch events must work on mobile (React handles onClick → touch automatically)</constraint>
+    <constraint>Optional: Disable pinch-zoom on charts with viewport meta tag</constraint>
+
+    <!-- Typography Constraints -->
+    <constraint>H1: fontSize={{ base: '2rem', lg: '2.5rem' }}</constraint>
+    <constraint>H2: fontSize={{ base: '1.5rem', lg: '2rem' }}</constraint>
+    <constraint>Body text: fontSize={{ base: '0.875rem', lg: '1rem' }}</constraint>
+    <constraint>Ensure text remains readable at all sizes (no text smaller than 14px on mobile)</constraint>
+
+    <!-- Chart Responsiveness Constraints -->
+    <constraint>All charts must use Recharts ResponsiveContainer to adapt to parent width</constraint>
+    <constraint>Charts must render correctly from 250px to 1200px wide</constraint>
+    <constraint>Pie chart legend: below chart on mobile, side on desktop</constraint>
+    <constraint>Line chart X-axis labels: rotate or abbreviate on mobile if needed</constraint>
+
+    <!-- Layout Constraints -->
+    <constraint>No horizontal scrolling on any device (test at 320px minimum)</constraint>
+    <constraint>All components must fit within viewport width</constraint>
+    <constraint>Desktop: Max-width 1200px container, centered</constraint>
+    <constraint>Sidebar: Hidden on mobile (drawer), collapsible icon-only on tablet, full 250px on desktop (from Story 5.1)</constraint>
+
+    <!-- Testing Constraints -->
+    <constraint>Test on: iPhone SE (320px), iPhone 12 (390px), iPad (768px), iPad Pro (1024px), Desktop (1440px), Ultrawide (2560px)</constraint>
+    <constraint>Test portrait and landscape orientations</constraint>
+    <constraint>Test on Chrome, Safari, Firefox</constraint>
+    <constraint>Verify smooth breakpoint transitions (no layout flickering)</constraint>
+
+    <!-- Development Constraints -->
+    <constraint>Use existing Chakra UI breakpoints - no custom breakpoints</constraint>
+    <constraint>Follow existing responsive patterns from Story 5.1 (sidebar)</constraint>
+    <constraint>Maintain TypeScript strict mode compatibility</constraint>
+    <constraint>No new dependencies required - use existing Chakra UI and Recharts</constraint>
+  </constraints>
+
+  <tests>
+    <standards>
+No unit test framework currently configured (Jest/Vitest). Manual testing required for responsive design. Use browser DevTools device emulation for breakpoint testing. Test on physical devices when possible. TypeScript compilation (npm run type-check) and ESLint (npm run lint) checks mandatory before marking story complete.
+    </standards>
+
+    <locations>
+      <location>Manual testing checklist documented in story file</location>
+      <location>TypeScript: npm run type-check</location>
+      <location>ESLint: npm run lint</location>
+      <location>Browser DevTools: Device emulation for various screen sizes</location>
+    </locations>
+
+    <ideas>
+      <!-- AC #1, #2: Mobile Layout -->
+      <idea ac="1,2">
+        Test: Resize browser to &lt;768px → verify single column layout with StatCards stacked vertically (3 rows), charts full width stacked. Test on iPhone SE (320px), iPhone 12 (390px). Verify no horizontal scroll.
+      </idea>
+
+      <!-- AC #1, #3: Tablet Layout -->
+      <idea ac="1,3">
+        Test: Resize browser to 768-1023px → verify two-column StatCard grid (2 top, 1 bottom), charts side-by-side or stacked depending on space. Test on iPad (768px), iPad Pro (1024px). Verify sidebar collapsible.
+      </idea>
+
+      <!-- AC #1, #4: Desktop Layout -->
+      <idea ac="1,4">
+        Test: Resize browser to ≥1024px → verify three-column StatCard grid (all 3 in one row), charts side-by-side, full sidebar (250px), max-width 1200px container centered. Test on 1440px, 1920px, 2560px.
+      </idea>
+
+      <!-- AC #5: Breakpoint Testing -->
+      <idea ac="5">
+        Test: Use browser DevTools to test all breakpoints: 320px, 375px, 768px, 1024px, 1440px, 1920px. Verify smooth transitions when resizing (no flicker or layout jumping). Test portrait and landscape.
+      </idea>
+
+      <!-- AC #6: Touch Interactions -->
+      <idea ac="6">
+        Test: On mobile device or touch-enabled DevTools, verify all buttons respond to tap, chart slices/points clickable, drill-down navigation works (from Story 5.6). Measure touch targets ≥44x44px.
+      </idea>
+
+      <!-- AC #7: Typography -->
+      <idea ac="7">
+        Test: Verify font sizes scale: H1 2rem mobile → 2.5rem desktop, H2 1.5rem → 2rem, body 0.875rem → 1rem. Text remains readable at all sizes (no text smaller than 14px on mobile).
+      </idea>
+
+      <!-- AC #8: Chart Responsiveness -->
+      <idea ac="8">
+        Test: Resize browser from 320px to 2560px → verify charts render correctly at all sizes. Pie chart legend below on mobile, side on desktop. Line chart X-axis labels rotate/abbreviate if needed on mobile.
+      </idea>
+
+      <!-- AC #9: No Horizontal Scroll -->
+      <idea ac="9">
+        Test: Resize to 320px (iPhone SE) → verify no horizontal scrolling. All components fit within viewport width. No elements exceed screen bounds.
+      </idea>
+    </ideas>
+  </tests>
+</story-context>

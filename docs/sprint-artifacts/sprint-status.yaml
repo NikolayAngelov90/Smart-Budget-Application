@@ -73,9 +73,9 @@ development_status:
   5-3-monthly-spending-by-category-pie-donut-chart: done
   5-4-spending-trends-over-time-line-chart: done
   5-5-month-over-month-comparison-highlights: done
-  5-6-chart-interactivity-and-drill-down: drafted
-  5-7-dashboard-performance-and-loading-states: drafted
-  5-8-responsive-dashboard-for-mobile-and-tablet: drafted
+  5-6-chart-interactivity-and-drill-down: done
+  5-7-dashboard-performance-and-loading-states: done
+  5-8-responsive-dashboard-for-mobile-and-tablet: done
   epic-5-retrospective: optional
 
   epic-6: backlog

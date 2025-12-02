@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   Box,
   Container,
@@ -45,7 +46,7 @@ import {
   AlertDialogOverlay,
   useToast,
 } from '@chakra-ui/react';
-import { CloseIcon, SearchIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
+import { CloseIcon, SearchIcon, EditIcon, DeleteIcon, ChevronLeftIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -501,6 +502,21 @@ export default function TransactionsPage() {
   return (
     <AppLayout>
       <Container maxW="container.xl" py={6}>
+        {/* Back to Dashboard Link (Story 5.6) */}
+        <Box mb={4}>
+          <Button
+            as={Link}
+            href="/dashboard"
+            leftIcon={<ChevronLeftIcon />}
+            variant="ghost"
+            colorScheme="blue"
+            size="sm"
+            _hover={{ bg: 'blue.50' }}
+          >
+            Back to Dashboard
+          </Button>
+        </Box>
+
         {/* Page Header */}
         <Heading as="h1" size="xl" mb={6} color="gray.800">
           Transactions

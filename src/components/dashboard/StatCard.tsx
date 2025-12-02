@@ -43,7 +43,7 @@ export function StatCard({
   if (isLoading) {
     return (
       <Box
-        p={6}
+        p={{ base: 4, md: 6 }}
         bg="white"
         borderRadius="lg"
         boxShadow="sm"
@@ -59,7 +59,7 @@ export function StatCard({
 
   return (
     <Box
-      p={6}
+      p={{ base: 4, md: 6 }}
       bg="white"
       borderRadius="lg"
       boxShadow="sm"
@@ -76,7 +76,7 @@ export function StatCard({
           display="flex"
           alignItems="center"
           gap={2}
-          fontSize="sm"
+          fontSize={{ base: '0.75rem', md: '0.875rem' }}
           fontWeight="medium"
           color="gray.600"
           mb={2}
@@ -86,7 +86,7 @@ export function StatCard({
         </StatLabel>
 
         <StatNumber
-          fontSize={{ base: '2rem', lg: '2.5rem', xl: '3rem' }}
+          fontSize={{ base: '1.75rem', md: '2rem', lg: '2.5rem', xl: '3rem' }}
           fontWeight="bold"
           color={colorScheme === 'green' ? 'green.600' : 'red.600'}
           lineHeight="1.2"
@@ -95,7 +95,7 @@ export function StatCard({
           {value}
         </StatNumber>
 
-        <StatHelpText fontSize="sm" color="gray.600" mb={0}>
+        <StatHelpText fontSize={{ base: '0.75rem', md: '0.875rem' }} color="gray.600" mb={0}>
           <StatArrow type={trendType} />
           {Math.abs(trend).toFixed(2)}% {trendLabel}
         </StatHelpText>

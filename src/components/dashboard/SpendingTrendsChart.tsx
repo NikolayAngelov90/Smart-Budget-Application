@@ -3,11 +3,13 @@
 /**
  * SpendingTrendsChart Component
  * Story 5.4: Spending Trends Over Time (Line Chart)
+ * Story 5.6: Added onClick handler for drill-down navigation
  *
  * Displays a line chart showing income vs expenses trends over the last 6 months
  */
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   Text,
@@ -18,6 +20,7 @@ import {
   Flex,
   Icon,
   useBreakpointValue,
+  Skeleton,
 } from '@chakra-ui/react';
 import {
   LineChart,
@@ -47,6 +50,7 @@ export interface SpendingTrendsChartProps {
  */
 interface LineChartDataPoint {
   month: string;                      // Month label ("Jan", "Feb", etc.)
+  monthYYYYMM: string;                // Month in YYYY-MM format for navigation
   income: number;                     // Income amount
   expenses: number;                   // Expenses amount
   [key: string]: string | number;     // Index signature for Recharts compatibility
@@ -106,6 +110,7 @@ export function SpendingTrendsChart({
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { data, error, isLoading, mutate } = useTrends(isMobile ? 3 : months);
   const supabase = createClient();
+  const router = useRouter();
 
   // Subscribe to real-time transaction changes
   useEffect(() => {
@@ -148,13 +153,31 @@ export function SpendingTrendsChart({
     );
   }
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <Box p={6} bg="white" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="gray.200">
+        <Skeleton height="32px" width="220px" mb={4} />
+        <Skeleton height={`${height}px`} borderRadius="md" />
+      </Box>
+    );
+  }
+
   // Transform data for Recharts
   const chartData: LineChartDataPoint[] =
     data?.months.map((monthData: MonthlyTrendData) => ({
       month: monthData.monthLabel,
+      monthYYYYMM: monthData.month, // YYYY-MM format for navigation
       income: monthData.income,
       expenses: monthData.expenses,
     })) ?? [];
+
+  // Handle line chart click for drill-down navigation (Story 5.6)
+  const handleLineClick = (data: LineChartDataPoint | null) => {
+    if (data && data.monthYYYYMM) {
+      router.push(`/transactions?month=${data.monthYYYYMM}`);
+    }
+  };
 
   // Empty state
   if (!isLoading && chartData.length === 0) {
@@ -212,6 +235,15 @@ export function SpendingTrendsChart({
         <LineChart
           data={chartData}
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onClick={(data: any) => {
+            if (data && data.activePayload && data.activePayload.length > 0) {
+              handleLineClick(data.activePayload[0].payload);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Spending trends chart. Click on a data point to view transactions for that month."
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
           <XAxis
@@ -224,7 +256,7 @@ export function SpendingTrendsChart({
             tick={{ fill: '#4A5568', fontSize: 12 }}
             tickFormatter={(value) => formatCurrency(value)}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#CBD5E0', strokeWidth: 2 }} />
           <Legend
             verticalAlign="bottom"
             height={36}
@@ -237,8 +269,9 @@ export function SpendingTrendsChart({
             name="Income"
             stroke="#38A169"
             strokeWidth={2}
-            dot={{ fill: '#38A169', r: 4 }}
-            activeDot={{ r: 6 }}
+            dot={{ fill: '#38A169', r: 4, cursor: 'pointer' }}
+            activeDot={{ r: 6, cursor: 'pointer' }}
+            cursor="pointer"
           />
           <Line
             type="monotone"
@@ -246,8 +279,9 @@ export function SpendingTrendsChart({
             name="Expenses"
             stroke="#E53E3E"
             strokeWidth={2}
-            dot={{ fill: '#E53E3E', r: 4 }}
-            activeDot={{ r: 6 }}
+            dot={{ fill: '#E53E3E', r: 4, cursor: 'pointer' }}
+            activeDot={{ r: 6, cursor: 'pointer' }}
+            cursor="pointer"
           />
         </LineChart>
       </ResponsiveContainer>

@@ -72,6 +72,8 @@ export function useTrends(months?: number): UseTrendsResult {
       dedupingInterval: 5000,
       // Revalidate when window regains focus
       revalidateOnFocus: true,
+      // Revalidate on network reconnect
+      revalidateOnReconnect: true,
       // Revalidate on mount
       revalidateOnMount: true,
       // Keep previous data while revalidating

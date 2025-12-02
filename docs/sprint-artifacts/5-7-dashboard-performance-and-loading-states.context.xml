@@ -1,0 +1,371 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>5</epicId>
+    <storyId>7</storyId>
+    <title>Dashboard Performance and Loading States</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-12-02</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-7-dashboard-performance-and-loading-states.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>the dashboard to load quickly with smooth loading states</iWant>
+    <soThat>I don't wait for data and the app feels responsive</soThat>
+    <tasks>
+- Add skeleton loaders to StatCards (AC: 2, 3, 4)
+  - Modify `src/components/dashboard/StatCard.tsx`
+  - Add `isLoading` prop to component
+  - Use Chakra UI `<Skeleton>` component when loading
+  - Skeleton dimensions match final StatCard (height, width)
+  - Show 3 skeleton rectangles in grid layout
+- Add skeleton loaders to charts (AC: 2, 3, 4)
+  - Modify `src/components/dashboard/CategorySpendingChart.tsx`
+  - Modify `src/components/dashboard/SpendingTrendsChart.tsx`
+  - Add loading state check before rendering chart
+  - Use Chakra UI `<Skeleton>` for chart placeholder
+  - Skeleton dimensions match final chart (250-400px height)
+  - Show chart-shaped rectangle (rounded corners)
+- Implement server-side data fetching (AC: 5)
+  - Modify `src/app/dashboard/page.tsx` to use Server Component
+  - Fetch initial dashboard data on server (SSR)
+  - Pass initial data to client components via props
+  - Client components hydrate with initial data, then use SWR for updates
+- Configure SWR caching (AC: 6)
+  - Verify SWR hooks use 5-second deduplication interval
+  - Configure `revalidateOnFocus: true` for all dashboard hooks
+  - Set `revalidateOnReconnect: true` for auto-refresh on network reconnect
+  - Ensure SWR cache persists across navigation
+- Add Supabase Realtime subscriptions (AC: 7, 8, 9)
+  - Modify dashboard hooks to subscribe to `transactions` table changes
+  - Use Supabase Realtime: `supabase.channel().on('postgres_changes', ...)`
+  - Subscribe to INSERT, UPDATE, DELETE events
+  - Trigger SWR revalidation on transaction changes
+  - Ensure updates appear within 300ms
+  - Test optimistic updates: transaction added → dashboard updates immediately
+- Implement error handling (AC: 10, 11)
+  - Add error state to all dashboard components
+  - Show error message: "Unable to load dashboard. Retry"
+  - Add "Retry" button that triggers SWR `mutate()` to refetch
+  - Use Chakra UI `Alert` component for error display
+  - Log errors to console for debugging
+- Performance optimization (AC: 1, 8)
+  - Run Lighthouse audit on dashboard page
+  - Target: Performance score >90
+  - Target: Total load time <2 seconds
+  - Target: Chart update time <300ms
+  - Optimize API queries: ensure indexes on `user_id`, `date`, `category_id`
+  - Consider lazy loading charts (dynamic imports) if needed
+  - Profile with Next.js performance tools
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+**Given** I navigate to the dashboard
+**When** The page is loading
+**Then** I see skeleton loaders matching the final layout
+
+**And** Dashboard loads within 2 seconds (as per NFR FR25)
+**And** Skeleton loaders shown for StatCards (3 rectangles)
+**And** Skeleton loaders shown for charts (chart-shaped placeholders)
+**And** Skeletons match final component dimensions
+**And** Data fetched server-side where possible (SSR for initial load)
+**And** SWR caches data client-side for instant subsequent loads
+**And** Real-time updates via Supabase Realtime subscriptions
+**And** Chart updates complete within 300ms (as per NFR)
+**And** Optimistic updates: new transactions appear immediately
+**And** Error state if data fetch fails: "Unable to load dashboard. Retry"
+**And** Retry button refetches data
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <!-- Tech Spec Epic 5: Performance and Loading States -->
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-5.md</path>
+        <title>Epic 5 Technical Specification - Analytics Dashboard</title>
+        <section>Performance Strategy (Story 5.7)</section>
+        <snippet>Performance optimization: <2s load time, <300ms chart updates, skeleton loading states. Dashboard loads within 2 seconds on 3G connection (NFR-Performance). Chart updates complete within 300ms after data change. Server-side SQL aggregation queries in Supabase for performance. SWR for client-side caching and automatic revalidation. Supabase Realtime subscriptions for live updates.</snippet>
+      </doc>
+
+      <!-- Architecture: SWR and Realtime -->
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>State Management and Caching</section>
+        <snippet>React Context + SWR for state management - server state caching, optimistic updates, automatic revalidation. Supabase provides PostgreSQL database, authentication, and real-time subscriptions. Performance-First architecture with <2s load time, <200ms transaction saves.</snippet>
+      </doc>
+
+      <!-- UX Design: Loading States -->
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Loading States and Feedback</section>
+        <snippet>Speed & Responsiveness - Instant feedback, no loading spinners for local operations, optimistic UI updates. Chakra UI Feedback components: Skeleton for loading states of charts and data. Speed & Responsiveness - no loading spinners for local operations.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <!-- Dashboard Page (SSR Implementation Target) -->
+      <artifact>
+        <path>src/app/dashboard/page.tsx</path>
+        <kind>page</kind>
+        <symbol>DashboardPage</symbol>
+        <lines>full file</lines>
+        <reason>Dashboard page component - needs to be converted to Server Component with SSR for initial data fetching</reason>
+      </artifact>
+
+      <!-- StatCard Component (Skeleton Target) -->
+      <artifact>
+        <path>src/components/dashboard/StatCard.tsx</path>
+        <kind>component</kind>
+        <symbol>StatCard</symbol>
+        <lines>full file</lines>
+        <reason>Stat card component - needs isLoading prop and Skeleton implementation for loading states</reason>
+      </artifact>
+
+      <!-- DashboardStats Component (Loading State Coordinator) -->
+      <artifact>
+        <path>src/components/dashboard/DashboardStats.tsx</path>
+        <kind>component</kind>
+        <symbol>DashboardStats</symbol>
+        <lines>full file</lines>
+        <reason>Dashboard stats coordinator - needs to pass loading state to StatCard children</reason>
+      </artifact>
+
+      <!-- Chart Components (Skeleton + Error Handling) -->
+      <artifact>
+        <path>src/components/dashboard/CategorySpendingChart.tsx</path>
+        <kind>component</kind>
+        <symbol>CategorySpendingChart</symbol>
+        <lines>full file</lines>
+        <reason>Pie chart component - already has error/loading states and Realtime subscription, may need skeleton enhancement</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/components/dashboard/SpendingTrendsChart.tsx</path>
+        <kind>component</kind>
+        <symbol>SpendingTrendsChart</symbol>
+        <lines>full file</lines>
+        <reason>Line chart component - already has error/loading states and Realtime subscription, may need skeleton enhancement</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/components/dashboard/MonthOverMonth.tsx</path>
+        <kind>component</kind>
+        <symbol>MonthOverMonth</symbol>
+        <lines>full file</lines>
+        <reason>Month comparison component - already has Realtime subscription, may need skeleton/error enhancement</reason>
+      </artifact>
+
+      <!-- SWR Hooks (Realtime + Caching Configuration) -->
+      <artifact>
+        <path>src/lib/hooks/useDashboardStats.ts</path>
+        <kind>hook</kind>
+        <symbol>useDashboardStats</symbol>
+        <lines>full file</lines>
+        <reason>Dashboard stats SWR hook - already has Realtime subscription, verify SWR config (deduplication, revalidation)</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/lib/hooks/useSpendingByCategory.ts</path>
+        <kind>hook</kind>
+        <symbol>useSpendingByCategory</symbol>
+        <lines>full file</lines>
+        <reason>Category spending SWR hook - already has Realtime subscription, verify SWR config</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/lib/hooks/useTrends.ts</path>
+        <kind>hook</kind>
+        <symbol>useTrends</symbol>
+        <lines>full file</lines>
+        <reason>Trends SWR hook - already has Realtime subscription, verify SWR config</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/lib/hooks/useMonthOverMonth.ts</path>
+        <kind>hook</kind>
+        <symbol>useMonthOverMonth</symbol>
+        <lines>full file</lines>
+        <reason>Month comparison SWR hook - already has Realtime subscription, verify SWR config</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <ecosystem name="node">
+        <package name="next" version="^15.0.0" />
+        <package name="react" version="^18.3.0" />
+        <package name="@chakra-ui/react" version="^2.8.0" />
+        <package name="swr" version="^2.3.6" />
+        <package name="@supabase/supabase-js" version="^2.81.1" />
+        <package name="recharts" version="^3.5.0" />
+        <package name="date-fns" version="^4.1.0" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <!-- SWR Configuration Interface -->
+    <interface>
+      <name>SWR Hook Configuration</name>
+      <kind>Hook Configuration</kind>
+      <signature>
+useSWR(key, fetcher, {
+  dedupingInterval: 5000,  // 5 seconds deduplication
+  revalidateOnFocus: true, // Revalidate when user returns to tab
+  revalidateOnReconnect: true, // Revalidate on network reconnect
+  refreshInterval: 0, // No polling (use Realtime instead)
+})
+      </signature>
+      <path>node_modules/swr/core/types.d.ts</path>
+    </interface>
+
+    <!-- Supabase Realtime Subscription Interface -->
+    <interface>
+      <name>Supabase Realtime Subscription</name>
+      <kind>Event Subscription</kind>
+      <signature>
+const channel = supabase
+  .channel('channel-name')
+  .on(
+    'postgres_changes',
+    {
+      event: '*', // or 'INSERT' | 'UPDATE' | 'DELETE'
+      schema: 'public',
+      table: 'transactions',
+    },
+    (payload) => {
+      // Trigger SWR revalidation
+      mutate();
+    }
+  )
+  .subscribe();
+
+// Cleanup
+return () => {
+  supabase.removeChannel(channel);
+};
+      </signature>
+      <path>@supabase/supabase-js</path>
+    </interface>
+
+    <!-- Chakra UI Skeleton Interface -->
+    <interface>
+      <name>Chakra UI Skeleton</name>
+      <kind>Component</kind>
+      <signature>
+import { Skeleton, SkeletonCircle, SkeletonText } from '@chakra-ui/react';
+
+&lt;Skeleton height="20px" width="100%" /&gt;
+&lt;Skeleton height="300px" borderRadius="md" /&gt; // For charts
+&lt;SkeletonText mt="4" noOfLines={4} spacing="4" /&gt;
+      </signature>
+      <path>@chakra-ui/react</path>
+    </interface>
+
+    <!-- Next.js SSR Interface -->
+    <interface>
+      <name>Next.js Server Component</name>
+      <kind>Server Component Pattern</kind>
+      <signature>
+// Server Component (no 'use client' directive)
+export default async function DashboardPage() {
+  // Fetch data on server
+  const initialData = await fetchDashboardData();
+
+  // Pass to client components
+  return &lt;ClientComponent initialData={initialData} /&gt;;
+}
+
+// Client component receives initial data
+'use client';
+export function ClientComponent({ initialData }) {
+  const { data } = useSWR(key, fetcher, {
+    fallbackData: initialData, // Hydrate with server data
+  });
+}
+      </signature>
+      <path>Next.js 15 App Router</path>
+    </interface>
+  </interfaces>
+
+  <constraints>
+    <!-- Performance Constraints -->
+    <constraint>Dashboard must load within 2 seconds on 3G connection (NFR FR25)</constraint>
+    <constraint>Chart updates must complete within 300ms after data change (NFR FR26)</constraint>
+    <constraint>Lighthouse performance score must be >90</constraint>
+
+    <!-- Loading State Constraints -->
+    <constraint>Skeleton loaders must match final component dimensions to prevent layout shift</constraint>
+    <constraint>Show skeleton loaders for: 3 StatCards, pie chart, line chart, comparison highlights</constraint>
+    <constraint>Skeleton appearance must be immediate (no delay before showing skeletons)</constraint>
+
+    <!-- SSR and Caching Constraints -->
+    <constraint>Dashboard page must use Server Component for SSR (no 'use client' directive at page level)</constraint>
+    <constraint>Initial dashboard data must be fetched server-side and passed to client components</constraint>
+    <constraint>SWR hooks must use 5-second deduplication interval to prevent redundant API calls</constraint>
+    <constraint>SWR must revalidate on focus (user returns to tab) and on reconnect (network restored)</constraint>
+
+    <!-- Realtime Constraints -->
+    <constraint>Realtime subscriptions already implemented in Stories 5.3, 5.4, 5.5 - verify working correctly</constraint>
+    <constraint>Realtime updates must trigger within 300ms of transaction change</constraint>
+    <constraint>Single Realtime channel per component, cleanup on unmount</constraint>
+
+    <!-- Error Handling Constraints -->
+    <constraint>All dashboard components must have error states with "Unable to load dashboard. Retry" message</constraint>
+    <constraint>Retry button must trigger SWR mutate() to refetch data</constraint>
+    <constraint>Use Chakra UI Alert component for error display (consistent with existing patterns)</constraint>
+
+    <!-- Development Constraints -->
+    <constraint>No new dependencies required - use existing Chakra UI, SWR, Supabase, Recharts</constraint>
+    <constraint>TypeScript strict mode must pass (no 'any' types without eslint-disable)</constraint>
+    <constraint>Follow existing patterns from Stories 5.1-5.6 for consistency</constraint>
+  </constraints>
+
+  <tests>
+    <standards>
+No unit test framework currently configured (Jest/Vitest). Manual testing required for now. TypeScript compilation (npm run type-check) and ESLint (npm run lint) checks mandatory before marking story complete. Lighthouse performance audit required to verify <2s load time and >90 performance score.
+    </standards>
+
+    <locations>
+      <location>Manual testing checklist documented in story file</location>
+      <location>TypeScript: npm run type-check</location>
+      <location>ESLint: npm run lint</location>
+      <location>Lighthouse: npx lighthouse http://localhost:3000/dashboard --view</location>
+    </locations>
+
+    <ideas>
+      <!-- AC #1, #2, #3, #4: Skeleton Loaders -->
+      <idea ac="1,2,3,4">
+        Test: Navigate to dashboard → verify skeleton loaders appear immediately for StatCards (3 rectangles) and charts (chart-shaped placeholders). Measure time to data load (<2s). Verify no layout shift when skeletons replaced with actual data.
+      </idea>
+
+      <!-- AC #5: SSR Initial Data Fetch -->
+      <idea ac="5">
+        Test: Inspect page source (View Page Source) → verify initial dashboard data is rendered in HTML (SSR). Disable JavaScript and reload → verify data still visible (proves SSR working).
+      </idea>
+
+      <!-- AC #6: SWR Caching -->
+      <idea ac="6">
+        Test: Load dashboard, navigate away, return → verify instant load from SWR cache (no skeleton). Switch browser tabs (blur), return (focus) → verify data revalidates. Disconnect network, reconnect → verify data revalidates.
+      </idea>
+
+      <!-- AC #7, #8, #9: Realtime Updates -->
+      <idea ac="7,8,9">
+        Test: Open dashboard in one tab, add transaction in another tab → verify dashboard updates within 300ms. Measure update time in DevTools Performance tab. Test with INSERT, UPDATE, DELETE events.
+      </idea>
+
+      <!-- AC #10, #11: Error Handling -->
+      <idea ac="10,11">
+        Test: Block network in DevTools → verify error message "Unable to load dashboard. Retry" appears. Click Retry button → verify data refetches when network restored. Error should clear when data loads successfully.
+      </idea>
+
+      <!-- Performance Testing -->
+      <idea ac="1">
+        Test: Run Lighthouse audit on dashboard → verify Performance score >90, FCP <1.8s, LCP <2.5s, CLS <0.1. Throttle to Fast 3G in DevTools → measure load time (<2s target).
+      </idea>
+    </ideas>
+  </tests>
+</story-context>
