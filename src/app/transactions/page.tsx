@@ -14,7 +14,7 @@
  * - Mobile-responsive design
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -88,7 +88,7 @@ interface CategoryResponse {
 // Fetcher function for SWR
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function TransactionsPage() {
+function TransactionsContent() {
   // Get URL search params for drill-down navigation (Story 5.5)
   const searchParams = useSearchParams();
 
@@ -137,7 +137,7 @@ export default function TransactionsPage() {
 
         setStartDate(format(monthStart, 'yyyy-MM-dd'));
         setEndDate(format(monthEnd, 'yyyy-MM-dd'));
-      } catch (error) {
+      } catch {
         console.error('Invalid month parameter:', monthParam);
       }
     }
@@ -827,5 +827,43 @@ export default function TransactionsPage() {
         </AlertDialogOverlay>
       </AlertDialog>
     </AppLayout>
+  );
+}
+
+export default function TransactionsPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppLayout>
+          <Container maxW="container.xl" py={6}>
+            <Skeleton height="40px" width="200px" mb={6} />
+            <Card mb={6}>
+              <CardBody>
+                <VStack spacing={4}>
+                  <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} w="full">
+                    <Skeleton height="40px" />
+                    <Skeleton height="40px" />
+                    <Skeleton height="40px" />
+                    <Skeleton height="40px" />
+                  </SimpleGrid>
+                  <Skeleton height="40px" w="full" />
+                </VStack>
+              </CardBody>
+            </Card>
+            <VStack spacing={4} w="full">
+              {[...Array(5)].map((_, index) => (
+                <Card key={index} w="full">
+                  <CardBody>
+                    <Skeleton height="80px" />
+                  </CardBody>
+                </Card>
+              ))}
+            </VStack>
+          </Container>
+        </AppLayout>
+      }
+    >
+      <TransactionsContent />
+    </Suspense>
   );
 }

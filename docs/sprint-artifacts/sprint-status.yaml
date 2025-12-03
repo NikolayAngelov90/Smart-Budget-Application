@@ -78,7 +78,7 @@ development_status:
   5-8-responsive-dashboard-for-mobile-and-tablet: done
   epic-5-retrospective: optional
 
-  epic-6: backlog
+  epic-6: contexted
   6-1-ai-insights-rules-engine-implementation: backlog
   6-2-ai-insights-display-on-dashboard: backlog
   6-3-full-ai-insights-page-with-filtering: backlog
