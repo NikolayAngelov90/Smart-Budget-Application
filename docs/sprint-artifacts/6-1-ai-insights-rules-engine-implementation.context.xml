@@ -1,0 +1,223 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>1</storyId>
+    <title>AI Insights Rules Engine Implementation</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-03</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-1-ai-insights-rules-engine-implementation.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>developer</asA>
+    <iWant>a rules-based insights generation engine</iWant>
+    <soThat>the system can analyze spending patterns and generate personalized recommendations</soThat>
+    <tasks>
+      <task id="1" ac="3">Create Statistical Analysis Utilities
+        <subtask>Create src/lib/ai/spendingAnalysis.ts file</subtask>
+        <subtask>Implement calculateMean(amounts: number[]): number function</subtask>
+        <subtask>Implement calculateStdDev(amounts: number[], mean: number): number function</subtask>
+        <subtask>Implement calculateMonthOverMonth(current: number, previous: number): number function</subtask>
+        <subtask>Add TypeScript interfaces for analysis results</subtask>
+        <subtask>Write unit tests for statistical functions (edge cases: empty arrays, single values, negative numbers)</subtask>
+      </task>
+      <task id="2" ac="1,2">Create Insight Rule Functions
+        <subtask>Create src/lib/ai/insightRules.ts file</subtask>
+        <subtask>Define InsightType and Insight TypeScript interfaces</subtask>
+        <subtask>Implement detectSpendingIncrease(transactions, categoryId, userId) rule function</subtask>
+        <subtask>Implement recommendBudgetLimit(transactions, categoryId, userId) rule function</subtask>
+        <subtask>Implement flagUnusualExpense(transactions, categoryId, userId) rule function</subtask>
+        <subtask>Implement generatePositiveReinforcement(transactions, categoryId, budgets, userId) rule function</subtask>
+        <subtask>Each function returns insight object with: title, description, type, priority, metadata</subtask>
+        <subtask>Use coaching tone in all generated text (friendly, non-judgmental)</subtask>
+        <subtask>Write unit tests for each rule with mock transaction data</subtask>
+      </task>
+      <task id="3" ac="4,6">Create Insight Orchestration Service
+        <subtask>Create src/lib/services/insightService.ts file</subtask>
+        <subtask>Implement generateInsights(userId: string, forceRegenerate: boolean) main function</subtask>
+        <subtask>Query transactions for current month, last month, last 3 months</subtask>
+        <subtask>Query categories for the user</subtask>
+        <subtask>Execute all 4 rule functions for each category</subtask>
+        <subtask>Filter out duplicate or low-value insights</subtask>
+        <subtask>Sort insights by priority (5 → 1)</subtask>
+        <subtask>Implement caching logic with 1-hour TTL (cache key: insights_${userId}_${month})</subtask>
+        <subtask>Check cache before generation, bypass cache if forceRegenerate=true</subtask>
+        <subtask>Insert insights into database using Supabase client</subtask>
+        <subtask>Return array of generated insights</subtask>
+        <subtask>Write integration tests with test database</subtask>
+      </task>
+      <task id="4" ac="5,7">Create Insight Generation API Endpoint
+        <subtask>Create src/app/api/insights/generate/route.ts file</subtask>
+        <subtask>Implement POST handler for insight generation</subtask>
+        <subtask>Validate user authentication (require valid session)</subtask>
+        <subtask>Parse forceRegenerate query parameter from request</subtask>
+        <subtask>Call insightService.generateInsights(userId, forceRegenerate)</subtask>
+        <subtask>Return JSON response with generated insights count and array</subtask>
+        <subtask>Handle errors gracefully (500 for server errors, 401 for unauthorized)</subtask>
+        <subtask>Add API route test with authenticated requests</subtask>
+      </task>
+      <task id="5" ac="4">Verify Database Schema and Indexes
+        <subtask>Verify insights table exists in Supabase (created in Story 1.2)</subtask>
+        <subtask>Verify insight_type ENUM includes all 4 types</subtask>
+        <subtask>Verify indexes exist: idx_insights_user_id, idx_insights_user_priority, idx_insights_user_type, idx_insights_dismissed</subtask>
+        <subtask>Verify Row-Level Security (RLS) policy: users can only SELECT/INSERT/UPDATE their own insights</subtask>
+        <subtask>Test RLS by attempting to query another user's insights (should fail)</subtask>
+      </task>
+      <task id="6" ac="5">Manual Refresh Trigger Logic
+        <subtask>In insightService.ts, add check for last generation timestamp</subtask>
+        <subtask>Store last generation time in cache or database</subtask>
+        <subtask>Implement transaction count check: trigger if 10+ new transactions since last generation</subtask>
+        <subtask>Return early if recently generated (unless forceRegenerate=true)</subtask>
+      </task>
+      <task id="7" ac="1">Coaching Tone Validation
+        <subtask>Review all generated insight text for friendly, non-judgmental tone</subtask>
+        <subtask>Test examples from all 4 rule types</subtask>
+        <subtask>Ensure no negative language ("you failed", "you overspent")</subtask>
+        <subtask>Use encouraging language ("Great job!", "Consider...", "You might want to...")</subtask>
+      </task>
+      <task id="8" ac="all">Integration Testing and Validation
+        <subtask>Create end-to-end test: add transactions → generate insights → verify insights in database</subtask>
+        <subtask>Test spending increase rule with 25% month-over-month increase</subtask>
+        <subtask>Test unusual expense rule with outlier transaction (3 std devs from mean)</subtask>
+        <subtask>Test budget recommendation with 3 months of transaction history</subtask>
+        <subtask>Test positive reinforcement with &lt;90% budget usage</subtask>
+        <subtask>Test cache behavior: generate twice, verify second call uses cache</subtask>
+        <subtask>Test forceRegenerate bypasses cache</subtask>
+        <subtask>Verify performance: generation completes in &lt;2 seconds</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac id="1">Four Insight Rule Types Implemented
+      <criteria>Spending Increase Detection (Priority 4 - High): Triggers when category spending >20% higher than previous month</criteria>
+      <criteria>Budget Limit Recommendations (Priority 3 - Medium): Based on 3-month average + 10% buffer</criteria>
+      <criteria>Unusual Expense Flagging (Priority 5 - Critical): Detects transactions >2 standard deviations from category mean</criteria>
+      <criteria>Positive Reinforcement (Priority 2 - Low): Celebrates categories &lt;90% of recommended budget</criteria>
+    </ac>
+    <ac id="2">Rule Implementation: All rules implemented in lib/ai/insightRules.ts</ac>
+    <ac id="3">Statistical Functions
+      <criteria>Mean calculation</criteria>
+      <criteria>Standard deviation calculation</criteria>
+      <criteria>Month-over-month comparison (percentage change)</criteria>
+    </ac>
+    <ac id="4">Data Storage
+      <criteria>Insights stored in insights table with type, priority, metadata</criteria>
+      <criteria>Each insight includes: title, description, type, priority, metadata (amounts, category info)</criteria>
+    </ac>
+    <ac id="5">Generation Triggers
+      <criteria>On new month (via scheduled job)</criteria>
+      <criteria>After 10+ new transactions</criteria>
+      <criteria>Manual refresh by user</criteria>
+    </ac>
+    <ac id="6">Caching: Insights cached for 1 hour to avoid redundant calculations</ac>
+    <ac id="7">API Endpoint: POST /api/insights/generate endpoint available for insight generation</ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <artifact path="docs/sprint-artifacts/tech-spec-epic-6.md" title="Epic 6 Technical Specification" section="Services and Modules">
+        Defines module architecture: insightRules.ts (rule implementations), spendingAnalysis.ts (statistical calculations), insightService.ts (orchestration). Includes detailed API specifications, data models, and workflows.
+      </artifact>
+      <artifact path="docs/sprint-artifacts/tech-spec-epic-6.md" title="Epic 6 Technical Specification" section="Data Models and Contracts">
+        Complete TypeScript interfaces for Insight, InsightType, InsightMetadata. Database schema for insights table with JSONB metadata field.
+      </artifact>
+      <artifact path="docs/sprint-artifacts/tech-spec-epic-6.md" title="Epic 6 Technical Specification" section="Acceptance Criteria">
+        Normalized acceptance criteria covering all 9 functional requirements (FR29-FR37) for insight generation, display, filtering, metadata, and scheduling.
+      </artifact>
+      <artifact path="docs/architecture.md" title="System Architecture" section="Database Schema">
+        Insights table schema with RLS policies. Indexes for performance: idx_insights_user_id, idx_insights_user_priority, idx_insights_user_type, idx_insights_dismissed.
+      </artifact>
+      <artifact path="docs/epics.md" title="Epics" section="Epic 6: AI Budget Insights">
+        Epic overview, business value, 4 insight rule types with examples and thresholds. Statistical formulas for mean, stdDev, monthOverMonth calculations.
+      </artifact>
+    </docs>
+    <code>
+      <artifact path="src/lib/supabase/client.ts" kind="service" symbol="createClient">
+        Supabase client for database operations. Use for querying transactions, categories, and inserting insights with automatic RLS enforcement.
+      </artifact>
+      <artifact path="src/types/category.types.ts" kind="types" symbol="Category">
+        Category type definitions. Reference for querying user categories in insight generation.
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="@supabase/supabase-js" version="^2.81.1">Supabase client for database operations, authentication, RLS</package>
+        <package name="next" version="^15.0.0">Next.js framework for API routes and server-side logic</package>
+        <package name="typescript" version="^5.3.0">TypeScript for type-safe code</package>
+        <package name="zod" version="^4.1.12">Schema validation for API requests and data validation</package>
+        <package name="date-fns" version="^4.1.0">Date manipulation for month calculations and time periods</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Server-side only: All insight generation logic must execute server-side. No client-side processing of transaction data.</constraint>
+    <constraint type="architecture">Deterministic rules: No external AI APIs (OpenAI, Claude). All insights generated using deterministic statistical rules in TypeScript.</constraint>
+    <constraint type="performance">Generation time: Insight generation must complete in &lt;2 seconds per user (NFR FR20).</constraint>
+    <constraint type="performance">Caching required: Implement 1-hour TTL cache using Redis-compatible storage (Vercel KV or Upstash) to avoid redundant calculations.</constraint>
+    <constraint type="database">RLS enforcement: All database queries must respect Row-Level Security policies. Users can only access their own insights.</constraint>
+    <constraint type="database">JSONB metadata: Use JSONB field for flexible, rule-specific metadata storage. Each rule type has different metadata structure.</constraint>
+    <constraint type="tone">Coaching tone: All generated insight text must use friendly, encouraging, non-judgmental language. Never use negative phrasing.</constraint>
+    <constraint type="testing">TypeScript strict mode: Run tsc --noEmit before marking tasks complete. Zero TypeScript errors required.</constraint>
+    <constraint type="testing">Unit test coverage: All rule functions and statistical functions must have comprehensive unit tests including edge cases.</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="InsightType" kind="TypeScript type">
+      <signature>export type InsightType = 'spending_increase' | 'budget_recommendation' | 'unusual_expense' | 'positive_reinforcement';</signature>
+      <path>src/lib/ai/insightRules.ts</path>
+    </interface>
+    <interface name="Insight" kind="TypeScript interface">
+      <signature>export interface Insight { id: string; user_id: string; title: string; description: string; type: InsightType; priority: 1 | 2 | 3 | 4 | 5; is_dismissed: boolean; metadata: InsightMetadata; created_at: Date; }</signature>
+      <path>src/lib/ai/insightRules.ts</path>
+    </interface>
+    <interface name="calculateMean" kind="function">
+      <signature>function calculateMean(amounts: number[]): number</signature>
+      <path>src/lib/ai/spendingAnalysis.ts</path>
+    </interface>
+    <interface name="calculateStdDev" kind="function">
+      <signature>function calculateStdDev(amounts: number[], mean: number): number</signature>
+      <path>src/lib/ai/spendingAnalysis.ts</path>
+    </interface>
+    <interface name="calculateMonthOverMonth" kind="function">
+      <signature>function calculateMonthOverMonth(current: number, previous: number): number</signature>
+      <path>src/lib/ai/spendingAnalysis.ts</path>
+    </interface>
+    <interface name="generateInsights" kind="function">
+      <signature>async function generateInsights(userId: string, forceRegenerate: boolean): Promise&lt;Insight[]&gt;</signature>
+      <path>src/lib/services/insightService.ts</path>
+    </interface>
+    <interface name="POST /api/insights/generate" kind="REST endpoint">
+      <signature>POST /api/insights/generate?forceRegenerate=true → Response: { insights: Insight[], count: number }</signature>
+      <path>src/app/api/insights/generate/route.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Jest for unit and integration tests. Test files located in __tests__/ directory mirroring src/ structure. Follow existing patterns from transaction and category tests. Run tests with npm test. Achieve 90%+ coverage for business logic. Use TypeScript for all test files. Mock Supabase client for unit tests, use test database for integration tests.
+    </standards>
+    <locations>
+      <location>__tests__/lib/ai/spendingAnalysis.test.ts</location>
+      <location>__tests__/lib/ai/insightRules.test.ts</location>
+      <location>__tests__/lib/services/insightService.test.ts</location>
+      <location>__tests__/app/api/insights/generate.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="3">Unit test calculateMean with empty array (should handle gracefully), single value, multiple values, negative numbers</idea>
+      <idea ac="3">Unit test calculateStdDev with zero variance (all same values), high variance, negative numbers</idea>
+      <idea ac="3">Unit test calculateMonthOverMonth with zero previous value (divide by zero handling), negative values, 100% increase</idea>
+      <idea ac="1">Unit test detectSpendingIncrease with exactly 20% increase (threshold), 25% increase (should trigger), 15% increase (should not trigger)</idea>
+      <idea ac="1">Unit test recommendBudgetLimit with 1 month data (insufficient), 3 months data (should work), varying amounts</idea>
+      <idea ac="1">Unit test flagUnusualExpense with transaction exactly 2 std devs (threshold), 3 std devs (should trigger), 1.5 std devs (should not trigger)</idea>
+      <idea ac="1">Unit test generatePositiveReinforcement with 89% budget usage (should trigger), 91% usage (should not trigger), no budget set</idea>
+      <idea ac="4,6">Integration test generateInsights: mock transactions, verify correct insights inserted into database, verify caching behavior</idea>
+      <idea ac="6">Integration test cache: first call generates, second call within 1 hour uses cache, forceRegenerate bypasses cache</idea>
+      <idea ac="7">Integration test API endpoint: authenticated request succeeds, unauthenticated request returns 401, verify response format</idea>
+      <idea ac="all">E2E test: create user, add transactions, call generateInsights, verify insights appear in database with correct user_id</idea>
+      <idea ac="all">Performance test: verify generation completes in &lt;2 seconds with 100+ transactions</idea>
+    </ideas>
+  </tests>
+</story-context>

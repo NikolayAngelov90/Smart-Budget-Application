@@ -220,5 +220,20 @@ export interface InsightMetadata {
   percent_change?: number;
   transaction_count_current?: number;
   transaction_count_previous?: number;
+  current_month?: string;
+  previous_month?: string;
+  three_month_average?: number;
+  recommended_budget?: number;
+  calculation_explanation?: string;
+  months_analyzed?: number;
+  transaction_amount?: number;
+  transaction_date?: string;
+  average_amount?: number;
+  std_dev?: number;
+  deviations_from_mean?: number;
+  budget_amount?: number;
+  spent_amount?: number;
+  savings_amount?: number;
+  percent_under_budget?: number;
   [key: string]: Json | undefined;
 }
