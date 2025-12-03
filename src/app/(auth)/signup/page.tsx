@@ -212,7 +212,7 @@ export default function SignupPage() {
       });
 
       // Redirect to email verification waiting page
-      router.push('/auth/verify-email');
+      router.push('/verify-email');
     } catch {
       toast({
         title: 'Unexpected error',
