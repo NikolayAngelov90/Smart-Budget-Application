@@ -1,0 +1,332 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>2</storyId>
+    <title>AI Insights Display on Dashboard</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-04</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-2-ai-insights-display-on-dashboard.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to see personalized AI insights on my dashboard</iWant>
+    <soThat>I receive proactive budget recommendations</soThat>
+    <tasks>
+      <task id="1" ac="2,3">Create AIInsightCard Component
+        <subtask>Create src/components/insights/AIInsightCard.tsx file</subtask>
+        <subtask>Accept props: insight (Insight object), onDismiss callback</subtask>
+        <subtask>Render Chakra UI Card with responsive padding</subtask>
+        <subtask>Display insight icon based on type (warning, info, error, check icons from Chakra)</subtask>
+        <subtask>Display title in bold (fontWeight="bold")</subtask>
+        <subtask>Display description in regular weight</subtask>
+        <subtask>Display priority indicator (Badge component: Priority 5, Priority 4, etc.)</subtask>
+        <subtask>Add dismiss button (X icon) in top-right corner with IconButton</subtask>
+        <subtask>Apply border color based on insight type: borderLeft="4px" borderColor={colorScheme}</subtask>
+        <subtask>Color scheme mapping: spending_increase → orange, budget_recommendation → blue, unusual_expense → red, positive_reinforcement → green</subtask>
+        <subtask>Add hover state for interactivity</subtask>
+        <subtask>Ensure minH="44px" for touch targets (accessibility)</subtask>
+        <subtask>Write component tests (render, dismiss button click, color coding)</subtask>
+      </task>
+      <task id="2" ac="1,4,6">Create AI Budget Coach Dashboard Section
+        <subtask>Create src/components/dashboard/AIBudgetCoach.tsx component</subtask>
+        <subtask>Fetch top 3 insights using SWR: useSWR('/api/insights?limit=3&dismissed=false&orderBy=priority DESC')</subtask>
+        <subtask>Display section heading: "AI Budget Coach" (H2, responsive font size)</subtask>
+        <subtask>Render loading skeleton while fetching (Chakra UI Skeleton components)</subtask>
+        <subtask>If insights exist: render 3 AIInsightCard components in responsive grid</subtask>
+        <subtask>Use SimpleGrid or Grid: columns={{ base: 1, md: 2, lg: 3 }} for responsive layout</subtask>
+        <subtask>Add "View all insights" link at bottom: Link href="/insights">See all {count} insights →</subtask>
+        <subtask>Empty state: Display friendly message when no insights available</subtask>
+        <subtask>Empty state component: Card with icon, "Keep tracking!" heading, subtitle with explanation</subtask>
+        <subtask>Handle dismiss action: call onDismiss → mutate SWR cache to remove insight from list</subtask>
+        <subtask>Write component tests (loading state, empty state, insights display, dismiss action)</subtask>
+      </task>
+      <task id="3" ac="1">Create GET /api/insights API Endpoint
+        <subtask>Create src/app/api/insights/route.ts file</subtask>
+        <subtask>Implement GET handler for fetching insights</subtask>
+        <subtask>Validate user authentication (require valid session)</subtask>
+        <subtask>Parse query parameters: limit, dismissed, orderBy, type, search</subtask>
+        <subtask>Query Supabase insights table with filters (user_id, dismissed status, type, search, orderBy, limit)</subtask>
+        <subtask>Order by priority DESC, created_at DESC (or as specified)</subtask>
+        <subtask>Limit results (default: 20, max: 100)</subtask>
+        <subtask>Return JSON array of insights</subtask>
+        <subtask>Handle errors gracefully (500 for server errors, 401 for unauthorized)</subtask>
+        <subtask>Add API route tests with authenticated requests</subtask>
+      </task>
+      <task id="4" ac="2">Create PUT /api/insights/:id/dismiss API Endpoint
+        <subtask>Create src/app/api/insights/[id]/dismiss/route.ts file</subtask>
+        <subtask>Implement PUT handler for dismissing insight</subtask>
+        <subtask>Validate user authentication</subtask>
+        <subtask>Validate insight ID parameter (UUID format)</subtask>
+        <subtask>Update Supabase: UPDATE insights SET is_dismissed = true WHERE id = :id AND user_id = :user_id</subtask>
+        <subtask>Verify RLS policy: user can only dismiss their own insights</subtask>
+        <subtask>Return success response with updated insight</subtask>
+        <subtask>Handle errors (404 if insight not found, 401 if unauthorized, 403 if not owner)</subtask>
+        <subtask>Add API route tests</subtask>
+      </task>
+      <task id="5" ac="5">Integrate AI Budget Coach into Dashboard
+        <subtask>Open src/app/dashboard/page.tsx</subtask>
+        <subtask>Import AIBudgetCoach component</subtask>
+        <subtask>Add AIBudgetCoach section below DashboardStats and above charts</subtask>
+        <subtask>Position: after StatCards, before CategorySpendingChart</subtask>
+        <subtask>Add responsive margin/padding: mb={{ base: 6, md: 8 }}</subtask>
+        <subtask>Ensure section fits within dashboard max-width container (1200px from Story 5.8)</subtask>
+        <subtask>Test SWR cache updates when insights are generated/dismissed</subtask>
+      </task>
+      <task id="6" ac="5">Handle Insights Update and Cache Invalidation
+        <subtask>In AIBudgetCoach component, use SWR mutate function for cache invalidation</subtask>
+        <subtask>On dismiss action: call mutate('/api/insights?...') to refresh data</subtask>
+        <subtask>Set SWR refreshInterval option for auto-refresh (e.g., 5 minutes)</subtask>
+        <subtask>Add manual refresh capability (optional "Refresh" button for testing)</subtask>
+        <subtask>Test: Generate new insight via API → verify dashboard updates automatically</subtask>
+      </task>
+      <task id="7" ac="6,7">Styling and Responsive Design Validation
+        <subtask>Test on mobile viewport (320px, 375px, 428px widths)</subtask>
+        <subtask>Verify insights stack vertically on mobile (single column)</subtask>
+        <subtask>Test on tablet viewport (768px, 1024px widths)</subtask>
+        <subtask>Verify 2-column grid on medium screens</subtask>
+        <subtask>Test on desktop viewport (1280px, 1920px widths)</subtask>
+        <subtask>Verify 3-column grid on large screens</subtask>
+        <subtask>Validate coaching tone in all displayed text</subtask>
+        <subtask>Verify color contrast for accessibility (WCAG AA)</subtask>
+        <subtask>Test dismiss button usability on touch devices</subtask>
+      </task>
+      <task id="8" ac="all">Integration Testing
+        <subtask>Create end-to-end test: Navigate to dashboard → verify AI Budget Coach section visible</subtask>
+        <subtask>Test with 0 insights: verify empty state message</subtask>
+        <subtask>Test with 1-2 insights: verify correct display count</subtask>
+        <subtask>Test with 3+ insights: verify only top 3 shown, "View all" link present</subtask>
+        <subtask>Test dismiss functionality: click dismiss → verify insight removed from view</subtask>
+        <subtask>Test "View all insights" link: click → navigate to /insights page</subtask>
+        <subtask>Test color coding: verify each insight type has correct border color</subtask>
+        <subtask>Test SWR caching: reload page → verify insights load from cache quickly (<100ms)</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criteria id="1" title="Insights Section Display">
+      - Insights section titled "AI Budget Coach"
+      - Shows top 3 highest priority insights (priority 5 → 1)
+      - "View all insights" link navigates to `/insights` page
+    </criteria>
+    <criteria id="2" title="AIInsightCard Component">
+      - Each insight displayed as AIInsightCard component
+      - Card shows: icon/emoji, title, description, priority indicator, dismiss button
+      - Insight title in bold, description in regular weight
+    </criteria>
+    <criteria id="3" title="Card Color Coding by Type">
+      - Spending increase: Orange/warning border
+      - Budget recommendation: Blue/info border
+      - Unusual expense: Red/error border
+      - Positive reinforcement: Green/success border
+    </criteria>
+    <criteria id="4" title="Empty State">
+      - When no insights available: "Keep tracking! We'll have insights after a few weeks of data."
+    </criteria>
+    <criteria id="5" title="Insights Update">
+      - Insights update when new ones are generated (SWR cache invalidation)
+    </criteria>
+    <criteria id="6" title="Responsive Layout">
+      - Mobile: insights stack vertically
+      - Desktop: grid layout (2-3 columns)
+    </criteria>
+    <criteria id="7" title="Coaching Tone">
+      - All text uses friendly, non-judgmental coaching tone
+    </criteria>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Component Architecture</section>
+        <snippet>AIInsightCard: Presentational component (props-based, no data fetching). AIBudgetCoach: Smart component (data fetching with SWR, cache management). Dashboard integration adds "AI Budget Coach" section.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>APIs and Interfaces</section>
+        <snippet>GET /api/insights?limit=3&dismissed=false&orderBy=priority DESC. Response: Array of Insight objects with SWR 5-minute cache. PUT /api/insights/:id/dismiss for dismissing insights.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Color Scheme and Icon Mapping</section>
+        <snippet>spending_increase → orange border, WarningIcon; budget_recommendation → blue border, InfoIcon; unusual_expense → red border, WarningTwoIcon; positive_reinforcement → green border, CheckCircleIcon</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/6-1-ai-insights-rules-engine-implementation.md</path>
+        <title>Story 6.1 - AI Insights Rules Engine</title>
+        <section>Prerequisites</section>
+        <snippet>Insight generation engine implemented. Insight types and interfaces defined in src/types/database.types.ts. POST /api/insights/generate available for testing.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/types/database.types.ts</path>
+        <kind>types</kind>
+        <symbol>Insight, InsightType, InsightMetadata</symbol>
+        <lines>28-32, 205-239</lines>
+        <reason>Type definitions for Insight objects used throughout Story 6.2 components and APIs</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/supabase/server.ts</path>
+        <kind>service</kind>
+        <symbol>createClient</symbol>
+        <lines>all</lines>
+        <reason>Supabase server client for API routes to query insights table with RLS</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/supabase/client.ts</path>
+        <kind>service</kind>
+        <symbol>createClient</symbol>
+        <lines>all</lines>
+        <reason>Supabase client-side client for SWR data fetching in components</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/dashboard/page.tsx</path>
+        <kind>page</kind>
+        <symbol>DashboardPage</symbol>
+        <lines>all</lines>
+        <reason>Dashboard page where AIBudgetCoach component will be integrated between stats and charts</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/insights/generate/route.ts</path>
+        <kind>api</kind>
+        <symbol>POST handler</symbol>
+        <lines>all</lines>
+        <reason>Insight generation API endpoint for manual testing of new insights</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="@chakra-ui/react" version="^2.8.0">Card, Badge, IconButton, SimpleGrid, Skeleton for UI components</package>
+        <package name="@chakra-ui/icons" version="^2.2.4">WarningIcon, InfoIcon, WarningTwoIcon, CheckCircleIcon, CloseIcon for insight types and dismiss</package>
+        <package name="swr" version="^2.3.6">Client-side data fetching with 5-minute cache, mutate for cache invalidation</package>
+        <package name="react" version="^18.3.0">React components for AIInsightCard and AIBudgetCoach</package>
+        <package name="next" version="^15.0.0">Next.js Link component for navigation, API route handlers</package>
+        <package name="@supabase/supabase-js" version="^2.81.1">Database queries for insights with RLS enforcement</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Presentational vs Smart Components: AIInsightCard is presentational (props-only, no data fetching). AIBudgetCoach is smart component (SWR data fetching, cache management).</constraint>
+    <constraint type="architecture">Dashboard Integration: AIBudgetCoach must be positioned after StatCards and before charts in dashboard layout. Must fit within 1200px max-width container established in Story 5.8.</constraint>
+    <constraint type="design">Color Scheme Mapping: spending_increase → orange, budget_recommendation → blue, unusual_expense → red, positive_reinforcement → green. Must use Chakra UI colorScheme for consistency.</constraint>
+    <constraint type="design">Responsive Layout: Mobile (base) = 1 column stack, Tablet (md) = 2 columns, Desktop (lg) = 3 columns. Use Chakra UI responsive props {{ base: ..., md: ..., lg: ... }}.</constraint>
+    <constraint type="accessibility">Touch Targets: All interactive elements (dismiss button) must have minH="44px" and minW="44px" for touch accessibility compliance.</constraint>
+    <constraint type="accessibility">Color Contrast: Verify WCAG AA compliance for text on colored borders and badges.</constraint>
+    <constraint type="performance">Dashboard Load Time: Insights must load in <500ms using SWR cache. Use Skeleton loaders for perceived performance.</constraint>
+    <constraint type="performance">SWR Configuration: Use 5-minute refreshInterval, dedupingInterval of 1 minute, revalidateOnFocus=true for optimal caching.</constraint>
+    <constraint type="api">Authentication Required: All API routes must validate user session. Return 401 if unauthenticated.</constraint>
+    <constraint type="api">RLS Enforcement: Database queries must enforce Row-Level Security. Users can only access their own insights.</constraint>
+    <constraint type="testing">Component Tests: Write tests for AIInsightCard (render, props, dismiss click, color coding) and AIBudgetCoach (loading, empty state, data display).</constraint>
+    <constraint type="testing">API Tests: Test authentication, query parameters, error handling, RLS enforcement for both GET and PUT endpoints.</constraint>
+    <constraint type="tone">Coaching Language: All UI text (empty state, titles, descriptions) must use friendly, non-judgmental, encouraging tone consistent with Story 6.1 insights.</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="GET /api/insights" kind="REST endpoint">
+      <signature>GET /api/insights?limit=number&dismissed=boolean&orderBy=string&type=InsightType&search=string</signature>
+      <parameters>
+        - limit: number (default: 20, max: 100)
+        - dismissed: boolean (filter by dismissed status)
+        - orderBy: string (e.g., "priority DESC, created_at DESC")
+        - type: InsightType (filter by insight type)
+        - search: string (search in title/description)
+      </parameters>
+      <response>
+        { insights: Insight[], total: number }
+      </response>
+      <path>src/app/api/insights/route.ts</path>
+    </interface>
+    <interface name="PUT /api/insights/:id/dismiss" kind="REST endpoint">
+      <signature>PUT /api/insights/[id]/dismiss</signature>
+      <parameters>
+        - id: string (UUID of insight to dismiss)
+      </parameters>
+      <request>
+        { is_dismissed: boolean }
+      </request>
+      <response>
+        { insight: Insight, success: boolean }
+      </response>
+      <path>src/app/api/insights/[id]/dismiss/route.ts</path>
+    </interface>
+    <interface name="AIInsightCard" kind="React component">
+      <signature>
+        interface AIInsightCardProps {
+          insight: Insight;
+          onDismiss: (id: string) => void;
+        }
+      </signature>
+      <props>
+        - insight: Insight object with id, title, description, type, priority, metadata
+        - onDismiss: Callback function when dismiss button clicked
+      </props>
+      <path>src/components/insights/AIInsightCard.tsx</path>
+    </interface>
+    <interface name="AIBudgetCoach" kind="React component">
+      <signature>
+        interface AIBudgetCoachProps {}
+      </signature>
+      <description>Smart component that fetches top 3 insights using SWR and renders AIInsightCard components in responsive grid. Handles loading, empty state, and dismiss actions with cache invalidation.</description>
+      <path>src/components/dashboard/AIBudgetCoach.tsx</path>
+    </interface>
+    <interface name="Insight" kind="TypeScript type">
+      <signature>
+        type Insight = {
+          id: string;
+          user_id: string;
+          title: string;
+          description: string;
+          type: InsightType;
+          priority: number;
+          is_dismissed: boolean;
+          metadata: Json | null;
+          created_at: string;
+        }
+      </signature>
+      <path>src/types/database.types.ts</path>
+    </interface>
+    <interface name="InsightType" kind="TypeScript type">
+      <signature>
+        type InsightType = 'spending_increase' | 'budget_recommendation' | 'unusual_expense' | 'positive_reinforcement'
+      </signature>
+      <path>src/types/database.types.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Jest for unit tests and React Testing Library for component tests. Test files mirror src/ structure in __tests__/ directory. Mock Supabase client for API route tests. Mock SWR for component tests. Achieve 80%+ coverage for all insight-related components and APIs.
+    </standards>
+    <locations>
+      - __tests__/components/insights/AIInsightCard.test.tsx
+      - __tests__/components/dashboard/AIBudgetCoach.test.tsx
+      - __tests__/app/api/insights/route.test.ts (skipped if Next.js test env issues)
+      - __tests__/app/api/insights/[id]/dismiss.test.ts (skipped if Next.js test env issues)
+    </locations>
+    <ideas>
+      <idea ac="2">Unit test AIInsightCard renders all props correctly (title, description, icon, priority badge, dismiss button)</idea>
+      <idea ac="3">Unit test AIInsightCard applies correct border color for each InsightType (orange, blue, red, green)</idea>
+      <idea ac="2">Unit test AIInsightCard calls onDismiss callback when dismiss button clicked</idea>
+      <idea ac="1,4">Unit test AIBudgetCoach shows loading skeleton while fetching data</idea>
+      <idea ac="4">Unit test AIBudgetCoach shows empty state message when no insights available</idea>
+      <idea ac="1">Unit test AIBudgetCoach renders top 3 insights when data exists</idea>
+      <idea ac="1">Unit test AIBudgetCoach shows "View all X insights" link with correct count</idea>
+      <idea ac="5">Unit test AIBudgetCoach mutates SWR cache when dismiss action called</idea>
+      <idea ac="6">Visual regression test AIBudgetCoach responsive layout at breakpoints (320px, 768px, 1280px)</idea>
+      <idea ac="1">Integration test GET /api/insights returns insights for authenticated user only</idea>
+      <idea ac="1">Integration test GET /api/insights filters by limit, dismissed, type, orderBy parameters</idea>
+      <idea ac="1">Integration test GET /api/insights returns 401 for unauthenticated requests</idea>
+      <idea ac="2">Integration test PUT /api/insights/:id/dismiss updates is_dismissed to true</idea>
+      <idea ac="2">Integration test PUT /api/insights/:id/dismiss returns 404 for non-existent insight</idea>
+      <idea ac="2">Integration test PUT /api/insights/:id/dismiss returns 403 when trying to dismiss another user's insight (RLS)</idea>
+    </ideas>
+  </tests>
+</story-context>

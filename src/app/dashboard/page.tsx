@@ -14,6 +14,7 @@
 
 import { Box, Heading, Text, VStack, Grid } from '@chakra-ui/react';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
+import { AIBudgetCoach } from '@/components/dashboard/AIBudgetCoach';
 import { CategorySpendingChart } from '@/components/dashboard/CategorySpendingChart';
 import { SpendingTrendsChart } from '@/components/dashboard/SpendingTrendsChart';
 import { MonthOverMonth } from '@/components/dashboard/MonthOverMonth';
@@ -38,6 +39,9 @@ export default function DashboardPage() {
       <Box mb={{ base: 6, md: 8 }}>
         <DashboardStats />
       </Box>
+
+      {/* AI Budget Coach - Story 6.2 */}
+      <AIBudgetCoach />
 
       {/* Charts Grid - Story 5.8: Responsive layout for charts */}
       <Grid
@@ -75,35 +79,6 @@ export default function DashboardPage() {
       {/* Month-over-Month Comparison - Story 5.5 */}
       <Box mb={{ base: 6, md: 8 }}>
         <MonthOverMonth />
-      </Box>
-
-      {/* Placeholder for additional dashboard content */}
-      <Box
-        p={{ base: 6, md: 8 }}
-        bg="gray.50"
-        borderRadius="lg"
-        border="1px"
-        borderColor="gray.200"
-      >
-        <VStack spacing={4}>
-          <Heading
-            as="h3"
-            fontSize={{ base: '1.125rem', lg: '1.25rem' }}
-            color="gray.700"
-          >
-            Additional Dashboard Content Coming Soon
-          </Heading>
-          <Text
-            fontSize={{ base: '0.875rem', lg: '1rem' }}
-            textAlign="center"
-            color="gray.600"
-          >
-            More charts and insights will be displayed here.
-          </Text>
-          <Text fontSize="xs" color="gray.500">
-            Stories 5.6-5.8 will add more dashboard features
-          </Text>
-        </VStack>
       </Box>
     </Box>
   );

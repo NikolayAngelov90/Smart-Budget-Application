@@ -80,7 +80,7 @@ development_status:
 
   epic-6: contexted
   6-1-ai-insights-rules-engine-implementation: done
-  6-2-ai-insights-display-on-dashboard: drafted
+  6-2-ai-insights-display-on-dashboard: done
   6-3-full-ai-insights-page-with-filtering: drafted
   6-4-insight-metadata-and-supporting-data: drafted
   6-5-insight-generation-scheduling-and-manual-refresh: drafted
