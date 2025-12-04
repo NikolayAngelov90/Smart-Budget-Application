@@ -19,8 +19,6 @@ import {
 } from './spendingAnalysis';
 import type {
   Transaction,
-  Category,
-  InsightType,
   InsightInsert,
   InsightMetadata,
 } from '@/types/database.types';

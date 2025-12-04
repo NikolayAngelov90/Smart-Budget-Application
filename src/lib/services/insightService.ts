@@ -10,14 +10,14 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { endOfMonth, startOfMonth, subMonths, parseISO } from 'date-fns';
+import { endOfMonth, subMonths } from 'date-fns';
 import {
   detectSpendingIncrease,
   recommendBudgetLimit,
   flagUnusualExpense,
   generatePositiveReinforcement,
 } from '@/lib/ai/insightRules';
-import type { Transaction, Category, Insight, InsightInsert } from '@/types/database.types';
+import type { Insight, InsightInsert } from '@/types/database.types';
 
 /**
  * Cache entry structure for tracking last generation timestamp

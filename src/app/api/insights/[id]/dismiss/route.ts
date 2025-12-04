@@ -12,7 +12,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Authenticate user
@@ -29,8 +29,8 @@ export async function PUT(
       );
     }
 
-    // Get insight ID from params
-    const insightId = params.id;
+    // Get insight ID from params (await in Next.js 15)
+    const { id: insightId } = await params;
 
     // Validate UUID format
     if (!UUID_REGEX.test(insightId)) {
