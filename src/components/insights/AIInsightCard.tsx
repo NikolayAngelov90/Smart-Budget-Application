@@ -22,6 +22,8 @@ import type { Insight } from '@/types/database.types';
 interface AIInsightCardProps {
   insight: Insight;
   onDismiss: (id: string) => void;
+  onUndismiss?: (id: string) => void;
+  isDismissed?: boolean;
 }
 
 // Color scheme mapping based on insight type
@@ -70,16 +72,29 @@ const getPriorityColorScheme = (priority: number): string => {
   return colors[priority] || 'gray';
 };
 
-export function AIInsightCard({ insight, onDismiss }: AIInsightCardProps) {
+export function AIInsightCard({
+  insight,
+  onDismiss,
+  onUndismiss,
+  isDismissed = false,
+}: AIInsightCardProps) {
   const colorScheme = getColorScheme(insight.type);
   const icon = getIcon(insight.type);
   const priorityLabel = getPriorityLabel(insight.priority);
   const priorityColorScheme = getPriorityColorScheme(insight.priority);
 
+  const handleAction = () => {
+    if (isDismissed && onUndismiss) {
+      onUndismiss(insight.id);
+    } else {
+      onDismiss(insight.id);
+    }
+  };
+
   return (
     <Card
       borderLeft="4px"
-      borderColor={`${colorScheme}.500`}
+      borderColor={isDismissed ? 'gray.300' : `${colorScheme}.500`}
       position="relative"
       _hover={{
         shadow: 'md',
@@ -88,24 +103,41 @@ export function AIInsightCard({ insight, onDismiss }: AIInsightCardProps) {
       }}
       minH="44px"
       w="full"
+      opacity={isDismissed ? 0.6 : 1}
+      bg={isDismissed ? 'gray.50' : 'white'}
+      filter={isDismissed ? 'grayscale(50%)' : 'none'}
     >
       <CardBody p={{ base: 4, md: 5 }}>
-        {/* Dismiss button */}
+        {/* Dismiss/Undismiss button */}
         <IconButton
-          aria-label="Dismiss insight"
+          aria-label={isDismissed ? 'Restore insight' : 'Dismiss insight'}
           icon={<CloseIcon />}
           size="sm"
           variant="ghost"
           position="absolute"
           top={2}
           right={2}
-          onClick={() => onDismiss(insight.id)}
+          onClick={handleAction}
           minH="44px"
           minW="44px"
           _hover={{
-            bg: `${colorScheme}.50`,
+            bg: isDismissed ? 'green.50' : `${colorScheme}.50`,
           }}
+          title={isDismissed ? 'Undismiss' : 'Dismiss'}
         />
+
+        {/* Dismissed badge */}
+        {isDismissed && (
+          <Badge
+            colorScheme="gray"
+            position="absolute"
+            top={2}
+            right={14}
+            fontSize="xs"
+          >
+            Dismissed
+          </Badge>
+        )}
 
         {/* Content */}
         <VStack align="start" spacing={3} pr={10}>

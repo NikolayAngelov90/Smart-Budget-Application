@@ -1,0 +1,414 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>3</storyId>
+    <title>Full AI Insights Page with Filtering</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-04</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-3-full-ai-insights-page-with-filtering.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to view all my AI insights and filter by type</iWant>
+    <soThat>I can review all recommendations and learn from patterns</soThat>
+    <tasks>
+      <task id="1" ac="1">Create Insights Page Route
+        <subtask>Create src/app/(dashboard)/insights/page.tsx file</subtask>
+        <subtask>Use dashboard layout group (wrapped in (dashboard) folder)</subtask>
+        <subtask>Add page metadata: title "AI Insights", description</subtask>
+        <subtask>Verify page accessible at /insights URL</subtask>
+        <subtask>Test authentication requirement (redirect to login if not authenticated)</subtask>
+      </task>
+      <task id="2" ac="2,7">Create Insights List Component
+        <subtask>Create src/components/insights/InsightsList.tsx component</subtask>
+        <subtask>Accept props: insights array, onDismiss callback, onUndismiss callback</subtask>
+        <subtask>Render list of AIInsightCard components (from Story 6.2)</subtask>
+        <subtask>Add type badge to each card: Badge colorScheme={colorScheme}>{insightTypeLabel}</subtask>
+        <subtask>Display date generated with relative time: "2 days ago" using date formatting</subtask>
+        <subtask>Implement infinite scroll using react-infinite-scroll-component package</subtask>
+        <subtask>Load next page when user scrolls to bottom</subtask>
+        <subtask>Show loading spinner at bottom while fetching more</subtask>
+        <subtask>Handle end of list: "You've reached the end" message</subtask>
+        <subtask>Alternative: Implement pagination with Next/Previous buttons if infinite scroll not preferred</subtask>
+        <subtask>Write component tests</subtask>
+      </task>
+      <task id="3" ac="3,4,8">Create Filter Controls Component
+        <subtask>Create src/components/insights/InsightsFilters.tsx component</subtask>
+        <subtask>Accept props: filters object, onFilterChange callback</subtask>
+        <subtask>Render type filter dropdown using Chakra UI Select component</subtask>
+        <subtask>Options: "All Types", "Spending Increases", "Budget Recommendations", "Unusual Expenses", "Positive Reinforcement"</subtask>
+        <subtask>Render dismissed toggle using Chakra UI Switch component</subtask>
+        <subtask>Label: "Show dismissed insights"</subtask>
+        <subtask>Render search input using Chakra UI Input component</subtask>
+        <subtask>Placeholder: "Search insights..."</subtask>
+        <subtask>Implement debounced search (300ms delay) using useDebouncedCallback or lodash.debounce</subtask>
+        <subtask>Use responsive Stack layout: vertical on mobile, horizontal on desktop</subtask>
+        <subtask>Write component tests (filter change, toggle, search debouncing)</subtask>
+      </task>
+      <task id="4" ac="3,4,8">Implement Page State Management
+        <subtask>In page.tsx, manage filter state with React useState or URL query params</subtask>
+        <subtask>State: type (string), dismissed (boolean), search (string), page (number)</subtask>
+        <subtask>Use Next.js useRouter and useSearchParams for URL-based filters</subtask>
+        <subtask>Update URL when filters change: /insights?type=spending_increase&dismissed=true&search=dining</subtask>
+        <subtask>Initialize filters from URL params on page load</subtask>
+        <subtask>Sync filter state with InsightsFilters component</subtask>
+      </task>
+      <task id="5" ac="2,3,4,8">Fetch Insights with Filtering
+        <subtask>Use SWR to fetch insights: useSWR('/api/insights?...')</subtask>
+        <subtask>Build query string from filter state</subtask>
+        <subtask>Use SWR infinite or pagination strategy for loading more results</subtask>
+        <subtask>Handle loading state with Skeleton loaders</subtask>
+        <subtask>Handle error state with error message display</subtask>
+        <subtask>Revalidate on filter change (trigger new fetch)</subtask>
+        <subtask>Use SWR cache to improve performance</subtask>
+      </task>
+      <task id="6" ac="5">Implement Dismiss and Undismiss Actions
+        <subtask>Create handleDismiss function in page component</subtask>
+        <subtask>Call PUT /api/insights/:id/dismiss API endpoint</subtask>
+        <subtask>On success: mutate SWR cache to update insight's is_dismissed status</subtask>
+        <subtask>Show optimistic UI update (gray out card immediately)</subtask>
+        <subtask>Show success toast: "Insight dismissed"</subtask>
+        <subtask>Create handleUndismiss function for reversing dismissal</subtask>
+        <subtask>Create PUT /api/insights/:id/undismiss API endpoint</subtask>
+        <subtask>On undismiss success: mutate cache, show toast "Insight restored"</subtask>
+      </task>
+      <task id="7" ac="5">Create PUT /api/insights/:id/undismiss Endpoint
+        <subtask>Create src/app/api/insights/[id]/undismiss/route.ts file</subtask>
+        <subtask>Implement PUT handler for undismissing insight</subtask>
+        <subtask>Validate user authentication</subtask>
+        <subtask>Update Supabase: UPDATE insights SET is_dismissed = false WHERE id = :id AND user_id = :user_id</subtask>
+        <subtask>Verify RLS policy (user can only undismiss their own insights)</subtask>
+        <subtask>Return updated insight object</subtask>
+        <subtask>Handle errors (404, 401, 403)</subtask>
+        <subtask>Add API route tests</subtask>
+      </task>
+      <task id="8" ac="4">Style Dismissed Insights
+        <subtask>In AIInsightCard component, add prop: isDismissed (boolean)</subtask>
+        <subtask>When dismissed: apply gray background, reduced opacity (0.5), grayscale filter</subtask>
+        <subtask>Display "Dismissed" badge in top-right corner (gray Badge)</subtask>
+        <subtask>Change dismiss button to "Undismiss" button (with different icon/label)</subtask>
+        <subtask>Add visual indicator: strike-through title or dim colors</subtask>
+      </task>
+      <task id="9" ac="6">Empty States
+        <subtask>Create src/components/insights/EmptyInsightsState.tsx component</subtask>
+        <subtask>Accept prop: message (string)</subtask>
+        <subtask>Render centered Card with icon, heading, and message</subtask>
+        <subtask>Use appropriate icon: InfoIcon or SearchIcon</subtask>
+        <subtask>Display in InsightsList when insights.length === 0</subtask>
+        <subtask>Conditional message based on filters: "No insights yet" vs "No insights match filters"</subtask>
+      </task>
+      <task id="10" ac="9">Responsive Design
+        <subtask>Test on mobile viewport (320px, 375px, 428px)</subtask>
+        <subtask>Verify filters stack vertically on mobile</subtask>
+        <subtask>Verify cards are full-width on mobile</subtask>
+        <subtask>Verify dismiss buttons are touch-friendly (minH="44px")</subtask>
+        <subtask>Test on tablet and desktop</subtask>
+        <subtask>Verify horizontal filter layout on desktop</subtask>
+        <subtask>Add responsive padding/margins throughout</subtask>
+      </task>
+      <task id="11" ac="all">Integration Testing
+        <subtask>Test navigation: Click "View all insights" from dashboard → lands on /insights page</subtask>
+        <subtask>Test with 0 insights: verify empty state</subtask>
+        <subtask>Test with 5+ insights: verify all display in correct order (newest first)</subtask>
+        <subtask>Test type filter: select "Spending Increases" → only spending_increase insights shown</subtask>
+        <subtask>Test dismissed toggle: enable → dismissed insights appear grayed out</subtask>
+        <subtask>Test dismiss action: click dismiss → insight grays out, badge added</subtask>
+        <subtask>Test undismiss action: click undismiss → insight restores to normal</subtask>
+        <subtask>Test search: type "dining" → only matching insights shown</subtask>
+        <subtask>Test combined filters: type filter + search + dismissed toggle</subtask>
+        <subtask>Test pagination/infinite scroll: scroll to bottom → load next page</subtask>
+        <subtask>Test URL sync: change filter → URL updates, refresh page → filters persist</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criteria id="1" title="Insights Page Route">
+      - Insights page accessible at `/insights` route
+      - Page uses dashboard layout (includes sidebar navigation)
+    </criteria>
+    <criteria id="2" title="Insights Display">
+      - All insights displayed in chronological order (newest first)
+      - Each insight card shows: type badge, title, description, date generated, dismiss button
+    </criteria>
+    <criteria id="3" title="Type Filter">
+      - Filter dropdown with options: All Types, Spending Increases, Budget Recommendations, Unusual Expenses, Positive Reinforcement
+      - Selecting filter updates displayed insights immediately
+    </criteria>
+    <criteria id="4" title="Dismissed Insights Toggle">
+      - Toggle switch: "Show dismissed insights" (off by default)
+      - When enabled, dismissed insights appear grayed out with "Dismissed" badge
+    </criteria>
+    <criteria id="5" title="Dismiss and Undismiss">
+      - Click "Dismiss" marks insight as not relevant (updates `is_dismissed = true`)
+      - Dismissed insights show "Undismiss" option to toggle back
+      - Dismissed insights are hidden by default (unless toggle is on)
+    </criteria>
+    <criteria id="6" title="Empty State">
+      - When no insights: "No insights yet. We'll generate insights after you track more transactions."
+      - When filters match nothing: "No insights match your filters. Try adjusting your search."
+    </criteria>
+    <criteria id="7" title="Pagination or Infinite Scroll">
+      - Insights paginated (20 per page) or use infinite scroll
+      - Performance: smooth scrolling with no jank
+    </criteria>
+    <criteria id="8" title="Search Box">
+      - Search box filters by keyword in title/description
+      - Search updates as user types (debounced 300ms)
+      - Search works in combination with type filter
+    </criteria>
+    <criteria id="9" title="Mobile Responsive">
+      - Full-width cards on mobile
+      - Stacked layout for filters on mobile
+      - Touch-friendly dismiss buttons
+    </criteria>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification - AI Budget Insights</title>
+        <section>APIs and Interfaces</section>
+        <snippet>GET /api/insights with filtering (type, dismissed, search, limit, offset). Returns {insights: Insight[], total: number}. PUT /api/insights/:id/dismiss and undismiss endpoints for toggling insight relevance.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Workflows and Sequencing</section>
+        <snippet>Workflow 4: Full Insights Page with Filtering - URL-based state management for filters, SWR with pagination, dismiss/undismiss with optimistic updates.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/6-2-ai-insights-display-on-dashboard.md</path>
+        <title>Story 6.2 - AI Insights Display on Dashboard</title>
+        <section>Prerequisites</section>
+        <snippet>AIInsightCard component reusable from Story 6.2. Color scheme mapping: spending_increase→orange, budget_recommendation→blue, unusual_expense→red, positive_reinforcement→green. SWR patterns for data fetching and cache invalidation.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/components/insights/AIInsightCard.tsx</path>
+        <kind>component</kind>
+        <symbol>AIInsightCard</symbol>
+        <lines>all</lines>
+        <reason>Reusable presentational component for rendering individual insight cards with color coding, icons, priority badges, and dismiss button. Will be used in InsightsList component.</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/dashboard/AIBudgetCoach.tsx</path>
+        <kind>component</kind>
+        <symbol>AIBudgetCoach</symbol>
+        <lines>all</lines>
+        <reason>Reference for SWR data fetching patterns, loading states, empty states, and dismiss action handling with optimistic updates.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/insights/route.ts</path>
+        <kind>api</kind>
+        <symbol>GET handler</symbol>
+        <lines>all</lines>
+        <reason>Existing API endpoint for fetching insights with filtering (type, dismissed, search, limit). Returns {insights: Insight[], total: number}. Will be used by insights page for data fetching.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/insights/[id]/dismiss/route.ts</path>
+        <kind>api</kind>
+        <symbol>PUT handler</symbol>
+        <lines>all</lines>
+        <reason>Existing dismiss endpoint. Story 6.3 will create similar undismiss endpoint at [id]/undismiss/route.ts following the same pattern.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/dashboard/page.tsx</path>
+        <kind>page</kind>
+        <symbol>DashboardPage</symbol>
+        <lines>all</lines>
+        <reason>Reference for dashboard layout structure and page patterns. Insights page will follow similar layout patterns but as a dedicated route.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/database.types.ts</path>
+        <kind>types</kind>
+        <symbol>Insight, InsightType</symbol>
+        <lines>all</lines>
+        <reason>Type definitions for Insight objects and InsightType enum used throughout filtering and display logic.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="@chakra-ui/react" version="^2.8.0">Select, Switch, Input, Stack components for filter controls. Card, Badge, Skeleton for UI.</package>
+        <package name="@chakra-ui/icons" version="^2.2.4">InfoIcon, SearchIcon, CloseIcon for empty states and UI elements.</package>
+        <package name="swr" version="^2.3.6">Client-side data fetching with caching, pagination support, and mutate for cache invalidation on dismiss/undismiss actions.</package>
+        <package name="next" version="^15.0.0">useRouter, useSearchParams for URL-based filter state management. Link for navigation.</package>
+        <package name="react" version="^18.3.0">useState for state management, useCallback for memoized handlers.</package>
+        <package name="date-fns" version="^4.1.0">formatDistanceToNow for relative date formatting ("2 days ago").</package>
+        <package name="@supabase/supabase-js" version="^2.81.1">Database queries for insights CRUD operations with RLS enforcement.</package>
+        <package name="use-debounce" version="optional">If using useDebouncedCallback for search input debouncing (300ms). Alternative: implement custom debounce with setTimeout.</package>
+        <package name="react-infinite-scroll-component" version="optional">If using infinite scroll instead of pagination. Check if already installed in package.json.</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Page Route Structure: Must use (dashboard) layout group for consistent navigation. Create at src/app/(dashboard)/insights/page.tsx to inherit dashboard layout with sidebar.</constraint>
+    <constraint type="architecture">URL-Based State: Use Next.js useSearchParams and useRouter for filter state management. Filters persist in URL query params for bookmarking and sharing (/insights?type=spending_increase&dismissed=true&search=dining).</constraint>
+    <constraint type="architecture">Component Reuse: Reuse AIInsightCard from Story 6.2. Do not duplicate code. Extend with isDismissed prop for dismissed styling.</constraint>
+    <constraint type="design">Responsive Filter Layout: Stack filters vertically on mobile (base), horizontally on desktop (md+). Use Chakra UI Stack with direction={{ base: "column", md: "row" }}.</constraint>
+    <constraint type="design">Dismissed Insight Styling: Apply opacity 0.5, grayscale filter, gray background when isDismissed=true. Add "Dismissed" badge. Change dismiss button to undismiss button.</constraint>
+    <constraint type="design">Type Filter Options: All Types (default), Spending Increases (spending_increase), Budget Recommendations (budget_recommendation), Unusual Expenses (unusual_expense), Positive Reinforcement (positive_reinforcement).</constraint>
+    <constraint type="accessibility">Touch Targets: All interactive elements must have minH="44px" and minW="44px" for touch accessibility on mobile.</constraint>
+    <constraint type="performance">Pagination: Display 20 insights per page. Use SWR pagination strategy or infinite scroll with react-infinite-scroll-component for smooth UX.</constraint>
+    <constraint type="performance">Search Debouncing: Debounce search input by 300ms to reduce API calls. Use useDebouncedCallback or custom debounce implementation.</constraint>
+    <constraint type="api">Authentication Required: All API routes must validate user session. Return 401 if unauthenticated. Insights page should redirect to login if not authenticated.</constraint>
+    <constraint type="api">RLS Enforcement: Database queries must filter by user_id. Users can only access their own insights per Row-Level Security policies.</constraint>
+    <constraint type="testing">Component Tests: Write tests for InsightsList (rendering, pagination), InsightsFilters (filter change, toggle, search debounce), page (navigation, URL sync).</constraint>
+    <constraint type="testing">API Tests: Test undismiss endpoint for authentication, UUID validation, RLS enforcement, error handling (404, 401, 403).</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="GET /api/insights" kind="REST endpoint">
+      <signature>GET /api/insights?limit=20&dismissed=false&type={InsightType}&search={query}&orderBy=created_at DESC</signature>
+      <parameters>
+        - limit: number (default: 20, max: 100)
+        - dismissed: boolean (filter by is_dismissed status)
+        - type: InsightType (spending_increase, budget_recommendation, unusual_expense, positive_reinforcement)
+        - search: string (search in title/description using ILIKE)
+        - orderBy: string (default: "created_at DESC")
+      </parameters>
+      <response>
+        { insights: Insight[], total: number }
+      </response>
+      <path>src/app/api/insights/route.ts</path>
+    </interface>
+    <interface name="PUT /api/insights/:id/dismiss" kind="REST endpoint">
+      <signature>PUT /api/insights/[id]/dismiss</signature>
+      <parameters>
+        - id: string (UUID of insight to dismiss)
+      </parameters>
+      <request>
+        { is_dismissed: boolean }
+      </request>
+      <response>
+        { success: boolean, insight: Insight }
+      </response>
+      <path>src/app/api/insights/[id]/dismiss/route.ts</path>
+    </interface>
+    <interface name="PUT /api/insights/:id/undismiss" kind="REST endpoint (NEW)">
+      <signature>PUT /api/insights/[id]/undismiss</signature>
+      <parameters>
+        - id: string (UUID of insight to undismiss)
+      </parameters>
+      <request>
+        { is_dismissed: boolean } (set to false)
+      </request>
+      <response>
+        { success: boolean, insight: Insight }
+      </response>
+      <path>src/app/api/insights/[id]/undismiss/route.ts</path>
+      <note>Nearly identical to dismiss endpoint. Copy dismiss/route.ts and change is_dismissed to false.</note>
+    </interface>
+    <interface name="InsightsList" kind="React component (NEW)">
+      <signature>
+        interface InsightsListProps {
+          insights: Insight[];
+          onDismiss: (id: string) => void;
+          onUndismiss: (id: string) => void;
+          hasMore?: boolean;
+          onLoadMore?: () => void;
+          isLoading?: boolean;
+        }
+      </signature>
+      <props>
+        - insights: Array of Insight objects to display
+        - onDismiss: Callback when dismiss button clicked
+        - onUndismiss: Callback when undismiss button clicked
+        - hasMore: Boolean indicating more insights available for pagination
+        - onLoadMore: Callback to load next page (for infinite scroll)
+        - isLoading: Boolean for loading state
+      </props>
+      <path>src/components/insights/InsightsList.tsx</path>
+    </interface>
+    <interface name="InsightsFilters" kind="React component (NEW)">
+      <signature>
+        interface InsightsFiltersProps {
+          filters: {
+            type: string;
+            dismissed: boolean;
+            search: string;
+          };
+          onFilterChange: (filters: Partial<FiltersType>) => void;
+        }
+      </signature>
+      <props>
+        - filters: Current filter values (type, dismissed, search)
+        - onFilterChange: Callback when any filter changes
+      </props>
+      <path>src/components/insights/InsightsFilters.tsx</path>
+    </interface>
+    <interface name="EmptyInsightsState" kind="React component (NEW)">
+      <signature>
+        interface EmptyInsightsStateProps {
+          message: string;
+          hasFilters?: boolean;
+        }
+      </signature>
+      <props>
+        - message: Empty state message to display
+        - hasFilters: Optional boolean to show different message when filters are active
+      </props>
+      <path>src/components/insights/EmptyInsightsState.tsx</path>
+    </interface>
+    <interface name="AIInsightCard (Extended)" kind="React component">
+      <signature>
+        interface AIInsightCardProps {
+          insight: Insight;
+          onDismiss: (id: string) => void;
+          onUndismiss?: (id: string) => void;
+          isDismissed?: boolean;
+          showDate?: boolean;
+        }
+      </signature>
+      <props>
+        - insight: Insight object
+        - onDismiss: Dismiss callback
+        - onUndismiss: NEW - Undismiss callback (optional)
+        - isDismissed: NEW - Boolean to apply dismissed styling
+        - showDate: NEW - Boolean to show relative date ("2 days ago")
+      </props>
+      <path>src/components/insights/AIInsightCard.tsx</path>
+      <note>Extend existing component from Story 6.2 with new optional props</note>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Use Jest for unit/integration tests and React Testing Library for component tests. Test files mirror src/ structure in __tests__/ directory. Mock Supabase client for API route tests. Mock SWR for component tests. Achieve 80%+ coverage for all insights page components and APIs. Mock useRouter and useSearchParams for URL state tests.</standards>
+    <locations>
+      - __tests__/app/(dashboard)/insights/page.test.tsx
+      - __tests__/components/insights/InsightsList.test.tsx
+      - __tests__/components/insights/InsightsFilters.test.tsx
+      - __tests__/components/insights/EmptyInsightsState.test.tsx
+      - __tests__/app/api/insights/[id]/undismiss.test.ts
+    </locations>
+    <ideas>
+      <idea ac="1">Integration test: Navigate to /insights URL → verify page loads with dashboard layout and authentication check</idea>
+      <idea ac="2">Component test: InsightsList renders all insights in correct order (newest first based on created_at DESC)</idea>
+      <idea ac="2">Component test: Each AIInsightCard shows type badge, title, description, date ("2 days ago"), and dismiss button</idea>
+      <idea ac="3">Component test: InsightsFilters type dropdown changes update filter state and URL query params</idea>
+      <idea ac="3">Component test: Selecting "Spending Increases" filters insights to only spending_increase type</idea>
+      <idea ac="4">Component test: Dismissed toggle off (default) → dismissed insights hidden. Toggle on → dismissed insights visible with gray styling</idea>
+      <idea ac="5">Component test: Click dismiss button → calls onDismiss callback with insight ID, optimistic UI update grays out card</idea>
+      <idea ac="5">Component test: Click undismiss button on dismissed insight → calls onUndismiss callback, card restores normal styling</idea>
+      <idea ac="6">Component test: EmptyInsightsState shows "No insights yet" when insights.length === 0 and no filters active</idea>
+      <idea ac="6">Component test: EmptyInsightsState shows "No insights match filters" when insights.length === 0 and filters active</idea>
+      <idea ac="7">Component test: Infinite scroll triggers onLoadMore when scrolling to bottom (if using infinite scroll)</idea>
+      <idea ac="7">Component test: Pagination shows Next/Previous buttons and page numbers (if using pagination)</idea>
+      <idea ac="8">Component test: Search input debounces by 300ms → only triggers filter change after delay</idea>
+      <idea ac="8">Component test: Search with "dining" → only insights with "dining" in title or description shown</idea>
+      <idea ac="9">Visual regression test: Filters stack vertically on mobile (320px), horizontally on desktop (1280px)</idea>
+      <idea ac="9">Component test: Dismiss buttons have minH="44px" and minW="44px" for touch accessibility</idea>
+      <idea ac="all">Integration test: URL sync test → change type filter to "spending_increase" → URL updates to /insights?type=spending_increase</idea>
+      <idea ac="all">Integration test: Refresh page with URL params → filters initialize from URL (persistent state)</idea>
+      <idea ac="5">API test: PUT /api/insights/:id/undismiss validates user authentication, returns 401 if not logged in</idea>
+      <idea ac="5">API test: PUT /api/insights/:id/undismiss validates UUID format, returns 400 for invalid ID</idea>
+      <idea ac="5">API test: PUT /api/insights/:id/undismiss enforces RLS → user cannot undismiss another user's insight (403 or 404)</idea>
+      <idea ac="5">API test: PUT /api/insights/:id/undismiss successfully sets is_dismissed=false and returns updated insight</idea>
+    </ideas>
+  </tests>
+</story-context>

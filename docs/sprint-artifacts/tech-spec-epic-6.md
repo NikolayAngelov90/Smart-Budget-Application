@@ -828,3 +828,48 @@ This test strategy ensures comprehensive coverage of Epic 6 functional and non-f
 - **Caching**: Redis mock (jest-redis-mock) or Upstash test instance
 - **CI/CD**: GitHub Actions running test suite on every PR
 - **Manual Testing**: QA checklist document for coaching tone and visual QA
+
+---
+
+## Post-Review Follow-ups
+
+This section tracks action items identified during code reviews that need to be addressed.
+
+### Story 6.3 Review Follow-ups (2025-12-05)
+
+**Source:** Senior Developer Review - Story 6.3: Full AI Insights Page with Filtering
+
+**Code Changes Required:**
+
+1. **[MEDIUM] Implement pagination UI or infinite scroll** (AC #7)
+   - **Story**: 6.3
+   - **Files**: `src/components/insights/InsightsList.tsx` or `InsightsPageContent.tsx`
+   - **Description**: Add pagination controls (Next/Previous buttons + page numbers) OR implement infinite scroll with `react-infinite-scroll-component`
+   - **Rationale**: API supports pagination but no UI controls exist; potential performance issue with 100+ insights
+   - **Status**: Open
+
+**Testing Required:**
+
+2. **[MEDIUM] Component tests for InsightsList**
+   - **Story**: 6.3
+   - **File**: `__tests__/components/insights/InsightsList.test.tsx`
+   - **Tests**: Rendering order, loading state, empty state, date formatting
+   - **Status**: Open
+
+3. **[MEDIUM] Component tests for InsightsFilters**
+   - **Story**: 6.3
+   - **File**: `__tests__/components/insights/InsightsFilters.test.tsx`
+   - **Tests**: Type filter, dismissed toggle, search debouncing (300ms), callbacks
+   - **Status**: Open
+
+4. **[MEDIUM] Component tests for EmptyInsightsState**
+   - **Story**: 6.3
+   - **File**: `__tests__/components/insights/EmptyInsightsState.test.tsx`
+   - **Tests**: Message display, conditional icon, filter text
+   - **Status**: Open
+
+5. **[LOW] API tests for undismiss endpoint**
+   - **Story**: 6.3
+   - **File**: `__tests__/app/api/insights/[id]/undismiss.test.ts`
+   - **Tests**: Auth (401), UUID validation (400), RLS (404), success (200)
+   - **Status**: Open
