@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Providers } from './providers';
 import './globals.css';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'Smart Budget Application',
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body>
         <Providers>{children}</Providers>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
