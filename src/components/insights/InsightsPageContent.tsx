@@ -86,9 +86,8 @@ export function InsightsPageContent() {
     const updatedFilters = { ...filters, ...newFilters, page: 1 };
     const params = new URLSearchParams();
 
-    if (updatedFilters.type !== 'all') {
-      params.append('type', updatedFilters.type);
-    }
+    // Always include type in URL to ensure proper state tracking
+    params.append('type', updatedFilters.type);
 
     if (updatedFilters.dismissed) {
       params.append('dismissed', 'true');
@@ -102,8 +101,8 @@ export function InsightsPageContent() {
       params.append('page', updatedFilters.page.toString());
     }
 
-    const newUrl = params.toString() ? `/insights?${params.toString()}` : '/insights';
-    router.push(newUrl);
+    const newUrl = `/insights?${params.toString()}`;
+    router.replace(newUrl); // Use replace instead of push to avoid navigation history bloat
   };
 
   // Handle page changes
@@ -111,9 +110,8 @@ export function InsightsPageContent() {
     const updatedFilters = { ...filters, page: newPage };
     const params = new URLSearchParams();
 
-    if (updatedFilters.type !== 'all') {
-      params.append('type', updatedFilters.type);
-    }
+    // Always include type in URL to ensure proper state tracking
+    params.append('type', updatedFilters.type);
 
     if (updatedFilters.dismissed) {
       params.append('dismissed', 'true');
@@ -127,8 +125,8 @@ export function InsightsPageContent() {
       params.append('page', updatedFilters.page.toString());
     }
 
-    const newUrl = params.toString() ? `/insights?${params.toString()}` : '/insights';
-    router.push(newUrl);
+    const newUrl = `/insights?${params.toString()}`;
+    router.replace(newUrl); // Use replace instead of push
   };
 
   // Handle dismiss insight

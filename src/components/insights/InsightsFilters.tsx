@@ -47,14 +47,18 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
     >
       {/* Type Filter */}
       <FormControl flex="1">
-        <FormLabel fontSize="sm" fontWeight="medium" mb={2}>
+        <FormLabel htmlFor="insight-type-filter" fontSize="sm" fontWeight="medium" mb={2}>
           Insight Type
         </FormLabel>
         <Select
-          value={filters.type}
+          id="insight-type-filter"
+          value={filters.type || 'all'}
           onChange={(e) => onFilterChange({ type: e.target.value })}
           bg="white"
           size="md"
+          borderColor="gray.300"
+          _hover={{ borderColor: 'gray.400' }}
+          _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3182ce' }}
         >
           <option value="all">All Types</option>
           <option value="spending_increase">Spending Increases</option>
