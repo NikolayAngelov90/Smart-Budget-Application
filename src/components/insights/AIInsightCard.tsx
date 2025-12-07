@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, ReactNode } from 'react';
 import {
   Card,
   CardBody,
@@ -9,6 +10,10 @@ import {
   IconButton,
   HStack,
   VStack,
+  Button,
+  Collapse,
+  Box,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import {
   CloseIcon,
@@ -16,14 +21,20 @@ import {
   InfoIcon,
   WarningTwoIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from '@chakra-ui/icons';
 import type { Insight } from '@/types/database.types';
+import { InsightErrorBoundary } from './InsightErrorBoundary';
 
 interface AIInsightCardProps {
   insight: Insight;
   onDismiss: (id: string) => void;
   onUndismiss?: (id: string) => void;
   isDismissed?: boolean;
+  expandable?: boolean;
+  children?: ReactNode; // Metadata content to display when expanded
+  onOpenModal?: () => void; // For mobile: trigger detail modal
 }
 
 // Color scheme mapping based on insight type
@@ -77,7 +88,13 @@ export function AIInsightCard({
   onDismiss,
   onUndismiss,
   isDismissed = false,
+  expandable = false,
+  children,
+  onOpenModal,
 }: AIInsightCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isMobile = useBreakpointValue({ base: true, md: false });
+
   const colorScheme = getColorScheme(insight.type);
   const icon = getIcon(insight.type);
   const priorityLabel = getPriorityLabel(insight.priority);
@@ -88,6 +105,16 @@ export function AIInsightCard({
       onUndismiss(insight.id);
     } else {
       onDismiss(insight.id);
+    }
+  };
+
+  const handleSeeDetails = () => {
+    if (isMobile && onOpenModal) {
+      // On mobile, trigger modal
+      onOpenModal();
+    } else {
+      // On desktop, toggle inline expansion
+      setIsExpanded(!isExpanded);
     }
   };
 
@@ -179,6 +206,51 @@ export function AIInsightCard({
           >
             {insight.description}
           </Text>
+
+          {/* See Details Button (only if expandable) */}
+          {expandable && (
+            <Button
+              size="sm"
+              variant="ghost"
+              colorScheme={colorScheme}
+              onClick={handleSeeDetails}
+              rightIcon={
+                isMobile ? undefined : isExpanded ? (
+                  <ChevronUpIcon />
+                ) : (
+                  <ChevronDownIcon />
+                )
+              }
+              aria-label={
+                isMobile
+                  ? 'Open details in modal'
+                  : isExpanded
+                    ? 'Hide details'
+                    : 'Show details'
+              }
+              aria-expanded={!isMobile && isExpanded}
+              mt={2}
+            >
+              {isMobile ? 'See Details' : isExpanded ? 'Hide Details' : 'See Details'}
+            </Button>
+          )}
+
+          {/* Expandable Metadata Section (Desktop only, inline) */}
+          {expandable && !isMobile && (
+            <Collapse in={isExpanded} animateOpacity style={{ width: '100%' }}>
+              <Box
+                mt={4}
+                pt={4}
+                borderTop="1px"
+                borderColor="gray.200"
+                w="full"
+              >
+                <InsightErrorBoundary>
+                  {children}
+                </InsightErrorBoundary>
+              </Box>
+            </Collapse>
+          )}
         </VStack>
       </CardBody>
     </Card>

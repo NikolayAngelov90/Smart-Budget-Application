@@ -1,0 +1,357 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>4</storyId>
+    <title>Insight Metadata and Supporting Data</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-06</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-4-insight-metadata-and-supporting-data.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to see supporting data for AI insights</iWant>
+    <soThat>I understand the basis for recommendations</soThat>
+    <tasks>
+      <task id="1" ac="1,6">Extend AIInsightCard with Expandable Section
+        <subtask>Open src/components/insights/AIInsightCard.tsx from Story 6.2</subtask>
+        <subtask>Add Chakra UI Accordion or Disclosure for expandable section</subtask>
+        <subtask>Add "See details" button/link at bottom of card</subtask>
+        <subtask>On mobile: trigger Modal instead of inline expansion (use useBreakpointValue)</subtask>
+        <subtask>On desktop: use Accordion or Disclosure for inline expansion</subtask>
+        <subtask>Add collapse button with icon (ChevronUp/ChevronDown)</subtask>
+        <subtask>Write component tests for expand/collapse behavior</subtask>
+      </task>
+      <task id="2" ac="2,5">Create Insight Metadata Display Component
+        <subtask>Create src/components/insights/InsightMetadata.tsx component</subtask>
+        <subtask>Accept props: insight (Insight object with metadata field)</subtask>
+        <subtask>Parse insight.metadata JSONB field</subtask>
+        <subtask>Render metadata fields dynamically based on insight type</subtask>
+        <subtask>For spending_increase type: display category name, current month amount + transaction count, previous month amount + transaction count, absolute change (+$140), percentage change (+41%)</subtask>
+        <subtask>For budget_recommendation type: display category name, 3-month average, recommended budget (average + 10%), explanation of calculation</subtask>
+        <subtask>For unusual_expense type: display transaction amount, category average, standard deviation, number of std devs from mean</subtask>
+        <subtask>For positive_reinforcement type: display category name, budget amount, actual spending, savings amount + percentage under budget</subtask>
+        <subtask>Add "Why am I seeing this?" section with rule explanation</subtask>
+        <subtask>Use friendly, plain language for all explanations</subtask>
+        <subtask>Style with responsive Typography and Box components</subtask>
+        <subtask>Write component tests for each insight type</subtask>
+      </task>
+      <task id="3" ac="3">Add Transaction Drill-Down Link
+        <subtask>In InsightMetadata component, add link to transactions page</subtask>
+        <subtask>Build link URL: /transactions?category=${categoryId}&month=${month}</subtask>
+        <subtask>Use Next.js Link component with query params</subtask>
+        <subtask>Link text: "View these transactions →"</subtask>
+        <subtask>Open in same tab (stay in app flow)</subtask>
+        <subtask>Verify query params are correctly parsed on transactions page (may require updates in Story 3.2)</subtask>
+      </task>
+      <task id="4" ac="4" optional="true">Optional Micro-Chart for Trends
+        <subtask>Install Recharts if not already available: npm install recharts</subtask>
+        <subtask>Create sparkline component: src/components/insights/InsightTrendChart.tsx</subtask>
+        <subtask>Accept props: dataPoints (array of {month, amount})</subtask>
+        <subtask>Render small LineChart (height: 60px, width: 100%)</subtask>
+        <subtask>Show last 3 months of data from metadata</subtask>
+        <subtask>Minimal styling: no axes labels, simple line, no grid</subtask>
+        <subtask>Integrate into InsightMetadata for applicable insight types</subtask>
+        <subtask>Make optional: only render if metadata includes trend_data field</subtask>
+        <subtask>Write component tests</subtask>
+      </task>
+      <task id="5" ac="6">Create Insight Detail Modal for Mobile
+        <subtask>Create src/components/insights/InsightDetailModal.tsx component</subtask>
+        <subtask>Use Chakra UI Modal component</subtask>
+        <subtask>Accept props: insight, isOpen, onClose</subtask>
+        <subtask>Modal content: InsightMetadata component</subtask>
+        <subtask>Full-screen on mobile, centered on desktop (responsive size)</subtask>
+        <subtask>Close button in header</subtask>
+        <subtask>Swipe down to close on mobile (if supported by Chakra)</subtask>
+        <subtask>Test modal accessibility (keyboard navigation, focus trap)</subtask>
+      </task>
+      <task id="6" ac="2">Update Rule Functions to Include Metadata
+        <subtask>Open src/lib/ai/insightRules.ts from Story 6.1</subtask>
+        <subtask>Ensure each rule function populates metadata field with comprehensive data</subtask>
+        <subtask>detectSpendingIncrease metadata: category_id, category_name, current_amount, previous_amount, percent_change, transaction_count_current, transaction_count_previous, current_month, previous_month</subtask>
+        <subtask>recommendBudgetLimit metadata: category_id, category_name, three_month_average, recommended_budget, calculation_explanation, months_analyzed</subtask>
+        <subtask>flagUnusualExpense metadata: category_id, category_name, transaction_amount, category_average, standard_deviation, std_devs_from_mean, transaction_id, transaction_date</subtask>
+        <subtask>generatePositiveReinforcement metadata: category_id, category_name, budget_amount, actual_spending, savings_amount, percent_under_budget, current_month</subtask>
+        <subtask>Verify metadata is stored in database correctly</subtask>
+      </task>
+      <task id="7" ac="all">Integration Testing
+        <subtask>Test expand/collapse: Click "See details" → metadata section expands</subtask>
+        <subtask>Test mobile modal: On mobile viewport, click details → modal opens</subtask>
+        <subtask>Test desktop accordion: On desktop, click details → inline expansion</subtask>
+        <subtask>Test metadata display for each insight type (4 types)</subtask>
+        <subtask>Verify all metadata fields render correctly</subtask>
+        <subtask>Test transaction link: Click "View these transactions" → navigate to transactions page with filters</subtask>
+        <subtask>Test "Why am I seeing this?" explanations are clear and helpful</subtask>
+        <subtask>Test optional micro-chart renders when trend data available</subtask>
+        <subtask>Test responsive behavior (mobile vs desktop display)</subtask>
+        <subtask>Test accessibility: keyboard navigation, screen reader compatibility</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criteria id="1" title="Expandable Section">
+      - Insight card has expandable section (accordion or modal)
+      - Click to expand shows metadata details
+      - Close/collapse button to hide details
+    </criteria>
+    <criteria id="2" title="Metadata Display">
+      - Shows metadata: category, amounts compared, time periods, calculations
+      - Example for spending increase:
+        - Category name
+        - Current month: amount and transaction count
+        - Previous month: amount and transaction count
+        - Increase: absolute and percentage change
+    </criteria>
+    <criteria id="3" title="Link to Transactions">
+      - Provides link to view transactions for that category/period
+      - Link format: /transactions?category=[id]&month=[month]
+    </criteria>
+    <criteria id="4" title="Micro-Chart (Optional)">
+      - Optional: Line chart showing trend of last 3 months
+      - Uses Recharts library for sparkline visualization
+    </criteria>
+    <criteria id="5" title="Plain Language Explanation">
+      - "Why am I seeing this?" explanation in plain language
+      - Explains the rule logic behind the insight
+    </criteria>
+    <criteria id="6" title="Responsive Design">
+      - Mobile: Full-screen modal for metadata display
+      - Desktop: Inline expansion (accordion or disclosure)
+    </criteria>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification - AI Budget Insights</title>
+        <section>Data Models and Contracts - InsightMetadata Interface</section>
+        <snippet>InsightMetadata defines flexible JSONB schema with fields: category_id, category_name, current_amount, previous_amount, percent_change, transaction_count_current/previous, recommended_budget, three_month_average, standard_deviation, transaction_id, typical_amount. Each rule type populates relevant fields.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>AC6: Insight Supporting Data (Story 6.4)</section>
+        <snippet>Expandable section uses accordion or modal. Shows metadata: category, amounts compared, time periods, calculations. Spending increase example displays category name, current/previous month amounts and transaction counts, absolute and percentage change. Link provided to view transactions. Optional micro-chart for 3-month trend. Plain language "Why am I seeing this?" explanation. Mobile: full-screen modal; desktop: inline expansion.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification</title>
+        <section>Components and Modules</section>
+        <snippet>AIInsightCard component renders individual insight card with color coding, icons, priority badges, and dismiss button. Story 6.4 extends this with expandable metadata section. InsightDetailModal for mobile full-screen view. InsightMetadata component renders type-specific metadata fields.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart Budget Application - Technical Architecture</title>
+        <section>UI Framework and Responsive Design</section>
+        <snippet>Chakra UI v2.8 provides Accordion, Disclosure, Modal components for expandable content. Use useBreakpointValue hook for conditional rendering based on viewport. Pattern: const isMobile = useBreakpointValue({ base: true, md: false }). Mobile-first approach with responsive props.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/components/insights/AIInsightCard.tsx</path>
+        <kind>component</kind>
+        <symbol>AIInsightCard</symbol>
+        <lines>all</lines>
+        <reason>Existing insight card component from Story 6.2. Task 1 extends this with expandable section (Accordion/Modal) to show metadata details. Component already implements card layout, color coding by type, priority badges, and dismiss functionality.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/ai/insightRules.ts</path>
+        <kind>service</kind>
+        <symbol>detectSpendingIncrease, recommendBudgetLimit, flagUnusualExpense, generatePositiveReinforcement</symbol>
+        <lines>all</lines>
+        <reason>Rule functions from Story 6.1 that generate insights. Task 6 ensures each function populates comprehensive metadata fields (amounts, transaction counts, calculations) required for InsightMetadata component to display supporting data.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/database.types.ts</path>
+        <kind>types</kind>
+        <symbol>Insight, InsightType, InsightMetadata</symbol>
+        <lines>all</lines>
+        <reason>Type definitions for Insight objects and metadata structure. InsightMetadata interface defines fields available for each insight type. Used by InsightMetadata component to type-safely access metadata fields.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/transactions/page.tsx</path>
+        <kind>page</kind>
+        <symbol>TransactionsPage</symbol>
+        <lines>query param parsing section</lines>
+        <reason>Transactions page from Story 3.2. Task 3 creates drill-down link (/transactions?category=X&month=Y). Verify this page supports category and month query params for filtering. May require minor updates to handle these filters.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="@chakra-ui/react" version="^2.8.0">Accordion, Disclosure, Modal components for expandable metadata sections. useBreakpointValue hook for responsive behavior.</package>
+        <package name="@chakra-ui/icons" version="^2.2.4">ChevronUp, ChevronDown icons for expand/collapse buttons.</package>
+        <package name="recharts" version="^3.5.0">LineChart component for optional micro-chart/sparkline visualization (Task 4). Already installed.</package>
+        <package name="next" version="^15.0.0">Link component for transaction drill-down navigation. Client-side routing with query params.</package>
+        <package name="react" version="^18.3.0">Core framework for component development.</package>
+        <package name="date-fns" version="^4.1.0">Format dates in metadata display (e.g., "December 2025" for month labels).</package>
+        <package name="typescript" version="^5.3.0">Type safety for Insight and InsightMetadata interfaces.</package>
+      </node>
+    </dependencies>
+  </artifacts>
+  <constraints>
+    <constraint type="architecture">Component Structure: Create new components in src/components/insights/ directory. InsightMetadata.tsx for metadata display, InsightDetailModal.tsx for mobile modal, InsightTrendChart.tsx (optional) for sparkline charts.</constraint>
+    <constraint type="architecture">Extend Not Replace: Extend AIInsightCard component with expandable section. Do not duplicate code. Maintain backward compatibility for existing usage in dashboard and insights page.</constraint>
+    <constraint type="design">Responsive Behavior: Use Chakra UI useBreakpointValue hook. Mobile (base): Full-screen Modal for metadata. Desktop (md+): Inline Accordion or Disclosure expansion. Pattern: const isMobile = useBreakpointValue({ base: true, md: false }).</constraint>
+    <constraint type="design">Metadata Rendering: Render metadata fields dynamically based on insight.type. Each of 4 insight types has different metadata structure. Handle missing optional fields gracefully.</constraint>
+    <constraint type="design">Plain Language: All "Why am I seeing this?" explanations must use friendly, non-judgmental coaching tone. Avoid technical jargon. Example: "You're seeing this because..." instead of "Alert: threshold exceeded".</constraint>
+    <constraint type="performance">No Additional API Calls: Metadata is already loaded in insight object. Expandable section renders client-side only. No fetch on expand. Lazy-load Recharts component if using code-splitting (optional Task 4).</constraint>
+    <constraint type="accessibility">Keyboard Navigation: Accordion/Modal must support keyboard navigation (Tab, Enter, Esc). Focus trap in modal. aria-labels for expand/collapse buttons. Screen reader support for metadata fields.</constraint>
+    <constraint type="testing">Component Tests Required: Write tests for InsightMetadata (all 4 types), InsightDetailModal (open/close, responsive), expand/collapse behavior. Use Jest + React Testing Library. Test files in __tests__/components/insights/.</constraint>
+    <constraint type="data">Metadata Validation: Rule functions (Task 6) must populate all required metadata fields. Verify metadata structure matches InsightMetadata interface. Handle edge cases (missing category_id, null amounts).</constraint>
+    <constraint type="integration">Transaction Link: Link format /transactions?category=${categoryId}&month=${month}. Verify transactions page (Story 3.2) supports these query params. If not, coordinate with transactions page to add filter support.</constraint>
+  </constraints>
+  <interfaces>
+    <interface name="InsightMetadata" kind="React component (NEW)">
+      <signature>
+        interface InsightMetadataProps {
+          insight: Insight;
+        }
+      </signature>
+      <props>
+        - insight: Full Insight object including metadata JSONB field
+      </props>
+      <behavior>
+        - Parse insight.metadata and render fields based on insight.type
+        - Display type-specific fields (amounts, counts, calculations)
+        - Show "Why am I seeing this?" explanation in plain language
+        - Include transaction drill-down link
+        - Optional: render InsightTrendChart if metadata.trend_data exists
+      </behavior>
+      <path>src/components/insights/InsightMetadata.tsx</path>
+    </interface>
+    <interface name="InsightDetailModal" kind="React component (NEW)">
+      <signature>
+        interface InsightDetailModalProps {
+          insight: Insight;
+          isOpen: boolean;
+          onClose: () => void;
+        }
+      </signature>
+      <props>
+        - insight: Insight object to display metadata for
+        - isOpen: Boolean to control modal visibility
+        - onClose: Callback when modal is closed
+      </props>
+      <behavior>
+        - Chakra UI Modal with full-screen on mobile, centered on desktop
+        - Renders InsightMetadata component as modal content
+        - Close button in header, keyboard Esc support
+        - Focus trap for accessibility
+      </behavior>
+      <path>src/components/insights/InsightDetailModal.tsx</path>
+    </interface>
+    <interface name="InsightTrendChart" kind="React component (NEW, optional)">
+      <signature>
+        interface InsightTrendChartProps {
+          dataPoints: Array&lt;{ month: string; amount: number }&gt;;
+        }
+      </signature>
+      <props>
+        - dataPoints: Array of {month, amount} for last 3 months
+      </props>
+      <behavior>
+        - Recharts LineChart with minimal styling
+        - Height: 60px, width: 100%
+        - No axes labels, simple line, no grid
+        - Sparkline visualization
+      </behavior>
+      <path>src/components/insights/InsightTrendChart.tsx</path>
+    </interface>
+    <interface name="AIInsightCard (Extended)" kind="React component">
+      <signature>
+        interface AIInsightCardProps {
+          insight: Insight;
+          onDismiss: (id: string) =&gt; void;
+          onUndismiss?: (id: string) =&gt; void;
+          isDismissed?: boolean;
+          expandable?: boolean; // NEW
+          onExpand?: () =&gt; void; // NEW
+        }
+      </signature>
+      <props>
+        - expandable: NEW - Enable metadata expandable section
+        - onExpand: NEW - Callback when "See details" clicked
+      </props>
+      <behavior>
+        - Add "See details" button at card bottom if expandable=true
+        - On mobile: trigger InsightDetailModal
+        - On desktop: use Accordion or Disclosure for inline expansion
+        - Maintain existing dismiss/undismiss functionality
+      </behavior>
+      <path>src/components/insights/AIInsightCard.tsx</path>
+      <note>Extend existing component from Story 6.2 with new optional props</note>
+    </interface>
+    <interface name="InsightMetadata (TypeScript)" kind="TypeScript interface">
+      <signature>
+        interface InsightMetadata {
+          category_id?: string;
+          category_name?: string;
+          current_amount?: number;
+          previous_amount?: number;
+          percent_change?: number;
+          transaction_count_current?: number;
+          transaction_count_previous?: number;
+          recommended_budget?: number;
+          three_month_average?: number;
+          standard_deviation?: number;
+          transaction_id?: string;
+          typical_amount?: number;
+          current_month?: string;
+          previous_month?: string;
+          months_analyzed?: string[];
+          calculation_explanation?: string;
+          transaction_amount?: number;
+          category_average?: number;
+          std_devs_from_mean?: number;
+          transaction_date?: string;
+          budget_amount?: number;
+          actual_spending?: number;
+          savings_amount?: number;
+          percent_under_budget?: number;
+          trend_data?: Array&lt;{ month: string; amount: number }&gt;; // Optional for micro-chart
+        }
+      </signature>
+      <path>src/types/database.types.ts</path>
+      <note>Existing interface - Task 6 ensures rule functions populate these fields</note>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>Use Jest for unit/component tests and React Testing Library for component interaction tests. Test files mirror src/ structure in __tests__/ directory. Mock Chakra UI hooks (useBreakpointValue, useDisclosure) for responsive behavior tests. Achieve 80%+ coverage for all new insight components. Test all 4 insight types with different metadata structures. Verify accessibility (keyboard navigation, screen readers).</standards>
+    <locations>
+      - __tests__/components/insights/AIInsightCard.test.tsx (extend existing tests)
+      - __tests__/components/insights/InsightMetadata.test.tsx
+      - __tests__/components/insights/InsightDetailModal.test.tsx
+      - __tests__/components/insights/InsightTrendChart.test.tsx (if implemented)
+      - __tests__/lib/ai/insightRules.test.ts (extend existing tests for metadata)
+    </locations>
+    <ideas>
+      <idea ac="1">Component test: AIInsightCard with expandable=true renders "See details" button</idea>
+      <idea ac="1">Component test: Click "See details" triggers expand on desktop (Accordion opens)</idea>
+      <idea ac="1">Component test: Click "See details" on mobile viewport opens InsightDetailModal</idea>
+      <idea ac="1">Component test: Collapse button hides expanded metadata section</idea>
+      <idea ac="2">Component test: InsightMetadata renders spending_increase metadata with category name, current/previous amounts and counts, percent change</idea>
+      <idea ac="2">Component test: InsightMetadata renders budget_recommendation metadata with 3-month average, recommended budget, calculation explanation</idea>
+      <idea ac="2">Component test: InsightMetadata renders unusual_expense metadata with transaction amount, category average, standard deviation, std devs from mean</idea>
+      <idea ac="2">Component test: InsightMetadata renders positive_reinforcement metadata with budget, actual spending, savings amount, percent under budget</idea>
+      <idea ac="2">Component test: InsightMetadata handles missing optional metadata fields gracefully (no errors, shows "N/A" or omits field)</idea>
+      <idea ac="3">Component test: Transaction drill-down link renders with correct URL format: /transactions?category=X&month=Y</idea>
+      <idea ac="3">Component test: Click transaction link navigates to transactions page with query params</idea>
+      <idea ac="4">Component test: InsightTrendChart renders LineChart with dataPoints</idea>
+      <idea ac="4">Component test: InsightTrendChart shows 3 data points (last 3 months)</idea>
+      <idea ac="4">Component test: InsightMetadata renders InsightTrendChart only if metadata.trend_data exists</idea>
+      <idea ac="5">Component test: "Why am I seeing this?" explanation renders with plain language text</idea>
+      <idea ac="5">Component test: Explanation text matches insight type (spending_increase shows "spending increased by more than 20%")</idea>
+      <idea ac="6">Component test: InsightDetailModal opens with isOpen=true, closes with onClose callback</idea>
+      <idea ac="6">Component test: Modal is full-screen on mobile (size="full"), centered on desktop (size="md")</idea>
+      <idea ac="6">Component test: Mock useBreakpointValue to test mobile vs desktop behavior</idea>
+      <idea ac="6">Accessibility test: Modal supports keyboard Esc to close</idea>
+      <idea ac="6">Accessibility test: Focus trap works - Tab cycles through modal elements only</idea>
+      <idea ac="all">Integration test: Expand insight on dashboard → metadata displays → click transaction link → filters applied on transactions page</idea>
+      <idea ac="all">Unit test: detectSpendingIncrease populates all required metadata fields (category_id, current_amount, previous_amount, percent_change, counts, months)</idea>
+      <idea ac="all">Unit test: Each of 4 rule functions returns comprehensive metadata matching InsightMetadata interface</idea>
+    </ideas>
+  </tests>
+</story-context>

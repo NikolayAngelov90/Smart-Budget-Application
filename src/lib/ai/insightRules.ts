@@ -147,6 +147,7 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
 
   // Calculate monthly spending for last 3 months
   const monthlyTotals: number[] = [];
+  const monthsAnalyzed: string[] = [];
 
   for (let i = 0; i < 3; i++) {
     const month = subMonths(currentMonth, i);
@@ -161,6 +162,7 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
     if (monthTransactions.length > 0) {
       const total = monthTransactions.reduce((sum, t) => sum + t.amount, 0);
       monthlyTotals.push(total);
+      monthsAnalyzed.push(format(month, 'yyyy-MM'));
     }
   }
 
@@ -190,7 +192,7 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
     three_month_average: Math.round(averageMonthly),
     recommended_budget: recommendedBudget,
     calculation_explanation: `Based on 3-month average of $${Math.round(averageMonthly)} + 10% buffer`,
-    months_analyzed: monthlyTotals.length,
+    months_analyzed: monthsAnalyzed,
   };
 
   return {
