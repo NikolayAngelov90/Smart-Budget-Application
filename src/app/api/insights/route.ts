@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
     const limitParam = searchParams.get('limit');
+    const offsetParam = searchParams.get('offset');
     const dismissedParam = searchParams.get('dismissed');
     const orderByParam = searchParams.get('orderBy');
     const typeParam = searchParams.get('type');
@@ -58,6 +59,15 @@ export async function GET(request: NextRequest) {
       const parsedLimit = parseInt(limitParam, 10);
       if (!isNaN(parsedLimit)) {
         limit = Math.min(Math.max(1, parsedLimit), 100);
+      }
+    }
+
+    // Validate and parse offset (default: 0)
+    let offset = 0;
+    if (offsetParam) {
+      const parsedOffset = parseInt(offsetParam, 10);
+      if (!isNaN(parsedOffset)) {
+        offset = Math.max(0, parsedOffset);
       }
     }
 
@@ -101,8 +111,8 @@ export async function GET(request: NextRequest) {
       query = query.order('created_at', { ascending: false });
     }
 
-    // Apply limit
-    query = query.limit(limit);
+    // Apply pagination (limit and offset)
+    query = query.range(offset, offset + limit - 1);
 
     // Execute query
     const { data: insights, error, count } = await query;

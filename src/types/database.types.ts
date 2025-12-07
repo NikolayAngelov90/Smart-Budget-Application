@@ -135,6 +135,12 @@ export interface Database {
           is_dismissed: boolean;
           metadata: Json | null;
           created_at: string;
+          view_count: number;
+          first_viewed_at: string | null;
+          last_viewed_at: string | null;
+          dismissed_at: string | null;
+          metadata_expanded_count: number;
+          last_metadata_expanded_at: string | null;
         };
         Insert: {
           id?: string;
@@ -146,6 +152,12 @@ export interface Database {
           is_dismissed?: boolean;
           metadata?: Json | null;
           created_at?: string;
+          view_count?: number;
+          first_viewed_at?: string | null;
+          last_viewed_at?: string | null;
+          dismissed_at?: string | null;
+          metadata_expanded_count?: number;
+          last_metadata_expanded_at?: string | null;
         };
         Update: {
           id?: string;
@@ -157,6 +169,12 @@ export interface Database {
           is_dismissed?: boolean;
           metadata?: Json | null;
           created_at?: string;
+          view_count?: number;
+          first_viewed_at?: string | null;
+          last_viewed_at?: string | null;
+          dismissed_at?: string | null;
+          metadata_expanded_count?: number;
+          last_metadata_expanded_at?: string | null;
         };
         Relationships: [
           {

@@ -8,16 +8,26 @@ import { InsightsFilters } from './InsightsFilters';
 import { InsightsList } from './InsightsList';
 import { EmptyInsightsState } from './EmptyInsightsState';
 import { RefreshInsightsButton } from './RefreshInsightsButton';
+import { InsightsPagination } from './InsightsPagination';
 import type { Insight } from '@/types/database.types';
 
+// API response type
+interface InsightsResponse {
+  insights: Insight[];
+  total: number;
+}
+
 // Fetcher for SWR
-const fetcher = async (url: string) => {
+const fetcher = async (url: string): Promise<InsightsResponse> => {
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error('Failed to fetch insights');
   }
   const data = await res.json();
-  return data.insights || [];
+  return {
+    insights: data.insights || [],
+    total: data.total || 0,
+  };
 };
 
 export function InsightsPageContent() {
@@ -30,11 +40,19 @@ export function InsightsPageContent() {
     type: searchParams.get('type') || 'all',
     dismissed: searchParams.get('dismissed') === 'true',
     search: searchParams.get('search') || '',
+    page: parseInt(searchParams.get('page') || '1', 10),
   }), [searchParams]);
+
+  // Pagination configuration
+  const INSIGHTS_PER_PAGE = 20;
 
   // Build query string for API
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
+
+    // Pagination params
+    params.append('limit', INSIGHTS_PER_PAGE.toString());
+    params.append('offset', ((filters.page - 1) * INSIGHTS_PER_PAGE).toString());
 
     if (filters.type !== 'all') {
       params.append('type', filters.type);
@@ -50,7 +68,7 @@ export function InsightsPageContent() {
   }, [filters]);
 
   // Fetch insights with SWR
-  const { data: insights, error, isLoading, mutate } = useSWR<Insight[]>(
+  const { data, error, isLoading, mutate } = useSWR<InsightsResponse>(
     `/api/insights?${queryString}`,
     fetcher,
     {
@@ -60,9 +78,12 @@ export function InsightsPageContent() {
     }
   );
 
-  // Handle filter changes
+  const insights = data?.insights || [];
+  const totalInsights = data?.total || 0;
+
+  // Handle filter changes (reset to page 1 when filters change)
   const handleFilterChange = (newFilters: Partial<typeof filters>) => {
-    const updatedFilters = { ...filters, ...newFilters };
+    const updatedFilters = { ...filters, ...newFilters, page: 1 };
     const params = new URLSearchParams();
 
     if (updatedFilters.type !== 'all') {
@@ -77,19 +98,51 @@ export function InsightsPageContent() {
       params.append('search', updatedFilters.search);
     }
 
+    if (updatedFilters.page > 1) {
+      params.append('page', updatedFilters.page.toString());
+    }
+
+    const newUrl = params.toString() ? `/insights?${params.toString()}` : '/insights';
+    router.push(newUrl);
+  };
+
+  // Handle page changes
+  const handlePageChange = (newPage: number) => {
+    const updatedFilters = { ...filters, page: newPage };
+    const params = new URLSearchParams();
+
+    if (updatedFilters.type !== 'all') {
+      params.append('type', updatedFilters.type);
+    }
+
+    if (updatedFilters.dismissed) {
+      params.append('dismissed', 'true');
+    }
+
+    if (updatedFilters.search) {
+      params.append('search', updatedFilters.search);
+    }
+
+    if (updatedFilters.page > 1) {
+      params.append('page', updatedFilters.page.toString());
+    }
+
     const newUrl = params.toString() ? `/insights?${params.toString()}` : '/insights';
     router.push(newUrl);
   };
 
   // Handle dismiss insight
   const handleDismiss = async (id: string) => {
-    if (!insights) return;
+    if (!data) return;
 
     // Optimistic update
-    const optimisticInsights = insights.map(insight =>
-      insight.id === id ? { ...insight, is_dismissed: true } : insight
-    );
-    mutate(optimisticInsights, false);
+    const optimisticData: InsightsResponse = {
+      insights: data.insights.map(insight =>
+        insight.id === id ? { ...insight, is_dismissed: true } : insight
+      ),
+      total: data.total,
+    };
+    mutate(optimisticData, false);
 
     try {
       const res = await fetch(`/api/insights/${id}/dismiss`, {
@@ -125,13 +178,16 @@ export function InsightsPageContent() {
 
   // Handle undismiss insight
   const handleUndismiss = async (id: string) => {
-    if (!insights) return;
+    if (!data) return;
 
     // Optimistic update
-    const optimisticInsights = insights.map(insight =>
-      insight.id === id ? { ...insight, is_dismissed: false } : insight
-    );
-    mutate(optimisticInsights, false);
+    const optimisticData: InsightsResponse = {
+      insights: data.insights.map(insight =>
+        insight.id === id ? { ...insight, is_dismissed: false } : insight
+      ),
+      total: data.total,
+    };
+    mutate(optimisticData, false);
 
     try {
       const res = await fetch(`/api/insights/${id}/undismiss`, {
@@ -226,12 +282,22 @@ export function InsightsPageContent() {
                 hasFilters={hasActiveFilters}
               />
             ) : (
-              <InsightsList
-                insights={insights || []}
-                onDismiss={handleDismiss}
-                onUndismiss={handleUndismiss}
-                isLoading={isLoading}
-              />
+              <>
+                <InsightsList
+                  insights={insights || []}
+                  onDismiss={handleDismiss}
+                  onUndismiss={handleUndismiss}
+                  isLoading={isLoading}
+                />
+                {/* Pagination Controls */}
+                <InsightsPagination
+                  currentPage={filters.page}
+                  totalInsights={totalInsights}
+                  insightsPerPage={INSIGHTS_PER_PAGE}
+                  onPageChange={handlePageChange}
+                  isLoading={isLoading}
+                />
+              </>
             )}
           </>
         )}

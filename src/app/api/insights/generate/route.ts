@@ -13,18 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateInsights } from '@/lib/services/insightService';
-
-/**
- * Rate limit cache - tracks last manual refresh time per user
- * Key: userId
- * Value: timestamp (milliseconds)
- */
-const rateLimitCache = new Map<string, number>();
-
-/**
- * Rate limit window in milliseconds (5 minutes)
- */
-const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5 minutes
+import { checkRateLimit, recordRateLimitAction } from '@/lib/services/rateLimitService';
 
 /**
  * POST handler for insight generation
@@ -58,42 +47,26 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting check (only for manual refreshes with forceRegenerate=true)
     if (forceRegenerate) {
-      const lastRefreshTime = rateLimitCache.get(user.id);
-      const now = Date.now();
+      // Check if user has exceeded rate limit
+      const rateLimitCheck = await checkRateLimit(user.id);
 
-      if (lastRefreshTime) {
-        const elapsed = now - lastRefreshTime;
-        const remaining = RATE_LIMIT_WINDOW - elapsed;
+      if (rateLimitCheck.exceeded) {
+        console.log(
+          `[Rate Limit] User ${user.id} exceeded rate limit. ${rateLimitCheck.remainingSeconds}s remaining`
+        );
 
-        if (remaining > 0) {
-          // Rate limit exceeded
-          const remainingSeconds = Math.ceil(remaining / 1000);
-
-          console.log(
-            `[Rate Limit] User ${user.id} exceeded rate limit. ${remainingSeconds}s remaining`
-          );
-
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'Rate limit exceeded',
-              remainingSeconds,
-            },
-            { status: 429 }
-          );
-        }
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Rate limit exceeded',
+            remainingSeconds: rateLimitCheck.remainingSeconds,
+          },
+          { status: 429 }
+        );
       }
 
-      // Update last refresh time
-      rateLimitCache.set(user.id, now);
-
-      // Clean up old entries (optional: remove entries older than rate limit window)
-      const entries = Array.from(rateLimitCache.entries());
-      for (const [userId, timestamp] of entries) {
-        if (now - timestamp > RATE_LIMIT_WINDOW) {
-          rateLimitCache.delete(userId);
-        }
-      }
+      // Record this action for rate limiting
+      await recordRateLimitAction(user.id);
     }
 
     // Generate insights

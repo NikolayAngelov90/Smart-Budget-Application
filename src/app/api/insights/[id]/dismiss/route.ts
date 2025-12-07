@@ -44,10 +44,25 @@ export async function PUT(
     const body = await request.json();
     const isDismissed = body.is_dismissed === true;
 
+    // Prepare update payload with analytics tracking
+    interface UpdatePayload {
+      is_dismissed: boolean;
+      dismissed_at?: string;
+    }
+
+    const updatePayload: UpdatePayload = {
+      is_dismissed: isDismissed,
+    };
+
+    // Set dismissed_at timestamp when dismissing (for analytics)
+    if (isDismissed) {
+      updatePayload.dismissed_at = new Date().toISOString();
+    }
+
     // Update insight (RLS will enforce user can only update their own insights)
     const { data: insight, error } = await supabase
       .from('insights')
-      .update({ is_dismissed: isDismissed })
+      .update(updatePayload)
       .eq('id', insightId)
       .eq('user_id', user.id) // Explicit user_id check for clarity
       .select()
