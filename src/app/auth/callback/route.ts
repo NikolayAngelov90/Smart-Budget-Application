@@ -45,9 +45,11 @@ export async function GET(request: NextRequest) {
       const userId = data.user.id;
 
       // Check if user has any categories (to determine if they're new)
+      // FIXED: Added .eq('user_id', userId) to filter by current user
       const { data: existingCategories } = await supabase
         .from('categories')
         .select('id')
+        .eq('user_id', userId)
         .limit(1);
 
       // If no categories exist, seed default categories for this new user

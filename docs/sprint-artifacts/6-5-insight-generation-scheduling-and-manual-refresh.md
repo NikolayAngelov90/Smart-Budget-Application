@@ -1,6 +1,6 @@
 # Story 6.5: Insight Generation Scheduling and Manual Refresh
 
-Status: review
+Status: done
 
 ## Story
 
@@ -404,7 +404,13 @@ claude-sonnet-4-5-20250929
 - `src/components/insights/InsightsPageContent.tsx` - Integrated refresh button into page header
 - `docs/sprint-artifacts/sprint-status.yaml` - Updated story status (ready-for-dev → in-progress → review)
 
+### Completion Notes
+
+**Completed:** 2025-12-07
+**Definition of Done:** All acceptance criteria met, code reviewed, tests passing
+
 ---
 
 **Change Log:**
 - 2025-12-03: Story drafted by SM Agent (Niki)
+- 2025-12-07: Story completed and marked done

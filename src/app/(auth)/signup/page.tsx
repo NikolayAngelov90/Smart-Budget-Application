@@ -167,42 +167,9 @@ export default function SignupPage() {
         return;
       }
 
-      // Success case - now seed default categories (Story 4.1)
-      // Non-blocking: If seeding fails, user can still proceed
-      try {
-        const onboardingResponse = await fetch('/api/auth/onboarding', {
-          method: 'POST',
-        });
-
-        if (onboardingResponse.ok) {
-          const result = await onboardingResponse.json();
-          console.log(`Seeded ${result.count} default categories`);
-        } else {
-          // Log error but don't block signup
-          console.error('Category seeding failed:', await onboardingResponse.text());
-
-          // Retry once after 2 seconds
-          setTimeout(async () => {
-            try {
-              const retryResponse = await fetch('/api/auth/onboarding', {
-                method: 'POST',
-              });
-              if (retryResponse.ok) {
-                const result = await retryResponse.json();
-                console.log(`Seeded ${result.count} categories on retry`);
-              } else {
-                console.error('Category seeding retry failed - user can add categories manually');
-              }
-            } catch (retryError) {
-              console.error('Onboarding retry error:', retryError);
-            }
-          }, 2000);
-        }
-      } catch (onboardingError) {
-        // Log but don't block - user can add custom categories manually
-        console.error('Onboarding error:', onboardingError);
-      }
-
+      // Success case
+      // Note: Default categories will be seeded after email verification
+      // when the user is redirected through /auth/callback
       toast({
         title: 'Account created!',
         description: 'Check your email to verify your account.',
