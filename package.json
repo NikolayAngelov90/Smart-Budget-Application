@@ -4,7 +4,7 @@
   "private": true,
   "author": "Niki",
   "engines": {
-    "node": ">=20.0.0 <25.0.0"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "next dev -p 3001",
