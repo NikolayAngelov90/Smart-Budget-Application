@@ -41,6 +41,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { checkAndTriggerForTransactionCount } from '@/lib/services/insightService';
 
 // Type definitions
 interface CreateTransactionRequest {
@@ -317,6 +318,13 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Async trigger: Check if 10+ transactions added and generate insights if needed
+    // Story 6.5: AC1 - Automatic Generation after 10+ transactions
+    // This is non-blocking - we don't wait for it to complete
+    checkAndTriggerForTransactionCount(user.id).catch((error) => {
+      console.error('[Transaction] Failed to check insight trigger:', error);
+    });
 
     return NextResponse.json({ data: transaction }, { status: 201 });
   } catch (error) {

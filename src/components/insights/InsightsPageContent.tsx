@@ -2,11 +2,12 @@
 
 import { useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Box, Heading, Text, VStack, useToast } from '@chakra-ui/react';
+import { Box, Heading, Text, VStack, HStack, useToast } from '@chakra-ui/react';
 import useSWR from 'swr';
 import { InsightsFilters } from './InsightsFilters';
 import { InsightsList } from './InsightsList';
 import { EmptyInsightsState } from './EmptyInsightsState';
+import { RefreshInsightsButton } from './RefreshInsightsButton';
 import type { Insight } from '@/types/database.types';
 
 // Fetcher for SWR
@@ -178,14 +179,28 @@ export function InsightsPageContent() {
   return (
     <Box maxW="1200px" mx="auto" p={{ base: 4, md: 6 }}>
       <VStack align="start" spacing={6} w="full">
-        {/* Header */}
-        <Box>
-          <Heading as="h1" size={{ base: 'xl', md: '2xl' }} mb={2}>
-            AI Budget Insights
-          </Heading>
-          <Text color="gray.600" fontSize={{ base: 'md', md: 'lg' }}>
-            View and manage all your personalized budget recommendations
-          </Text>
+        {/* Header with Refresh Button */}
+        <Box w="full">
+          <HStack
+            justify="space-between"
+            align={{ base: 'start', md: 'center' }}
+            flexDirection={{ base: 'column', md: 'row' }}
+            spacing={{ base: 3, md: 4 }}
+            w="full"
+          >
+            <Box flex="1">
+              <Heading as="h1" size={{ base: 'xl', md: '2xl' }} mb={2}>
+                AI Budget Insights
+              </Heading>
+              <Text color="gray.600" fontSize={{ base: 'md', md: 'lg' }}>
+                View and manage all your personalized budget recommendations
+              </Text>
+            </Box>
+            {/* Refresh Button - positioned right on desktop, full-width on mobile */}
+            <Box w={{ base: 'full', md: 'auto' }}>
+              <RefreshInsightsButton size="md" variant="solid" />
+            </Box>
+          </HStack>
         </Box>
 
         {/* Filters */}

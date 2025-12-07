@@ -5,11 +5,26 @@
  *
  * Triggers generation of AI-powered budget insights for the authenticated user.
  * Supports optional forceRegenerate parameter to bypass cache.
+ *
+ * Story 6.5: Insight Generation Scheduling and Manual Refresh
+ * AC8: Rate Limiting - Max 1 manual refresh per 5 minutes
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateInsights } from '@/lib/services/insightService';
+
+/**
+ * Rate limit cache - tracks last manual refresh time per user
+ * Key: userId
+ * Value: timestamp (milliseconds)
+ */
+const rateLimitCache = new Map<string, number>();
+
+/**
+ * Rate limit window in milliseconds (5 minutes)
+ */
+const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5 minutes
 
 /**
  * POST handler for insight generation
@@ -40,6 +55,46 @@ export async function POST(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
     const forceRegenerate = searchParams.get('forceRegenerate') === 'true';
+
+    // Rate limiting check (only for manual refreshes with forceRegenerate=true)
+    if (forceRegenerate) {
+      const lastRefreshTime = rateLimitCache.get(user.id);
+      const now = Date.now();
+
+      if (lastRefreshTime) {
+        const elapsed = now - lastRefreshTime;
+        const remaining = RATE_LIMIT_WINDOW - elapsed;
+
+        if (remaining > 0) {
+          // Rate limit exceeded
+          const remainingSeconds = Math.ceil(remaining / 1000);
+
+          console.log(
+            `[Rate Limit] User ${user.id} exceeded rate limit. ${remainingSeconds}s remaining`
+          );
+
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Rate limit exceeded',
+              remainingSeconds,
+            },
+            { status: 429 }
+          );
+        }
+      }
+
+      // Update last refresh time
+      rateLimitCache.set(user.id, now);
+
+      // Clean up old entries (optional: remove entries older than rate limit window)
+      const entries = Array.from(rateLimitCache.entries());
+      for (const [userId, timestamp] of entries) {
+        if (now - timestamp > RATE_LIMIT_WINDOW) {
+          rateLimitCache.delete(userId);
+        }
+      }
+    }
 
     // Generate insights
     const startTime = Date.now();

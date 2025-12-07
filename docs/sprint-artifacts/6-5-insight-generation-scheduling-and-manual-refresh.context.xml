@@ -1,0 +1,198 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>5</storyId>
+    <title>Insight Generation Scheduling and Manual Refresh</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-07</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-5-insight-generation-scheduling-and-manual-refresh.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a developer</asA>
+    <iWant>insights generated automatically on schedule and manually on demand</iWant>
+    <soThat>users always have fresh recommendations</soThat>
+    <tasks>
+      - Task 1: Create Vercel Cron Job Endpoint (AC: #2)
+      - Task 2: Configure Vercel Cron Job (AC: #2)
+      - Task 3: Implement 10-Transaction Trigger (AC: #1)
+      - Task 4: Create Manual Refresh Button Component (AC: #3, #5, #7, #8)
+      - Task 5: Add Rate Limiting to Insight Generation Endpoint (AC: #8)
+      - Task 6: Integrate Refresh Button into Insights Page (AC: #3)
+      - Task 7: Implement Toast Notifications (AC: #6)
+      - Task 8: Optimize Cron Job for New Month Detection (AC: #2)
+      - Task 9: Performance Optimization (AC: #4)
+      - Task 10: Monitoring and Logging (AC: All)
+      - Task 11: Integration Testing (AC: All)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    - AC1: Automatic Generation Triggers - Start of new month, After 10+ transactions, Manual refresh button
+    - AC2: Scheduled Job - Daily at midnight UTC, checks for new month, generates for all users
+    - AC3: Manual Refresh Button - Available on insights page, triggers generation for current user
+    - AC4: Generation Performance - Completes in less than 2 seconds
+    - AC5: Loading Indicator - Displays while generating (Chakra UI Spinner/Progress)
+    - AC6: Success and Empty State Toasts - Shows count or "All caught up!" message
+    - AC7: Cache Invalidation - Manual refresh bypasses 1-hour cache (forceRegenerate=true)
+    - AC8: Rate Limiting - Max 1 manual refresh per 5 minutes, shows remaining time
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification: AI Budget Insights</title>
+        <section>Workflows and Sequencing - Manual Insight Refresh</section>
+        <snippet>Manual refresh workflow: User clicks refresh → POST /api/insights/generate with forceRegenerate=true → Backend checks rate limit (1 per 5 minutes) → Generate fresh insights bypassing cache → Return with success toast showing count</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification: AI Budget Insights</title>
+        <section>Workflows and Sequencing - Scheduled Generation</section>
+        <snippet>Vercel Cron runs daily at midnight UTC → Check if new month started → If true, queue generation for all users → Call generateInsights() for each user → Return success count</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification: AI Budget Insights</title>
+        <section>APIs and Interfaces - Cron Job API</section>
+        <snippet>POST /api/cron/generate-insights secured with Vercel cron secret header. Verifies secret, checks for new month, processes all users in batches, returns count of users processed and insights generated</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-6.md</path>
+        <title>Epic 6 Technical Specification: AI Budget Insights</title>
+        <section>Non-Functional Requirements - Performance</section>
+        <snippet>Insight generation must complete in less than 2 seconds (FR20). Manual refresh less than 2 seconds with loading indicator. Dashboard insights load in less than 500ms using SWR cache.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart Budget Application - Technical Architecture</title>
+        <section>Project Structure - API Routes</section>
+        <snippet>API routes follow Next.js 15 App Router pattern. Cron jobs configured in vercel.json. Use Route Handlers (route.ts files) for serverless functions.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/lib/services/insightService.ts</path>
+        <kind>service</kind>
+        <symbol>generateInsights</symbol>
+        <lines>68-86</lines>
+        <reason>Core insight generation function that needs to be called by cron job, transaction trigger, and manual refresh. Already implements caching with 1-hour TTL and forceRegenerate parameter.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/services/insightService.ts</path>
+        <kind>service</kind>
+        <symbol>isCacheValid</symbol>
+        <lines>38-45</lines>
+        <reason>Cache validation function used to determine if insights need regeneration. Checks 1-hour TTL by default.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/services/insightService.ts</path>
+        <kind>service</kind>
+        <symbol>updateCache</symbol>
+        <lines>50-55</lines>
+        <reason>Updates cache timestamp after insight generation. Will be called by transaction trigger to track last generation time.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/insights/generate/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>POST</symbol>
+        <lines>27-71</lines>
+        <reason>Existing insight generation endpoint. Needs rate limiting logic added for manual refresh (AC8). Currently supports forceRegenerate query parameter.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/transactions/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>POST</symbol>
+        <lines>1-100</lines>
+        <reason>Transaction creation endpoint where 10-transaction trigger will be integrated. Need to call checkAndTriggerForTransactionCount asynchronously after transaction insert.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/insights/page.tsx</path>
+        <kind>page</kind>
+        <symbol>InsightsPage</symbol>
+        <lines>5-22</lines>
+        <reason>Full insights page where manual refresh button will be integrated. Uses InsightsPageContent component which needs to include RefreshInsightsButton.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="next" version="^15.5.7">Next.js framework - supports Vercel Cron Jobs via vercel.json configuration</package>
+        <package name="react" version="^18.3.0">React framework for UI components</package>
+        <package name="@chakra-ui/react" version="^2.8.0">UI components for refresh button, loading spinner, toast notifications</package>
+        <package name="swr" version="^2.3.6">Client-side caching and data fetching - will be used for insights data and cache invalidation on refresh</package>
+        <package name="date-fns" version="^4.1.0">Date manipulation for new month detection, time range calculations</package>
+        <package name="@supabase/supabase-js" version="^2.81.1">Database client for querying users, transactions, insights</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - Vercel Cron Jobs must complete within 10 seconds (Vercel serverless function limit)
+    - Insight generation must complete in less than 2 seconds per user (NFR FR20)
+    - Rate limiting: Maximum 1 manual refresh per 5 minutes per user (AC8)
+    - Cache TTL: 1 hour for insight generation (defined in insightService.ts)
+    - Manual refresh must bypass cache using forceRegenerate=true (AC7)
+    - Cron job must authenticate using CRON_SECRET environment variable
+    - Use Chakra UI components for all UI elements (Button, Spinner, useToast)
+    - All API routes must verify user authentication via Supabase Auth
+    - Toast notifications must use Chakra UI useToast hook
+    - Cron job must check if it's the 1st of the month before processing users (AC2)
+    - Transaction trigger must not block transaction creation response (async call)
+    - Minimum 20 transactions and 2 months of data recommended before generating insights
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>generateInsights</name>
+      <kind>function signature</kind>
+      <signature>async function generateInsights(userId: string, forceRegenerate: boolean = false): Promise&lt;Insight[]&gt;</signature>
+      <path>src/lib/services/insightService.ts:68</path>
+    </interface>
+    <interface>
+      <name>POST /api/insights/generate</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /api/insights/generate?forceRegenerate=true → { success: boolean, count: number, message: string, elapsedMs: number }</signature>
+      <path>src/app/api/insights/generate/route.ts:27</path>
+    </interface>
+    <interface>
+      <name>Vercel Cron Job Configuration</name>
+      <kind>config</kind>
+      <signature>{ "crons": [{ "path": "/api/cron/generate-insights", "schedule": "0 0 * * *" }] }</signature>
+      <path>vercel.json (to be created)</path>
+    </interface>
+    <interface>
+      <name>CRON_SECRET Environment Variable</name>
+      <kind>environment variable</kind>
+      <signature>CRON_SECRET=&lt;secret-token&gt; - Used to authenticate cron job requests via Authorization: Bearer header</signature>
+      <path>Vercel dashboard environment variables</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Project uses Jest 30.2.0 with React Testing Library for component tests and Supertest for API integration tests. TypeScript with ts-jest for type-safe tests. Test files located in __tests__ directory mirroring src structure. Coverage goal: 90%+ for business logic, 85%+ for API routes, 80%+ for components.</standards>
+    <locations>
+      - __tests__/app/api/cron/generate-insights.test.ts
+      - __tests__/components/insights/RefreshInsightsButton.test.tsx
+      - __tests__/lib/services/insightService.test.ts (extend existing)
+    </locations>
+    <ideas>
+      - AC1: Test 10-transaction trigger by adding 10 transactions and verifying automatic insight generation
+      - AC2: Test cron job execution with mock date as 1st of month → verify all users processed
+      - AC2: Test cron job execution with mock date NOT 1st of month → verify early return (skipped)
+      - AC3: Test manual refresh button click → verify loading state → verify success toast → verify insights reloaded
+      - AC4: Performance test - measure insight generation time with 1000+ transactions, ensure less than 2 seconds
+      - AC5: Test loading indicator appears during manual refresh and disappears after completion
+      - AC6: Test success toast shows correct count (e.g., "5 new insights generated")
+      - AC6: Test empty state toast when no new insights ("All caught up!")
+      - AC7: Test forceRegenerate=true bypasses 1-hour cache
+      - AC8: Test rate limiting - two manual refreshes within 5 minutes → second request returns 429 error
+      - AC8: Test rate limit toast shows remaining seconds correctly
+      - Edge case: Test cron job authentication - invalid secret → 401 error
+      - Edge case: Test transaction trigger with exactly 10 transactions → verify generation triggered
+      - Edge case: Test transaction trigger with 9 transactions → verify NO generation
+      - Integration: Test end-to-end manual refresh workflow on insights page
+    </ideas>
+  </tests>
+</story-context>

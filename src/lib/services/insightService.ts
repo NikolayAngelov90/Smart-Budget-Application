@@ -230,3 +230,42 @@ export async function shouldTriggerGeneration(userId: string): Promise<boolean> 
 
   return (count || 0) >= 10;
 }
+
+/**
+ * Check transaction count and trigger insight generation if threshold reached
+ *
+ * Story 6.5: Insight Generation Scheduling and Manual Refresh
+ * AC1: After user adds 10+ new transactions, insights should be auto-generated
+ *
+ * This function should be called asynchronously after transaction creation to avoid
+ * blocking the transaction response. It checks if 10+ transactions have been added
+ * since last insight generation and triggers generation if threshold is met.
+ *
+ * Rate limiting: Only triggers if at least 1 hour has passed since last generation
+ *
+ * @param userId - User ID to check and potentially trigger generation for
+ */
+export async function checkAndTriggerForTransactionCount(userId: string): Promise<void> {
+  try {
+    // Check if cache is still valid (1-hour TTL)
+    if (isCacheValid(userId)) {
+      // Don't trigger if insights were generated less than 1 hour ago
+      return;
+    }
+
+    // Check if transaction count threshold is met
+    const shouldTrigger = await shouldTriggerGeneration(userId);
+
+    if (shouldTrigger) {
+      console.log(`[Insight Trigger] User ${userId}: 10+ transactions detected, generating insights`);
+
+      // Trigger insight generation (non-blocking)
+      generateInsights(userId, false).catch((error) => {
+        console.error(`[Insight Trigger] Error generating insights for user ${userId}:`, error);
+      });
+    }
+  } catch (error) {
+    // Log error but don't throw - this is a background operation
+    console.error(`[Insight Trigger] Error checking transaction count for user ${userId}:`, error);
+  }
+}
