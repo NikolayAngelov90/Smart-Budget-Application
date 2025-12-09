@@ -3,51 +3,27 @@
 /**
  * DashboardStats Component
  * Story 5.2: Financial Summary Cards
+ * Story 7.3: Refactored to use centralized Realtime subscription manager
  *
  * Container component that displays 3 StatCards: Balance, Income, Expenses
- * Includes real-time updates via Supabase Realtime subscriptions
+ * Includes real-time updates via centralized Realtime subscription manager
  */
 
-import { useEffect } from 'react';
 import { SimpleGrid, Alert, AlertIcon, AlertTitle, AlertDescription } from '@chakra-ui/react';
 import { StatCard } from './StatCard';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
+import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { formatCurrency, formatCurrencyWithSign } from '@/lib/utils/currency';
-import { createClient } from '@/lib/supabase/client';
 
 export function DashboardStats() {
   const { data, error, isLoading, mutate } = useDashboardStats();
-  const supabase = createClient();
 
-  // Subscribe to real-time transaction changes
-  useEffect(() => {
-    // Create a channel for transactions table changes
-    const channel = supabase
-      .channel('dashboard-stats-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'transactions',
-        },
-        (payload) => {
-          console.log('[DashboardStats] Realtime update received:', payload.eventType);
-          // Revalidate dashboard stats immediately when any transaction changes
-          // Force revalidation to bypass cache
-          mutate();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[DashboardStats] Realtime subscription status:', status);
-      });
-
-    // Cleanup subscription on unmount
-    return () => {
-      console.log('[DashboardStats] Cleaning up Realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, mutate]);
+  // Subscribe to real-time transaction changes via centralized manager
+  useRealtimeSubscription((event) => {
+    console.log('[DashboardStats] Realtime update received:', event.eventType);
+    // Revalidate dashboard stats immediately when any transaction changes
+    mutate();
+  });
 
   // Error state
   if (error) {

@@ -3,11 +3,11 @@
 /**
  * MonthOverMonth Component
  * Story 5.5: Month-over-Month Comparison Highlights
+ * Story 7.3: Refactored to use centralized Realtime subscription manager
  *
  * Displays significant spending changes (>20%) between current and previous month
  */
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -26,8 +26,8 @@ import {
 } from '@chakra-ui/react';
 import { MdTrendingUp, MdTrendingDown, MdShowChart } from 'react-icons/md';
 import { useMonthOverMonth, CategoryChangeData } from '@/lib/hooks/useMonthOverMonth';
+import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { formatCurrency } from '@/lib/utils/currency';
-import { createClient } from '@/lib/supabase/client';
 
 /**
  * Component props
@@ -108,35 +108,13 @@ function ChangeItem({
 export function MonthOverMonth({ month }: MonthOverMonthProps) {
   const router = useRouter();
   const { data, error, isLoading, mutate } = useMonthOverMonth(month);
-  const supabase = createClient();
 
-  // Subscribe to real-time transaction changes
-  useEffect(() => {
-    const channel = supabase
-      .channel('month-over-month-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'transactions',
-        },
-        (payload) => {
-          console.log('[MonthOverMonth] Realtime update received:', payload.eventType);
-          // Revalidate comparison data immediately when any transaction changes
-          mutate();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MonthOverMonth] Realtime subscription status:', status);
-      });
-
-    // Cleanup subscription on unmount
-    return () => {
-      console.log('[MonthOverMonth] Cleaning up Realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, mutate]);
+  // Subscribe to real-time transaction changes via centralized manager
+  useRealtimeSubscription((event) => {
+    console.log('[MonthOverMonth] Realtime update received:', event.eventType);
+    // Revalidate comparison data immediately when any transaction changes
+    mutate();
+  });
 
   // Handle click navigation to transactions page with filters
   const handleCategoryClick = (categoryId: string, currentMonth: string) => {

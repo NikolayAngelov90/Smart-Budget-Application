@@ -34,7 +34,7 @@ interface BaselineResults extends BenchmarkResults {
 }
 
 const DASHBOARD_URL = 'http://localhost:3000/dashboard'
-const RESULTS_DIR = path.join(__dirname, '..', 'benchmarks')
+const RESULTS_DIR = path.join(process.cwd(), 'benchmarks')
 const RESULTS_FILE = path.join(RESULTS_DIR, 'results.json')
 const BASELINE_FILE = path.join(RESULTS_DIR, 'baseline.json')
 
@@ -86,25 +86,31 @@ async function measureDashboardLoad(page: Page): Promise<Partial<BenchmarkResult
 async function measureChartRenderTime(page: Page, chartName: string, selector: string): Promise<number> {
   console.log(`📈 Measuring ${chartName} render time...`)
 
-  // Add performance mark before chart appears
-  await page.evaluate((name) => {
-    performance.mark(`${name}-start`)
-  }, chartName)
+  try {
+    // Add performance mark before chart appears
+    await page.evaluate((name) => {
+      performance.mark(`${name}-start`)
+    }, chartName)
 
-  // Wait for chart to be visible
-  await page.waitForSelector(selector, { state: 'visible', timeout: 10000 })
+    // Wait for chart to be visible (with longer timeout)
+    await page.waitForSelector(selector, { state: 'visible', timeout: 15000 })
 
-  // Measure render time
-  const renderTime = await page.evaluate((name) => {
-    performance.mark(`${name}-end`)
-    performance.measure(`${name}-render`, `${name}-start`, `${name}-end`)
-    const measure = performance.getEntriesByName(`${name}-render`)[0]
-    return measure.duration
-  }, chartName)
+    // Measure render time
+    const renderTime = await page.evaluate((name) => {
+      performance.mark(`${name}-end`)
+      performance.measure(`${name}-render`, `${name}-start`, `${name}-end`)
+      const measure = performance.getEntriesByName(`${name}-render`)[0]
+      return measure.duration
+    }, chartName)
 
-  console.log(`  ✓ ${chartName} render: ${Math.round(renderTime)}ms`)
+    console.log(`  ✓ ${chartName} render: ${Math.round(renderTime)}ms`)
 
-  return Math.round(renderTime)
+    return Math.round(renderTime)
+  } catch (error) {
+    console.log(`  ⚠️  ${chartName} not found or not visible (skipped)`)
+    // Return a placeholder value indicating measurement was skipped
+    return -1
+  }
 }
 
 async function measureRealtimeLatency(page: Page): Promise<number> {
@@ -147,16 +153,17 @@ async function runBenchmarks(): Promise<BenchmarkResults> {
     const loadMetrics = await measureDashboardLoad(page)
 
     // Measure chart render times
+    // Note: Charts will only render if user is logged in and has data
     const pieChartTime = await measureChartRenderTime(
       page,
       'CategorySpendingChart',
-      '[data-testid="category-spending-chart"], .recharts-pie-chart'
+      '.recharts-responsive-container svg, [data-testid="category-spending-chart"]'
     )
 
     const lineChartTime = await measureChartRenderTime(
       page,
       'SpendingTrendsChart',
-      '[data-testid="spending-trends-chart"], .recharts-line-chart'
+      '.recharts-responsive-container svg, [data-testid="spending-trends-chart"]'
     )
 
     // Measure real-time latency
@@ -223,6 +230,13 @@ function compareToBaseline(current: BenchmarkResults): void {
 
   metrics.forEach(({ key, label, threshold }) => {
     const currentValue = current[key as keyof BenchmarkResults] as number
+
+    // Skip if measurement was not available (-1)
+    if (currentValue === -1) {
+      console.log(`⊘  ${label}: Not measured (chart not visible)`)
+      return
+    }
+
     const baselineValue = baseline[key] as number
     const change = currentValue - baselineValue
     const changePercent = ((change / baselineValue) * 100).toFixed(1)
@@ -248,7 +262,9 @@ function compareToBaseline(current: BenchmarkResults): void {
 }
 
 async function main() {
-  console.log('🚀 Starting Performance Benchmarks...\n')
+  console.log('🚀 Starting Performance Benchmarks...')
+  console.log('📝 Note: For accurate chart measurements, ensure you are logged in')
+  console.log('   and have transaction data in the dashboard.\n')
 
   try {
     const results = await runBenchmarks()

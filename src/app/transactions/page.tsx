@@ -52,6 +52,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
+import { FilterBreadcrumbs } from '@/components/transactions/FilterBreadcrumbs';
 import { createClient } from '@/lib/supabase/client';
 
 // Types
@@ -656,6 +657,9 @@ function TransactionsContent() {
             </VStack>
           </CardBody>
         </Card>
+
+        {/* Filter Breadcrumbs (Story 7.3) */}
+        <FilterBreadcrumbs />
 
         {/* Transaction List */}
         {transactionsLoading && renderSkeletons()}

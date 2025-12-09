@@ -4,11 +4,11 @@
  * CategorySpendingChart Component
  * Story 5.3: Monthly Spending by Category (Pie/Donut Chart)
  * Story 5.6: Added onClick handler for drill-down navigation
+ * Story 7.3: Refactored to use centralized Realtime subscription manager
  *
  * Displays expense breakdown by category using Recharts PieChart
  */
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import {
@@ -31,8 +31,8 @@ import {
   Legend,
 } from 'recharts';
 import { useSpendingByCategory } from '@/lib/hooks/useSpendingByCategory';
+import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { formatCurrency } from '@/lib/utils/currency';
-import { createClient } from '@/lib/supabase/client';
 
 export interface CategorySpendingChartProps {
   month?: string; // YYYY-MM format, defaults to current month
@@ -55,37 +55,16 @@ export function CategorySpendingChart({
   height = 300,
 }: CategorySpendingChartProps) {
   const { data, error, isLoading, mutate } = useSpendingByCategory(month);
-  const supabase = createClient();
   const router = useRouter();
 
   // Get current month in YYYY-MM format for drill-down navigation
   const currentMonth = month || format(new Date(), 'yyyy-MM');
 
-  // Subscribe to real-time transaction changes
-  useEffect(() => {
-    const channel = supabase
-      .channel('spending-by-category-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transactions',
-        },
-        (payload) => {
-          console.log('[CategorySpendingChart] Realtime update received:', payload.eventType);
-          mutate();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[CategorySpendingChart] Realtime subscription status:', status);
-      });
-
-    return () => {
-      console.log('[CategorySpendingChart] Cleaning up Realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, mutate]);
+  // Subscribe to real-time transaction changes via centralized manager
+  useRealtimeSubscription((event) => {
+    console.log('[CategorySpendingChart] Realtime update received:', event.eventType);
+    mutate();
+  });
 
   // Error state
   if (error) {

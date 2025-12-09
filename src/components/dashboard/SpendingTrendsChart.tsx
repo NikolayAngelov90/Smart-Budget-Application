@@ -4,11 +4,11 @@
  * SpendingTrendsChart Component
  * Story 5.4: Spending Trends Over Time (Line Chart)
  * Story 5.6: Added onClick handler for drill-down navigation
+ * Story 7.3: Refactored to use centralized Realtime subscription manager
  *
  * Displays a line chart showing income vs expenses trends over the last 6 months
  */
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -34,8 +34,8 @@ import {
 } from 'recharts';
 import { MdShowChart } from 'react-icons/md';
 import { useTrends, MonthlyTrendData } from '@/lib/hooks/useTrends';
+import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { formatCurrency } from '@/lib/utils/currency';
-import { createClient } from '@/lib/supabase/client';
 
 /**
  * Component props
@@ -109,36 +109,14 @@ export function SpendingTrendsChart({
 }: SpendingTrendsChartProps) {
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { data, error, isLoading, mutate } = useTrends(isMobile ? 3 : months);
-  const supabase = createClient();
   const router = useRouter();
 
-  // Subscribe to real-time transaction changes
-  useEffect(() => {
-    const channel = supabase
-      .channel('spending-trends-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'transactions',
-        },
-        (payload) => {
-          console.log('[SpendingTrendsChart] Realtime update received:', payload.eventType);
-          // Revalidate trends data immediately when any transaction changes
-          mutate();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[SpendingTrendsChart] Realtime subscription status:', status);
-      });
-
-    // Cleanup subscription on unmount
-    return () => {
-      console.log('[SpendingTrendsChart] Cleaning up Realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, mutate]);
+  // Subscribe to real-time transaction changes via centralized manager
+  useRealtimeSubscription((event) => {
+    console.log('[SpendingTrendsChart] Realtime update received:', event.eventType);
+    // Revalidate trends data immediately when any transaction changes
+    mutate();
+  });
 
   // Error state
   if (error) {

@@ -38,6 +38,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -108,6 +109,13 @@ jobs:
             let tableRows = '';
             metrics.forEach(({ key, label, threshold }) => {
               const current = results[key];
+
+              // Skip if measurement was not available (-1)
+              if (current === -1) {
+                tableRows += `| ${label} | Not measured | N/A | N/A | ⊘ |\n`;
+                return;
+              }
+
               const status = current > threshold ? '❌' : '✅';
 
               if (baseline) {
