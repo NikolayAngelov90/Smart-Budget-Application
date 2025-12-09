@@ -39,6 +39,62 @@ Smart Budget is a personal finance management tool designed to provide financial
 - **[TypeScript](https://www.typescriptlang.org/)**: ^5.3.0
 - **[ESLint](https://eslint.org/)**: ^8.56.0
 - **[Prettier](https://prettier.io/)**: ^3.1.0
+- **[Jest](https://jestjs.io/)**: ^30.2.0
+- **[React Testing Library](https://testing-library.com/react)**: ^16.3.0
+- **[Playwright](https://playwright.dev/)**: ^1.57.0
+- **[Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci)**: ^0.15.1
+
+## Performance
+
+The application is designed with performance as a first-class concern. We maintain strict performance budgets and automated monitoring:
+
+### Performance Targets
+
+| Metric | Target | Status |
+|--------|--------|--------|
+| Dashboard Load | <2s | ✅ Monitored |
+| Chart Render | <300ms | ✅ Monitored |
+| Lighthouse Performance | >90 | ✅ Automated |
+| Lighthouse Accessibility | >95 | ✅ Automated |
+
+### Automated Performance Testing
+
+- **Lighthouse CI**: Runs on every PR to validate performance, accessibility, and best practices
+- **Performance Benchmarks**: Automated benchmarks measure dashboard load time, chart render time, and real-time update latency
+- **Vercel Analytics**: Real-time monitoring in production with Core Web Vitals tracking
+
+### Running Performance Tests
+
+```bash
+# Build and start production server
+npm run build
+npm run start
+
+# In a new terminal, run benchmarks
+npm run benchmark
+```
+
+For detailed performance testing guide, see [docs/performance-testing.md](docs/performance-testing.md).
+
+## Testing
+
+The application includes comprehensive automated testing:
+
+- **Unit Tests**: Jest + React Testing Library for component and service testing
+- **Integration Tests**: API route testing and component integration
+- **Performance Tests**: Lighthouse CI and custom benchmarks
+- **Coverage Target**: 30% minimum (enforced in CI)
+
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
+```
 
 ## Getting Started
 
@@ -99,6 +155,7 @@ This project maintains comprehensive documentation in the `docs/` folder:
 - **[Technical Architecture](docs/architecture.md)** - Technology stack, design decisions, and database schema
 - **[Authentication Setup Guide](docs/AUTH_SETUP_GUIDE.md)** - Step-by-step instructions for configuring Supabase authentication
 - **[UX Design Specification](docs/ux-design-specification.md)** - Design system, color themes, and component specifications
+- **[Performance Testing Guide](docs/performance-testing.md)** - Performance benchmarks, Lighthouse CI, and optimization strategies
 - **[Implementation Readiness Report](docs/implementation-readiness-report-2025-11-14.md)** - Project readiness assessment
 
 ## Deployment

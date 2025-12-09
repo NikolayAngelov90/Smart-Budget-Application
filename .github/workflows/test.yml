@@ -1,0 +1,144 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type check
+        run: npm run type-check
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(node -p "
+            const coverage = require('./coverage/coverage-summary.json');
+            const total = coverage.total;
+            Math.min(total.statements.pct, total.branches.pct, total.functions.pct, total.lines.pct);
+          ")
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 30" | bc -l) )); then
+            echo "❌ Coverage ($COVERAGE%) is below 30% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage ($COVERAGE%) meets 30% threshold"
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium
+
+      - name: Build production app for benchmarks
+        run: npm run build
+
+      - name: Start Next.js server in background
+        run: |
+          npm run start &
+          npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run performance benchmarks
+        id: benchmarks
+        run: npm run benchmark
+        continue-on-error: true
+
+      - name: Post benchmark results as PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const resultsPath = './benchmarks/results.json';
+            const baselinePath = './benchmarks/baseline.json';
+
+            if (!fs.existsSync(resultsPath)) {
+              console.log('No benchmark results found');
+              return;
+            }
+
+            const results = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));
+            let baseline = null;
+
+            if (fs.existsSync(baselinePath)) {
+              baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf-8'));
+            }
+
+            const metrics = [
+              { key: 'dashboard_load_ms', label: 'Dashboard Load', threshold: 2000 },
+              { key: 'pie_chart_render_ms', label: 'Pie Chart Render', threshold: 100 },
+              { key: 'line_chart_render_ms', label: 'Line Chart Render', threshold: 150 },
+              { key: 'realtime_latency_ms', label: 'Real-time Latency', threshold: 300 },
+            ];
+
+            let tableRows = '';
+            metrics.forEach(({ key, label, threshold }) => {
+              const current = results[key];
+              const status = current > threshold ? '❌' : '✅';
+
+              if (baseline) {
+                const baselineValue = baseline[key];
+                const change = current - baselineValue;
+                const changePercent = ((change / baselineValue) * 100).toFixed(1);
+                const trend = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+                tableRows += `| ${label} | ${current}ms | ${baselineValue}ms | ${trend} ${changePercent}% | ${status} |\n`;
+              } else {
+                tableRows += `| ${label} | ${current}ms | N/A | N/A | ${status} |\n`;
+              }
+            });
+
+            const comment = `## 📊 Performance Benchmark Results
+
+| Metric | Current | Baseline | Change | Status |
+|--------|---------|----------|--------|--------|
+${tableRows}
+
+**Thresholds:**
+- Dashboard Load: <2000ms
+- Pie Chart Render: <100ms
+- Line Chart Render: <150ms
+- Real-time Latency: <300ms
+
+${results.dashboard_load_ms > 2000 || results.realtime_latency_ms > 300 ? '⚠️ **Performance regression detected!**' : '✅ All performance targets met'}
+`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
