@@ -9,7 +9,7 @@
  * 5. Managing cache to avoid redundant generation
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { endOfMonth, subMonths } from 'date-fns';
 import {
   detectSpendingIncrease,
@@ -195,8 +195,11 @@ export async function generateInsights(
 
   console.log(`[Insight Service] Generated ${allInsights.length} insights for user ${userId}`);
 
+  // Use service role client for database mutations (bypasses RLS)
+  const adminClient = createServiceRoleClient();
+
   // Delete old insights for this user (to avoid accumulation)
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await adminClient
     .from('insights')
     .delete()
     .eq('user_id', userId);
@@ -208,7 +211,7 @@ export async function generateInsights(
 
   // Insert new insights into database
   if (allInsights.length > 0) {
-    const { data: insertedInsights, error: insertError } = await supabase
+    const { data: insertedInsights, error: insertError } = await adminClient
       .from('insights')
       .insert(allInsights)
       .select();

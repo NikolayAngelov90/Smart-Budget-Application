@@ -7,6 +7,7 @@
  */
 
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/database.types';
 
@@ -66,4 +67,47 @@ export const createClient = async () => {
       },
     }
   );
+};
+
+/**
+ * Creates a Supabase admin client with service role privileges
+ *
+ * This client bypasses Row Level Security (RLS) policies and should ONLY be used
+ * for server-side operations that require elevated permissions, such as:
+ * - Generating AI insights for users
+ * - Administrative operations
+ * - Batch processing
+ *
+ * ⚠️ WARNING: Never expose this client to the browser or use it for user-facing operations
+ *
+ * @returns Supabase admin client instance with service role privileges
+ *
+ * @example
+ * ```typescript
+ * // In insight generation service
+ * import { createServiceRoleClient } from '@/lib/supabase/server';
+ *
+ * export async function generateInsights(userId: string) {
+ *   const supabase = createServiceRoleClient();
+ *   // This bypasses RLS and can insert insights for any user
+ *   await supabase.from('insights').insert({ user_id: userId, ... });
+ * }
+ * ```
+ */
+export const createServiceRoleClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error(
+      'Missing Supabase service role credentials. Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in environment variables.'
+    );
+  }
+
+  return createSupabaseClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 };
