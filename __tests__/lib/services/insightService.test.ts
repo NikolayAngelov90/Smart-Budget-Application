@@ -77,6 +77,12 @@ describe('generateInsights', () => {
         },
         is_dismissed: false,
         created_at: new Date().toISOString(),
+        view_count: 0,
+        first_viewed_at: null,
+        last_viewed_at: null,
+        dismissed_at: null,
+        metadata_expanded_count: 0,
+        last_metadata_expanded_at: null,
       },
     ];
 
@@ -165,6 +171,12 @@ describe('generateInsights', () => {
         },
         is_dismissed: false,
         created_at: new Date().toISOString(),
+        view_count: 0,
+        first_viewed_at: null,
+        last_viewed_at: null,
+        dismissed_at: null,
+        metadata_expanded_count: 0,
+        last_metadata_expanded_at: null,
       },
     ];
 

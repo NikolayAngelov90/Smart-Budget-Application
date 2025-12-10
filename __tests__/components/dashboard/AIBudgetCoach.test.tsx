@@ -3,13 +3,13 @@
  */
 
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
+import { ChakraProvider } from '@chakra-ui/react';
 import { AIBudgetCoach } from '@/components/dashboard/AIBudgetCoach';
 import type { Insight } from '@/types/database.types';
 
 // Wrapper component with ChakraProvider
 const AllProviders = ({ children }: { children: React.ReactNode }) => (
-  <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
+  <ChakraProvider>{children}</ChakraProvider>
 );
 
 // Mock SWR
@@ -56,8 +56,14 @@ function createMockInsights(count: number): Insight[] {
     description: `Description for insight ${i + 1}`,
     priority: 3,
     is_dismissed: false,
-    metadata: {},
+    metadata: null,
     created_at: new Date().toISOString(),
+    view_count: 0,
+    first_viewed_at: null,
+    last_viewed_at: null,
+    dismissed_at: null,
+    metadata_expanded_count: 0,
+    last_metadata_expanded_at: null,
   }));
 }
 

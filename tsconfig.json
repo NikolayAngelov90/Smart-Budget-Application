@@ -40,6 +40,7 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "__tests__/app/api/cron/generate-insights.test.ts"
   ]
 }
