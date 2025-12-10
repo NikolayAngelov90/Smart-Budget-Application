@@ -1,5 +1,7 @@
 # Smart Budget Application
 
+[![codecov](https://codecov.io/gh/NikolayAngelov90/Smart-Budget-Application/branch/main/graph/badge.svg)](https://codecov.io/gh/NikolayAngelov90/Smart-Budget-Application)
+
 Smart Budget is a personal finance management tool designed to provide financial visibility through quick transaction tracking, intelligent categorization, visual spending insights, and AI-powered budget optimization recommendations.
 
 ## Core Features
@@ -120,12 +122,65 @@ To get a local copy up and running, follow these simple steps.
     ```
     NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
     NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+    NEXT_PUBLIC_APP_URL=http://localhost:3001
     ```
     For complete authentication setup including Google and GitHub OAuth, see the [Authentication Setup Guide](docs/AUTH_SETUP_GUIDE.md).
 4.  Start the development server
     ```sh
     npm run dev
     ```
+
+### Testing
+
+Run the test suite to ensure everything is working correctly:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+```
+
+For detailed testing practices and patterns, see [Testing Guidelines](docs/testing-guidelines.md).
+
+### Benchmarking
+
+Measure application performance with automated benchmarks:
+
+```bash
+# Build production version
+npm run build
+npm run start
+
+# In a new terminal, run benchmarks
+npm run benchmark
+```
+
+Performance targets:
+- Dashboard Load: <2s
+- Chart Render: <300ms
+- Lighthouse Performance: >90
+- Lighthouse Accessibility: >95
+
+For more details, see [Performance Testing Guide](docs/performance-testing.md).
+
+### Contributing
+
+When contributing to this codebase:
+
+1. **Review Documentation**: Familiarize yourself with [Component Library](docs/component-library.md), [API Conventions](docs/api-conventions.md), and [Testing Guidelines](docs/testing-guidelines.md)
+2. **Follow Patterns**: Use existing components and patterns documented in the component library
+3. **Write Tests**: Maintain 90% coverage for new code (see testing guidelines)
+4. **Run Checks**: Ensure tests pass and linter is clean before submitting
+   ```bash
+   npm run lint
+   npm run type-check
+   npm test
+   ```
 
 ## Project Structure
 
@@ -151,11 +206,22 @@ For more details, see the [architecture documentation](docs/architecture.md).
 
 This project maintains comprehensive documentation in the `docs/` folder:
 
+### Product & Design
 - **[Product Requirements Document (PRD)](docs/PRD.md)** - Complete feature specifications and success criteria
-- **[Technical Architecture](docs/architecture.md)** - Technology stack, design decisions, and database schema
-- **[Authentication Setup Guide](docs/AUTH_SETUP_GUIDE.md)** - Step-by-step instructions for configuring Supabase authentication
 - **[UX Design Specification](docs/ux-design-specification.md)** - Design system, color themes, and component specifications
+
+### Technical Documentation
+- **[Technical Architecture](docs/architecture.md)** - Technology stack, design decisions, and database schema
+- **[Component Library](docs/component-library.md)** - Reusable React components catalog with usage examples
+- **[API Conventions](docs/api-conventions.md)** - REST API naming patterns and endpoint documentation
+- **[Testing Guidelines](docs/testing-guidelines.md)** - Testing standards, mocking strategies, and best practices
+
+### Setup & Deployment
+- **[Authentication Setup Guide](docs/AUTH_SETUP_GUIDE.md)** - Step-by-step instructions for configuring Supabase authentication
 - **[Performance Testing Guide](docs/performance-testing.md)** - Performance benchmarks, Lighthouse CI, and optimization strategies
+- **[Deployment Documentation](docs/1-4-deployment-pipeline-and-environment-setup.md)** - Vercel deployment setup and environment configuration
+
+### Project Reports
 - **[Implementation Readiness Report](docs/implementation-readiness-report-2025-11-14.md)** - Project readiness assessment
 
 ## Deployment

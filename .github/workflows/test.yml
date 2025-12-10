@@ -129,20 +129,20 @@ jobs:
               }
             });
 
-            const comment = `## 📊 Performance Benchmark Results
+            const comment = \`## 📊 Performance Benchmark Results
 
-| Metric | Current | Baseline | Change | Status |
-|--------|---------|----------|--------|--------|
-${tableRows}
+            | Metric | Current | Baseline | Change | Status |
+            |--------|---------|----------|--------|--------|
+            \${tableRows}
 
-**Thresholds:**
-- Dashboard Load: <2000ms
-- Pie Chart Render: <100ms
-- Line Chart Render: <150ms
-- Real-time Latency: <300ms
+            **Thresholds:**
+            - Dashboard Load: <2000ms
+            - Pie Chart Render: <100ms
+            - Line Chart Render: <150ms
+            - Real-time Latency: <300ms
 
-${results.dashboard_load_ms > 2000 || results.realtime_latency_ms > 300 ? '⚠️ **Performance regression detected!**' : '✅ All performance targets met'}
-`;
+            \${results.dashboard_load_ms > 2000 || results.realtime_latency_ms > 300 ? '⚠️ **Performance regression detected!**' : '✅ All performance targets met'}
+            \`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
