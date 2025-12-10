@@ -70,16 +70,37 @@ jobs:
 
       - name: Build production app for benchmarks
         run: npm run build
+        env:
+          # Test credentials for build-time static generation
+          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          UPSTASH_REDIS_REST_URL: https://test.upstash.io
+          UPSTASH_REDIS_REST_TOKEN: test-token
+          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
 
       - name: Start Next.js server in background
         run: |
           npm run start &
           npx wait-on http://localhost:3000 --timeout 60000
+        env:
+          # Test credentials for runtime
+          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          UPSTASH_REDIS_REST_URL: https://test.upstash.io
+          UPSTASH_REDIS_REST_TOKEN: test-token
+          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
 
       - name: Run performance benchmarks
         id: benchmarks
         run: npm run benchmark
         continue-on-error: true
+        env:
+          # Test credentials for benchmarking
+          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
 
       - name: Post benchmark results as PR comment
         if: github.event_name == 'pull_request'
