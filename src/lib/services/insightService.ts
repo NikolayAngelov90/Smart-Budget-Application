@@ -71,6 +71,8 @@ export async function generateInsights(
 ): Promise<Insight[]> {
   // Check cache unless forcing regeneration
   if (!forceRegenerate && isCacheValid(userId)) {
+    console.log(`[Insight Service] Using cached insights for user ${userId}`);
+
     // Return existing insights from database
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -81,8 +83,13 @@ export async function generateInsights(
       .order('priority', { ascending: false })
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data || [];
+    if (error) {
+      console.error('[Insight Service] Error fetching cached insights:', error);
+      // If cache fetch fails, fall through to regenerate
+      console.log('[Insight Service] Cache fetch failed, regenerating insights');
+    } else {
+      return data || [];
+    }
   }
 
   // Query user data
@@ -100,7 +107,10 @@ export async function generateInsights(
     .lte('date', endOfMonth(currentMonth).toISOString().split('T')[0])
     .order('date', { ascending: false });
 
-  if (txError) throw txError;
+  if (txError) {
+    console.error('[Insight Service] Error fetching transactions:', txError);
+    throw new Error(`Failed to fetch transactions: ${txError.message}`);
+  }
 
   // Fetch user categories
   const { data: categories, error: catError } = await supabase
@@ -108,10 +118,18 @@ export async function generateInsights(
     .select('*')
     .eq('user_id', userId);
 
-  if (catError) throw catError;
+  if (catError) {
+    console.error('[Insight Service] Error fetching categories:', catError);
+    throw new Error(`Failed to fetch categories: ${catError.message}`);
+  }
 
   // If no transactions or categories, return empty array
   if (!transactions || transactions.length === 0 || !categories || categories.length === 0) {
+    console.log(`[Insight Service] No data to generate insights - Transactions: ${transactions?.length || 0}, Categories: ${categories?.length || 0}`);
+
+    // Update cache even if no data
+    updateCache(userId);
+
     return [];
   }
 
@@ -175,13 +193,18 @@ export async function generateInsights(
   // Sort by priority (5 = highest, 1 = lowest)
   allInsights.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
+  console.log(`[Insight Service] Generated ${allInsights.length} insights for user ${userId}`);
+
   // Delete old insights for this user (to avoid accumulation)
   const { error: deleteError } = await supabase
     .from('insights')
     .delete()
     .eq('user_id', userId);
 
-  if (deleteError) throw deleteError;
+  if (deleteError) {
+    console.error('[Insight Service] Error deleting old insights:', deleteError);
+    throw new Error(`Failed to delete old insights: ${deleteError.message}`);
+  }
 
   // Insert new insights into database
   if (allInsights.length > 0) {
@@ -190,10 +213,15 @@ export async function generateInsights(
       .insert(allInsights)
       .select();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error('[Insight Service] Error inserting insights:', insertError);
+      throw new Error(`Failed to insert insights: ${insertError.message}`);
+    }
 
     // Update cache
     updateCache(userId);
+
+    console.log(`[Insight Service] Successfully inserted ${insertedInsights?.length || 0} insights`);
 
     return insertedInsights || [];
   }
