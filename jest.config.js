@@ -21,8 +21,13 @@ const customJestConfig = {
     '!src/**/*.d.ts',
     '!src/**/*.stories.{js,jsx,ts,tsx}',
   ],
+  coverageReporters: [
+    'text',           // Display coverage in terminal
+    'lcov',           // Generate lcov report for Codecov
+    'json-summary',   // Generate coverage-summary.json for GitHub Actions
+  ],
   // Coverage thresholds removed - allowing gradual improvement
-  // The GitHub Actions workflow enforces a 30% minimum threshold
+  // The GitHub Actions workflow enforces a 5% minimum threshold
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
