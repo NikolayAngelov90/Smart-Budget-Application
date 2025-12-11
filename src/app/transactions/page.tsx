@@ -184,22 +184,18 @@ function TransactionsContent() {
   );
 
   // Fetch categories for filter dropdown
-  // Note: FilterBreadcrumbs uses same cache key but extracts .data array
-  // So we receive the array directly, not { data: [...] }
-  const { data: categoriesResponse, error: categoriesError } = useSWR<Category[]>(
+  // Note: Different pages use different fetchers, so cache might be:
+  // - Array: [...] (from FilterBreadcrumbs)
+  // - Object: { data: [...] } (from categories page)
+  const { data: categoriesResponse, error: categoriesError } = useSWR<any>(
     '/api/categories',
     fetcher
   );
 
-  // Debug logging for categories
-  useEffect(() => {
-    if (categoriesError) {
-      console.error('[Transactions] Error fetching categories:', categoriesError);
-    }
-    if (categoriesResponse) {
-      console.log('[Transactions] Categories loaded:', categoriesResponse);
-    }
-  }, [categoriesResponse, categoriesError]);
+  // Normalize categories to array regardless of cache structure
+  const categories: Category[] = Array.isArray(categoriesResponse)
+    ? categoriesResponse
+    : categoriesResponse?.data || [];
 
   // Real-time sync via Supabase Realtime subscriptions (Tasks 2-3)
   useEffect(() => {
@@ -592,7 +588,7 @@ function TransactionsContent() {
                     placeholder="All Categories"
                     size="md"
                   >
-                    {categoriesResponse?.map((category) => (
+                    {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
                       </option>
