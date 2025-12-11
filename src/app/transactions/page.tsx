@@ -189,10 +189,20 @@ function TransactionsContent() {
   );
 
   // Fetch categories for filter dropdown
-  const { data: categoriesResponse } = useSWR<CategoryResponse>(
+  const { data: categoriesResponse, error: categoriesError } = useSWR<CategoryResponse>(
     '/api/categories',
     fetcher
   );
+
+  // Debug logging for categories
+  useEffect(() => {
+    if (categoriesError) {
+      console.error('[Transactions] Error fetching categories:', categoriesError);
+    }
+    if (categoriesResponse) {
+      console.log('[Transactions] Categories loaded:', categoriesResponse);
+    }
+  }, [categoriesResponse, categoriesError]);
 
   // Real-time sync via Supabase Realtime subscriptions (Tasks 2-3)
   useEffect(() => {
