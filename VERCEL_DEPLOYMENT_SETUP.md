@@ -1,6 +1,19 @@
 # Vercel Deployment Setup Guide
 
-This guide will help you configure automatic deployment to Vercel after GitHub Actions tests pass.
+This guide will help you configure automatic deployment to Vercel **only after** GitHub Actions tests pass.
+
+## Important: Automatic Git Deployments Disabled
+
+This project has disabled Vercel's automatic Git deployments via `vercel.json`:
+```json
+{
+  "git": {
+    "deploymentEnabled": false
+  }
+}
+```
+
+This ensures deployments **only** happen through GitHub Actions after all tests pass successfully.
 
 ## Prerequisites
 
@@ -129,14 +142,13 @@ Make sure all required environment variables are set in Vercel:
 - `UPSTASH_REDIS_REST_TOKEN`
 - `NEXT_PUBLIC_APP_URL`
 
-## Alternative: Use Vercel GitHub Integration
+## Why This Approach?
 
-If you prefer simpler setup without GitHub Actions deployment:
+**Benefits of deploying through GitHub Actions:**
+- ✅ Deployments only happen after **all tests pass**
+- ✅ Prevents broken builds from reaching production
+- ✅ Complete control over deployment timing
+- ✅ Can add additional validation steps before deployment
+- ✅ Audit trail of deployments in GitHub Actions logs
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Select your project
-3. Go to **Settings** → **Git**
-4. Enable **"Production Branch"** deployment for `main`
-5. Vercel will automatically deploy when tests pass
-
-This approach doesn't require `VERCEL_TOKEN` secret.
+**Note:** Vercel's automatic Git deployments are disabled in `vercel.json` to prevent deployments before tests complete.
