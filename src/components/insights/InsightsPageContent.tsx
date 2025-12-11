@@ -2,7 +2,9 @@
 
 import { useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Box, Heading, Text, VStack, HStack, useToast } from '@chakra-ui/react';
+import Link from 'next/link';
+import { Box, Heading, Text, VStack, HStack, useToast, Button } from '@chakra-ui/react';
+import { ChevronLeftIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { InsightsFilters } from './InsightsFilters';
 import { InsightsList } from './InsightsList';
@@ -233,6 +235,21 @@ export function InsightsPageContent() {
   return (
     <Box maxW="1200px" mx="auto" p={{ base: 4, md: 6 }}>
       <VStack align="start" spacing={6} w="full">
+        {/* Back to Dashboard Button */}
+        <Box>
+          <Button
+            as={Link}
+            href="/dashboard"
+            leftIcon={<ChevronLeftIcon />}
+            variant="ghost"
+            colorScheme="blue"
+            size="sm"
+            _hover={{ bg: 'blue.50' }}
+          >
+            Back to Dashboard
+          </Button>
+        </Box>
+
         {/* Header with Refresh Button */}
         <Box w="full">
           <HStack

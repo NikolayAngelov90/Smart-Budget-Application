@@ -47,7 +47,8 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
 } from '@chakra-ui/react';
-import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
+import { AddIcon, EditIcon, DeleteIcon, ChevronLeftIcon } from '@chakra-ui/icons';
+import Link from 'next/link';
 import useSWR from 'swr';
 import { CategoryModal } from '@/components/categories/CategoryModal';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
@@ -188,6 +189,21 @@ export default function CategoriesPage() {
   return (
     <Container maxW="container.xl" py={8}>
       <VStack align="stretch" spacing={6}>
+        {/* Back to Dashboard Button */}
+        <Box>
+          <Button
+            as={Link}
+            href="/dashboard"
+            leftIcon={<ChevronLeftIcon />}
+            variant="ghost"
+            colorScheme="blue"
+            size="sm"
+            _hover={{ bg: 'blue.50' }}
+          >
+            Back to Dashboard
+          </Button>
+        </Box>
+
         {/* Header */}
         <HStack justify="space-between">
           <Heading size="lg">Manage Categories</Heading>
