@@ -585,7 +585,7 @@ function TransactionsContent() {
                     placeholder="All Categories"
                     size="md"
                   >
-                    {categoriesResponse?.data.map((category) => (
+                    {categoriesResponse?.data?.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
                       </option>
