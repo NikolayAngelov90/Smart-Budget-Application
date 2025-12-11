@@ -94,11 +94,11 @@ development_status:
   7-4-documentation: done
   epic-7-retrospective: optional
 
-  # Original Epic 7 stories moved to backlog (renumbered as Epic 8)
-  epic-8: backlog
-  8-1-export-transactions-to-csv: backlog
-  8-2-export-financial-report-to-pdf: backlog
-  8-3-settings-page-and-account-management: backlog
-  8-4-data-sync-status-and-multi-device-information: backlog
-  8-5-offline-data-caching-for-viewing-phase-1: backlog
-  epic-7-retrospective: optional
+  # Epic 8: Data Export & Settings (Original Epic 7 stories renumbered)
+  epic-8: contexted
+  8-1-export-transactions-to-csv: drafted
+  8-2-export-financial-report-to-pdf: drafted
+  8-3-settings-page-and-account-management: drafted
+  8-4-data-sync-status-and-multi-device-information: drafted
+  8-5-offline-data-caching-for-viewing-phase-1: drafted
+  epic-8-retrospective: optional
