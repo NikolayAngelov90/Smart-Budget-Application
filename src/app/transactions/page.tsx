@@ -187,10 +187,9 @@ function TransactionsContent() {
   // Note: Different pages use different fetchers, so cache might be:
   // - Array: [...] (from FilterBreadcrumbs)
   // - Object: { data: [...] } (from categories page)
-  const { data: categoriesResponse, error: categoriesError } = useSWR<any>(
-    '/api/categories',
-    fetcher
-  );
+  const { data: categoriesResponse } = useSWR<
+    Category[] | { data: Category[]; count: number; recent?: Category[] }
+  >('/api/categories', fetcher);
 
   // Normalize categories to array regardless of cache structure
   const categories: Category[] = Array.isArray(categoriesResponse)
