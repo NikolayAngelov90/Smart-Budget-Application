@@ -81,11 +81,6 @@ interface TransactionResponse {
   offset: number;
 }
 
-interface CategoryResponse {
-  data: Category[];
-  count: number;
-}
-
 // Fetcher function for SWR
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -189,7 +184,9 @@ function TransactionsContent() {
   );
 
   // Fetch categories for filter dropdown
-  const { data: categoriesResponse, error: categoriesError } = useSWR<CategoryResponse>(
+  // Note: FilterBreadcrumbs uses same cache key but extracts .data array
+  // So we receive the array directly, not { data: [...] }
+  const { data: categoriesResponse, error: categoriesError } = useSWR<Category[]>(
     '/api/categories',
     fetcher
   );
@@ -595,7 +592,7 @@ function TransactionsContent() {
                     placeholder="All Categories"
                     size="md"
                   >
-                    {categoriesResponse?.data?.map((category) => (
+                    {categoriesResponse?.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
                       </option>
