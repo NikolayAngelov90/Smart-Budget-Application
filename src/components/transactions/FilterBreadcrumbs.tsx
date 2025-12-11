@@ -33,13 +33,17 @@ interface Category {
 
 /**
  * Fetcher function for SWR
+ * Extracts the 'data' array from the API response
  */
-async function fetcher(url: string) {
+async function fetcher(url: string): Promise<Category[]> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Failed to fetch categories');
   }
-  return response.json();
+  const json = await response.json();
+  // API returns { data: [...], recent: [...], count: number }
+  // We only need the data array
+  return json.data || [];
 }
 
 /**

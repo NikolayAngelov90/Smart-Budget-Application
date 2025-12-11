@@ -8,7 +8,6 @@ import {
   Badge,
   Grid,
   GridItem,
-  Link as ChakraLink,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import { ArrowForwardIcon } from '@chakra-ui/icons';
@@ -178,17 +177,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             {meta.category_id && meta.current_month && (
               <Link
                 href={buildTransactionLink(meta.category_id, meta.current_month)}
-                passHref
-                legacyBehavior
+                style={{
+                  color: 'var(--chakra-colors-blue-600)',
+                  fontWeight: 'medium',
+                  fontSize: '0.875rem',
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
               >
-                <ChakraLink
-                  color="blue.600"
-                  fontWeight="medium"
-                  fontSize="sm"
-                  _hover={{ textDecoration: 'underline' }}
-                >
-                  View these transactions <ArrowForwardIcon ml={1} />
-                </ChakraLink>
+                View these transactions <ArrowForwardIcon ml={1} />
               </Link>
             )}
           </VStack>
@@ -232,17 +230,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             {meta.category_id && meta.months_analyzed && meta.months_analyzed.length > 0 && (
               <Link
                 href={buildTransactionLink(meta.category_id, meta.months_analyzed[meta.months_analyzed.length - 1])}
-                passHref
-                legacyBehavior
+                style={{
+                  color: 'var(--chakra-colors-blue-600)',
+                  fontWeight: 'medium',
+                  fontSize: '0.875rem',
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
               >
-                <ChakraLink
-                  color="blue.600"
-                  fontWeight="medium"
-                  fontSize="sm"
-                  _hover={{ textDecoration: 'underline' }}
-                >
-                  View these transactions <ArrowForwardIcon ml={1} />
-                </ChakraLink>
+                View these transactions <ArrowForwardIcon ml={1} />
               </Link>
             )}
           </VStack>
@@ -286,17 +283,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             {meta.category_id && meta.transaction_date && (
               <Link
                 href={buildTransactionLink(meta.category_id, meta.transaction_date.substring(0, 7))}
-                passHref
-                legacyBehavior
+                style={{
+                  color: 'var(--chakra-colors-blue-600)',
+                  fontWeight: 'medium',
+                  fontSize: '0.875rem',
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
               >
-                <ChakraLink
-                  color="blue.600"
-                  fontWeight="medium"
-                  fontSize="sm"
-                  _hover={{ textDecoration: 'underline' }}
-                >
-                  View these transactions <ArrowForwardIcon ml={1} />
-                </ChakraLink>
+                View these transactions <ArrowForwardIcon ml={1} />
               </Link>
             )}
           </VStack>
@@ -340,17 +336,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             {meta.category_id && meta.current_month && (
               <Link
                 href={buildTransactionLink(meta.category_id, meta.current_month)}
-                passHref
-                legacyBehavior
+                style={{
+                  color: 'var(--chakra-colors-blue-600)',
+                  fontWeight: 'medium',
+                  fontSize: '0.875rem',
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
               >
-                <ChakraLink
-                  color="blue.600"
-                  fontWeight="medium"
-                  fontSize="sm"
-                  _hover={{ textDecoration: 'underline' }}
-                >
-                  View these transactions <ArrowForwardIcon ml={1} />
-                </ChakraLink>
+                View these transactions <ArrowForwardIcon ml={1} />
               </Link>
             )}
           </VStack>
