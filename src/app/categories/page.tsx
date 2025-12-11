@@ -50,6 +50,7 @@ import {
 import { AddIcon, EditIcon, DeleteIcon, ChevronLeftIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import useSWR from 'swr';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { CategoryModal } from '@/components/categories/CategoryModal';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
 import type { Category } from '@/types/category.types';
@@ -187,103 +188,105 @@ export default function CategoriesPage() {
   };
 
   return (
-    <Container maxW="container.xl" py={8}>
-      <VStack align="stretch" spacing={6}>
-        {/* Back to Dashboard Button */}
-        <Box>
-          <Button
-            as={Link}
-            href="/dashboard"
-            leftIcon={<ChevronLeftIcon />}
-            variant="ghost"
+    <AppLayout>
+      <Container maxW="container.xl" py={8}>
+        <VStack align="stretch" spacing={6}>
+          {/* Back to Dashboard Button */}
+          <Box>
+            <Button
+              as={Link}
+              href="/dashboard"
+              leftIcon={<ChevronLeftIcon />}
+              variant="ghost"
+              colorScheme="blue"
+              size="sm"
+              _hover={{ bg: 'blue.50' }}
+            >
+              Back to Dashboard
+            </Button>
+          </Box>
+
+          {/* Header */}
+          <HStack justify="space-between">
+            <Heading size="lg">Manage Categories</Heading>
+            <Button
+              leftIcon={<AddIcon />}
+              colorScheme="blue"
+              onClick={onOpen}
+              aria-label="Add Category"
+            >
+              Add Category
+            </Button>
+          </HStack>
+
+          {/* Filter Tabs */}
+          <Tabs
+            variant="soft-rounded"
             colorScheme="blue"
-            size="sm"
-            _hover={{ bg: 'blue.50' }}
+            onChange={(index) => {
+              const types: Array<'all' | 'income' | 'expense'> = ['all', 'expense', 'income'];
+              setSelectedType(types[index]);
+            }}
           >
-            Back to Dashboard
-          </Button>
-        </Box>
+            <TabList>
+              <Tab>All Categories</Tab>
+              <Tab>Expense</Tab>
+              <Tab>Income</Tab>
+            </TabList>
 
-        {/* Header */}
-        <HStack justify="space-between">
-          <Heading size="lg">Manage Categories</Heading>
-          <Button
-            leftIcon={<AddIcon />}
-            colorScheme="blue"
-            onClick={onOpen}
-            aria-label="Add Category"
-          >
-            Add Category
-          </Button>
-        </HStack>
+            <TabPanels>
+              <TabPanel px={0}>
+                <CategoryList
+                  categories={filteredCategories}
+                  isLoading={isLoading}
+                  error={error}
+                  onEdit={handleEditClick}
+                  onDelete={handleDeleteClick}
+                />
+              </TabPanel>
+              <TabPanel px={0}>
+                <CategoryList
+                  categories={filteredCategories}
+                  isLoading={isLoading}
+                  error={error}
+                  onEdit={handleEditClick}
+                  onDelete={handleDeleteClick}
+                />
+              </TabPanel>
+              <TabPanel px={0}>
+                <CategoryList
+                  categories={filteredCategories}
+                  isLoading={isLoading}
+                  error={error}
+                  onEdit={handleEditClick}
+                  onDelete={handleDeleteClick}
+                />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
 
-        {/* Filter Tabs */}
-        <Tabs
-          variant="soft-rounded"
-          colorScheme="blue"
-          onChange={(index) => {
-            const types: Array<'all' | 'income' | 'expense'> = ['all', 'expense', 'income'];
-            setSelectedType(types[index]);
-          }}
-        >
-          <TabList>
-            <Tab>All Categories</Tab>
-            <Tab>Expense</Tab>
-            <Tab>Income</Tab>
-          </TabList>
-
-          <TabPanels>
-            <TabPanel px={0}>
-              <CategoryList
-                categories={filteredCategories}
-                isLoading={isLoading}
-                error={error}
-                onEdit={handleEditClick}
-                onDelete={handleDeleteClick}
-              />
-            </TabPanel>
-            <TabPanel px={0}>
-              <CategoryList
-                categories={filteredCategories}
-                isLoading={isLoading}
-                error={error}
-                onEdit={handleEditClick}
-                onDelete={handleDeleteClick}
-              />
-            </TabPanel>
-            <TabPanel px={0}>
-              <CategoryList
-                categories={filteredCategories}
-                isLoading={isLoading}
-                error={error}
-                onEdit={handleEditClick}
-                onDelete={handleDeleteClick}
-              />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-
-        {/* Category Modal */}
-        <CategoryModal
-          isOpen={isOpen}
-          onClose={handleModalClose}
-          onSuccess={selectedCategory ? handleCategoryUpdated : handleCategoryCreated}
-          editMode={!!selectedCategory}
-          category={selectedCategory}
-        />
-
-        {/* Delete Confirmation Modal */}
-        {categoryToDelete && (
-          <DeleteConfirmationModal
-            isOpen={isDeleteOpen}
-            onClose={onDeleteClose}
-            onConfirm={handleDeleteConfirm}
-            category={categoryToDelete}
-            isDeleting={isDeleting}
+          {/* Category Modal */}
+          <CategoryModal
+            isOpen={isOpen}
+            onClose={handleModalClose}
+            onSuccess={selectedCategory ? handleCategoryUpdated : handleCategoryCreated}
+            editMode={!!selectedCategory}
+            category={selectedCategory}
           />
-        )}
-      </VStack>
-    </Container>
+
+          {/* Delete Confirmation Modal */}
+          {categoryToDelete && (
+            <DeleteConfirmationModal
+              isOpen={isDeleteOpen}
+              onClose={onDeleteClose}
+              onConfirm={handleDeleteConfirm}
+              category={categoryToDelete}
+              isDeleting={isDeleting}
+            />
+          )}
+        </VStack>
+      </Container>
+    </AppLayout>
   );
 }
 
