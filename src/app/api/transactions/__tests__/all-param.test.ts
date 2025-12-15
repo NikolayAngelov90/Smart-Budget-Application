@@ -82,8 +82,6 @@ describe('Transactions API ?all=true parameter', () => {
   // AC-8.1.5: Test that limit/offset are ignored when all=true
   test('limit and offset should be ignored when all=true', () => {
     const all = true;
-    const limit = 100;
-    const offset = 0;
 
     // In implementation: if (!all) { query.range(offset, offset + limit - 1) }
     // So when all=true, range() is NOT called, effectively ignoring limit/offset

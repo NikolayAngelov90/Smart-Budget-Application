@@ -7,11 +7,13 @@
 
 import { exportTransactionsToCSV } from '../exportService';
 import Papa from 'papaparse';
-import { format } from 'date-fns';
 
 // Mock papaparse
 jest.mock('papaparse');
 const mockUnparse = Papa.unparse as jest.MockedFunction<typeof Papa.unparse>;
+
+// Type for CSV row data in tests
+type CSVRowData = Record<string, string | number>;
 
 // Mock date-fns
 jest.mock('date-fns', () => ({
@@ -50,6 +52,7 @@ describe('exportTransactionsToCSV', () => {
     global.document.createElement = mockCreateElement;
     global.URL.createObjectURL = mockCreateObjectURL;
     global.URL.revokeObjectURL = mockRevokeObjectURL;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     global.Blob = jest.fn() as any;
 
     // Mock Papa.unparse to return CSV string
@@ -111,7 +114,7 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as any[];
+    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
     expect(csvData[0].Notes).toBe('Bought groceries, milk, and bread\n"Special quote"');
   });
 
@@ -136,7 +139,7 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as any[];
+    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
     expect(csvData[0].Notes).toBe('');
     expect(csvData[0].Notes).not.toBe('null');
   });
@@ -162,7 +165,7 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as any[];
+    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
     expect(csvData[0].Amount).toBe('$123.46'); // toFixed rounds
   });
 
@@ -182,7 +185,7 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as any[];
+    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
     expect(csvData[0].Category).toBe('Unknown');
   });
 
@@ -220,7 +223,7 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as any[];
+    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
     expect(csvData).toHaveLength(3);
     // Order should be preserved as provided (API handles sorting)
     expect(csvData[0].Amount).toBe('$30.00');
@@ -309,11 +312,11 @@ describe('exportTransactionsToCSV', () => {
 
   // Test empty transaction list
   test('handles empty transaction list', async () => {
-    const transactions: any[] = [];
+    const transactions: never[] = [];
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as any[];
+    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
     expect(csvData).toEqual([]);
   });
 
@@ -342,7 +345,7 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as any[];
+    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
     expect(csvData[0].Type).toBe('income');
     expect(csvData[1].Type).toBe('expense');
   });

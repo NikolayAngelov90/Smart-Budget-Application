@@ -9,6 +9,17 @@
  * @jest-environment node
  */
 
+// Mock Next.js server before importing route
+jest.mock('next/server', () => ({
+  NextResponse: {
+    json: jest.fn((data, init) => ({
+      json: async () => data,
+      status: init?.status || 200,
+      headers: new Headers(),
+    })),
+  },
+}));
+
 import { GET } from '../route';
 import { createClient } from '@/lib/supabase/server';
 
@@ -22,16 +33,19 @@ jest.mock('@/lib/services/insightService', () => ({
 }));
 
 // Helper to create mock NextRequest
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createMockRequest(url: string): any {
   return {
     url,
     method: 'GET',
     headers: new Headers(),
-  } as any;
+  };
 }
 
 describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockSupabase: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockQuery: any;
 
   beforeEach(() => {
@@ -130,7 +144,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     });
 
     const request = createMockRequest('http://localhost:3001/api/transactions');
-    const response = await GET(request);
+    await GET(request);
 
     // Verify range WAS called (pagination applied)
     expect(mockQuery.range).toHaveBeenCalledWith(0, 99); // offset 0, limit 100
@@ -163,7 +177,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     });
 
     const request = createMockRequest('http://localhost:3001/api/transactions?all=false');
-    const response = await GET(request);
+    await GET(request);
 
     // Verify range WAS called (pagination applied)
     expect(mockQuery.range).toHaveBeenCalled();
