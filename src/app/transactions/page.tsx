@@ -45,8 +45,14 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   useToast,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Progress,
 } from '@chakra-ui/react';
-import { CloseIcon, SearchIcon, EditIcon, DeleteIcon, ChevronLeftIcon } from '@chakra-ui/icons';
+import { CloseIcon, SearchIcon, EditIcon, DeleteIcon, ChevronLeftIcon, DownloadIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -54,6 +60,7 @@ import TransactionEntryModal from '@/components/transactions/TransactionEntryMod
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
 import { FilterBreadcrumbs } from '@/components/transactions/FilterBreadcrumbs';
 import { createClient } from '@/lib/supabase/client';
+import { exportTransactionsToCSV } from '@/lib/services/exportService'; // Story 8.1
 
 // Types
 interface Category {
@@ -104,6 +111,13 @@ function TransactionsContent() {
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // Export loading state (Story 8.1)
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Progress modal for large exports (AC-8.1.9)
+  const { isOpen: isProgressModalOpen, onOpen: onProgressModalOpen, onClose: onProgressModalClose } = useDisclosure();
+  const [exportProgress, setExportProgress] = useState(0);
 
   // Toast for undo functionality
   const toast = useToast();
@@ -442,6 +456,74 @@ function TransactionsContent() {
     }
   };
 
+  // Story 8.1: Export all transactions to CSV
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      // Fetch all transactions without pagination
+      const response = await fetch('/api/transactions?all=true');
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions for export');
+      }
+
+      const data: TransactionResponse = await response.json();
+
+      if (data.data.length === 0) {
+        toast({
+          title: 'No transactions to export',
+          description: 'Add some transactions first',
+          status: 'info',
+          duration: 3000,
+        });
+        return;
+      }
+
+      // AC-8.1.9: Show progress modal for large datasets (>5,000 transactions)
+      const isLargeDataset = data.data.length > 5000;
+      if (isLargeDataset) {
+        setExportProgress(0);
+        onProgressModalOpen();
+      }
+
+      // Export to CSV using export service with progress callback
+      await exportTransactionsToCSV(
+        data.data,
+        isLargeDataset ? (progress) => setExportProgress(progress) : undefined
+      );
+
+      // Close progress modal if open
+      if (isLargeDataset) {
+        onProgressModalClose();
+      }
+
+      // AC-8.1.11: Success toast
+      toast({
+        title: 'CSV exported successfully!',
+        description: `Exported ${data.data.length} transactions`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error exporting transactions:', error);
+
+      // Close progress modal if open
+      if (isProgressModalOpen) {
+        onProgressModalClose();
+      }
+
+      toast({
+        title: 'Export failed',
+        description: 'Failed to export transactions. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Format amount with color-coding
   const formatAmount = (amount: number, type: 'income' | 'expense') => {
     const formatted = amount.toFixed(2);
@@ -521,9 +603,23 @@ function TransactionsContent() {
         </Box>
 
         {/* Page Header */}
-        <Heading as="h1" size="xl" mb={6} color="gray.800">
-          Transactions
-        </Heading>
+        <Flex justify="space-between" align="center" mb={6}>
+          <Heading as="h1" size="xl" color="gray.800">
+            Transactions
+          </Heading>
+          {/* Story 8.1: Export to CSV Button */}
+          <Button
+            leftIcon={<DownloadIcon />}
+            colorScheme="blue"
+            variant="outline"
+            onClick={handleExportCSV}
+            size={{ base: 'sm', md: 'md' }}
+            isLoading={isExporting}
+            loadingText="Exporting..."
+          >
+            Export Transactions (CSV)
+          </Button>
+        </Flex>
 
         {/* Offline Indicator Banner (Task 6) */}
         {!isOnline && (
@@ -832,6 +928,37 @@ function TransactionsContent() {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
+
+      {/* Progress Modal for Large Exports (AC-8.1.9) */}
+      <Modal
+        isOpen={isProgressModalOpen}
+        onClose={() => {}} // Prevent manual close during export
+        closeOnOverlayClick={false}
+        closeOnEsc={false}
+        isCentered
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Exporting Transactions</ModalHeader>
+          <ModalBody pb={6}>
+            <VStack spacing={4} align="stretch">
+              <Text>
+                Processing large dataset... This may take a moment.
+              </Text>
+              <Progress
+                value={exportProgress}
+                size="lg"
+                colorScheme="blue"
+                hasStripe
+                isAnimated
+              />
+              <Text fontSize="sm" color="gray.600" textAlign="center">
+                {exportProgress}% complete
+              </Text>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </AppLayout>
   );
 }

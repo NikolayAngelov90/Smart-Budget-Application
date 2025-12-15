@@ -7,7 +7,8 @@
  *
  * GET /api/transactions
  * - Fetches transactions for authenticated user with filtering
- * - Query parameters: startDate, endDate, category, type, search, limit, offset
+ * - Query parameters: startDate, endDate, category, type, search, limit, offset, all
+ * - all=true: Bypasses pagination to export all transactions (Story 8.1)
  * - Returns transactions with category details
  *
  * POST /api/transactions
@@ -62,8 +63,9 @@ interface CreateTransactionRequest {
  * - category: string (UUID, optional) - Filter by category ID
  * - type: 'income' | 'expense' (optional) - Filter by transaction type
  * - search: string (optional) - Search in notes, category name, or amount
- * - limit: number (optional, default: 100) - Number of transactions to return
- * - offset: number (optional, default: 0) - Number of transactions to skip
+ * - all: string ('true', optional) - If 'true', returns all transactions without pagination (Story 8.1)
+ * - limit: number (optional, default: 100) - Number of transactions to return (ignored if all=true)
+ * - offset: number (optional, default: 0) - Number of transactions to skip (ignored if all=true)
  *
  * Returns:
  * - 200: Success with transactions array
@@ -91,6 +93,7 @@ export async function GET(request: NextRequest) {
     const categoryId = searchParams.get('category');
     const typeFilter = searchParams.get('type') as 'income' | 'expense' | null;
     const searchQuery = searchParams.get('search');
+    const all = searchParams.get('all') === 'true'; // Story 8.1: Export all transactions
     const limit = parseInt(searchParams.get('limit') || '100', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
@@ -143,8 +146,10 @@ export async function GET(request: NextRequest) {
     // Order by date descending (newest first), then by created_at for consistent ordering
     query = query.order('date', { ascending: false }).order('created_at', { ascending: false });
 
-    // Apply pagination
-    query = query.range(offset, offset + limit - 1);
+    // Apply pagination (Story 8.1: Skip pagination when all=true for CSV export)
+    if (!all) {
+      query = query.range(offset, offset + limit - 1);
+    }
 
     // Execute query
     const { data: transactions, error: fetchError, count } = await query;

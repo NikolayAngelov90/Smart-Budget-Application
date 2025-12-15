@@ -96,7 +96,7 @@ development_status:
 
   # Epic 8: Data Export & Settings (Original Epic 7 stories renumbered)
   epic-8: contexted
-  8-1-export-transactions-to-csv: drafted
+  8-1-export-transactions-to-csv: done
   8-2-export-financial-report-to-pdf: drafted
   8-3-settings-page-and-account-management: drafted
   8-4-data-sync-status-and-multi-device-information: drafted

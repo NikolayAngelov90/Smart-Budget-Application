@@ -1,0 +1,204 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>8</epicId>
+    <storyId>1</storyId>
+    <title>Export Transactions to CSV</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-14</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/8-1-export-transactions-to-csv.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>to export my complete transaction history to CSV format</iWant>
+    <soThat>I can analyze data in Excel or import to other tools</soThat>
+    <tasks>
+      - Install papaparse and TypeScript types
+      - Create src/lib/services/exportService.ts with exportTransactionsToCSV() function
+      - Modify src/app/api/transactions/route.ts to support ?all=true query parameter
+      - Add CSV export button to Settings page (Story 8.3 creates Settings page)
+      - Optional: Add export button to Transactions page header
+      - Implement performance optimization with progress indicator for large datasets
+      - Write unit tests for CSV generation, escaping, formatting
+      - Write integration tests for full export flow
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    AC-8.1.1: Export button labeled "Export Transactions (CSV)" exists in Settings and/or Transactions page
+    AC-8.1.2: Clicking export button triggers CSV file download via browser save dialog
+    AC-8.1.3: CSV filename follows format: transactions-YYYY-MM-DD.csv (date of export)
+    AC-8.1.4: CSV contains columns: Date, Type, Category, Amount, Notes, Created At
+    AC-8.1.5: All user transactions included (no pagination limit), sorted by date (newest first)
+    AC-8.1.6: Commas in notes, quotes, and newlines properly escaped using CSV standards
+    AC-8.1.7: Amount formatted as $123.45 (no currency symbol for Excel compatibility)
+    AC-8.1.8: Date column uses YYYY-MM-DD format (ISO 8601)
+    AC-8.1.9: Export completes in less than 3 seconds for typical datasets (less than 1,000 transactions); large datasets (greater than 5,000) show progress indicator
+    AC-8.1.10: Export uses papaparse library client-side (no server processing for privacy)
+    AC-8.1.11: Success toast displays: "CSV exported successfully!"
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>Story 8.1: Export Transactions to CSV</section>
+        <snippet>Client-side CSV generation using papaparse. Fetches all transactions via GET /api/transactions?all=true. Privacy-first design with no server processing. Performance target: less than 3s for 1K transactions.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>APIs and Interfaces - exportTransactionsToCSV</section>
+        <snippet>Function signature: exportTransactionsToCSV(transactions, categories) returns void. Uses Papa.unparse() for CSV generation, Blob API for download trigger, format() from date-fns for ISO date formatting.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic 7 (renumbered to 8): Data Export and Settings</title>
+        <section>Story 7.1: Export Transactions to CSV</section>
+        <snippet>Technical Notes include papaparse installation, client-side CSV generation code example, column mapping, null handling for notes, special character testing requirements.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>ADR: Client-Side Export (papaparse, jsPDF)</section>
+        <snippet>Decision to use client-side libraries for privacy. Data never leaves browser. Rationale: Privacy-first, offloads processing to client, no server costs. Consequence: May be slow for very large datasets, sufficient for MVP.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>Project Structure</section>
+        <snippet>Export service location: src/lib/services/exportService.ts. API routes at src/app/api/. Settings page at src/app/(dashboard)/settings/page.tsx.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>src/app/api/transactions/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>GET /api/transactions</symbol>
+        <lines>73-187</lines>
+        <reason>Existing endpoint that needs modification to support ?all=true query parameter for exporting all transactions without pagination. Currently has limit (default 100) and offset pagination that must be bypassed for CSV export.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/database.types.ts</path>
+        <kind>type-definition</kind>
+        <symbol>Transaction interface</symbol>
+        <lines>78-100</lines>
+        <reason>Defines Transaction.Row structure: id, user_id, category_id, amount, type, date, notes, created_at, updated_at. Used for mapping transaction data to CSV columns.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/category.types.ts</path>
+        <kind>type-definition</kind>
+        <symbol>Category interface</symbol>
+        <lines>22-30</lines>
+        <reason>Defines Category structure with name field needed for CSV Category column. Export function will join transactions with categories to get category names.</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <node>
+        <existing>
+          date-fns: "^4.1.0" - Used for date formatting (format function for YYYY-MM-DD)
+          @supabase/supabase-js: "^2.81.1" - API calls to fetch transactions
+          next: "^15.5.7" - API routes, App Router patterns
+          react: "^18.3.0" - Component framework
+          @chakra-ui/react: "^2.8.0" - Button component for export button
+        </existing>
+        <required>
+          papaparse: "^5.4.1" - CSV parsing and generation library (client-side)
+          @types/papaparse: "^5.3.14" - TypeScript type definitions for papaparse
+        </required>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - Privacy-first design: All CSV generation must happen client-side using papaparse. Financial data never sent to server for processing.
+    - Performance: Target less than 3 seconds for 1,000 transactions. Show progress indicator for datasets greater than 5,000 transactions.
+    - Browser download: Use Blob API + URL.createObjectURL() for download trigger, not server-side file generation.
+    - Date formatting: Use date-fns format() function for consistent ISO 8601 (YYYY-MM-DD) formatting.
+    - Error handling: Show user-friendly error toasts if export fails. Handle edge cases (no transactions, missing categories).
+    - Existing patterns: Follow Next.js App Router conventions. Use Chakra UI components for consistency. Use react-hot-toast for feedback.
+    - CSV standards: Properly escape special characters (commas, quotes, newlines) using papaparse defaults.
+    - RLS security: API endpoint must enforce Row Level Security. Users can only export their own transactions.
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/transactions?all=true</name>
+      <kind>REST endpoint (modified)</kind>
+      <signature>
+        GET /api/transactions?all=true
+        Response: {
+          data: Array of Transaction with category: Category,
+          count: number,
+          limit: number (should be ignored when all=true),
+          offset: number (should be 0)
+        }
+      </signature>
+      <path>src/app/api/transactions/route.ts</path>
+      <notes>Modify existing GET endpoint to bypass pagination when all=true query param present. Remove .range() call. Keep RLS enforcement (eq user_id). Maintain order by date descending.</notes>
+    </interface>
+
+    <interface>
+      <name>exportTransactionsToCSV</name>
+      <kind>function signature</kind>
+      <signature>
+        export async function exportTransactionsToCSV(
+          transactions: Array of Transaction with category object containing name string,
+          categories: Category[]
+        ): Promise void
+      </signature>
+      <path>src/lib/services/exportService.ts (new file)</path>
+      <notes>
+        1. Map transactions to CSV rows: { Date, Type, Category, Amount, Notes, "Created At" }
+        2. Format date: format(new Date(tx.date), 'yyyy-MM-dd')
+        3. Format amount: "$" + tx.amount.toFixed(2)
+        4. Handle null notes: tx.notes || ""
+        5. Category name from joined data or lookup: categories.find(c => c.id === tx.category_id)?.name || "Unknown"
+        6. Generate CSV: const csv = Papa.unparse(csvData)
+        7. Create blob: new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+        8. Trigger download: URL.createObjectURL + createElement('a') + click()
+        9. Filename: transactions-${format(new Date(), 'yyyy-MM-dd')}.csv
+      </notes>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Project uses Jest for unit tests and Playwright for E2E tests. Test files colocated with source: __tests__ directories or .test.ts suffix. Use @testing-library/react for component tests. Follow AAA pattern (Arrange, Act, Assert). Test coverage expected for new code.
+    </standards>
+
+    <locations>
+      Unit tests: src/lib/services/__tests__/exportService.test.ts
+      Integration tests: src/app/api/transactions/__tests__/route.test.ts
+      E2E tests: e2e/export-csv.spec.ts
+    </locations>
+
+    <ideas>
+      Unit Tests (exportService.test.ts):
+      - AC-8.1.4, 8.1.7, 8.1.8: Test CSV structure with correct columns, amount formatting ($123.45), date formatting (YYYY-MM-DD)
+      - AC-8.1.6: Test special character escaping (commas in notes, quotes, newlines) using papaparse
+      - AC-8.1.5: Test transactions sorted by date descending (newest first)
+      - AC-8.1.4: Test empty notes display as empty string, not "null"
+      - Test missing category handling (category.name fallback to "Unknown")
+
+      API Tests (route.test.ts):
+      - AC-8.1.5: Test ?all=true bypasses pagination and returns all user transactions
+      - AC-8.1.5: Test RLS enforcement (user A cannot export user B's transactions via all=true)
+      - Test maintains existing behavior when all=true not provided (pagination works)
+
+      Integration Tests:
+      - AC-8.1.2, 8.1.3, 8.1.11: Test full flow: fetch data to generate CSV to verify download triggered with correct filename
+      - AC-8.1.9: Test performance with 1K transactions (less than 3s), verify progress indicator shown for 5K+
+      - Test error handling: API failure shows error toast, empty dataset generates valid empty CSV
+
+      E2E Tests (Playwright):
+      - AC-8.1.1, 8.1.2: User clicks "Export Transactions (CSV)" then CSV file downloads
+      - AC-8.1.3: Verify downloaded filename matches transactions-YYYY-MM-DD.csv pattern
+      - AC-8.1.11: Verify success toast appears after export
+    </ideas>
+  </tests>
+</story-context>
