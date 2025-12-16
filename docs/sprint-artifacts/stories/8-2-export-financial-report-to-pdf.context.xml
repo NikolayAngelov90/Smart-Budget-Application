@@ -1,0 +1,236 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>8</epicId>
+    <storyId>8.2</storyId>
+    <title>Export Financial Report to PDF</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-16</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/8-2-export-financial-report-to-pdf.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>export a monthly financial report as PDF</iWant>
+    <soThat>I can save or print professional-looking summaries</soThat>
+    <tasks>
+      - Install jsPDF and jspdf-autotable dependencies with TypeScript types
+      - Create PDFReportData type interface in src/types/export.types.ts with month, summary (income/expenses/net), categories breakdown, and top transactions
+      - Add exportMonthlyReportToPDF() function to src/lib/services/exportService.ts
+      - Implement PDF header with Smart Budget Application title and month/year
+      - Add summary section with total income, expenses, and net balance
+      - Add category breakdown table using jspdf-autotable with amounts and percentages
+      - Add top 5 highest expense transactions table
+      - Apply professional styling (Helvetica font, proper spacing, aligned tables)
+      - Format for A4 paper size (210x297mm)
+      - Generate filename as budget-report-YYYY-MM.pdf
+      - Trigger browser download
+      - Add month selector dropdown to Settings page showing last 12 months
+      - Add "Export Monthly Report (PDF)" button to Settings page
+      - Wire onClick handler to fetch monthly data and call PDF export function
+      - Show loading state during PDF generation
+      - Display success toast on completion
+      - Fetch monthly transactions using GET /api/transactions?month=YYYY-MM
+      - Calculate summary totals (income, expenses, net balance) client-side
+      - Calculate category spending breakdown with percentages
+      - Identify top 5 highest expense transactions
+      - Assemble PDFReportData object
+      - Test PDF generation speed, optimize to ensure <5s generation time
+      - Show progress indicator during generation for large datasets
+      - Write unit tests for PDF generation with sample monthly data
+      - Test all PDF sections present (header, summary, categories, transactions)
+      - Test calculation accuracy (totals, percentages)
+      - Test filename generation
+      - Test edge case: month with no transactions
+      - Write integration tests for full flow (select month → fetch data → generate PDF → download)
+      - Test with various months (current, past, empty)
+      - Test error handling (API failure, PDF generation failure)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    AC-8.2.1: Export button labeled "Export Monthly Report (PDF)" exists in Settings page
+    AC-8.2.2: Month selector dropdown shows last 12 months available for export
+    AC-8.2.3: PDF filename follows format: budget-report-YYYY-MM.pdf
+    AC-8.2.4: PDF includes header with "Smart Budget Application" title and month/year
+    AC-8.2.5: PDF includes summary section: Total income, total expenses, net balance
+    AC-8.2.6: PDF includes spending by category table with amounts and percentages
+    AC-8.2.7: PDF includes top 5 highest expense transactions
+    AC-8.2.8: PDF styled professionally with consistent fonts, spacing, and colors
+    AC-8.2.9: PDF generation completes in <5 seconds
+    AC-8.2.10: Export uses jsPDF library client-side (no server processing)
+    AC-8.2.11: PDF formatted for A4 paper size, readable on all devices
+    AC-8.2.12: Success toast displays: "PDF report downloaded!"
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <artifact>
+        <path>docs/architecture.md</path>
+        <title>Smart Budget Application - Technical Architecture</title>
+        <section>Project Structure - Export Service</section>
+        <snippet>Architecture specifies exportService.ts in src/lib/services/ for CSV/PDF export functionality. Client-side processing using libraries like jsPDF for privacy-first design.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/architecture.md</path>
+        <title>Smart Budget Application - Technical Architecture</title>
+        <section>Decision Summary</section>
+        <snippet>Date handling uses date-fns 3+ (lightweight, tree-shakeable). UI Framework is Chakra UI 2.8+ for WCAG 2.1 compliance and consistent styling. Testing with Jest + React Testing Library.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/stories/8-1-export-transactions-to-csv.md</path>
+        <title>Story 8.1: Export Transactions to CSV</title>
+        <section>Completed Implementation</section>
+        <snippet>Story 8.1 implemented CSV export with privacy-first client-side processing using papaparse. Follows same pattern for PDF export: fetch data client-side, process in browser, trigger download.</snippet>
+      </artifact>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/lib/services/exportService.ts</path>
+        <kind>service</kind>
+        <symbol>exportTransactionsToCSV</symbol>
+        <lines>62-137</lines>
+        <reason>Existing CSV export function demonstrates client-side export pattern with progress tracking, chunked processing, and browser download trigger. PDF export should follow similar structure.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/services/exportService.ts</path>
+        <kind>interface</kind>
+        <symbol>TransactionWithCategory</symbol>
+        <lines>16-29</lines>
+        <reason>Interface for transaction data with category info. PDF report will use same transaction structure for top transactions list.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/services/__tests__/exportService.test.ts</path>
+        <kind>test</kind>
+        <symbol>exportService tests</symbol>
+        <lines>1-349</lines>
+        <reason>Test structure and patterns for export functionality. PDF tests should follow similar approach with mocked jsPDF library.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/transactions/page.tsx</path>
+        <kind>component</kind>
+        <symbol>handleExportCSV</symbol>
+        <lines>459-525</lines>
+        <reason>Export handler pattern: fetch data, call export service, show loading state, display success/error toast. Settings page PDF export should follow same pattern.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/transactions/route.ts</path>
+        <kind>api</kind>
+        <symbol>GET /api/transactions</symbol>
+        <lines>57-190</lines>
+        <reason>API endpoint supports filtering by date range and all=true parameter. Can be used to fetch monthly transactions for PDF report.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="jsPDF" version="NOT_INSTALLED" required="true">Client-side PDF generation library</package>
+        <package name="jspdf-autotable" version="NOT_INSTALLED" required="true">Table plugin for jsPDF for professional table rendering</package>
+        <package name="@types/jspdf" version="NOT_INSTALLED" required="true">TypeScript types for jsPDF</package>
+        <package name="@types/jspdf-autotable" version="NOT_INSTALLED" required="true">TypeScript types for jspdf-autotable</package>
+        <package name="date-fns" version="^4.1.0" installed="true">Date formatting and manipulation (already installed)</package>
+        <package name="papaparse" version="^5.5.3" installed="true">CSV library (Story 8.1, reference for export patterns)</package>
+        <package name="@chakra-ui/react" version="^2.8.0" installed="true">UI components for Settings page month selector and button</package>
+        <package name="react-hook-form" version="^7.66.0" installed="true">Form handling if needed for month selection</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - Client-side PDF generation only - no server processing for privacy
+    - Must use jsPDF library for PDF generation (per AC-8.2.10)
+    - Must use jspdf-autotable plugin for table rendering (professional styling)
+    - PDF must be A4 format (210x297mm) per AC-8.2.11
+    - PDF generation must complete in <5 seconds per AC-8.2.9
+    - Filename must follow format: budget-report-YYYY-MM.pdf (AC-8.2.3)
+    - Professional styling: Consistent fonts (Helvetica), proper spacing, aligned tables (AC-8.2.8)
+    - Header must include "Smart Budget Application" title and month/year (AC-8.2.4)
+    - Summary section must show: Total income, total expenses, net balance (AC-8.2.5)
+    - Category breakdown must include amounts and percentages (AC-8.2.6)
+    - Must show top 5 highest expense transactions (AC-8.2.7)
+    - Must display success toast: "PDF report downloaded!" (AC-8.2.12)
+    - Settings page must have month selector with last 12 months (AC-8.2.2)
+    - Export button must be labeled "Export Monthly Report (PDF)" (AC-8.2.1)
+    - Follow existing export pattern from Story 8.1 (fetch data, process client-side, trigger download)
+    - Use existing transaction API with date filtering
+    - Calculate all statistics client-side (totals, percentages, top transactions)
+    - Show loading state during PDF generation
+    - Handle edge cases: no transactions, API errors, PDF generation errors
+    - Must be mobile compatible and accessible (WCAG 2.1 Level A minimum)
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>exportMonthlyReportToPDF</name>
+      <kind>function signature</kind>
+      <signature>export async function exportMonthlyReportToPDF(reportData: PDFReportData): Promise<void></signature>
+      <path>src/lib/services/exportService.ts (to be added)</path>
+    </interface>
+    <interface>
+      <name>PDFReportData</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+        interface PDFReportData {
+          month: string; // YYYY-MM format
+          summary: {
+            totalIncome: number;
+            totalExpenses: number;
+            netBalance: number;
+          };
+          categories: Array<{
+            name: string;
+            amount: number;
+            percentage: number;
+            color: string;
+          }>;
+          topTransactions: Array<{
+            date: string;
+            category: string;
+            amount: number;
+            notes: string;
+          }>;
+        }
+      </signature>
+      <path>src/types/export.types.ts (to be created)</path>
+    </interface>
+    <interface>
+      <name>GET /api/transactions</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/transactions?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&all=true</signature>
+      <path>src/app/api/transactions/route.ts (existing)</path>
+    </interface>
+    <interface>
+      <name>TransactionWithCategory</name>
+      <kind>TypeScript interface</kind>
+      <signature>Already defined in exportService.ts (lines 16-29) - reuse for top transactions</signature>
+      <path>src/lib/services/exportService.ts (existing)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Testing uses Jest + React Testing Library. Unit tests in src/lib/services/__tests__/ test business logic. Integration tests validate full user flows. Tests should mock jsPDF library and verify PDF content structure, calculations, filename generation, and error handling. Follow existing exportService.test.ts patterns for mocking and assertions.
+    </standards>
+    <locations>
+      - src/lib/services/__tests__/exportService.test.ts (add PDF tests)
+      - src/app/(dashboard)/settings/__tests__/page.test.tsx (Settings page tests, to be created)
+      - src/types/__tests__/export.types.test.ts (type validation tests, optional)
+    </locations>
+    <ideas>
+      - AC-8.2.1-8.2.2: Test Settings page renders month selector and PDF export button
+      - AC-8.2.3: Test filename generation: budget-report-2025-01.pdf format
+      - AC-8.2.4: Test PDF includes header with app title and month/year
+      - AC-8.2.5: Test summary calculations: totalIncome + totalExpenses = netBalance
+      - AC-8.2.6: Test category breakdown with correct amounts and percentages (sum to 100%)
+      - AC-8.2.7: Test top 5 transactions sorted by amount descending
+      - AC-8.2.8: Test PDF styling (fonts, spacing) - verify jspdf-autotable config
+      - AC-8.2.9: Test PDF generation performance with mock timer
+      - AC-8.2.10: Test jsPDF library is used client-side (no API calls for PDF generation)
+      - AC-8.2.11: Test A4 format configuration (210x297mm)
+      - AC-8.2.12: Test success toast displays with correct message
+      - Edge case: Test month with no transactions (empty PDF with zeros)
+      - Edge case: Test API failure handling and error toast
+      - Edge case: Test PDF generation error handling
+      - Integration: Test full flow from month selection to PDF download
+    </ideas>
+  </tests>
+</story-context>

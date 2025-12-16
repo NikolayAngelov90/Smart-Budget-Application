@@ -1,6 +1,7 @@
 /**
  * Export Service
  * Story 8.1: Export Transactions to CSV
+ * Story 8.2: Export Financial Report to PDF
  *
  * Client-side export functionality for transactions and reports.
  * Privacy-first design: All processing happens in the browser.
@@ -8,6 +9,9 @@
 
 import Papa from 'papaparse';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import type { PDFReportData } from '@/types/export.types';
 
 /**
  * Transaction type with category information
@@ -133,5 +137,204 @@ export async function exportTransactionsToCSV(
   } catch (error) {
     console.error('Error exporting transactions to CSV:', error);
     throw new Error('Failed to export transactions. Please try again.');
+  }
+}
+
+/**
+ * Export monthly financial report to PDF
+ * Story 8.2: Export Financial Report to PDF
+ *
+ * AC-8.2.1: Export button labeled "Export Monthly Report (PDF)"
+ * AC-8.2.2: Month selector shows last 12 months
+ * AC-8.2.3: Filename format: budget-report-YYYY-MM.pdf
+ * AC-8.2.4: PDF includes header with app title and month/year
+ * AC-8.2.5: PDF includes summary (income, expenses, net balance)
+ * AC-8.2.6: PDF includes category breakdown table with amounts and percentages
+ * AC-8.2.7: PDF includes top 5 highest expense transactions
+ * AC-8.2.8: Professional styling with consistent fonts, spacing, colors
+ * AC-8.2.9: Generation completes in <5 seconds
+ * AC-8.2.10: Client-side processing with jsPDF
+ * AC-8.2.11: A4 paper size, readable on all devices
+ * AC-8.2.12: Success toast displays "PDF report downloaded!"
+ *
+ * @param reportData - Monthly report data with summary, categories, and transactions
+ * @returns Promise that resolves when PDF download is triggered
+ */
+export async function exportMonthlyReportToPDF(
+  reportData: PDFReportData
+): Promise<void> {
+  try {
+    // AC-8.2.11: Create PDF with A4 format (210x297mm)
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    // AC-8.2.8: Professional styling - colors and fonts
+    const primaryColor: [number, number, number] = [36, 76, 125]; // Trust Blue
+    const textColor: [number, number, number] = [45, 55, 72]; // Gray 800
+    const lightGray: [number, number, number] = [247, 250, 252]; // Gray 50
+
+    let yPosition = 20;
+
+    // AC-8.2.4: Header with app title and month/year
+    doc.setFontSize(22);
+    doc.setTextColor(...primaryColor);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Smart Budget Application', 105, yPosition, { align: 'center' });
+
+    yPosition += 10;
+    doc.setFontSize(16);
+    doc.setTextColor(...textColor);
+    doc.setFont('helvetica', 'normal');
+    const monthYear = format(new Date(reportData.month + '-01'), 'MMMM yyyy');
+    doc.text(`Monthly Financial Report - ${monthYear}`, 105, yPosition, { align: 'center' });
+
+    yPosition += 15;
+
+    // AC-8.2.5: Summary section (income, expenses, net balance)
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text('Financial Summary', 20, yPosition);
+
+    yPosition += 10;
+
+    // Summary table
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Metric', 'Amount']],
+      body: [
+        ['Total Income', `$${reportData.summary.totalIncome.toFixed(2)}`],
+        ['Total Expenses', `$${reportData.summary.totalExpenses.toFixed(2)}`],
+        ['Net Balance', `$${reportData.summary.netBalance.toFixed(2)}`],
+      ],
+      theme: 'grid',
+      headStyles: {
+        fillColor: primaryColor,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 11,
+      },
+      bodyStyles: {
+        fontSize: 10,
+        textColor: textColor,
+      },
+      alternateRowStyles: {
+        fillColor: lightGray,
+      },
+      margin: { left: 20, right: 20 },
+      styles: {
+        cellPadding: 5,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1,
+      },
+    });
+
+    // @ts-expect-error - autoTable modifies doc but TypeScript doesn't know
+    yPosition = doc.lastAutoTable.finalY + 15;
+
+    // AC-8.2.6: Category breakdown with amounts and percentages
+    if (reportData.categories.length > 0) {
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('Spending by Category', 20, yPosition);
+
+      yPosition += 10;
+
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['Category', 'Amount', 'Percentage']],
+        body: reportData.categories.map((cat) => [
+          cat.name,
+          `$${cat.amount.toFixed(2)}`,
+          `${cat.percentage.toFixed(1)}%`,
+        ]),
+        theme: 'grid',
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 11,
+        },
+        bodyStyles: {
+          fontSize: 10,
+          textColor: textColor,
+        },
+        alternateRowStyles: {
+          fillColor: lightGray,
+        },
+        margin: { left: 20, right: 20 },
+        styles: {
+          cellPadding: 5,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+        },
+      });
+
+      // @ts-expect-error - autoTable modifies doc but TypeScript doesn't know
+      yPosition = doc.lastAutoTable.finalY + 15;
+    }
+
+    // AC-8.2.7: Top 5 highest expense transactions
+    if (reportData.topTransactions.length > 0) {
+      // Check if we need a new page
+      if (yPosition > 240) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('Top 5 Expenses', 20, yPosition);
+
+      yPosition += 10;
+
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['Date', 'Category', 'Amount', 'Notes']],
+        body: reportData.topTransactions.map((tx) => [
+          format(new Date(tx.date), 'MMM dd, yyyy'),
+          tx.category,
+          `$${tx.amount.toFixed(2)}`,
+          tx.notes || '-',
+        ]),
+        theme: 'grid',
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 11,
+        },
+        bodyStyles: {
+          fontSize: 10,
+          textColor: textColor,
+        },
+        alternateRowStyles: {
+          fillColor: lightGray,
+        },
+        margin: { left: 20, right: 20 },
+        styles: {
+          cellPadding: 5,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+        },
+        columnStyles: {
+          3: { cellWidth: 60 }, // Notes column wider
+        },
+      });
+    }
+
+    // AC-8.2.3: Filename format budget-report-YYYY-MM.pdf
+    const filename = `budget-report-${reportData.month}.pdf`;
+
+    // AC-8.2.10: Trigger browser download (client-side)
+    doc.save(filename);
+  } catch (error) {
+    console.error('Error generating PDF report:', error);
+    throw new Error('Failed to generate PDF report. Please try again.');
   }
 }

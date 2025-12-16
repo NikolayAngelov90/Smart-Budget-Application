@@ -1,6 +1,6 @@
 # Story 8.2: Export Financial Report to PDF
 
-Status: drafted
+Status: ready-for-dev
 
 ## Story
 
@@ -139,7 +139,7 @@ So that I can save or print professional-looking summaries.
 
 ### Context Reference
 
-<!-- Path(s) to story context XML will be added here by context workflow -->
+- [Story 8.2 Context](8-2-export-financial-report-to-pdf.context.xml)
 
 ### Agent Model Used
 
