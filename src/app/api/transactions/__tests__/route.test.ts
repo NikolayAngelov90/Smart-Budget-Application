@@ -72,6 +72,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
       // Make it thenable so it can be awaited
       then: jest.fn((resolve) => Promise.resolve(resolvedValue).then(resolve)),
       // Helper to set resolved value
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockResolvedValue: (value: any) => {
         resolvedValue = value;
         return mockQuery;
