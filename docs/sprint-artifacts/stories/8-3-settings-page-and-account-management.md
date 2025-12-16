@@ -1,6 +1,6 @@
 # Story 8.3: Settings Page and Account Management
 
-Status: drafted
+Status: ready-for-dev
 
 ## Story
 
@@ -177,7 +177,7 @@ So that I can control my experience and data.
 
 ### Context Reference
 
-<!-- Path(s) to story context XML will be added here by context workflow -->
+- [Story 8.3 Context](8-3-settings-page-and-account-management.context.xml)
 
 ### Agent Model Used
 

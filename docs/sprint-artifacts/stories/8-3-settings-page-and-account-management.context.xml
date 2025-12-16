@@ -1,0 +1,342 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>8</epicId>
+    <storyId>8.3</storyId>
+    <title>Settings Page and Account Management</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-16</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/8-3-settings-page-and-account-management.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>a settings page to manage my account and preferences</iWant>
+    <soThat>I can control my experience and data</soThat>
+    <tasks>
+      - Create database schema for user_profiles (AC: 8.3.2, 8.3.5)
+      - Create TypeScript types (AC: 8.3.2, 8.3.5)
+      - Create settingsService (AC: 8.3.2, 8.3.5)
+      - Create API routes (AC: 8.3.2, 8.3.5, 8.3.8)
+      - Create Settings page component (AC: 8.3.1-8.3.9)
+      - Implement Account Information form (AC: 8.3.2, 8.3.6, 8.3.7)
+      - Implement Preferences form (AC: 8.3.5, 8.3.6, 8.3.7)
+      - Implement account deletion flow (AC: 8.3.8)
+      - Add responsive styling (AC: 8.3.9)
+      - Write unit tests
+      - Write component tests
+      - Write E2E tests
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC-8.3.1">
+      <title>Settings Route</title>
+      <description>Settings page accessible at /settings route</description>
+    </criterion>
+    <criterion id="AC-8.3.2">
+      <title>Account Information Section</title>
+      <description>Display name (editable), Email (read-only), Profile picture, Account created date</description>
+    </criterion>
+    <criterion id="AC-8.3.3">
+      <title>Data Export Section</title>
+      <description>"Export Transactions (CSV)" button and "Export Monthly Report (PDF)" button with month selector</description>
+    </criterion>
+    <criterion id="AC-8.3.4">
+      <title>Privacy & Security Section</title>
+      <description>Data storage message and "Delete my account" button with confirmation</description>
+    </criterion>
+    <criterion id="AC-8.3.5">
+      <title>Preferences Section</title>
+      <description>Currency format selector (USD), Date format selector, "Restart onboarding tutorial" button</description>
+    </criterion>
+    <criterion id="AC-8.3.6">
+      <title>Optimistic UI Updates</title>
+      <description>All profile changes save immediately with optimistic UI updates</description>
+    </criterion>
+    <criterion id="AC-8.3.7">
+      <title>Success Feedback</title>
+      <description>Success toasts displayed for each action (profile update, preference change)</description>
+    </criterion>
+    <criterion id="AC-8.3.8">
+      <title>Account Deletion Confirmation</title>
+      <description>Delete account requires confirmation modal + password re-entry, data exported before deletion, user logged out and redirected after deletion</description>
+    </criterion>
+    <criterion id="AC-8.3.9">
+      <title>Mobile Responsive</title>
+      <description>Full-width sections, stacked layout on mobile devices</description>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>Story 8.3 Acceptance Criteria</section>
+        <snippet>Settings page at /settings with Account Information (display name, email, profile picture, created date), Data Export buttons, Privacy & Security with account deletion, and Preferences (currency, date format). Optimistic UI updates and success toasts for all changes.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>Data Models - UserProfile and UserPreferences</section>
+        <snippet>UserProfile interface with id, display_name, profile_picture_url, preferences (JSONB), created_at, updated_at. UserPreferences with currency_format (USD/EUR/GBP), date_format (MM/DD/YYYY variants), onboarding_completed boolean.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>User Flows 3 & 4</section>
+        <snippet>User Flow 3: Update profile at /settings, optimistic UI update, PUT /api/user/profile, success toast. User Flow 4: Delete account with password verification, CSV export generated, DELETE /api/user/account, cascading deletion, logout and redirect to login.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>Security Requirements</section>
+        <snippet>Profile updates require authenticated session. Account deletion requires password re-entry via Supabase Auth. Deleted user data cascades via ON DELETE CASCADE. Profile picture uploads validated for type, size (<2MB), sanitized filenames.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>Database Schema & RLS Patterns</section>
+        <snippet>All tables use auth.uid() = user_id for RLS. Users can only view/modify own records. Foreign keys reference auth.users(id) with ON DELETE CASCADE. CREATE POLICY pattern: "Users can view their own X" ON table FOR SELECT USING (auth.uid() = user_id).</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>Authentication & API Patterns</section>
+        <snippet>Supabase Auth handles email/password and social login. API routes follow RESTful convention in src/app/api/. Responses: {data: T} for success, {error: {message, code?, details?}} for failures. Forms use React Hook Form + Zod for validation.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>Data Fetching with SWR</section>
+        <snippet>SWR provides automatic caching and revalidation. Configuration: dedupingInterval 5s, revalidateOnFocus disabled. Optimistic updates: mutate([...data, newItem], false) for immediate UI, then revalidate.</snippet>
+      </artifact>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/app/(dashboard)/settings/page.tsx</path>
+        <kind>component</kind>
+        <symbol>SettingsPage</symbol>
+        <lines>1-209</lines>
+        <reason>Existing Settings page (Story 8.2) contains PDF export functionality. Need to extend with Account Information, Preferences, and Account Deletion sections for Story 8.3.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/supabase/server.ts</path>
+        <kind>service</kind>
+        <symbol>createClient</symbol>
+        <lines>46-112</lines>
+        <reason>Server-side Supabase client creation pattern for API routes. Required for user profile API endpoints with authentication.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/supabase/client.ts</path>
+        <kind>service</kind>
+        <symbol>createClient</symbol>
+        <lines>1-30</lines>
+        <reason>Client-side Supabase client for frontend components. Used in Settings page for fetching/updating user profile data.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/services/exportService.ts</path>
+        <kind>service</kind>
+        <symbol>exportTransactionsToCSV, exportMonthlyReportToPDF</symbol>
+        <lines>66-141, 163-336</lines>
+        <reason>Export functions already implemented in Story 8.1 and 8.2. Settings page integrates these via Data Export section (AC-8.3.3). Also used for data export before account deletion (AC-8.3.8).</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/transactions/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>GET handler</symbol>
+        <lines>1-200</lines>
+        <reason>Example API route pattern with authentication and RLS. Follow this pattern for new PUT /api/user/profile and DELETE /api/user/account endpoints.</reason>
+      </artifact>
+      <artifact>
+        <path>src/types/category.types.ts</path>
+        <kind>types</kind>
+        <symbol>Category interface</symbol>
+        <lines>1-50</lines>
+        <reason>Example type definition pattern. Follow this structure for new src/types/user.types.ts (UserProfile and UserPreferences interfaces).</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <framework>
+        <name>Next.js</name>
+        <version>^15.5.7</version>
+        <usage>App Router for pages and API routes</usage>
+      </framework>
+      <library>
+        <name>@supabase/supabase-js</name>
+        <version>^2.81.1</version>
+        <usage>Authentication, database access, RLS enforcement</usage>
+      </library>
+      <library>
+        <name>@supabase/ssr</name>
+        <version>^0.7.0</version>
+        <usage>Server-side Supabase client with cookie handling</usage>
+      </library>
+      <library>
+        <name>@chakra-ui/react</name>
+        <version>^2.8.0</version>
+        <usage>UI components: Input, Select, Button, FormControl, FormLabel, Avatar, Card, useToast</usage>
+      </library>
+      <library>
+        <name>react-hook-form</name>
+        <version>^7.66.0</version>
+        <usage>Form state management for profile and preferences forms</usage>
+      </library>
+      <library>
+        <name>@hookform/resolvers</name>
+        <version>^5.2.2</version>
+        <usage>Zod resolver for form validation</usage>
+      </library>
+      <library>
+        <name>zod</name>
+        <version>^4.1.12</version>
+        <usage>Schema validation for profile updates and preferences</usage>
+      </library>
+      <library>
+        <name>swr</name>
+        <version>^2.3.6</version>
+        <usage>Data fetching with caching and optimistic updates for user profile</usage>
+      </library>
+      <library>
+        <name>date-fns</name>
+        <version>^4.1.0</version>
+        <usage>Date formatting for account created date display</usage>
+      </library>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>
+      <title>Database Schema Design</title>
+      <description>New user_profiles table must extend auth.users with UUID FK. Use JSONB for preferences to allow future expansion. Enable RLS with policies: users can SELECT/UPDATE/INSERT own profile only. Add updated_at trigger.</description>
+    </constraint>
+    <constraint>
+      <title>Optimistic UI Pattern</title>
+      <description>Use SWR's optimisticData option for immediate profile updates before server confirmation. Revert on error. Pattern: mutate(optimisticData, {revalidate: true}).</description>
+    </constraint>
+    <constraint>
+      <title>Account Deletion Security</title>
+      <description>Multi-step confirmation required: 1) Confirmation modal, 2) Password re-entry, 3) Verify password via Supabase Auth, 4) Generate CSV export, 5) Delete user_profiles and auth.users (cascades to all user data), 6) Logout and redirect to login.</description>
+    </constraint>
+    <constraint>
+      <title>RLS Enforcement</title>
+      <description>All API routes must verify authenticated user via Supabase Auth. Rely on RLS policies for data access control. Never bypass RLS in application code.</description>
+    </constraint>
+    <constraint>
+      <title>Profile Picture Strategy</title>
+      <description>Phase 1 (this story): Display social login profile picture from auth metadata. Phase 2 (future): Allow custom upload to Supabase Storage with validation (image/*, <2MB, sanitized filename).</description>
+    </constraint>
+    <constraint>
+      <title>Testing Requirements</title>
+      <description>Unit tests for services and API routes. Component tests for Settings page sections. E2E tests for full workflows (profile update, account deletion). RLS policy tests to verify users cannot access other profiles.</description>
+    </constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>GET /api/user/profile</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /api/user/profile → Response: {data: UserProfile} | {error: {message: string}}</signature>
+      <path>src/app/api/user/profile/route.ts (to be created)</path>
+      <description>Fetch authenticated user's profile. Requires auth session. Returns UserProfile with display_name, email, profile_picture_url, preferences, created_at.</description>
+    </interface>
+    <interface>
+      <name>PUT /api/user/profile</name>
+      <kind>REST endpoint</kind>
+      <signature>PUT /api/user/profile Body: {display_name?: string, profile_picture_url?: string, preferences?: UserPreferences} → Response: {data: UserProfile} | {error: {message: string}}</signature>
+      <path>src/app/api/user/profile/route.ts (to be created)</path>
+      <description>Update user profile. All fields optional. Requires auth session. Returns updated UserProfile.</description>
+    </interface>
+    <interface>
+      <name>DELETE /api/user/account</name>
+      <kind>REST endpoint</kind>
+      <signature>DELETE /api/user/account Body: {confirmation_password: string} → Response: {data: {success: boolean, export_data_url?: string}} | {error: {message: string}}</signature>
+      <path>src/app/api/user/account/route.ts (to be created)</path>
+      <description>Delete user account permanently. Requires password verification. Generates CSV export before deletion. Deletes user_profiles and auth.users (cascades). Returns success status.</description>
+    </interface>
+    <interface>
+      <name>UserProfile</name>
+      <kind>TypeScript interface</kind>
+      <signature>interface UserProfile { id: string; display_name: string | null; profile_picture_url: string | null; preferences: UserPreferences; created_at: string; updated_at: string; }</signature>
+      <path>src/types/user.types.ts (to be created)</path>
+      <description>User profile data model matching user_profiles table schema.</description>
+    </interface>
+    <interface>
+      <name>UserPreferences</name>
+      <kind>TypeScript interface</kind>
+      <signature>interface UserPreferences { currency_format: 'USD' | 'EUR' | 'GBP'; date_format: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD'; onboarding_completed: boolean; }</signature>
+      <path>src/types/user.types.ts (to be created)</path>
+      <description>User preferences stored as JSONB in user_profiles table.</description>
+    </interface>
+    <interface>
+      <name>getUserProfile</name>
+      <kind>Service function</kind>
+      <signature>async function getUserProfile(userId: string): Promise&lt;UserProfile | null&gt;</signature>
+      <path>src/lib/services/settingsService.ts (to be created)</path>
+      <description>Fetch user profile from user_profiles table. Uses Supabase client with RLS.</description>
+    </interface>
+    <interface>
+      <name>updateUserProfile</name>
+      <kind>Service function</kind>
+      <signature>async function updateUserProfile(userId: string, updates: Partial&lt;UserProfile&gt;): Promise&lt;UserProfile&gt;</signature>
+      <path>src/lib/services/settingsService.ts (to be created)</path>
+      <description>Update user profile fields. Uses Supabase client with RLS. Sets updated_at automatically via trigger.</description>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Testing framework: Jest with @testing-library/react for components, @testing-library/user-event for interactions. API routes tested with mocked Supabase client. E2E tests with Playwright. All tests in __tests__ directories or *.test.ts files. Coverage target: >80% for new code. RLS policies tested via integration tests with multiple user contexts.
+    </standards>
+    <locations>
+      - Component tests: src/app/(dashboard)/settings/__tests__/page.test.tsx
+      - Service tests: src/lib/services/__tests__/settingsService.test.ts
+      - API route tests: src/app/api/user/profile/__tests__/route.test.ts, src/app/api/user/account/__tests__/route.test.ts
+      - E2E tests: e2e/settings.spec.ts
+      - Type tests: src/types/__tests__/user.types.test.ts
+    </locations>
+    <ideas>
+      <test ac="AC-8.3.1">
+        <description>Test Settings page renders at /settings route</description>
+        <approach>E2E test: Navigate to /settings, verify page loads with correct title</approach>
+      </test>
+      <test ac="AC-8.3.2">
+        <description>Test Account Information section displays and updates profile</description>
+        <approach>Component test: Render Settings page, verify display_name Input, email Text (read-only), profile picture Avatar, created_at display. Unit test: updateUserProfile service function. Integration test: PUT /api/user/profile updates database.</approach>
+      </test>
+      <test ac="AC-8.3.3">
+        <description>Test Data Export section has CSV and PDF buttons</description>
+        <approach>Component test: Verify "Export Transactions (CSV)" and "Export Monthly Report (PDF)" buttons exist. Verify buttons call exportTransactionsToCSV and exportMonthlyReportToPDF from exportService.</approach>
+      </test>
+      <test ac="AC-8.3.4">
+        <description>Test Privacy & Security section with data storage message and delete button</description>
+        <approach>Component test: Verify security message displays. Verify "Delete my account" button exists and opens confirmation modal.</approach>
+      </test>
+      <test ac="AC-8.3.5">
+        <description>Test Preferences section with currency, date format selectors and onboarding restart</description>
+        <approach>Component test: Verify currency Select, date format Select, "Restart onboarding" button. Test preference updates save immediately.</approach>
+      </test>
+      <test ac="AC-8.3.6">
+        <description>Test optimistic UI updates for profile changes</description>
+        <approach>Component test: Mock SWR mutate. Update display_name, verify UI updates immediately before server response. Verify revert on error.</approach>
+      </test>
+      <test ac="AC-8.3.7">
+        <description>Test success toasts for profile and preference updates</description>
+        <approach>Component test: Mock useToast. Update profile, verify success toast called with correct message.</approach>
+      </test>
+      <test ac="AC-8.3.8">
+        <description>Test account deletion flow with confirmation and password verification</description>
+        <approach>Component test: Click delete button, verify modal opens. Enter password, verify DELETE /api/user/account called. E2E test: Full deletion flow, verify CSV export, database deletion, logout, redirect to login.</approach>
+      </test>
+      <test ac="AC-8.3.9">
+        <description>Test mobile responsive layout</description>
+        <approach>Component test: Render with mobile viewport, verify full-width sections, stacked layout. Visual regression test with Playwright.</approach>
+      </test>
+      <test ac="RLS">
+        <description>Test RLS policies prevent cross-user profile access</description>
+        <approach>Integration test: Create two users. Verify user A cannot read/update user B's profile. Verify API routes return 403 for unauthorized access.</approach>
+      </test>
+    </ideas>
+  </tests>
+</story-context>

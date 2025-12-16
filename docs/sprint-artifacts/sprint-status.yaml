@@ -98,7 +98,7 @@ development_status:
   epic-8: contexted
   8-1-export-transactions-to-csv: done
   8-2-export-financial-report-to-pdf: review
-  8-3-settings-page-and-account-management: drafted
+  8-3-settings-page-and-account-management: ready-for-dev
   8-4-data-sync-status-and-multi-device-information: drafted
   8-5-offline-data-caching-for-viewing-phase-1: drafted
   epic-8-retrospective: optional
