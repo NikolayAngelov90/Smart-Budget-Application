@@ -52,7 +52,14 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     // Reset mocks
     jest.clearAllMocks();
 
-    // Mock Supabase query builder
+    // Mutable resolved value that tests can update
+    let resolvedValue = {
+      data: [],
+      error: null,
+      count: 0,
+    };
+
+    // Create a promise-like query object that chains and resolves
     mockQuery = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -62,6 +69,13 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
       or: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
       range: jest.fn().mockReturnThis(),
+      // Make it thenable so it can be awaited
+      then: jest.fn((resolve) => Promise.resolve(resolvedValue).then(resolve)),
+      // Helper to set resolved value
+      mockResolvedValue: (value: any) => {
+        resolvedValue = value;
+        return mockQuery;
+      },
     };
 
     mockSupabase = {
@@ -98,8 +112,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     }));
 
     // Mock query to return all transactions
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: mockTransactions,
       error: null,
       count: 150,
@@ -136,8 +149,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
       },
     }));
 
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: mockTransactions,
       error: null,
       count: 150,
@@ -169,8 +181,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
       },
     }));
 
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: mockTransactions,
       error: null,
       count: 150,
@@ -185,8 +196,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
 
   // AC-8.1.5: Test RLS enforcement (user A cannot export user B's transactions via all=true)
   test('enforces RLS when all=true (user can only export own transactions)', async () => {
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: [],
       error: null,
       count: 0,
@@ -201,8 +211,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
 
   // Test maintaining sort order with ?all=true
   test('maintains date descending sort order when all=true', async () => {
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: [],
       error: null,
       count: 0,
@@ -218,8 +227,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
 
   // Test combining ?all=true with other filters
   test('combines all=true with date filters', async () => {
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: [],
       error: null,
       count: 0,
@@ -238,8 +246,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
 
   // Test combining ?all=true with category filter
   test('combines all=true with category filter', async () => {
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: [],
       error: null,
       count: 0,
@@ -257,8 +264,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
 
   // Test combining ?all=true with type filter
   test('combines all=true with type filter', async () => {
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: [],
       error: null,
       count: 0,
@@ -291,8 +297,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
 
   // Test error handling with ?all=true
   test('handles database error when all=true', async () => {
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: null,
       error: new Error('Database error'),
       count: null,
@@ -308,8 +313,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
 
   // Test empty result set with ?all=true
   test('returns empty array when no transactions exist with all=true', async () => {
-    mockQuery.from.mockReturnValue(mockQuery);
-    mockQuery.select.mockResolvedValue({
+    mockQuery.mockResolvedValue({
       data: [],
       error: null,
       count: 0,
