@@ -21,12 +21,58 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   try {
     const supabase = await createClient();
 
+    // Fetch email from auth.users first
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      console.error('Error fetching auth user:', authError);
+      throw new Error('Failed to fetch user authentication data');
+    }
+
     // Fetch user profile with RLS enforcement
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('id', userId)
       .single();
+
+    // If profile doesn't exist, create it (for existing users before migration)
+    if (profileError && profileError.code === 'PGRST116') {
+      console.log('Profile not found, creating default profile for user:', userId);
+
+      const defaultPreferences = {
+        currency_format: 'USD',
+        date_format: 'MM/DD/YYYY',
+        onboarding_completed: false,
+      };
+
+      const { data: newProfile, error: insertError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          preferences: defaultPreferences,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating user profile:', insertError);
+        throw new Error(`Failed to create user profile: ${insertError.message}`);
+      }
+
+      // Return newly created profile
+      const userProfile: UserProfile = {
+        id: newProfile.id,
+        display_name: newProfile.display_name,
+        email: authData.user.email || '',
+        profile_picture_url: newProfile.profile_picture_url,
+        preferences: newProfile.preferences as unknown as UserPreferences,
+        created_at: newProfile.created_at,
+        updated_at: newProfile.updated_at,
+      };
+
+      return userProfile;
+    }
 
     if (profileError) {
       console.error('Error fetching user profile:', profileError);
@@ -35,14 +81,6 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 
     if (!profile) {
       return null;
-    }
-
-    // Fetch email from auth.users
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !authData.user) {
-      console.error('Error fetching auth user:', authError);
-      throw new Error('Failed to fetch user authentication data');
     }
 
     // Combine profile data with email from auth
