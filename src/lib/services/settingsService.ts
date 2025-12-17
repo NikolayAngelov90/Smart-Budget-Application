@@ -4,13 +4,7 @@
  *
  * Handles user profile and preferences management with Supabase
  * RLS policies ensure users can only access their own data
- *
- * Note: Using @ts-ignore instead of @ts-expect-error because the user_profiles
- * table exists in the database but hasn't been added to generated types yet.
- * The table will be created by the migration at runtime.
  */
-
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 
 import { createClient } from '@/lib/supabase/server';
 import type { UserProfile, UpdateUserProfilePayload, UserPreferences } from '@/types/user.types';
@@ -28,7 +22,6 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     const supabase = await createClient();
 
     // Fetch user profile with RLS enforcement
-    // @ts-ignore - user_profiles table exists but not in generated types yet
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('*')
@@ -53,13 +46,12 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     }
 
     // Combine profile data with email from auth
-    // @ts-ignore - profile fields exist but types not generated yet
     const userProfile: UserProfile = {
       id: profile.id,
       display_name: profile.display_name,
       email: authData.user.email || '',
       profile_picture_url: profile.profile_picture_url,
-      preferences: profile.preferences as UserPreferences,
+      preferences: profile.preferences as unknown as UserPreferences,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
     };
@@ -101,18 +93,18 @@ export async function updateUserProfile(
 
     if (updates.preferences !== undefined) {
       // Merge with existing preferences
-      // @ts-ignore - user_profiles table exists but not in generated types yet
       const { data: currentProfile } = await supabase
         .from('user_profiles')
         .select('preferences')
         .eq('id', userId)
         .single();
 
-      const currentPreferences = (currentProfile?.preferences as UserPreferences) || {
-        currency_format: 'USD',
-        date_format: 'MM/DD/YYYY',
-        onboarding_completed: false,
-      };
+      const currentPreferences =
+        (currentProfile?.preferences as unknown as UserPreferences) || {
+          currency_format: 'USD',
+          date_format: 'MM/DD/YYYY',
+          onboarding_completed: false,
+        };
 
       updatePayload.preferences = {
         ...currentPreferences,
@@ -121,7 +113,6 @@ export async function updateUserProfile(
     }
 
     // Update profile with RLS enforcement
-    // @ts-ignore - user_profiles table exists but not in generated types yet
     const { data: updatedProfile, error: updateError } = await supabase
       .from('user_profiles')
       .update(updatePayload)
@@ -137,13 +128,12 @@ export async function updateUserProfile(
     // Fetch email from auth
     const { data: authData } = await supabase.auth.getUser();
 
-    // @ts-ignore - profile fields exist but types not generated yet
     const userProfile: UserProfile = {
       id: updatedProfile.id,
       display_name: updatedProfile.display_name,
       email: authData.user?.email || '',
       profile_picture_url: updatedProfile.profile_picture_url,
-      preferences: updatedProfile.preferences as UserPreferences,
+      preferences: updatedProfile.preferences as unknown as UserPreferences,
       created_at: updatedProfile.created_at,
       updated_at: updatedProfile.updated_at,
     };
@@ -185,7 +175,6 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
     const supabase = await createClient();
 
     // Delete user profile (cascades to auth.users via ON DELETE CASCADE)
-    // @ts-ignore - user_profiles table exists but not in generated types yet
     const { error: profileError } = await supabase
       .from('user_profiles')
       .delete()

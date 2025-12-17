@@ -185,6 +185,40 @@ export interface Database {
           }
         ];
       };
+      user_profiles: {
+        Row: {
+          id: string;
+          display_name: string | null;
+          profile_picture_url: string | null;
+          preferences: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          display_name?: string | null;
+          profile_picture_url?: string | null;
+          preferences?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          display_name?: string | null;
+          profile_picture_url?: string | null;
+          preferences?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_profiles_id_fkey';
+            columns: ['id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
