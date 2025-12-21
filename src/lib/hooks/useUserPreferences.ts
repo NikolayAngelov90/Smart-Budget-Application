@@ -27,7 +27,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 export function useUserPreferences(): UseUserPreferencesResult {
   const { data, error, isLoading } = useSWR<{ data: UserProfile }>(
     '/api/user/profile',
-    async (url) => {
+    async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch profile');

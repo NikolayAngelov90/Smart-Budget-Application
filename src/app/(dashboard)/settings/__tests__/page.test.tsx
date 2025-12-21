@@ -18,19 +18,19 @@ jest.mock('@/lib/services/exportService', () => ({
 
 // Mock the settings service
 jest.mock('@/lib/services/settingsService', () => ({
-  getUserSettings: jest.fn(),
-  updateUserSettings: jest.fn(),
+  getUserProfile: jest.fn(),
+  updateUserProfile: jest.fn(),
   deleteUserAccount: jest.fn(),
 }));
 
 const mockExportMonthlyReportToPDF = exportService.exportMonthlyReportToPDF as jest.MockedFunction<
   typeof exportService.exportMonthlyReportToPDF
 >;
-const mockGetUserSettings = settingsService.getUserSettings as jest.MockedFunction<
-  typeof settingsService.getUserSettings
+const mockGetUserProfile = settingsService.getUserProfile as jest.MockedFunction<
+  typeof settingsService.getUserProfile
 >;
-const mockUpdateUserSettings = settingsService.updateUserSettings as jest.MockedFunction<
-  typeof settingsService.updateUserSettings
+const mockUpdateUserProfile = settingsService.updateUserProfile as jest.MockedFunction<
+  typeof settingsService.updateUserProfile
 >;
 
 // Mock fetch
@@ -82,16 +82,7 @@ const customRender = (ui: React.ReactElement) => {
 describe('Settings Page - PDF Export Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetUserSettings.mockResolvedValue({
-      id: 'settings-1',
-      user_id: 'user-123',
-      currency: 'USD',
-      budget_alerts_enabled: true,
-      monthly_budget_limit: null,
-      inactivity_timeout_minutes: 30,
-      created_at: '2025-01-01',
-      updated_at: '2025-01-01',
-    });
+    // Note: getUserProfile is not used in PDF export tests
     mockExportMonthlyReportToPDF.mockResolvedValue();
   });
 

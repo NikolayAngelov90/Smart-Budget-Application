@@ -7,6 +7,7 @@ import { DELETE } from '../route';
 import { createClient } from '@/lib/supabase/server';
 import * as settingsService from '@/lib/services/settingsService';
 import * as exportService from '@/lib/services/exportService';
+import { NextRequest } from 'next/server';
 
 // Mock dependencies
 jest.mock('@/lib/supabase/server');
@@ -93,14 +94,14 @@ describe('/api/user/account DELETE', () => {
       mockExportTransactionsToCSV.mockResolvedValue();
 
       // Mock user account deletion
-      mockDeleteUserAccount.mockResolvedValue();
+      mockDeleteUserAccount.mockResolvedValue(true);
 
       // Mock auth.users deletion
       mockSupabase.auth.admin.deleteUser.mockResolvedValue({
         error: null,
       });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,7 +138,7 @@ describe('/api/user/account DELETE', () => {
         error: { message: 'Unauthorized' },
       });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -170,7 +171,7 @@ describe('/api/user/account DELETE', () => {
         error: { message: 'Invalid credentials' },
       });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -196,7 +197,7 @@ describe('/api/user/account DELETE', () => {
         error: null,
       });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -221,7 +222,7 @@ describe('/api/user/account DELETE', () => {
         error: null,
       });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: 'invalid json',
@@ -260,10 +261,10 @@ describe('/api/user/account DELETE', () => {
       mockSelect.mockReturnValue({ order: mockOrder });
 
       mockExportTransactionsToCSV.mockResolvedValue();
-      mockDeleteUserAccount.mockResolvedValue();
+      mockDeleteUserAccount.mockResolvedValue(true);
       mockSupabase.auth.admin.deleteUser.mockResolvedValue({ error: null });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -317,10 +318,10 @@ describe('/api/user/account DELETE', () => {
       mockSelect.mockReturnValue({ order: mockOrder });
 
       mockExportTransactionsToCSV.mockResolvedValue();
-      mockDeleteUserAccount.mockResolvedValue();
+      mockDeleteUserAccount.mockResolvedValue(true);
       mockSupabase.auth.admin.deleteUser.mockResolvedValue({ error: null });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -360,10 +361,10 @@ describe('/api/user/account DELETE', () => {
       mockSelect.mockReturnValue({ order: mockOrder });
 
       mockExportTransactionsToCSV.mockResolvedValue();
-      mockDeleteUserAccount.mockResolvedValue();
+      mockDeleteUserAccount.mockResolvedValue(true);
       mockSupabase.auth.admin.deleteUser.mockResolvedValue({ error: null });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -403,7 +404,7 @@ describe('/api/user/account DELETE', () => {
       mockExportTransactionsToCSV.mockResolvedValue();
       mockDeleteUserAccount.mockRejectedValue(new Error('Profile deletion failed'));
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -447,12 +448,12 @@ describe('/api/user/account DELETE', () => {
       mockSelect.mockReturnValue({ order: mockOrder });
 
       mockExportTransactionsToCSV.mockResolvedValue();
-      mockDeleteUserAccount.mockResolvedValue();
+      mockDeleteUserAccount.mockResolvedValue(true);
       mockSupabase.auth.admin.deleteUser.mockResolvedValue({
         error: { message: 'Auth deletion failed' },
       });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -494,7 +495,7 @@ describe('/api/user/account DELETE', () => {
       });
       mockSelect.mockReturnValue({ order: mockOrder });
 
-      const request = new Request('http://localhost:3000/api/user/account', {
+      const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

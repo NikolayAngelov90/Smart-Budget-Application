@@ -188,7 +188,7 @@ describe('useOnlineStatus', () => {
       Object.defineProperty(navigator, 'onLine', { value: true });
 
       let transactionCallback: any;
-      mockChannel.on.mockImplementation((event, config, callback) => {
+      mockChannel.on.mockImplementation((event: string, config: any, callback: () => void) => {
         if (event === 'postgres_changes') {
           transactionCallback = callback;
         }
@@ -213,7 +213,7 @@ describe('useOnlineStatus', () => {
 
     test('sets syncStatus to synced when Realtime connects', async () => {
       let subscribeCallback: any;
-      mockChannel.subscribe.mockImplementation((callback) => {
+      mockChannel.subscribe.mockImplementation((callback: (status: string) => void) => {
         subscribeCallback = callback;
         return mockChannel;
       });
@@ -231,7 +231,7 @@ describe('useOnlineStatus', () => {
 
     test('sets syncStatus to offline when Realtime has error', async () => {
       let subscribeCallback: any;
-      mockChannel.subscribe.mockImplementation((callback) => {
+      mockChannel.subscribe.mockImplementation((callback: (status: string) => void) => {
         subscribeCallback = callback;
         return mockChannel;
       });

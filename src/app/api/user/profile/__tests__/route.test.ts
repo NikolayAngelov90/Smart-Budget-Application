@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 /**
  * Story 8.3: Settings Page and Account Management
  * Unit Tests for /api/user/profile route
@@ -154,7 +155,7 @@ describe('/api/user/profile', () => {
 
       mockUpdateUserProfile.mockResolvedValue(mockUpdatedProfile);
 
-      const request = new Request('http://localhost:3000/api/user/profile', {
+      const request = new NextRequest('http://localhost:3000/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,7 +194,7 @@ describe('/api/user/profile', () => {
         display_name: 'Just Name',
       });
 
-      const request = new Request('http://localhost:3000/api/user/profile', {
+      const request = new NextRequest('http://localhost:3000/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -218,7 +219,7 @@ describe('/api/user/profile', () => {
 
       mockUpdateUserProfile.mockResolvedValue(mockUpdatedProfile);
 
-      const request = new Request('http://localhost:3000/api/user/profile', {
+      const request = new NextRequest('http://localhost:3000/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -247,7 +248,7 @@ describe('/api/user/profile', () => {
         error: { message: 'Unauthorized' },
       });
 
-      const request = new Request('http://localhost:3000/api/user/profile', {
+      const request = new NextRequest('http://localhost:3000/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -272,7 +273,7 @@ describe('/api/user/profile', () => {
         error: null,
       });
 
-      const request = new Request('http://localhost:3000/api/user/profile', {
+      const request = new NextRequest('http://localhost:3000/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: 'invalid json',
@@ -292,7 +293,7 @@ describe('/api/user/profile', () => {
         error: null,
       });
 
-      const request = new Request('http://localhost:3000/api/user/profile', {
+      const request = new NextRequest('http://localhost:3000/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -317,7 +318,7 @@ describe('/api/user/profile', () => {
 
       mockUpdateUserProfile.mockRejectedValue(new Error('Update failed'));
 
-      const request = new Request('http://localhost:3000/api/user/profile', {
+      const request = new NextRequest('http://localhost:3000/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

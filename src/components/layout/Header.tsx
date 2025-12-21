@@ -43,7 +43,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   // Fetch user profile data
   const { data: profile } = useSWR<{ data: UserProfile }>(
     user ? '/api/user/profile' : null,
-    async (url) => {
+    async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) return null;
       return response.json();
