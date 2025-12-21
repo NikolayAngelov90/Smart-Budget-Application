@@ -15,10 +15,8 @@ jest.mock('@/lib/supabase/client', () => ({
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
 describe('useOnlineStatus', () => {
-  let mockSupabase: {
-    channel: jest.Mock;
-    removeChannel: jest.Mock;
-  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockSupabase: any;
   let mockChannel: {
     on: jest.Mock;
     subscribe: jest.Mock;
@@ -39,6 +37,7 @@ describe('useOnlineStatus', () => {
         callback('SUBSCRIBED');
         return mockChannel;
       }),
+      unsubscribe: jest.fn(),
     };
 
     mockSupabase = {
@@ -209,7 +208,9 @@ describe('useOnlineStatus', () => {
       // Simulate transaction change
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
-        transactionCallback();
+        if (transactionCallback) {
+          transactionCallback();
+        }
       });
 
       await waitFor(() => {
@@ -228,7 +229,9 @@ describe('useOnlineStatus', () => {
       const { result } = renderHook(() => useOnlineStatus());
 
       act(() => {
-        subscribeCallback('SUBSCRIBED');
+        if (subscribeCallback) {
+          subscribeCallback('SUBSCRIBED');
+        }
       });
 
       await waitFor(() => {
@@ -246,7 +249,9 @@ describe('useOnlineStatus', () => {
       const { result } = renderHook(() => useOnlineStatus());
 
       act(() => {
-        subscribeCallback('CHANNEL_ERROR');
+        if (subscribeCallback) {
+          subscribeCallback('CHANNEL_ERROR');
+        }
       });
 
       await waitFor(() => {

@@ -114,7 +114,9 @@ describe('uploadService', () => {
       const previewPromise = generatePreviewUrl(file);
 
       // Trigger onload
-      mockFileReader.onload({ target: { result: 'data:image/jpeg;base64,mockBase64Data' } });
+      if (mockFileReader.onload) {
+        mockFileReader.onload.call(mockFileReader as unknown as FileReader, { target: { result: 'data:image/jpeg;base64,mockBase64Data' } } as ProgressEvent<FileReader>);
+      }
 
       const preview = await previewPromise;
 
@@ -137,14 +139,17 @@ describe('uploadService', () => {
       const previewPromise = generatePreviewUrl(file);
 
       // Trigger onerror
-      mockFileReader.onerror();
+      if (mockFileReader.onerror) {
+        mockFileReader.onerror.call(mockFileReader as unknown as FileReader, {} as ProgressEvent<FileReader>);
+      }
 
       await expect(previewPromise).rejects.toThrow('Failed to read file');
     });
   });
 
   describe('uploadProfilePicture', () => {
-    let mockSupabase: { storage: { from: jest.Mock } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let mockSupabase: any;
 
     beforeEach(() => {
       jest.clearAllMocks();
@@ -249,7 +254,8 @@ describe('uploadService', () => {
   });
 
   describe('deleteProfilePicture', () => {
-    let mockSupabase: { storage: { from: jest.Mock } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let mockSupabase: any;
 
     beforeEach(() => {
       jest.clearAllMocks();

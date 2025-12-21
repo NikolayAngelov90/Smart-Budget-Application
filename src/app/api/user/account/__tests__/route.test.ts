@@ -23,7 +23,8 @@ const mockExportTransactionsToCSV = exportService.exportTransactionsToCSV as jes
 >;
 
 describe('/api/user/account DELETE', () => {
-  let mockSupabase: ReturnType<typeof createClient>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockSupabase: any;
 
   beforeEach(() => {
     jest.clearAllMocks();

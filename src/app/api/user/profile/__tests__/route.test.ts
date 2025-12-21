@@ -23,7 +23,8 @@ const mockUpdateUserProfile = settingsService.updateUserProfile as jest.MockedFu
 >;
 
 describe('/api/user/profile', () => {
-  let mockSupabase: ReturnType<typeof createClient>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockSupabase: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -66,7 +67,7 @@ describe('/api/user/profile', () => {
       mockGetUserProfile.mockResolvedValue(mockProfile);
 
       const response = await GET();
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(200);
       expect(data.data).toEqual(mockProfile);
@@ -80,7 +81,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await GET();
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(401);
       expect(data.error).toEqual({
@@ -99,7 +100,7 @@ describe('/api/user/profile', () => {
       mockGetUserProfile.mockResolvedValue(null);
 
       const response = await GET();
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(404);
       expect(data.error).toEqual({
@@ -117,7 +118,7 @@ describe('/api/user/profile', () => {
       mockGetUserProfile.mockRejectedValue(new Error('Database connection failed'));
 
       const response = await GET();
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(500);
       expect(data.error).toEqual({
@@ -169,7 +170,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await PUT(request);
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(200);
       expect(data.data).toEqual(mockUpdatedProfile);
@@ -203,7 +204,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await PUT(request);
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(200);
       expect(mockUpdateUserProfile).toHaveBeenCalledWith(mockUser.id, {
@@ -231,7 +232,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await PUT(request);
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(200);
       expect(mockUpdateUserProfile).toHaveBeenCalledWith(mockUser.id, {
@@ -257,7 +258,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await PUT(request);
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(401);
       expect(data.error).toEqual({
@@ -280,7 +281,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await PUT(request);
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error.code).toBe('INVALID_REQUEST');
@@ -300,7 +301,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await PUT(request);
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(400);
       expect(data.error).toEqual({
@@ -327,7 +328,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await PUT(request);
-      await response.json();
+      const data = await response.json();
 
       expect(response.status).toBe(500);
       expect(data.error).toEqual({

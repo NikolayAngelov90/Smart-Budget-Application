@@ -7,6 +7,7 @@
  */
 
 import Papa from 'papaparse';
+import { exportTransactionsToCSV } from '../exportService';
 
 // Mock papaparse
 jest.mock('papaparse');
