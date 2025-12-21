@@ -28,6 +28,9 @@ describe('settingsService', () => {
     mockSupabase = {
       auth: {
         getUser: jest.fn(),
+        admin: {
+          deleteUser: jest.fn(),
+        },
       },
       from: jest.fn(),
     };
@@ -127,8 +130,6 @@ describe('settingsService', () => {
       expect(mockSupabase.from).toHaveBeenCalledWith('user_profiles');
       expect(mockInsert).toHaveBeenCalledWith({
         id: mockUserId,
-        display_name: null,
-        profile_picture_url: null,
         preferences: {
           currency_format: 'USD',
           date_format: 'MM/DD/YYYY',
@@ -252,11 +253,28 @@ describe('settingsService', () => {
         display_name: 'Just Name',
       };
 
+      // Mock auth.getUser for final profile construction
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: mockUserId, email: 'test@example.com' } },
+        error: null,
+      });
+
       const mockUpdate = jest.fn().mockReturnThis();
       const mockEq = jest.fn().mockReturnThis();
       const mockSelect = jest.fn().mockReturnThis();
       const mockSingle = jest.fn().mockResolvedValue({
-        data: { id: mockUserId, ...partialUpdate },
+        data: {
+          id: mockUserId,
+          display_name: 'Just Name',
+          profile_picture_url: null,
+          preferences: {
+            currency_format: 'USD',
+            date_format: 'MM/DD/YYYY',
+            onboarding_completed: false,
+          },
+          created_at: '2025-01-01T00:00:00Z',
+          updated_at: '2025-01-02T00:00:00Z',
+        },
         error: null,
       });
 
@@ -269,11 +287,26 @@ describe('settingsService', () => {
 
       const result = await updateUserProfile(mockUserId, partialUpdate);
 
-      expect(result).toEqual({ id: mockUserId, ...partialUpdate });
+      expect(result.display_name).toBe('Just Name');
+      expect(result.id).toBe(mockUserId);
       expect(mockUpdate).toHaveBeenCalledWith(partialUpdate);
     });
 
     test('throws error when update fails', async () => {
+      // Mock select for getting current preferences (since mockUpdates has preferences)
+      const mockSelectPrefs = jest.fn().mockReturnThis();
+      const mockEqPrefs = jest.fn().mockReturnThis();
+      const mockSinglePrefs = jest.fn().mockResolvedValue({
+        data: {
+          preferences: {
+            currency_format: 'USD',
+            date_format: 'MM/DD/YYYY',
+            onboarding_completed: false,
+          },
+        },
+        error: null,
+      });
+
       const mockUpdate = jest.fn().mockReturnThis();
       const mockEq = jest.fn().mockReturnThis();
       const mockSelect = jest.fn().mockReturnThis();
@@ -282,7 +315,15 @@ describe('settingsService', () => {
         error: { message: 'Update failed' },
       });
 
-      mockSupabase.from.mockReturnValue({
+      // First call: select current preferences
+      mockSupabase.from.mockReturnValueOnce({
+        select: mockSelectPrefs,
+      });
+      mockSelectPrefs.mockReturnValue({ eq: mockEqPrefs });
+      mockEqPrefs.mockReturnValue({ single: mockSinglePrefs });
+
+      // Second call: update
+      mockSupabase.from.mockReturnValueOnce({
         update: mockUpdate,
       });
       mockUpdate.mockReturnValue({ eq: mockEq });
@@ -431,11 +472,18 @@ describe('settingsService', () => {
       });
       mockDelete.mockReturnValue({ eq: mockEq });
 
-      await deleteUserAccount(mockUserId);
+      // Mock auth.admin.deleteUser
+      mockSupabase.auth.admin.deleteUser.mockResolvedValue({
+        error: null,
+      });
 
+      const result = await deleteUserAccount(mockUserId);
+
+      expect(result).toBe(true);
       expect(mockSupabase.from).toHaveBeenCalledWith('user_profiles');
       expect(mockDelete).toHaveBeenCalled();
       expect(mockEq).toHaveBeenCalledWith('id', mockUserId);
+      expect(mockSupabase.auth.admin.deleteUser).toHaveBeenCalledWith(mockUserId);
     });
 
     test('throws error when deletion fails', async () => {
@@ -450,7 +498,7 @@ describe('settingsService', () => {
       mockDelete.mockReturnValue({ eq: mockEq });
 
       await expect(deleteUserAccount(mockUserId)).rejects.toThrow(
-        'Failed to delete user account'
+        'Failed to delete user profile'
       );
     });
 
@@ -467,11 +515,17 @@ describe('settingsService', () => {
       });
       mockDelete.mockReturnValue({ eq: mockEq });
 
+      // Mock auth.admin.deleteUser
+      mockSupabase.auth.admin.deleteUser.mockResolvedValue({
+        error: null,
+      });
+
       await deleteUserAccount(mockUserId);
 
       // Verify user_profiles delete was called
       // Database CASCADE will handle auth.users deletion
       expect(mockDelete).toHaveBeenCalled();
+      expect(mockSupabase.auth.admin.deleteUser).toHaveBeenCalledWith(mockUserId);
     });
   });
 });

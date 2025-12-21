@@ -1,9 +1,9 @@
-import { NextRequest } from 'next/server';
 /**
  * Story 8.3: Settings Page and Account Management
  * Unit Tests for /api/user/profile route
  */
 
+import { NextRequest } from 'next/server';
 import { GET, PUT } from '../route';
 import { createClient } from '@/lib/supabase/server';
 import * as settingsService from '@/lib/services/settingsService';
