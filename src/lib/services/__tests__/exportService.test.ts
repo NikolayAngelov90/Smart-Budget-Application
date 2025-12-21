@@ -1,11 +1,12 @@
 /**
  * Export Service Unit Tests
  * Story 8.1: Export Transactions to CSV
+ * Story 8.2: Export Financial Report to PDF
  *
- * Tests for client-side CSV export functionality
+ * Tests for client-side export functionality (CSV and PDF)
  */
 
-import { exportTransactionsToCSV } from '../exportService';
+import { exportTransactionsToCSV, exportMonthlyReportToPDF } from '../exportService';
 import Papa from 'papaparse';
 
 // Mock papaparse
