@@ -5,6 +5,7 @@
 
 import { exportMonthlyReportToPDF } from '../exportService';
 import type { PDFReportData } from '@/types/export.types';
+import jsPDF from 'jspdf';
 
 // Mock jsPDF
 const mockSave = jest.fn();
@@ -73,9 +74,8 @@ describe('exportMonthlyReportToPDF', () => {
     ],
   });
 
-  // AC-8.2.11: Test A4 format configuration
+  // AC-8.2.11: Test A4 format and portrait orientation
   test('creates PDF with A4 format and portrait orientation', async () => {
-    const jsPDF = require('jspdf');
     const reportData = createSampleReportData();
 
     await exportMonthlyReportToPDF(reportData);

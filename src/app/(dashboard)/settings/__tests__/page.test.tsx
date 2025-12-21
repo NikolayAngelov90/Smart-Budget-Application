@@ -8,7 +8,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import SettingsPage from '../page';
 import * as exportService from '@/lib/services/exportService';
-import * as settingsService from '@/lib/services/settingsService';
 
 // Mock the export service
 jest.mock('@/lib/services/exportService', () => ({
@@ -25,12 +24,6 @@ jest.mock('@/lib/services/settingsService', () => ({
 
 const mockExportMonthlyReportToPDF = exportService.exportMonthlyReportToPDF as jest.MockedFunction<
   typeof exportService.exportMonthlyReportToPDF
->;
-const mockGetUserProfile = settingsService.getUserProfile as jest.MockedFunction<
-  typeof settingsService.getUserProfile
->;
-const mockUpdateUserProfile = settingsService.updateUserProfile as jest.MockedFunction<
-  typeof settingsService.updateUserProfile
 >;
 
 // Mock fetch

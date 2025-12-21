@@ -80,7 +80,7 @@ describe('uploadService', () => {
     });
 
     test('rejects null file', () => {
-      const result = validateProfilePicture(null as any);
+      const result = validateProfilePicture(null as unknown as File);
 
       expect(result.valid).toBe(false);
       expect(result.error).toBe('No file provided');
@@ -102,14 +102,14 @@ describe('uploadService', () => {
 
       // Mock FileReader
       const mockReadAsDataURL = jest.fn();
-      const mockFileReader: any = {
+      const mockFileReader = {
         readAsDataURL: mockReadAsDataURL,
-        onload: null,
-        onerror: null,
+        onload: null as ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null,
+        onerror: null as ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null,
         result: 'data:image/jpeg;base64,mockBase64Data',
       };
 
-      global.FileReader = jest.fn(() => mockFileReader) as any;
+      global.FileReader = jest.fn(() => mockFileReader) as unknown as typeof FileReader;
 
       const previewPromise = generatePreviewUrl(file);
 
@@ -126,13 +126,13 @@ describe('uploadService', () => {
       const file = new File(['content'], 'profile.jpg', { type: 'image/jpeg' });
 
       const mockReadAsDataURL = jest.fn();
-      const mockFileReader: any = {
+      const mockFileReader = {
         readAsDataURL: mockReadAsDataURL,
-        onload: null,
-        onerror: null,
+        onload: null as ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null,
+        onerror: null as ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null,
       };
 
-      global.FileReader = jest.fn(() => mockFileReader) as any;
+      global.FileReader = jest.fn(() => mockFileReader) as unknown as typeof FileReader;
 
       const previewPromise = generatePreviewUrl(file);
 
@@ -144,7 +144,7 @@ describe('uploadService', () => {
   });
 
   describe('uploadProfilePicture', () => {
-    let mockSupabase: any;
+    let mockSupabase: { storage: { from: jest.Mock } };
 
     beforeEach(() => {
       jest.clearAllMocks();
@@ -249,7 +249,7 @@ describe('uploadService', () => {
   });
 
   describe('deleteProfilePicture', () => {
-    let mockSupabase: any;
+    let mockSupabase: { storage: { from: jest.Mock } };
 
     beforeEach(() => {
       jest.clearAllMocks();
@@ -286,7 +286,7 @@ describe('uploadService', () => {
     });
 
     test('handles null URL gracefully', async () => {
-      await expect(deleteProfilePicture(null as any)).resolves.not.toThrow();
+      await expect(deleteProfilePicture(null as unknown as string)).resolves.not.toThrow();
     });
 
     test('handles invalid URL format gracefully', async () => {
@@ -357,7 +357,7 @@ describe('uploadService', () => {
     });
 
     test('rejects null URL', () => {
-      const result = isValidSupabaseStorageUrl(null as any, projectUrl);
+      const result = isValidSupabaseStorageUrl(null as unknown as string, projectUrl);
 
       expect(result).toBe(false);
     });

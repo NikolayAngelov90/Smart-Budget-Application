@@ -106,7 +106,7 @@ describe('SyncStatusIndicator', () => {
 
       // In compact mode, this would be in the tooltip
       // In full mode, it would show directly
-      const syncText = screen.queryByText(/Never synced/);
+      screen.queryByText(/Never synced/);
       // May or may not be visible depending on mode
     });
   });
@@ -138,7 +138,7 @@ describe('SyncStatusIndicator', () => {
       customRender(<SyncStatusIndicator compact={true} />);
 
       // Timestamp should not be visible text (it's in tooltip)
-      const timestampText = screen.queryByText(/Last synced:/);
+      screen.queryByText(/Last synced:/);
       // In compact mode, this is in the tooltip, not visible text
     });
   });
@@ -234,7 +234,7 @@ describe('SyncStatusIndicator', () => {
         syncStatus: 'synced',
       });
 
-      const { container } = customRender(<SyncStatusIndicator compact={false} />);
+      customRender(<SyncStatusIndicator compact={false} />);
 
       // Full mode should show more details
       expect(screen.getByText('All data synced')).toBeInTheDocument();

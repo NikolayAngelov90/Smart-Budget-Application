@@ -11,7 +11,7 @@ import type { UserProfile, UserPreferences } from '@/types/user.types';
 interface UseUserPreferencesResult {
   preferences: UserPreferences | null;
   isLoading: boolean;
-  error: any;
+  error: Error | undefined;
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {

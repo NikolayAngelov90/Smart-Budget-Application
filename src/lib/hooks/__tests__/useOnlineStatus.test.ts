@@ -15,8 +15,15 @@ jest.mock('@/lib/supabase/client', () => ({
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
 describe('useOnlineStatus', () => {
-  let mockSupabase: any;
-  let mockChannel: any;
+  let mockSupabase: {
+    channel: jest.Mock;
+    removeChannel: jest.Mock;
+  };
+  let mockChannel: {
+    on: jest.Mock;
+    subscribe: jest.Mock;
+    unsubscribe: jest.Mock;
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -187,8 +194,8 @@ describe('useOnlineStatus', () => {
     test('updates lastSync and syncStatus when transaction change occurs', async () => {
       Object.defineProperty(navigator, 'onLine', { value: true });
 
-      let transactionCallback: any;
-      mockChannel.on.mockImplementation((event: string, config: any, callback: () => void) => {
+      let transactionCallback: (() => void) | undefined;
+      mockChannel.on.mockImplementation((event: string, config: Record<string, unknown>, callback: () => void) => {
         if (event === 'postgres_changes') {
           transactionCallback = callback;
         }
@@ -212,7 +219,7 @@ describe('useOnlineStatus', () => {
     });
 
     test('sets syncStatus to synced when Realtime connects', async () => {
-      let subscribeCallback: any;
+      let subscribeCallback: ((status: string) => void) | undefined;
       mockChannel.subscribe.mockImplementation((callback: (status: string) => void) => {
         subscribeCallback = callback;
         return mockChannel;
@@ -230,7 +237,7 @@ describe('useOnlineStatus', () => {
     });
 
     test('sets syncStatus to offline when Realtime has error', async () => {
-      let subscribeCallback: any;
+      let subscribeCallback: ((status: string) => void) | undefined;
       mockChannel.subscribe.mockImplementation((callback: (status: string) => void) => {
         subscribeCallback = callback;
         return mockChannel;

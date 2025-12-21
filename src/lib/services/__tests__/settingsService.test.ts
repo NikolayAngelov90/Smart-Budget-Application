@@ -10,7 +10,7 @@ import {
   deleteUserAccount,
 } from '../settingsService';
 import { createClient } from '@/lib/supabase/server';
-import type { UserProfile, UpdateUserProfilePayload, UserPreferences } from '@/types/user.types';
+import type { UserProfile, UpdateUserProfilePayload } from '@/types/user.types';
 
 // Mock Supabase client
 jest.mock('@/lib/supabase/server');
@@ -18,7 +18,7 @@ jest.mock('@/lib/supabase/server');
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
 describe('settingsService', () => {
-  let mockSupabase: any;
+  let mockSupabase: ReturnType<typeof createClient>;
 
   beforeEach(() => {
     jest.clearAllMocks();

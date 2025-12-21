@@ -43,7 +43,7 @@ const customRender = (ui: React.ReactElement) => {
 };
 
 describe('ProfilePictureUpload', () => {
-  let mockSupabase: any;
+  let mockSupabase: ReturnType<typeof createClient>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -251,9 +251,10 @@ describe('ProfilePictureUpload', () => {
       mockValidateProfilePicture.mockReturnValue({ valid: true });
       mockGeneratePreviewUrl.mockResolvedValue('data:image/jpeg;base64,preview');
 
-      let progressCallback: any;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      let _progressCallback: ((progress: number) => void) | undefined;
       mockUploadProfilePicture.mockImplementation(async (file, userId, onProgress) => {
-        progressCallback = onProgress;
+        _progressCallback = onProgress;
         return {
           publicUrl: 'https://example.com/storage/profile.jpg',
           path: 'user-123/profile.jpg',
@@ -445,11 +446,12 @@ describe('ProfilePictureUpload', () => {
       mockValidateProfilePicture.mockReturnValue({ valid: true });
       mockGeneratePreviewUrl.mockResolvedValue('data:image/jpeg;base64,preview');
 
-      let resolveUpload: any;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      let _resolveUpload: ((value: unknown) => void) | undefined;
       mockUploadProfilePicture.mockImplementation(
         () =>
           new Promise((resolve) => {
-            resolveUpload = resolve;
+            _resolveUpload = resolve;
           })
       );
 

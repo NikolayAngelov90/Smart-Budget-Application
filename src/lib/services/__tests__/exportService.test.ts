@@ -6,7 +6,6 @@
  * Tests for client-side export functionality (CSV and PDF)
  */
 
-import { exportTransactionsToCSV, exportMonthlyReportToPDF } from '../exportService';
 import Papa from 'papaparse';
 
 // Mock papaparse
