@@ -31,7 +31,6 @@ import {
   Card,
   CardBody,
   Text,
-  Avatar,
   HStack,
   Divider,
   useDisclosure,
@@ -45,6 +44,8 @@ import useSWR, { mutate } from 'swr';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { exportMonthlyReportToPDF, exportTransactionsToCSV } from '@/lib/services/exportService';
 import { ConfirmDeleteModal } from '@/components/settings/ConfirmDeleteModal';
+import { ProfilePictureUpload } from '@/components/settings/ProfilePictureUpload';
+import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import type { PDFReportData } from '@/types/export.types';
 import type { UserProfile } from '@/types/user.types';
 
@@ -94,7 +95,7 @@ export default function SettingsPage() {
 
   // Initialize form fields from profile data
   useEffect(() => {
-    if (profile) {
+    if (profile?.preferences) {
       setDisplayName(profile.display_name || '');
       setCurrencyFormat(profile.preferences.currency_format);
       setDateFormat(profile.preferences.date_format);
@@ -414,18 +415,32 @@ export default function SettingsPage() {
                   Account Information
                 </Heading>
 
-                <HStack spacing={4}>
-                  <Avatar
-                    size="xl"
-                    name={displayName || profile.email}
-                    src={profile.profile_picture_url || undefined}
+                <VStack spacing={4}>
+                  {/* Profile Picture Upload - Phase 2 */}
+                  <ProfilePictureUpload
+                    currentPictureUrl={profile?.profile_picture_url || null}
+                    displayName={displayName}
+                    email={profile?.email || ''}
+                    onUploadSuccess={(newUrl) => {
+                      console.log('Profile picture updated:', newUrl);
+                    }}
                   />
-                  <VStack align="start" spacing={1}>
-                    <Text fontSize="sm" color="gray.600">
-                      Member since {format(new Date(profile.created_at), 'MMMM yyyy')}
-                    </Text>
-                  </VStack>
-                </HStack>
+                  {profile?.created_at && (() => {
+                    try {
+                      const date = new Date(profile.created_at);
+                      if (!isNaN(date.getTime())) {
+                        return (
+                          <Text fontSize="sm" color="gray.600">
+                            Member since {format(date, 'MMMM yyyy')}
+                          </Text>
+                        );
+                      }
+                    } catch {
+                      // Invalid date, don't display
+                    }
+                    return null;
+                  })()}
+                </VStack>
 
                 <FormControl>
                   <FormLabel>Display Name</FormLabel>
@@ -438,7 +453,7 @@ export default function SettingsPage() {
 
                 <FormControl>
                   <FormLabel>Email</FormLabel>
-                  <Input value={profile.email} isReadOnly bg="gray.50" />
+                  <Input value={profile?.email || ''} isReadOnly bg="gray.50" />
                   <Text fontSize="xs" color="gray.500" mt={1}>
                     Email cannot be changed (from auth provider)
                   </Text>
@@ -449,7 +464,7 @@ export default function SettingsPage() {
                   onClick={handleUpdateProfile}
                   isLoading={isSavingProfile}
                   loadingText="Saving..."
-                  isDisabled={displayName === (profile.display_name || '')}
+                  isDisabled={displayName === (profile?.display_name || '')}
                 >
                   Save Profile
                 </Button>
@@ -570,6 +585,31 @@ export default function SettingsPage() {
                 <Button variant="outline" colorScheme="blue" isDisabled>
                   Restart Onboarding Tutorial (Coming soon)
                 </Button>
+              </VStack>
+            </CardBody>
+          </Card>
+
+          {/* Story 8.4: Data Sync Status Section - AC-8.4.2 */}
+          <Card>
+            <CardBody>
+              <VStack spacing={6} align="stretch">
+                <Heading as="h2" size="md" color="gray.700">
+                  Data Sync Status
+                </Heading>
+
+                <VStack spacing={4} align="stretch">
+                  <Text fontSize="sm" color="gray.600">
+                    Your data automatically syncs across all your devices in real-time.
+                  </Text>
+
+                  {/* AC-8.4.1, AC-8.4.2: Sync Status with Last Sync Timestamp */}
+                  <SyncStatusIndicator compact={false} showTimestamp={true} />
+
+                  <Alert status="success" variant="left-accent">
+                    <AlertIcon />
+                    All changes are saved automatically. No manual sync required.
+                  </Alert>
+                </VStack>
               </VStack>
             </CardBody>
           </Card>

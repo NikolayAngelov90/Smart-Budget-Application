@@ -20,10 +20,18 @@ import {
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
 import { createClient } from '@/lib/supabase/client';
+import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import type { User } from '@supabase/supabase-js';
+import useSWR from 'swr';
 
 interface HeaderProps {
   onMenuClick?: () => void;
+}
+
+interface UserProfile {
+  display_name: string | null;
+  profile_picture_url: string | null;
+  email: string;
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
@@ -31,6 +39,16 @@ export function Header({ onMenuClick }: HeaderProps) {
   const toast = useToast();
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
+
+  // Fetch user profile data
+  const { data: profile } = useSWR<{ data: UserProfile }>(
+    user ? '/api/user/profile' : null,
+    async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      return response.json();
+    }
+  );
 
   useEffect(() => {
     const getUser = async () => {
@@ -98,9 +116,11 @@ export function Header({ onMenuClick }: HeaderProps) {
           </Heading>
         </HStack>
 
-        {/* Right side: User info + Logout */}
+        {/* Right side: Sync Status + User info + Logout */}
         {user && (
           <HStack spacing={4}>
+            {/* Sync Status Indicator - Story 8.4 AC-8.4.1, AC-8.4.6 */}
+            <SyncStatusIndicator compact />
             <Menu>
               <MenuButton
                 as={Button}
@@ -108,10 +128,17 @@ export function Header({ onMenuClick }: HeaderProps) {
                 color="white"
                 _hover={{ bg: 'whiteAlpha.200' }}
                 _active={{ bg: 'whiteAlpha.300' }}
-                leftIcon={<Avatar size="sm" name={user.email || 'User'} bg="whiteAlpha.300" />}
+                leftIcon={
+                  <Avatar
+                    size="sm"
+                    name={profile?.data?.display_name || user.email || 'User'}
+                    src={profile?.data?.profile_picture_url || undefined}
+                    bg="whiteAlpha.300"
+                  />
+                }
               >
                 <Text display={{ base: 'none', sm: 'block' }} fontSize="sm">
-                  {user.email?.split('@')[0] || 'User'}
+                  {profile?.data?.display_name || user.email?.split('@')[0] || 'User'}
                 </Text>
               </MenuButton>
               <MenuList color="gray.800">

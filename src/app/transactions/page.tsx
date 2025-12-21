@@ -61,6 +61,8 @@ import { CategoryBadge } from '@/components/categories/CategoryBadge';
 import { FilterBreadcrumbs } from '@/components/transactions/FilterBreadcrumbs';
 import { createClient } from '@/lib/supabase/client';
 import { exportTransactionsToCSV } from '@/lib/services/exportService'; // Story 8.1
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { formatTransactionDate } from '@/lib/utils/dateFormatter';
 
 // Types
 interface Category {
@@ -94,6 +96,10 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 function TransactionsContent() {
   // Get URL search params for drill-down navigation (Story 5.5)
   const searchParams = useSearchParams();
+
+  // Get user preferences for date formatting (Story 8.3)
+  const { preferences } = useUserPreferences();
+  const dateFormat = preferences?.date_format || 'MM/DD/YYYY';
 
   // Filter state
   const [startDate, setStartDate] = useState('');
@@ -809,7 +815,7 @@ function TransactionsContent() {
                         <VStack align="flex-start" spacing={1} flex={1}>
                           <HStack spacing={3}>
                             <Text fontSize="sm" fontWeight="semibold" color="gray.700">
-                              {format(new Date(transaction.date), 'MMM dd, yyyy')}
+                              {formatTransactionDate(transaction.date, dateFormat)}
                             </Text>
                             <Badge
                               colorScheme={
