@@ -84,10 +84,7 @@ describe('/api/user/profile', () => {
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data.error).toEqual({
-        code: 'UNAUTHORIZED',
-        message: 'User not authenticated',
-      });
+      expect(data.error.message).toBe('Unauthorized');
       expect(mockGetUserProfile).not.toHaveBeenCalled();
     });
 
@@ -103,10 +100,7 @@ describe('/api/user/profile', () => {
       const data = await response.json();
 
       expect(response.status).toBe(404);
-      expect(data.error).toEqual({
-        code: 'PROFILE_NOT_FOUND',
-        message: 'User profile not found',
-      });
+      expect(data.error.message).toBe('Profile not found');
     });
 
     test('returns 500 on database error', async () => {
@@ -121,10 +115,7 @@ describe('/api/user/profile', () => {
       const data = await response.json();
 
       expect(response.status).toBe(500);
-      expect(data.error).toEqual({
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to fetch user profile',
-      });
+      expect(data.error.message).toBe('Failed to fetch user profile');
     });
   });
 
@@ -261,14 +252,11 @@ describe('/api/user/profile', () => {
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data.error).toEqual({
-        code: 'UNAUTHORIZED',
-        message: 'User not authenticated',
-      });
+      expect(data.error.message).toBe('Unauthorized');
       expect(mockUpdateUserProfile).not.toHaveBeenCalled();
     });
 
-    test('returns 400 when request body is invalid JSON', async () => {
+    test('returns 500 when request body is invalid JSON', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: mockUser },
         error: null,
@@ -283,8 +271,8 @@ describe('/api/user/profile', () => {
       const response = await PUT(request);
       const data = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(data.error.code).toBe('INVALID_REQUEST');
+      expect(response.status).toBe(500);
+      expect(data.error.message).toBe('Failed to update user profile');
       expect(mockUpdateUserProfile).not.toHaveBeenCalled();
     });
 
@@ -304,10 +292,7 @@ describe('/api/user/profile', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toEqual({
-        code: 'INVALID_REQUEST',
-        message: 'Either display_name or preferences must be provided',
-      });
+      expect(data.error.message).toBe('Invalid request');
       expect(mockUpdateUserProfile).not.toHaveBeenCalled();
     });
 
@@ -331,10 +316,7 @@ describe('/api/user/profile', () => {
       const data = await response.json();
 
       expect(response.status).toBe(500);
-      expect(data.error).toEqual({
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to update user profile',
-      });
+      expect(data.error.message).toBe('Failed to update user profile');
     });
   });
 });

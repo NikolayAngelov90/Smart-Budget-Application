@@ -22,6 +22,25 @@ if (typeof global.Request === 'undefined') {
     get method() { return this._method; }
     get headers() { return this._headers; }
     get body() { return this._body; }
+
+    // Parse JSON from request body
+    async json() {
+      if (typeof this._body === 'string') {
+        return JSON.parse(this._body);
+      }
+      if (this._body && typeof this._body === 'object') {
+        return this._body;
+      }
+      throw new Error('Request body is not JSON');
+    }
+
+    // Parse text from request body
+    async text() {
+      if (typeof this._body === 'string') {
+        return this._body;
+      }
+      return String(this._body || '');
+    }
   };
 }
 
@@ -38,6 +57,33 @@ if (typeof global.Response === 'undefined') {
     get status() { return this._status; }
     get statusText() { return this._statusText; }
     get headers() { return this._headers; }
+
+    // Parse JSON from response body
+    async json() {
+      if (typeof this._body === 'string') {
+        return JSON.parse(this._body);
+      }
+      return this._body;
+    }
+
+    // Parse text from response body
+    async text() {
+      if (typeof this._body === 'string') {
+        return this._body;
+      }
+      return String(this._body || '');
+    }
+
+    // Static method to create JSON response (like NextResponse.json)
+    static json(data, init = {}) {
+      return new Response(JSON.stringify(data), {
+        ...init,
+        headers: {
+          'Content-Type': 'application/json',
+          ...init.headers,
+        },
+      });
+    }
   };
 }
 
