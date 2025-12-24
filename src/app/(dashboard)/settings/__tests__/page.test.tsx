@@ -22,8 +22,15 @@ jest.mock('@/lib/services/settingsService', () => ({
   deleteUserAccount: jest.fn(),
 }));
 
+// Import mocked services
+import * as settingsService from '@/lib/services/settingsService';
+
 const mockExportMonthlyReportToPDF = exportService.exportMonthlyReportToPDF as jest.MockedFunction<
   typeof exportService.exportMonthlyReportToPDF
+>;
+
+const mockGetUserProfile = settingsService.getUserProfile as jest.MockedFunction<
+  typeof settingsService.getUserProfile
 >;
 
 // Mock fetch
@@ -60,6 +67,16 @@ jest.mock('@/lib/supabase/client', () => ({
         data: { subscription: { unsubscribe: jest.fn() } },
       })),
     },
+    channel: jest.fn(() => ({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn((callback) => {
+        if (callback) callback('SUBSCRIBED');
+        return {
+          unsubscribe: jest.fn(),
+        };
+      }),
+    })),
+    removeChannel: jest.fn(),
   })),
 }));
 
@@ -73,9 +90,38 @@ const customRender = (ui: React.ReactElement) => {
 };
 
 describe('Settings Page - PDF Export Integration Tests', () => {
+  const mockUserProfile = {
+    id: 'user-123',
+    display_name: 'Test User',
+    email: 'test@example.com',
+    profile_picture_url: null,
+    preferences: {
+      currency_format: 'USD',
+      date_format: 'MM/DD/YYYY',
+      onboarding_completed: true,
+    },
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z',
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
-    // Note: getUserProfile is not used in PDF export tests
+
+    // Mock user profile API call for settings page to render
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/user/profile')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: mockUserProfile }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ data: [] }),
+      });
+    });
+
+    mockGetUserProfile.mockResolvedValue(mockUserProfile);
     mockExportMonthlyReportToPDF.mockResolvedValue();
   });
 
