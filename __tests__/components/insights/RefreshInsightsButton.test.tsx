@@ -42,24 +42,33 @@ describe('RefreshInsightsButton', () => {
     expect(screen.getByRole('button', { name: /refresh insights/i })).toBeInTheDocument();
   });
 
-  it.skip('should show loading state when clicked', async () => {
+  it('should disable button during API call', async () => {
     const user = userEvent.setup();
 
-    // Mock successful response
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, count: 3 }),
-    });
+    // Mock response with delay to capture loading state
+    (global.fetch as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                status: 200,
+                json: async () => ({ success: true, count: 3 }),
+              }),
+            100
+          )
+        )
+    );
 
     render(<RefreshInsightsButton />);
 
     const button = screen.getByRole('button', { name: /refresh insights/i });
     await user.click(button);
 
-    // Button should show loading state
+    // Button should be disabled during API call
     await waitFor(() => {
-      expect(screen.getByText(/refreshing/i)).toBeInTheDocument();
+      expect(button).toBeDisabled();
     });
   });
 

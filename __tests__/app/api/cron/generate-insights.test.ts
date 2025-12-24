@@ -3,13 +3,13 @@
  *
  * Story 6.5: Insight Generation Scheduling and Manual Refresh
  * AC2: Scheduled Job - Daily at midnight UTC, checks for new month
- *
- * NOTE: These tests are skipped because NextRequest requires full edge runtime polyfills
- * which are complex to set up in Jest environment. The cron endpoint is tested manually.
  */
 
-// Skip these tests - NextRequest requires full edge runtime polyfills
-describe.skip('POST /api/cron/generate-insights', () => {
+import { NextRequest } from 'next/server';
+import { GET } from '@/app/api/cron/generate-insights/route';
+
+// Tests for POST /api/cron/generate-insights
+describe('POST /api/cron/generate-insights', () => {
   const MOCK_CRON_SECRET = 'test-cron-secret';
 
   beforeEach(() => {
@@ -119,9 +119,12 @@ describe.skip('POST /api/cron/generate-insights', () => {
 
       // Mock returning no users
       const { createClient } = require('@/lib/supabase/server');
+      const mockLimit = jest.fn().mockResolvedValue({ data: [], error: null });
+      const mockSelect = jest.fn().mockReturnValue({ limit: mockLimit });
+      const mockFrom = jest.fn().mockReturnValue({ select: mockSelect });
+
       createClient.mockResolvedValue({
-        from: jest.fn().mockReturnThis(),
-        select: jest.fn().mockResolvedValue({ data: [], error: null }),
+        from: mockFrom,
       });
 
       const request = new NextRequest('http://localhost:3000/api/cron/generate-insights', {
