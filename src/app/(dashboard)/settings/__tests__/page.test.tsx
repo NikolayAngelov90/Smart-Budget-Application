@@ -8,6 +8,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import SettingsPage from '../page';
 import * as exportService from '@/lib/services/exportService';
+import type { UserProfile } from '@/types/user.types';
 
 // Mock Chakra UI useToast
 const mockToast = jest.fn();
@@ -97,14 +98,14 @@ const customRender = (ui: React.ReactElement) => {
 };
 
 describe('Settings Page - PDF Export Integration Tests', () => {
-  const mockUserProfile = {
+  const mockUserProfile: UserProfile = {
     id: 'user-123',
     display_name: 'Test User',
     email: 'test@example.com',
     profile_picture_url: null,
     preferences: {
-      currency_format: 'USD',
-      date_format: 'MM/DD/YYYY',
+      currency_format: 'USD' as const,
+      date_format: 'MM/DD/YYYY' as const,
       onboarding_completed: true,
     },
     created_at: '2025-01-01T00:00:00Z',
