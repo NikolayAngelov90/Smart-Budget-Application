@@ -40,23 +40,10 @@ export async function PUT(
       );
     }
 
-    // Parse request body
-    const body = await request.json();
-    const isDismissed = body.is_dismissed === true;
-
-    // Prepare update payload with analytics tracking
-    interface UpdatePayload {
-      is_dismissed: boolean;
-      dismissed_at?: string;
-    }
-
-    const updatePayload: UpdatePayload = {
-      is_dismissed: isDismissed,
-    };
-
-    // Set dismissed_at timestamp when dismissing (for analytics)
-    if (isDismissed) {
-      updatePayload.dismissed_at = new Date().toISOString();
+    // Prepare update payload - this endpoint always dismisses (sets to true)
+    const updatePayload = {
+      is_dismissed: true,
+      dismissed_at: new Date().toISOString(),
     }
 
     // Update insight (RLS will enforce user can only update their own insights)
