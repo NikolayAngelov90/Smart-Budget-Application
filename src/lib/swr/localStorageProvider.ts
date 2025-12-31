@@ -95,9 +95,11 @@ export function clearSWRCache(): void {
  * SWR localStorage provider
  * Returns a Map-like object that persists data in localStorage
  */
-export function localStorageProvider(): Map<string, unknown> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function localStorageProvider(): Map<string, any> {
   // Initialize cache map from localStorage
-  const map = new Map<string, unknown>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const map = new Map<string, any>();
 
   try {
     const metadata = getCacheMetadata();
@@ -123,7 +125,8 @@ export function localStorageProvider(): Map<string, unknown> {
 
   // Override Map.set to persist to localStorage
   const originalSet = map.set.bind(map);
-  map.set = (key: string, value: unknown) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  map.set = (key: string, value: any) => {
     try {
       const serialized = JSON.stringify(value);
       const itemSize = getItemSize(serialized);

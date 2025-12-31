@@ -38,6 +38,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator />);
@@ -50,6 +51,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'syncing',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator />);
@@ -62,6 +64,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: false,
         lastSync: mockDate,
         syncStatus: 'offline',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator />);
@@ -76,6 +79,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator compact={false} showTimestamp={true} />);
@@ -88,6 +92,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator compact={false} showTimestamp={false} />);
@@ -100,6 +105,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: null,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator compact={false} showTimestamp={true} />);
@@ -117,6 +123,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       const { container } = customRender(<SyncStatusIndicator compact={true} />);
@@ -133,6 +140,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator compact={true} />);
@@ -149,6 +157,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator compact={false} showTimestamp={true} />);
@@ -162,6 +171,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: false,
         lastSync: mockDate,
         syncStatus: 'offline',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator compact={false} />);
@@ -177,6 +187,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       const { container } = customRender(<SyncStatusIndicator />);
@@ -191,6 +202,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'syncing',
+        cachedDataTimestamp: null,
       });
 
       const { container } = customRender(<SyncStatusIndicator />);
@@ -204,6 +216,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: false,
         lastSync: mockDate,
         syncStatus: 'offline',
+        cachedDataTimestamp: null,
       });
 
       const { container } = customRender(<SyncStatusIndicator />);
@@ -219,6 +232,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       const { container } = customRender(<SyncStatusIndicator compact={true} />);
@@ -232,6 +246,7 @@ describe('SyncStatusIndicator', () => {
         isOnline: true,
         lastSync: mockDate,
         syncStatus: 'synced',
+        cachedDataTimestamp: null,
       });
 
       customRender(<SyncStatusIndicator compact={false} />);
