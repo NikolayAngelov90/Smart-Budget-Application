@@ -53,9 +53,11 @@ import {
   Box,
   Text,
   Spinner,
+  Tooltip,
 } from '@chakra-ui/react';
 import { format, subDays } from 'date-fns';
 import { CategoryMenu } from '@/components/categories/CategoryMenu';
+import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 
 // Transaction type
 type TransactionType = 'expense' | 'income';
@@ -133,6 +135,9 @@ export default function TransactionEntryModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [recentCategories, setRecentCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+
+  // Story 8.5: Check online status to disable mutations when offline
+  const { isOnline } = useOnlineStatus();
 
   const {
     register,
@@ -228,6 +233,18 @@ export default function TransactionEntryModal({
 
   // Form submission handler
   const onSubmit = async (data: TransactionFormData) => {
+    // Story 8.5 AC-8.5.3: Prevent submission when offline
+    if (!isOnline) {
+      toast({
+        title: 'You are offline',
+        description: 'Please check your internet connection and try again',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -459,19 +476,26 @@ export default function TransactionEntryModal({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              bg="#2b6cb0"
-              color="white"
-              _hover={{ bg: '#2c5282' }}
-              _active={{ bg: '#2c5282' }}
-              isLoading={isSubmitting}
-              isDisabled={!isValid || isSubmitting}
-              loadingText="Saving..."
-              minH="44px"
+            <Tooltip
+              label={!isOnline ? 'Available when online' : ''}
+              placement="top"
+              hasArrow
             >
-              {mode === 'edit' ? 'Save' : 'Add'}
-            </Button>
+              <Button
+                type="submit"
+                bg="#2b6cb0"
+                color="white"
+                _hover={{ bg: isOnline ? '#2c5282' : '#2b6cb0' }}
+                _active={{ bg: isOnline ? '#2c5282' : '#2b6cb0' }}
+                isLoading={isSubmitting}
+                isDisabled={!isValid || isSubmitting || !isOnline}
+                loadingText="Saving..."
+                minH="44px"
+                opacity={!isOnline ? 0.4 : 1}
+              >
+                {mode === 'edit' ? 'Save' : 'Add'}
+              </Button>
+            </Tooltip>
           </ModalFooter>
         </form>
       </ModalContent>

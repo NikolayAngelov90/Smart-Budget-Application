@@ -1,0 +1,277 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>8</epicId>
+    <storyId>5</storyId>
+    <title>Offline Data Caching for Viewing (Phase 1)</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-31</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/8-5-offline-data-caching-for-viewing-phase-1.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>to view my previously loaded transactions and dashboard when offline</iWant>
+    <soThat>I can check my budget even without internet connection</soThat>
+    <tasks>
+      <task id="1" status="pending">Install and configure next-pwa plugin (AC: 8.5.5, 8.5.7)</task>
+      <task id="2" status="pending">Create PWA manifest.json (AC: 8.5.7)</task>
+      <task id="3" status="pending">Configure SWR cache persistence (AC: 8.5.6)</task>
+      <task id="4" status="pending">Extend useOnlineStatus hook for offline mode (AC: 8.5.2, 8.5.4)</task>
+      <task id="5" status="pending">Create OfflineBanner component (AC: 8.5.2, 8.5.4)</task>
+      <task id="6" status="pending">Implement read-only mode UI (AC: 8.5.3)</task>
+      <task id="7" status="pending">Add OfflineBanner to app layout (AC: 8.5.2)</task>
+      <task id="8" status="pending">Configure service worker cache strategies (AC: 8.5.5, 8.5.8)</task>
+      <task id="9" status="pending">Implement SWR revalidation on reconnect (AC: 8.5.4)</task>
+      <task id="10" status="pending">Add PWA meta tags (AC: 8.5.7)</task>
+      <task id="11" status="pending">Write unit tests</task>
+      <task id="12" status="pending">Write integration tests</task>
+      <task id="13" status="pending">Performance testing (AC: 8.5.8)</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC-8.5.1">
+      <title>Offline Data Access</title>
+      <description>Previously loaded dashboard, transactions, and categories available offline</description>
+    </criterion>
+    <criterion id="AC-8.5.2">
+      <title>Offline Indicator</title>
+      <description>Banner displays: "You're offline. Viewing cached data from [timestamp]"</description>
+      <description>Offline indicator in header (red badge or icon)</description>
+    </criterion>
+    <criterion id="AC-8.5.3">
+      <title>Read-Only Mode</title>
+      <description>Add/edit/delete buttons disabled offline (grayed out)</description>
+      <description>Charts render from cached data</description>
+    </criterion>
+    <criterion id="AC-8.5.4">
+      <title>Reconnection Behavior</title>
+      <description>Banner updates: "Back online! Syncing latest data..." when connection restored</description>
+      <description>Data automatically refreshes on reconnection</description>
+    </criterion>
+    <criterion id="AC-8.5.5">
+      <title>Service Worker Caching</title>
+      <description>Service Worker caches static assets (HTML, CSS, JS) for offline app shell</description>
+    </criterion>
+    <criterion id="AC-8.5.6">
+      <title>SWR Cache Persistence</title>
+      <description>SWR cache persists data across page refreshes using localStorage</description>
+    </criterion>
+    <criterion id="AC-8.5.7">
+      <title>PWA Installability</title>
+      <description>App installable as PWA on mobile (Add to Home Screen)</description>
+      <description>manifest.json configured with app metadata</description>
+    </criterion>
+    <criterion id="AC-8.5.8">
+      <title>Performance</title>
+      <description>Offline page load from cache: less than 500ms</description>
+      <description>SWR cache retrieval: less than 100ms</description>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>PWA and Offline (FR47)</section>
+        <snippet>Uses next-pwa plugin for service worker configuration, SWR cache with localStorage persistence for offline data viewing, manifest.json for PWA installability. Phase 1: read-only offline access (no offline writes).</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>User Flow 6: Offline Data Viewing</section>
+        <snippet>User loads dashboard online → SWR caches data → goes offline → Service Worker serves cached app shell → SWR loads from localStorage → orange banner "You're offline. Viewing cached data from [timestamp]" → Add/Edit/Delete buttons disabled → reconnects → banner "Back online! Syncing..." → SWR revalidates.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>Offline Cache State Data Model</section>
+        <snippet>OfflineState interface: is_online (boolean), last_sync (timestamp), cached_data_timestamp, has_pending_changes (Phase 2). Store in localStorage for persistence.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>Performance - Offline Cache</section>
+        <snippet>Service Worker installation: &lt;2s on first visit. Offline page load from cache: &lt;500ms. SWR cache retrieval from localStorage: &lt;100ms. Cache size limit: 50MB max.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-8.md</path>
+        <title>Epic 8 Technical Specification</title>
+        <section>Offline Security</section>
+        <snippet>localStorage cache contains unencrypted financial data (browser security model). Clear cache on logout to prevent data leakage. Service Worker scope limited to app origin only. No sensitive data in SW cache (only app shell HTML/CSS/JS).</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 7.5: Offline Data Caching (renumbered to 8.5)</section>
+        <snippet>Configure Next.js PWA (next-pwa plugin), create manifest.json for PWA, Service Worker caches app shell, SWR cache persistence with localStorage, offline detection via useOnlineStatus hook, disable mutations offline, reconnection triggers SWR revalidation. Note: Phase 1 read-only, Phase 2 offline write queue.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>State Management</section>
+        <snippet>SWR for client-side data fetching with automatic revalidation. Can be extended with localStorage provider for cache persistence across sessions.</snippet>
+      </doc>
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Offline Mode UX</section>
+        <snippet>Show clear offline indicators (banner + header badge). Disable unavailable actions with tooltips. Provide reassurance that data will sync when back online. Use orange/yellow for offline warnings, green for back online confirmation.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/lib/hooks/useOnlineStatus.ts</path>
+        <kind>hook</kind>
+        <symbol>useOnlineStatus</symbol>
+        <lines>full file</lines>
+        <reason>Existing hook from Story 8.4 provides online/offline detection and lastSync tracking. EXTEND this hook with cache timestamp for offline mode - don't recreate.</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/hooks/__tests__/useOnlineStatus.test.ts</path>
+        <kind>test</kind>
+        <symbol>useOnlineStatus tests</symbol>
+        <lines>full file</lines>
+        <reason>16 passing tests with comprehensive Navigator.onLine and localStorage mocking. REUSE these mocking patterns for new offline cache tests.</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/shared/SyncStatusIndicator.tsx</path>
+        <kind>component</kind>
+        <symbol>SyncStatusIndicator</symbol>
+        <lines>full file</lines>
+        <reason>Displays sync status in header with offline/synced/syncing states. COORDINATE with new OfflineBanner to avoid duplicate offline indicators.</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/shared/__tests__/SyncStatusIndicator.test.tsx</path>
+        <kind>test</kind>
+        <symbol>SyncStatusIndicator tests</symbol>
+        <lines>full file</lines>
+        <reason>15 passing tests for sync indicator component. Reference for component testing patterns with Chakra UI.</reason>
+      </artifact>
+      <artifact>
+        <path>next.config.ts</path>
+        <kind>config</kind>
+        <symbol>Next.js configuration</symbol>
+        <lines>full file</lines>
+        <reason>MODIFY to add next-pwa plugin configuration for Service Worker generation.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/layout.tsx</path>
+        <kind>layout</kind>
+        <symbol>RootLayout</symbol>
+        <lines>full file</lines>
+        <reason>Root layout for app. ADD SWRConfig with localStorage provider here for cache persistence. ADD PWA manifest link in metadata.</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/(dashboard)/layout.tsx</path>
+        <kind>layout</kind>
+        <symbol>DashboardLayout</symbol>
+        <lines>full file</lines>
+        <reason>Dashboard layout with Header component. ADD OfflineBanner component here for offline warnings on all dashboard pages.</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/layout/Header.tsx</path>
+        <kind>component</kind>
+        <symbol>Header</symbol>
+        <lines>full file</lines>
+        <reason>Already includes SyncStatusIndicator from Story 8.4. Ensure OfflineBanner doesn't conflict visually with existing sync indicator.</reason>
+      </artifact>
+      <artifact>
+        <path>src/components/transactions/TransactionModal.tsx</path>
+        <kind>component</kind>
+        <symbol>TransactionModal</symbol>
+        <lines>full file</lines>
+        <reason>MODIFY to disable form submission when offline using useOnlineStatus hook.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <npm>
+        <package>next-pwa</package>
+        <version>^5.6.0</version>
+        <purpose>PWA support with automatic Service Worker generation for offline app shell</purpose>
+      </npm>
+      <npm>
+        <package>swr</package>
+        <version>^2.3.6</version>
+        <purpose>Already installed - used for client-side data fetching. Will extend with localStorage provider for cache persistence</purpose>
+      </npm>
+      <npm>
+        <package>date-fns</package>
+        <version>^4.1.0</version>
+        <purpose>Already installed - used for timestamp formatting in offline banner (formatDistanceToNow)</purpose>
+      </npm>
+      <npm>
+        <package>@chakra-ui/react</package>
+        <version>^2.8.0</version>
+        <purpose>Already installed - use Alert component for OfflineBanner</purpose>
+      </npm>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Phase 1 scope: Read-only offline access only. Do NOT implement offline transaction creation/editing (deferred to Phase 2).</constraint>
+    <constraint>Service Worker caches app shell (HTML, CSS, JS) only. Do NOT cache API responses in Service Worker - use SWR localStorage for data caching.</constraint>
+    <constraint>REUSE existing useOnlineStatus hook from Story 8.4. EXTEND it with cache timestamp - do not create a separate hook.</constraint>
+    <constraint>Clear SWR cache on logout to prevent data leakage on shared devices.</constraint>
+    <constraint>Cache size limit: 50MB maximum to prevent localStorage overflow. Implement monitoring and size limits in SWR provider.</constraint>
+    <constraint>Disable all mutation buttons (Add/Edit/Delete) when offline. Show tooltip: "Available when online".</constraint>
+    <constraint>Development mode: Disable Service Worker (next-pwa: disable: process.env.NODE_ENV === 'development') to avoid caching issues during development.</constraint>
+    <constraint>PWA manifest must include app metadata: name, short_name, icons (192x192, 512x512), theme_color, background_color, display: standalone.</constraint>
+  </constraints>
+  <interfaces>
+    <interface>
+      <name>useOnlineStatus hook (extended)</name>
+      <kind>React Hook</kind>
+      <signature>function useOnlineStatus(): { isOnline: boolean; lastSync: string | null; syncStatus: 'synced' | 'syncing' | 'offline'; cachedDataTimestamp: string | null; }</signature>
+      <path>src/lib/hooks/useOnlineStatus.ts</path>
+    </interface>
+    <interface>
+      <name>SWR localStorage provider</name>
+      <kind>SWR Provider</kind>
+      <signature>function localStorageProvider(): Map&lt;string, any&gt;</signature>
+      <path>src/lib/swr/localStorageProvider.ts (new file)</path>
+    </interface>
+    <interface>
+      <name>OfflineBanner component</name>
+      <kind>React Component</kind>
+      <signature>function OfflineBanner(): JSX.Element</signature>
+      <path>src/components/shared/OfflineBanner.tsx (new file)</path>
+    </interface>
+    <interface>
+      <name>PWA Manifest</name>
+      <kind>JSON Config</kind>
+      <signature>{ name: string; short_name: string; icons: Icon[]; theme_color: string; background_color: string; display: string; start_url: string; }</signature>
+      <path>public/manifest.json (new file)</path>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>
+      Testing framework: Jest + React Testing Library for component and hook tests. Follow patterns from Story 8.4: comprehensive mocking for Navigator.onLine API (jest.spyOn), localStorage (mock getItem/setItem/removeItem), and Supabase channels. Use waitFor for async state updates. Wrap components in ChakraProvider for Chakra UI rendering. Target 100% coverage for new hooks and components.
+    </standards>
+    <locations>
+      <location>src/lib/hooks/__tests__/useOnlineStatus.test.ts</location>
+      <location>src/lib/swr/__tests__/localStorageProvider.test.ts</location>
+      <location>src/components/shared/__tests__/OfflineBanner.test.tsx</location>
+      <location>__tests__/integration/offline-mode.test.tsx</location>
+    </locations>
+    <ideas>
+      <test id="1" ac="AC-8.5.1">Test SWR cache persistence: load data online → store in localStorage → go offline → verify data loads from cache</test>
+      <test id="2" ac="AC-8.5.2">Test OfflineBanner displays "You're offline. Viewing cached data from [timestamp]" when navigator.onLine === false</test>
+      <test id="3" ac="AC-8.5.2">Test offline indicator appears in header when offline (red badge)</test>
+      <test id="4" ac="AC-8.5.3">Test Add Transaction button disabled when offline with tooltip "Available when online"</test>
+      <test id="5" ac="AC-8.5.3">Test charts render from SWR cached data when offline</test>
+      <test id="6" ac="AC-8.5.4">Test OfflineBanner updates to "Back online! Syncing latest data..." when navigator.onLine changes to true</test>
+      <test id="7" ac="AC-8.5.4">Test SWR revalidation triggers on reconnection (mutate called on 'online' event)</test>
+      <test id="8" ac="AC-8.5.5">Test Service Worker registration in production build (manual test or E2E)</test>
+      <test id="9" ac="AC-8.5.6">Test SWR cache persists across page refreshes (reload page, verify localStorage data loaded)</test>
+      <test id="10" ac="AC-8.5.7">Test PWA installability on mobile (manual test: verify "Add to Home Screen" prompt)</test>
+      <test id="11" ac="AC-8.5.8">Test offline page load performance: measure time from offline page load to UI render (&lt;500ms target)</test>
+      <test id="12" ac="AC-8.5.8">Test SWR cache retrieval performance: measure localStorage read time (&lt;100ms target)</test>
+      <test id="13" ac="all">Test cache cleared on logout: verify localStorage.clear() called and SWR cache empty</test>
+      <test id="14" ac="all">Test cache size monitoring: verify error or warning when cache exceeds 50MB limit</test>
+      <test id="15" ac="all">Test useOnlineStatus hook extended with cachedDataTimestamp tracking</test>
+    </ideas>
+  </tests>
+</story-context>

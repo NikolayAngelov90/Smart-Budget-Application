@@ -10,6 +10,7 @@
 
 import { createClient } from '@/lib/supabase/client';
 import type { AuthResponse, Provider } from '@supabase/supabase-js';
+import { clearOfflineCache } from '@/lib/services/offlineService';
 
 /**
  * Sign in with email and password
@@ -111,7 +112,9 @@ export async function signInWithOAuth(
 
 /**
  * Sign out the current user
- * Clears session and redirects to login page
+ * Clears session, offline cache, and redirects to login page
+ *
+ * Story 8.5 AC-8.5.6: Clear SWR cache on logout to prevent data leakage on shared devices
  *
  * @example
  * ```typescript
@@ -128,6 +131,10 @@ export async function signInWithOAuth(
  * ```
  */
 export async function signOut(): Promise<void> {
+  // Story 8.5: Clear offline cache before signing out
+  // Prevents data leakage on shared devices
+  clearOfflineCache();
+
   const supabase = createClient();
   const { error } = await supabase.auth.signOut();
 

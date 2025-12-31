@@ -1,16 +1,24 @@
 /**
  * Story 8.4: Data Sync Status and Multi-Device Information
+ * Story 8.5: Offline Data Caching for Viewing (Phase 1)
  * Custom Hook: useOnlineStatus
  *
  * Tracks online/offline status and last sync timestamp
+ * Story 8.4 ACs:
  * AC-8.4.1: Sync Status Indicator
  * AC-8.4.2: Last Sync Timestamp
  * AC-8.4.3: Real-Time Sync Indicator
  * AC-8.4.4: Automatic Sync
+ *
+ * Story 8.5 Extension:
+ * AC-8.5.2: Offline Indicator (cache timestamp)
+ * AC-8.5.4: Reconnection Behavior (SWR revalidation)
  */
 
 import { useState, useEffect } from 'react';
+import { mutate } from 'swr';
 import { createClient } from '@/lib/supabase/client';
+import { getCachedDataTimestamp } from '@/lib/services/offlineService';
 
 export type SyncStatus = 'synced' | 'syncing' | 'offline';
 
@@ -18,6 +26,7 @@ export interface OnlineStatusState {
   isOnline: boolean;
   lastSync: Date | null;
   syncStatus: SyncStatus;
+  cachedDataTimestamp: Date | null; // Story 8.5 extension
 }
 
 const LAST_SYNC_KEY = 'smart-budget-last-sync';
@@ -87,6 +96,14 @@ export function useOnlineStatus(): OnlineStatusState {
     return navigator.onLine ? 'synced' : 'offline';
   });
 
+  // Story 8.5: Cached data timestamp
+  const [cachedDataTimestamp, setCachedDataTimestamp] = useState<Date | null>(
+    () => {
+      const timestamp = getCachedDataTimestamp();
+      return timestamp ? new Date(timestamp) : null;
+    }
+  );
+
   // Listen to online/offline events
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -95,12 +112,25 @@ export function useOnlineStatus(): OnlineStatusState {
 
     function handleOnline() {
       setIsOnline(true);
-      setSyncStatus('synced');
+      setSyncStatus('syncing');
+
+      // Story 8.5 AC-8.5.4: Trigger SWR revalidation on reconnection
+      // Revalidate all SWR caches to fetch latest data
+      mutate(() => true);
+
+      // Update sync status to synced after revalidation
+      setTimeout(() => {
+        setSyncStatus('synced');
+      }, 1000);
     }
 
     function handleOffline() {
       setIsOnline(false);
       setSyncStatus('offline');
+
+      // Update cached data timestamp when going offline
+      const timestamp = getCachedDataTimestamp();
+      setCachedDataTimestamp(timestamp ? new Date(timestamp) : null);
     }
 
     window.addEventListener('online', handleOnline);
@@ -191,6 +221,7 @@ export function useOnlineStatus(): OnlineStatusState {
     isOnline,
     lastSync,
     syncStatus,
+    cachedDataTimestamp,
   };
 }
 

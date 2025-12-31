@@ -8,6 +8,7 @@ import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import FloatingActionButton from '@/components/common/FloatingActionButton';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
+import { OfflineBanner } from '@/components/shared/OfflineBanner';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -82,6 +83,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <Flex direction="column" minH="100vh">
       <Header onMenuClick={onMobileNavOpen} />
+      <OfflineBanner />
       <Flex flex={1} overflow="hidden">
         <Box display={{ base: 'none', md: 'block' }}>
           {isInitialized && (

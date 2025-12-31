@@ -7,6 +7,25 @@ import { Analytics } from '@vercel/analytics/next';
 export const metadata: Metadata = {
   title: 'Smart Budget Application',
   description: 'AI-powered personal finance tracker with smart insights',
+  manifest: '/manifest.json',
+  themeColor: '#3182CE',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Smart Budget',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: '/icon-192x192.png',
+    apple: '/icon-192x192.png',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+  },
 };
 
 export default function RootLayout({
