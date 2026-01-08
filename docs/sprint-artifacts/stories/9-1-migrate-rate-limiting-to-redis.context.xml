@@ -1,0 +1,307 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>9.1</storyId>
+    <title>Migrate Rate Limiting to Redis/Upstash</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-07</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/9-1-migrate-rate-limiting-to-redis.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a platform engineer</asA>
+    <iWant>to migrate rate limiting from in-memory Map to Redis-backed storage</iWant>
+    <soThat>the application can scale horizontally across multiple instances without rate limit inconsistencies</soThat>
+    <tasks>
+      <task>Install Redis dependencies (@upstash/redis, @upstash/ratelimit, optionally ioredis)</task>
+      <task>Refactor rateLimitService.ts to use Redis-backed implementation with @upstash/ratelimit</task>
+      <task>Add Redis connection module with support for Upstash and self-hosted Redis</task>
+      <task>Create health check endpoint at /api/health/redis</task>
+      <task>Update API routes to use new rate limiter (insights/generate)</task>
+      <task>Add unit tests for Redis rate limiter, fallback behavior, and health check</task>
+      <task>Add integration tests for concurrent requests and Redis connectivity</task>
+      <task>Update deployment documentation with Redis setup instructions</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC-9.1.1">
+      <title>Redis Integration</title>
+      <description>Replace in-memory Map rate limiting with Redis-backed implementation using @upstash/ratelimit</description>
+      <status>pending</status>
+      <note>Current implementation uses @upstash/redis directly without @upstash/ratelimit library. Need to migrate to use the official rate limiting library.</note>
+    </criterion>
+
+    <criterion id="AC-9.1.2">
+      <title>Multi-Provider Support</title>
+      <description>Support both Upstash Redis (serverless) and self-hosted Redis (ioredis)</description>
+      <status>partial</status>
+      <note>Current implementation only supports Upstash. Need to add ioredis provider support.</note>
+    </criterion>
+
+    <criterion id="AC-9.1.3">
+      <title>Rate Limit Preservation</title>
+      <description>Maintain existing rate limits: 10 requests/minute per user for insights generation</description>
+      <status>partial</status>
+      <note>Current implementation uses 5-minute window (RATE_LIMIT_WINDOW = 5 * 60 * 1000) rather than 10 requests per 60 seconds. Need to update to use sliding window with 10 requests per minute.</note>
+    </criterion>
+
+    <criterion id="AC-9.1.4">
+      <title>Health Check Endpoint</title>
+      <description>Add GET /api/health/redis endpoint returning Redis connection status</description>
+      <status>missing</status>
+      <note>Endpoint does not exist. Need to create src/app/api/health/redis/route.ts</note>
+    </criterion>
+
+    <criterion id="AC-9.1.5">
+      <title>Graceful Fallback</title>
+      <description>If Redis unavailable, fall back to in-memory rate limiting with warning log</description>
+      <status>implemented</status>
+      <note>Already implemented in src/lib/services/rateLimitService.ts with fallbackCache Map and console.warn logging</note>
+    </criterion>
+
+    <criterion id="AC-9.1.6">
+      <title>Documentation</title>
+      <description>Update deployment documentation with Redis setup instructions (Upstash and self-hosted)</description>
+      <status>partial</status>
+      <note>.env.example already documents Redis variables. Need to update docs/deployment.md with setup instructions.</note>
+    </criterion>
+
+    <criterion id="AC-9.1.7">
+      <title>Environment Configuration</title>
+      <description>Support environment variables: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, or REDIS_URL</description>
+      <status>partial</status>
+      <note>Upstash variables supported. REDIS_URL for ioredis not yet implemented.</note>
+    </criterion>
+
+    <criterion id="AC-9.1.8">
+      <title>Zero Downtime Migration</title>
+      <description>Deploy with feature flag USE_REDIS_RATE_LIMIT (default: true after testing)</description>
+      <status>missing</status>
+      <note>Feature flag not implemented. Current implementation uses isRedisConfigured() to determine Redis availability.</note>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>Story 9-1: Migrate Rate Limiting to Redis/Upstash</section>
+        <snippet>Epic 9 addresses critical technical debt from Epic 6 and 8 retrospectives. Story 9-1 is a CRITICAL production blocker: in-memory rate limiting incompatible with multi-instance deployments. Redis migration enables horizontal scaling across Vercel instances.</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart Budget Application Technical Architecture</title>
+        <section>Technology Stack</section>
+        <snippet>Next.js 15+ on Vercel with Supabase for database and auth. Architecture prioritizes performance (sub-2s load), type safety (TypeScript strict mode), and cloud-native design. Deployment on Vercel supports multi-instance scaling when Redis-backed rate limiting is configured.</snippet>
+      </doc>
+
+      <doc>
+        <path>.env.example</path>
+        <title>Environment Variables Template</title>
+        <section>Upstash Redis Configuration</section>
+        <snippet>UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required for production multi-instance support. Optional for local development (falls back to in-memory Map). Configuration documented at lines 40-48.</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/deployment.md</path>
+        <title>Deployment Documentation</title>
+        <section>TBD - Needs Redis Setup Instructions</section>
+        <snippet>Deployment documentation exists but needs to be updated with Redis setup instructions for both Upstash and self-hosted configurations (AC-9.1.6).</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/sprint-artifacts/epic-6-retrospective.md</path>
+        <title>Epic 6 Retrospective</title>
+        <section>Recommended Actions - HIGH Priority</section>
+        <snippet>Redis migration identified as HIGH priority in Epic 6 retrospective due to production deployment blocker. In-memory rate limiting prevents horizontal scaling.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>src/lib/redis/client.ts</path>
+        <kind>service</kind>
+        <symbol>redis, isRedisConfigured()</symbol>
+        <lines>1-29</lines>
+        <reason>Existing Redis client using @upstash/redis REST API. Already implements isRedisConfigured() check. Need to enhance to support ioredis for self-hosted Redis (AC-9.1.2).</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/lib/services/rateLimitService.ts</path>
+        <kind>service</kind>
+        <symbol>checkRateLimit(), recordRateLimitAction(), clearRateLimit(), getRemainingTime()</symbol>
+        <lines>1-163</lines>
+        <reason>Existing rate limiting service with Redis implementation and fallback to in-memory Map. Uses custom implementation with basic Redis client. Need to refactor to use @upstash/ratelimit library (AC-9.1.1) and update rate limit to 10 requests/minute (AC-9.1.3).</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/app/api/insights/generate/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>POST()</symbol>
+        <lines>31-99</lines>
+        <reason>Insights API endpoint currently using rate limiting. Demonstrates usage pattern: checkRateLimit() before action, recordRateLimitAction() after. Returns 429 with remainingSeconds on rate limit exceeded.</reason>
+      </artifact>
+
+      <artifact>
+        <path>package.json</path>
+        <kind>config</kind>
+        <symbol>dependencies</symbol>
+        <lines>22-46</lines>
+        <reason>@upstash/redis v1.35.7 already installed. Need to add @upstash/ratelimit and optionally @types/ioredis for self-hosted Redis support.</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <node>
+        <package name="@upstash/redis" version="1.35.7" status="installed" />
+        <package name="@upstash/ratelimit" version="latest" status="required" note="AC-9.1.1 requires using official rate limiting library" />
+        <package name="ioredis" version="latest" status="optional" note="AC-9.1.2 for self-hosted Redis support" />
+        <package name="@types/ioredis" version="latest" status="optional-dev" note="TypeScript types for ioredis" />
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <interface>
+      <name>Rate Limit Service API</name>
+      <kind>TypeScript Service</kind>
+      <signature>
+        async function checkRateLimit(userId: string, windowMs?: number): Promise&lt;{ exceeded: boolean; remainingSeconds: number }&gt;
+        async function recordRateLimitAction(userId: string, windowMs?: number): Promise&lt;void&gt;
+        async function clearRateLimit(userId: string): Promise&lt;void&gt;
+        async function getRemainingTime(userId: string, windowMs?: number): Promise&lt;number&gt;
+      </signature>
+      <path>src/lib/services/rateLimitService.ts</path>
+      <note>Current API to be maintained. Internal implementation will change to use @upstash/ratelimit library instead of custom Redis commands.</note>
+    </interface>
+
+    <interface>
+      <name>Redis Client API</name>
+      <kind>TypeScript Service</kind>
+      <signature>
+        export const redis: Redis
+        export function isRedisConfigured(): boolean
+      </signature>
+      <path>src/lib/redis/client.ts</path>
+      <note>Current API exports Upstash Redis client. Need to abstract to support both Upstash and ioredis providers.</note>
+    </interface>
+
+    <interface>
+      <name>Health Check Endpoint</name>
+      <kind>REST API</kind>
+      <signature>GET /api/health/redis → { status: 'healthy' | 'degraded', provider: 'upstash' | 'ioredis', latency_ms: number }</signature>
+      <path>src/app/api/health/redis/route.ts</path>
+      <note>New endpoint to be created (AC-9.1.4). Should require admin authentication.</note>
+    </interface>
+
+    <interface>
+      <name>Upstash Ratelimit Library</name>
+      <kind>External Library</kind>
+      <signature>
+        import { Ratelimit } from '@upstash/ratelimit'
+        new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(limit, window) })
+        ratelimit.limit(identifier) → Promise&lt;{ success: boolean, limit, remaining, reset }&gt;
+      </signature>
+      <path>node_modules/@upstash/ratelimit</path>
+      <note>Official Upstash rate limiting library to be used per AC-9.1.1. Provides sliding window algorithm with 10 requests per 60 seconds.</note>
+    </interface>
+  </interfaces>
+
+  <constraints>
+    <constraint>
+      <category>API Compatibility</category>
+      <description>Rate limiting service API must remain unchanged for existing consumers (insights/generate endpoint). Only internal implementation changes.</description>
+    </constraint>
+
+    <constraint>
+      <category>Fallback Strategy</category>
+      <description>Must gracefully fall back to in-memory Map if Redis is unavailable to prevent service outage. Fallback logs warnings for monitoring.</description>
+    </constraint>
+
+    <constraint>
+      <category>Rate Limit Accuracy</category>
+      <description>Rate limit must be exactly 10 requests per 60 seconds per user for insights generation (AC-9.1.3). Current 5-minute window is incorrect.</description>
+    </constraint>
+
+    <constraint>
+      <category>User Identifier</category>
+      <description>Use user ID as rate limit identifier, not IP address, to prevent shared IP rate limit conflicts (corporate networks, VPNs).</description>
+    </constraint>
+
+    <constraint>
+      <category>Production Readiness</category>
+      <description>Redis configuration is REQUIRED for production deployments with multiple Vercel instances. In-memory fallback is local-development-only.</description>
+    </constraint>
+
+    <constraint>
+      <category>Performance</category>
+      <description>Redis adds ~5-10ms latency per rate limit check. Acceptable overhead for distributed rate limiting across serverless instances.</description>
+    </constraint>
+
+    <constraint>
+      <category>Zero Downtime</category>
+      <description>Migration must support gradual rollout with feature flag USE_REDIS_RATE_LIMIT (AC-9.1.8). Allows testing in staging before production.</description>
+    </constraint>
+
+    <constraint>
+      <category>Environment Variables</category>
+      <description>Support both Upstash (UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN) and self-hosted Redis (REDIS_URL) configurations (AC-9.1.7).</description>
+    </constraint>
+  </constraints>
+
+  <tests>
+    <standards>
+      <standard>Project uses Jest + React Testing Library for unit tests. All services require comprehensive unit test coverage.</standard>
+      <standard>Integration tests use real Upstash Redis test environment. Tests must verify rate limiting across concurrent requests.</standard>
+      <standard>Test files colocated with source: __tests__/ directory or .test.ts suffix. Rate limit service tests should go in src/lib/services/__tests__/rateLimitService.test.ts</standard>
+      <standard>Mock external dependencies (Redis clients) for unit tests. Use real Redis for integration tests to verify distributed rate limiting behavior.</standard>
+    </standards>
+
+    <locations>
+      <location>src/lib/services/__tests__/rateLimitService.test.ts</location>
+      <location>src/lib/redis/__tests__/client.test.ts</location>
+      <location>src/app/api/health/redis/__tests__/route.test.ts</location>
+    </locations>
+
+    <ideas>
+      <idea ac="AC-9.1.1">
+        <description>Unit test: Verify @upstash/ratelimit library integration with sliding window algorithm</description>
+        <approach>Mock Ratelimit class, verify limit() called with correct identifier and returns expected result structure</approach>
+      </idea>
+
+      <idea ac="AC-9.1.2">
+        <description>Unit test: Verify multi-provider support (Upstash vs ioredis)</description>
+        <approach>Test provider selection based on environment variables. Mock both Redis clients.</approach>
+      </idea>
+
+      <idea ac="AC-9.1.3">
+        <description>Integration test: Verify rate limit of exactly 10 requests per 60 seconds</description>
+        <approach>Make 10 requests rapidly (should all succeed), 11th request should return 429, wait 60 seconds and verify reset</approach>
+      </idea>
+
+      <idea ac="AC-9.1.4">
+        <description>Unit test: Health check endpoint returns correct status and latency</description>
+        <approach>Mock Redis ping command, verify response format { status, provider, latency_ms }</approach>
+      </idea>
+
+      <idea ac="AC-9.1.5">
+        <description>Unit test: Fallback to in-memory Map when Redis unavailable</description>
+        <approach>Mock Redis connection failure, verify fallbackCache Map is used and warning logged</approach>
+      </idea>
+
+      <idea ac="AC-9.1.8">
+        <description>Integration test: Feature flag toggle between Redis and in-memory</description>
+        <approach>Test with USE_REDIS_RATE_LIMIT=true (uses Redis) and USE_REDIS_RATE_LIMIT=false (uses in-memory)</approach>
+      </idea>
+
+      <idea ac="Multiple ACs">
+        <description>Load test: 100 concurrent requests with Redis rate limiting</description>
+        <approach>Simulate multiple Vercel instances making concurrent requests to verify distributed rate limiting works correctly</approach>
+      </idea>
+    </ideas>
+  </tests>
+</story-context>

@@ -112,27 +112,29 @@ openssl rand -hex 32
 
 ---
 
-#### 5. Upstash Redis (REQUIRED for Production, Optional for Local)
+#### 5. Redis Configuration (REQUIRED for Production, Optional for Local)
+
+**Option 1: Upstash Redis (Recommended for Vercel/Serverless)**
 ```bash
 UPSTASH_REDIS_REST_URL=your_upstash_redis_rest_url
 UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_rest_token
 ```
 
-**Where to find:**
-1. Go to [Upstash Console](https://console.upstash.com/)
-2. Select your Redis database
-3. Navigate to **REST API** section
-4. Copy **UPSTASH_REDIS_REST_URL** and **UPSTASH_REDIS_REST_TOKEN**
+**Option 2: Self-hosted Redis (Alternative)**
+```bash
+REDIS_URL=redis://localhost:6379
+# Or with authentication:
+# REDIS_URL=redis://username:password@your-redis-server:6379
+```
 
-**⚠️ Critical:** Rate limiting will NOT work across multiple instances without Redis.
+**Option 3: Feature Flag (Disable Redis)**
+```bash
+USE_REDIS_RATE_LIMIT=false
+```
 
-**How to create Upstash Redis database:**
-1. Sign up at [Upstash](https://upstash.com/)
-2. Click **Create Database**
-3. Choose **Global** for multi-region support
-4. Select region closest to your Vercel deployment
-5. Click **Create**
-6. Copy REST API credentials
+**⚠️ Critical:** Rate limiting will NOT work across multiple serverless instances without Redis. In-memory fallback is NOT production-ready for multi-instance deployments.
+
+**See [Redis Setup Guide](#redis-setup-guide) below for detailed configuration instructions.**
 
 ---
 
@@ -191,6 +193,490 @@ NEXT_PUBLIC_APP_URL=https://your-project.vercel.app
 - [ ] Set up alerts for high memory usage (>80%)
 - [ ] Monitor daily request count
 - [ ] Check error rates in dashboard
+
+---
+
+## Redis Setup Guide
+
+The application uses Redis for distributed rate limiting across multiple serverless instances. This section provides detailed setup instructions for both Upstash Redis (recommended) and self-hosted Redis.
+
+### Why Redis is Required
+
+**Production Requirements:**
+- **Multi-instance rate limiting:** Vercel deploys multiple serverless function instances. Without Redis, each instance maintains its own in-memory rate limit cache, allowing users to bypass rate limits by hitting different instances.
+- **Consistent rate limiting:** Redis provides a centralized store for rate limit counters across all instances.
+- **Sliding window algorithm:** Uses @upstash/ratelimit library with sliding window for accurate rate limiting (10 requests per 60 seconds).
+
+**Development/Local:**
+- Redis is optional for local development
+- Application gracefully falls back to in-memory Map when Redis is unavailable
+- Use `USE_REDIS_RATE_LIMIT=false` to explicitly disable Redis
+
+---
+
+### Option 1: Upstash Redis (Recommended for Vercel)
+
+**Why Upstash?**
+- Serverless-native (REST API, no persistent connections)
+- Global replication for low latency
+- Pay-per-request pricing (free tier available)
+- Zero infrastructure management
+- Built-in TLS encryption
+
+**Setup Instructions:**
+
+1. **Create Upstash Account**
+   - Go to [https://console.upstash.com/](https://console.upstash.com/)
+   - Sign up with GitHub or email
+
+2. **Create Redis Database**
+   - Click **Create Database**
+   - **Name:** `smart-budget-production` (or your preferred name)
+   - **Type:** Select **Global** for multi-region replication
+   - **Region:** Choose region closest to your Vercel deployment
+     - US East: `us-east-1` (recommended for US traffic)
+     - EU West: `eu-west-1` (recommended for EU traffic)
+     - Asia Pacific: `ap-southeast-1` (recommended for Asia traffic)
+   - **Eviction:** Enable
+   - **TLS:** Enable (default)
+   - Click **Create**
+
+3. **Get REST API Credentials**
+   - Navigate to your database dashboard
+   - Click **REST API** tab
+   - Copy the following:
+     - `UPSTASH_REDIS_REST_URL` (e.g., `https://us1-flying-fish-12345.upstash.io`)
+     - `UPSTASH_REDIS_REST_TOKEN` (long alphanumeric string)
+
+4. **Add to Vercel Environment Variables**
+   ```bash
+   UPSTASH_REDIS_REST_URL=https://us1-flying-fish-12345.upstash.io
+   UPSTASH_REDIS_REST_TOKEN=AYmrASQgYjlmM2E3YTItMTY5Zi00...
+   ```
+
+5. **Verify Configuration**
+   - Deploy to Vercel
+   - Visit: `https://your-app.vercel.app/api/health/redis`
+   - Expected response:
+     ```json
+     {
+       "status": "healthy",
+       "provider": "upstash",
+       "latency_ms": 15,
+       "feature_flag": true,
+       "timestamp": "2026-01-07T10:30:00.000Z"
+     }
+     ```
+
+**Free Tier Limits:**
+- 10,000 commands per day
+- 256 MB storage
+- Sufficient for small-to-medium applications
+
+**Pricing (as of 2026):**
+- Free tier: $0
+- Pro tier: $0.20 per 100k commands
+
+---
+
+### Option 2: Self-hosted Redis
+
+**When to use self-hosted?**
+- You already have Redis infrastructure
+- Enterprise requirements (on-premises)
+- Cost optimization for high-traffic apps
+- Custom Redis modules needed
+
+**Deployment Options:**
+
+#### Option 2A: Docker (Local Development)
+
+1. **Install Docker**
+   - Download from [https://www.docker.com/](https://www.docker.com/)
+
+2. **Run Redis Container**
+   ```bash
+   docker run -d \
+     --name smart-budget-redis \
+     -p 6379:6379 \
+     redis:7-alpine \
+     redis-server --requirepass your-strong-password
+   ```
+
+3. **Set Environment Variable**
+   ```bash
+   REDIS_URL=redis://:your-strong-password@localhost:6379
+   ```
+
+4. **Verify Connection**
+   ```bash
+   docker exec -it smart-budget-redis redis-cli
+   AUTH your-strong-password
+   PING
+   # Should return: PONG
+   ```
+
+#### Option 2B: Redis Cloud (Managed Service)
+
+1. **Create Redis Cloud Account**
+   - Go to [https://redis.com/try-free/](https://redis.com/try-free/)
+   - Sign up for free tier (30 MB)
+
+2. **Create Database**
+   - Click **New Database**
+   - Select region closest to your deployment
+   - Choose free tier or paid plan
+
+3. **Get Connection String**
+   - Copy **Public endpoint**
+   - Format: `redis://username:password@redis-12345.c1.us-east-1-2.ec2.cloud.redislabs.com:12345`
+
+4. **Set Environment Variable**
+   ```bash
+   REDIS_URL=redis://default:your-password@redis-12345.c1.us-east-1-2.ec2.cloud.redislabs.com:12345
+   ```
+
+#### Option 2C: AWS ElastiCache
+
+1. **Create ElastiCache Redis Cluster**
+   - Go to AWS Console → ElastiCache
+   - Click **Create Redis cluster**
+   - Choose **Cluster Mode Disabled** for simplicity
+   - Select instance type (t3.micro for testing)
+
+2. **Configure Security Group**
+   - Allow inbound traffic on port 6379
+   - From your application's IP range
+
+3. **Get Primary Endpoint**
+   - Copy endpoint: `my-cluster.abc123.0001.use1.cache.amazonaws.com:6379`
+
+4. **Set Environment Variable**
+   ```bash
+   REDIS_URL=redis://my-cluster.abc123.0001.use1.cache.amazonaws.com:6379
+   ```
+
+**⚠️ Important for Self-hosted Redis:**
+- Ensure Redis is accessible from Vercel (public endpoint or VPN)
+- Enable TLS if exposing to internet
+- Use strong authentication passwords
+- Configure firewall rules (allow only Vercel IPs)
+- Monitor memory usage and set eviction policy
+
+---
+
+### Option 3: Disable Redis (Development Only)
+
+**Use Case:**
+- Local development without Redis installed
+- Testing rate limiting fallback behavior
+- CI/CD environments without Redis
+
+**Configuration:**
+```bash
+USE_REDIS_RATE_LIMIT=false
+```
+
+**Behavior:**
+- Application uses in-memory Map for rate limiting
+- Rate limits are per-instance (not distributed)
+- **NOT suitable for production** with multiple instances
+
+**Health Check Response:**
+```json
+{
+  "status": "degraded",
+  "provider": "none",
+  "latency_ms": null,
+  "feature_flag": false,
+  "message": "Redis disabled by feature flag (USE_REDIS_RATE_LIMIT=false)",
+  "timestamp": "2026-01-07T10:30:00.000Z"
+}
+```
+
+---
+
+### Rate Limit Configuration
+
+**Current Settings:**
+- **Rate Limit:** 10 requests per 60 seconds (sliding window)
+- **Algorithm:** Sliding window (via @upstash/ratelimit)
+- **Scope:** Per user ID
+- **Endpoints Protected:** `/api/insights/generate`, `/api/insights/dismiss`
+
+**Key Prefix:**
+- `rate_limit:<user_id>` (e.g., `rate_limit:abc123-def456-789`)
+
+**Fallback Behavior:**
+- If Redis is unavailable, automatically falls back to in-memory Map
+- Logs warning: `[Rate Limit] @upstash/ratelimit error, falling back to in-memory`
+- Continues serving requests (graceful degradation)
+
+---
+
+### Health Check Endpoint
+
+**Endpoint:** `GET /api/health/redis`
+
+**Purpose:**
+- Monitor Redis connection status
+- Check latency and provider type
+- Verify feature flag configuration
+- Use in deployment readiness checks
+
+**Response Codes:**
+- `200 OK` - Redis healthy, degraded, or disabled (all valid states)
+- `500 Internal Server Error` - Health check itself failed
+
+**Response Examples:**
+
+**Healthy (Upstash):**
+```json
+{
+  "status": "healthy",
+  "provider": "upstash",
+  "latency_ms": 12,
+  "feature_flag": true,
+  "timestamp": "2026-01-07T10:30:00.000Z"
+}
+```
+
+**Healthy (Self-hosted):**
+```json
+{
+  "status": "healthy",
+  "provider": "ioredis",
+  "latency_ms": 5,
+  "feature_flag": true,
+  "timestamp": "2026-01-07T10:30:00.000Z"
+}
+```
+
+**Degraded (Not Configured):**
+```json
+{
+  "status": "degraded",
+  "provider": "none",
+  "latency_ms": null,
+  "feature_flag": true,
+  "message": "Redis not configured, using in-memory fallback",
+  "timestamp": "2026-01-07T10:30:00.000Z"
+}
+```
+
+**Degraded (Ping Failed):**
+```json
+{
+  "status": "degraded",
+  "provider": "upstash",
+  "latency_ms": null,
+  "feature_flag": true,
+  "message": "Redis ping failed, falling back to in-memory",
+  "timestamp": "2026-01-07T10:30:00.000Z"
+}
+```
+
+**Use in Monitoring:**
+```bash
+# Vercel deployment readiness check
+curl https://your-app.vercel.app/api/health/redis
+
+# Uptime monitoring (UptimeRobot, Pingdom, etc.)
+# Configure HTTP monitor for /api/health/redis
+# Alert on status code != 200
+```
+
+---
+
+### Troubleshooting Redis
+
+#### Issue: Health check shows "degraded" status
+
+**Cause 1: Redis not configured**
+- Missing environment variables
+
+**Solution:**
+```bash
+# Verify environment variables are set
+echo $UPSTASH_REDIS_REST_URL
+echo $UPSTASH_REDIS_REST_TOKEN
+# Or
+echo $REDIS_URL
+```
+
+**Cause 2: Redis credentials incorrect**
+- Wrong URL or token
+- Expired credentials
+
+**Solution:**
+1. Go to Upstash Console → Your Database → REST API
+2. Copy fresh credentials
+3. Update Vercel environment variables
+4. Redeploy
+
+**Cause 3: Redis server unreachable**
+- Self-hosted Redis down
+- Firewall blocking connection
+- Network issues
+
+**Solution:**
+```bash
+# Test Redis connection manually
+redis-cli -u $REDIS_URL PING
+# Should return: PONG
+
+# Check Redis logs
+docker logs smart-budget-redis
+```
+
+---
+
+#### Issue: Rate limiting not working across instances
+
+**Symptom:**
+- Users can refresh page rapidly and bypass rate limits
+- Rate limit only applies to some requests
+
+**Cause:**
+- Using in-memory fallback instead of Redis
+- Each serverless instance has its own rate limit cache
+
+**Solution:**
+1. Check health endpoint: `GET /api/health/redis`
+2. Verify provider is `upstash` or `ioredis`, not `none`
+3. If degraded, check Redis credentials and connectivity
+4. Verify `USE_REDIS_RATE_LIMIT` is not set to `false`
+
+---
+
+#### Issue: High Redis latency
+
+**Symptom:**
+- Health check shows `latency_ms > 100`
+- Slow API responses
+
+**Cause:**
+- Redis region far from Vercel deployment
+- Network congestion
+- Redis server overloaded
+
+**Solution:**
+1. **For Upstash:** Create database in region closer to Vercel
+   - Check Vercel region: `vercel inspect <deployment-url>`
+   - Create new Upstash database in matching region
+   - Update environment variables
+
+2. **For Self-hosted:** Optimize network path
+   - Use Redis in same datacenter as application
+   - Enable Redis pipelining
+   - Upgrade Redis instance size
+
+---
+
+#### Issue: ECONNREFUSED or connection timeout
+
+**Symptom:**
+```
+Error: connect ECONNREFUSED 127.0.0.1:6379
+```
+
+**Cause:**
+- Redis URL pointing to localhost in production
+- Redis server not running
+- Firewall blocking port 6379
+
+**Solution:**
+1. **Local Development:**
+   ```bash
+   # Start Redis with Docker
+   docker start smart-budget-redis
+   # Or install Redis locally
+   brew install redis
+   redis-server
+   ```
+
+2. **Production:**
+   - Ensure `REDIS_URL` uses public endpoint, not localhost
+   - Verify Redis server is running
+   - Check security group rules (AWS) or firewall
+
+---
+
+#### Issue: Authentication failed
+
+**Symptom:**
+```
+Error: ERR invalid password
+```
+
+**Cause:**
+- Wrong password in `REDIS_URL`
+- Redis configured with AUTH but URL missing password
+
+**Solution:**
+```bash
+# Correct format for authenticated Redis
+REDIS_URL=redis://:password@host:6379
+# Or with username
+REDIS_URL=redis://username:password@host:6379
+
+# Test authentication
+redis-cli -u $REDIS_URL PING
+```
+
+---
+
+#### Issue: Memory limit exceeded
+
+**Symptom:**
+- Upstash dashboard shows memory near 100%
+- Rate limiting stops working
+
+**Cause:**
+- Free tier limit (256 MB) exceeded
+- Rate limit keys not expiring
+- Too many users
+
+**Solution:**
+1. **Enable Eviction:**
+   - Upstash Console → Your Database → Settings
+   - Enable **Eviction**
+   - Set policy to `allkeys-lru` (least recently used)
+
+2. **Verify Key Expiration:**
+   ```bash
+   # Check rate limit key TTL
+   redis-cli -u $REDIS_URL TTL "rate_limit:user-123"
+   # Should return: ~60 (seconds remaining)
+   ```
+
+3. **Upgrade Plan:**
+   - Upstash: Upgrade to Pro tier for more storage
+   - Self-hosted: Increase max memory limit
+
+---
+
+### Redis Monitoring Best Practices
+
+1. **Set Up Alerts**
+   - Upstash: Enable email alerts for >80% memory usage
+   - Self-hosted: Use CloudWatch (AWS) or Prometheus
+
+2. **Monitor Key Metrics**
+   - Latency (should be <50ms for Upstash, <10ms for local)
+   - Memory usage
+   - Request count per day
+   - Error rate
+
+3. **Regular Maintenance**
+   - Review eviction policy monthly
+   - Check for unused keys
+   - Monitor memory growth trends
+
+4. **Health Check Integration**
+   - Add `/api/health/redis` to uptime monitoring
+   - Alert on status != "healthy"
+   - Set up Vercel deployment checks
 
 ---
 
@@ -319,11 +805,27 @@ Test each endpoint using browser or Postman:
 
 ### 4. Redis Verification
 
-1. [ ] Go to Upstash Console → Your Database
-2. [ ] Click **Data Browser**
-3. [ ] Trigger manual refresh: `/api/insights/generate?forceRegenerate=true`
-4. [ ] Check for key: `rate_limit:<user_id>`
-5. [ ] Verify key expires after 5 minutes (300 seconds)
+**Health Check:**
+1. [ ] Test Redis health endpoint:
+   ```bash
+   curl https://your-project.vercel.app/api/health/redis
+   ```
+2. [ ] Verify response shows `"status": "healthy"`
+3. [ ] Confirm provider is `"upstash"` or `"ioredis"` (not `"none"`)
+4. [ ] Check latency is reasonable (`latency_ms < 100`)
+
+**Data Browser:**
+1. [ ] Go to Upstash Console → Your Database → Data Browser
+2. [ ] Trigger manual refresh: `/api/insights/generate?forceRegenerate=true`
+3. [ ] Check for key pattern: `rate_limit:<user_id>`
+4. [ ] Verify key expires after 60 seconds (TTL ~60)
+5. [ ] Confirm rate limit counter increments on each request
+
+**Rate Limiting Test:**
+1. [ ] Make 11 consecutive requests to `/api/insights/generate`
+2. [ ] Verify first 10 requests succeed
+3. [ ] Verify 11th request returns 429 Too Many Requests
+4. [ ] Wait 60 seconds and verify rate limit resets
 
 ---
 
@@ -399,15 +901,35 @@ curl -X GET https://your-project.vercel.app/api/cron/generate-insights \
 ### Issue: Rate limiting not working across instances
 
 **Causes:**
-- Upstash Redis not configured
+- Redis not configured or using in-memory fallback
 - Wrong Redis credentials
-- Using in-memory fallback
+- Feature flag disabled (`USE_REDIS_RATE_LIMIT=false`)
+- Redis provider is `none` instead of `upstash` or `ioredis`
 
 **Solutions:**
-1. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
-2. Verify credentials in Upstash Console
-3. Check Vercel logs for Redis connection errors
-4. Redeploy after adding variables
+1. **Check Redis health:**
+   ```bash
+   curl https://your-project.vercel.app/api/health/redis
+   ```
+   - Verify `"status": "healthy"` and `"provider"` is not `"none"`
+
+2. **For Upstash Redis:**
+   - Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+   - Verify credentials in Upstash Console → Your Database → REST API
+
+3. **For Self-hosted Redis:**
+   - Add `REDIS_URL` (e.g., `redis://localhost:6379`)
+   - Ensure Redis server is accessible from Vercel
+
+4. **Check feature flag:**
+   - Ensure `USE_REDIS_RATE_LIMIT` is not set to `false`
+   - If missing, it defaults to `true` (enabled)
+
+5. **Redeploy:**
+   - After adding variables, trigger new deployment
+   - Check Vercel logs for Redis connection errors
+
+**See [Redis Setup Guide](#redis-setup-guide) and [Troubleshooting Redis](#troubleshooting-redis) for detailed instructions.**
 
 ---
 
@@ -514,5 +1036,5 @@ If deployment has critical issues:
 
 ---
 
-**Last Updated:** 2025-12-07
-**Version:** 1.0.0
+**Last Updated:** 2026-01-07
+**Version:** 2.0.0 (Story 9-1: Added comprehensive Redis setup guide for multi-provider support)

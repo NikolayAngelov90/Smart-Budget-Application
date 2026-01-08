@@ -195,7 +195,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await PUT(request);
-      const data = await response.json();
+      await response.json();
 
       expect(response.status).toBe(200);
       expect(mockUpdateUserProfile).toHaveBeenCalledWith(mockUser.id, {
@@ -223,7 +223,7 @@ describe('/api/user/profile', () => {
       });
 
       const response = await PUT(request);
-      const data = await response.json();
+      await response.json();
 
       expect(response.status).toBe(200);
       expect(mockUpdateUserProfile).toHaveBeenCalledWith(mockUser.id, {
