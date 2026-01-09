@@ -26,6 +26,15 @@ function getItemSize(value: string): number {
  * Get current cache metadata from localStorage
  */
 function getCacheMetadata(): CacheMetadata {
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined') {
+    return {
+      cacheTimestamp: Date.now(),
+      totalSize: 0,
+      keys: [],
+    };
+  }
+
   try {
     const metadata = localStorage.getItem(CACHE_METADATA_KEY);
     if (metadata) {
@@ -46,6 +55,11 @@ function getCacheMetadata(): CacheMetadata {
  * Update cache metadata in localStorage
  */
 function updateCacheMetadata(metadata: CacheMetadata): void {
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   try {
     localStorage.setItem(CACHE_METADATA_KEY, JSON.stringify(metadata));
   } catch (error) {
@@ -74,6 +88,11 @@ export function getCacheSizeMB(): number {
  * Called on logout to prevent data leakage
  */
 export function clearSWRCache(): void {
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   try {
     const metadata = getCacheMetadata();
 
@@ -101,6 +120,11 @@ export function localStorageProvider(): Map<string, any> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const map = new Map<string, any>();
 
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined') {
+    return map;
+  }
+
   try {
     const metadata = getCacheMetadata();
 
@@ -127,6 +151,11 @@ export function localStorageProvider(): Map<string, any> {
   const originalSet = map.set.bind(map);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   map.set = (key: string, value: any) => {
+    // If not in browser environment, just use in-memory map
+    if (typeof window === 'undefined') {
+      return originalSet(key, value);
+    }
+
     try {
       const serialized = JSON.stringify(value);
       const itemSize = getItemSize(serialized);
@@ -170,6 +199,11 @@ export function localStorageProvider(): Map<string, any> {
   // Override Map.delete to remove from localStorage
   const originalDelete = map.delete.bind(map);
   map.delete = (key: string) => {
+    // If not in browser environment, just use in-memory map
+    if (typeof window === 'undefined') {
+      return originalDelete(key);
+    }
+
     try {
       const item = localStorage.getItem(`${CACHE_KEY_PREFIX}-${key}`);
       if (item) {
