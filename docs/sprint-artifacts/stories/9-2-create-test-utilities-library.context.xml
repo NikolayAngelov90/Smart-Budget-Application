@@ -1,0 +1,122 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>9.2</storyId>
+    <title>Create Test Utilities Library</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-26</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/9-2-create-test-utilities-library.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a developer</asA>
+    <iWant>a centralized test utilities library with pre-configured provider mocks</iWant>
+    <soThat>I can write integration tests without manually setting up 6 layers of mocking (Chakra, SWR, Supabase, Auth, Router, Toast)</soThat>
+    <tasks>
+      - Create test utilities directory structure (src/lib/test-utils/)
+      - Create Supabase mock utilities (mockSupabase.ts)
+      - Create SWR mock utilities (mockSWR.ts)
+      - Create Router mock utilities (mockRouter.ts)
+      - Create Chakra UI mock utilities (mockChakra.ts)
+      - Create Toast mock utilities (mockToast.ts)
+      - Implement renderWithProviders() function (testUtils.tsx)
+      - Add TypeScript types (types.ts)
+      - Re-export Testing Library functions (index.ts)
+      - Write documentation (docs/testing/test-utilities-guide.md)
+      - Refactor 3 existing test files to use new utilities
+      - Write unit tests for test utilities
+      - Add usage examples
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC-9.2.1">Create src/lib/test-utils/testUtils.tsx with renderWithProviders() function</criterion>
+    <criterion id="AC-9.2.2">Mock all 6 provider layers: Chakra UI, SWR, Supabase Client, Supabase Auth, Next.js Router, react-hot-toast</criterion>
+    <criterion id="AC-9.2.3">Export mockSupabase, mockAuth, mockSWR, mockRouter, mockToast helper utilities</criterion>
+    <criterion id="AC-9.2.4">Full TypeScript types for all mock helpers and renderWithProviders options</criterion>
+    <criterion id="AC-9.2.5">Create docs/testing/test-utilities-guide.md with usage examples and migration guide</criterion>
+    <criterion id="AC-9.2.6">Refactor 3 existing test files to use new utilities (Settings, Transactions, Insights pages)</criterion>
+    <criterion id="AC-9.2.7">Allow developers to override specific mocks via renderWithProviders options parameter</criterion>
+    <criterion id="AC-9.2.8">Re-export all @testing-library/react functions for single import point</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <artifact path="docs/sprint-artifacts/tech-spec-epic-9.md" title="Epic 9 Technical Specification" section="Test Infrastructure">
+        Test utilities library addresses Epic 8 retrospective finding: current tests require 50-100 lines of boilerplate to setup 6 provider layers. Library includes testUtils.tsx, mockSupabase.ts, mockAuth.ts, mockSWR.ts, rendering utilities with all providers.
+      </artifact>
+      <artifact path="docs/sprint-artifacts/tech-spec-epic-9.md" title="Epic 9 Technical Specification" section="Story 9-2 Design">
+        Shared test utilities include: renderWithProviders() function wrapping Chakra UI, SWR, Supabase Client, Supabase Auth, Next.js Router, react-hot-toast. Custom mock helpers export mockSupabase, mockAuth, mockSWR, mockRouter, mockToast for test customization.
+      </artifact>
+      <artifact path="docs/architecture.md" title="Technical Architecture" section="Testing Stack">
+        Testing framework uses Jest + Testing Library pattern. Full TypeScript coverage with strict mode. Accessibility tested with WCAG 2.1 Level A compliance via Chakra UI.
+      </artifact>
+      <artifact path="docs/sprint-artifacts/epic-8-retrospective.md" title="Epic 8 Retrospective" section="Test Mocking Complexity Barrier">
+        Identified barrier: Each integration test requires manual setup of 6 provider layers (Chakra, SWR, Supabase, Auth, Router, Toast), resulting in 50-100 lines of boilerplate per test file. This prevents adoption of integration/E2E tests.
+      </artifact>
+    </docs>
+    <code>
+      <artifact path="src/app/(dashboard)/settings/__tests__/page.test.tsx" kind="test" symbol="SettingsPage tests" lines="1-100" reason="Example of current test setup pattern requiring manual mocking of all 6 providers (Chakra, Toast, Router, Supabase Auth, Services). This file will be refactored to use new test utilities (AC-9.2.6)." />
+      <artifact path="src/lib/supabase/client.ts" kind="service" symbol="createClient" reason="Supabase client factory function that needs to be mocked in test utilities. Current tests mock this with jest.mock() - new utilities will provide pre-configured mockSupabase helper." />
+      <artifact path="src/app/providers.tsx" kind="component" symbol="Providers" reason="Application provider wrapper component showing full provider stack (ChakraProvider, ColorModeScript). Test utilities must replicate this provider structure in renderWithProviders()." />
+      <artifact path="jest.config.js" kind="config" reason="Jest configuration defining test environment, setupFilesAfterEnv, and module paths. Test utilities must be compatible with this setup." />
+      <artifact path="jest.setup.ts" kind="config" reason="Jest setup file importing @testing-library/jest-dom matchers. Test utilities will be imported here for global availability." />
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="@testing-library/react" version="^16.3.0" dev="true" />
+        <package name="@testing-library/jest-dom" version="^6.9.1" dev="true" />
+        <package name="jest" version="^29.0.0" dev="true" />
+        <package name="@chakra-ui/react" version="^2.8.0" />
+        <package name="swr" version="^2.3.6" />
+        <package name="@supabase/supabase-js" version="^2.81.1" />
+        <package name="next" version="^15.5.7" />
+        <package name="react" version="^18.3.0" />
+        <package name="react-dom" version="^18.3.0" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Test utilities must be developer tooling only - no changes to production code</constraint>
+    <constraint>TypeScript strict mode compatible - all utilities must have full type definitions</constraint>
+    <constraint>Testing Library patterns - follow Kent C. Dodds best practices</constraint>
+    <constraint>Mock customization required - developers must be able to override specific mocks via options parameter</constraint>
+    <constraint>Single import point - all utilities exported from @/lib/test-utils/index.ts</constraint>
+    <constraint>Backwards compatible - existing tests continue to work without modification until refactoring</constraint>
+    <constraint>All 6 provider layers required: Chakra UI, SWR, Supabase Client, Supabase Auth, Next.js Router, react-hot-toast</constraint>
+    <constraint>Documentation must include migration guide from manual provider wrapping to test utilities</constraint>
+  </constraints>
+  <interfaces>
+    <interface name="renderWithProviders" kind="function">
+      <signature>renderWithProviders(ui: ReactElement, options?: CustomRenderOptions): RenderResult</signature>
+      <path>src/lib/test-utils/testUtils.tsx</path>
+      <description>Main test utility function that wraps component in all 6 provider layers with customizable mocks</description>
+    </interface>
+    <interface name="CustomRenderOptions" kind="type">
+      <signature>interface CustomRenderOptions extends Omit&lt;RenderOptions, 'wrapper'&gt; { mockSupabase?: Partial&lt;MockSupabaseClient&gt;; mockAuth?: Partial&lt;MockSupabaseAuth&gt;; mockRouter?: Partial&lt;MockRouter&gt;; mockToast?: Partial&lt;MockToast&gt;; mockSWRData?: Record&lt;string, MockSWRReturn&gt;; mockUser?: User | null; mockSession?: Session | null; }</signature>
+      <path>src/lib/test-utils/types.ts</path>
+      <description>Options interface for customizing mock behavior in renderWithProviders</description>
+    </interface>
+    <interface name="RenderResult" kind="type">
+      <signature>interface RenderResult extends ReturnType&lt;typeof render&gt; { mockSupabase: MockSupabaseClient; mockAuth: MockSupabaseAuth; mockRouter: MockRouter; mockToast: MockToast; }</signature>
+      <path>src/lib/test-utils/types.ts</path>
+      <description>Extended render result including attached mock utilities for test assertions</description>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>Testing framework: Jest 29+ with @testing-library/react 16+. Test files use .test.tsx extension located in __tests__ directories adjacent to source. Follow Testing Library principles: test user behavior not implementation, use accessible queries (getByRole, getByLabelText), avoid testing library internals. All tests must have TypeScript types. Integration tests mock external dependencies (Supabase, APIs) but test component integration with providers.</standards>
+    <locations>src/lib/test-utils/__tests__/ (new), src/app/(dashboard)/**/__tests__/*.test.tsx (existing), src/lib/**/__tests__/*.test.ts (services)</locations>
+    <ideas>
+      <idea ac="AC-9.2.1, AC-9.2.2">Test renderWithProviders renders component correctly with all 6 providers applied (Chakra, SWR, Supabase, Auth, Router, Toast)</idea>
+      <idea ac="AC-9.2.3">Test mock helpers (mockSupabase, mockRouter, mockToast) are functional and return expected mock objects</idea>
+      <idea ac="AC-9.2.4">Test TypeScript types are correct using type-level tests (expect type assertions)</idea>
+      <idea ac="AC-9.2.6">Refactor Settings page test to use renderWithProviders, verify test still passes with reduced boilerplate</idea>
+      <idea ac="AC-9.2.6">Refactor Transactions page test to use renderWithProviders and mockRouter for navigation testing</idea>
+      <idea ac="AC-9.2.6">Refactor Insights page test to use renderWithProviders and mockToast for notification testing</idea>
+      <idea ac="AC-9.2.7">Test custom mock overrides work: pass custom mockSupabase options and verify override is applied</idea>
+      <idea ac="AC-9.2.8">Test all @testing-library/react functions are re-exported from @/lib/test-utils</idea>
+    </ideas>
+  </tests>
+</story-context>

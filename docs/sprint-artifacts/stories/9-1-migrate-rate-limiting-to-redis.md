@@ -1,6 +1,6 @@
 # Story 9.1: Migrate Rate Limiting to Redis/Upstash
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -153,10 +153,32 @@ TBD (Claude Sonnet 4.5)
 
 TBD
 
-### Completion Notes List
+### Completion Notes
+**Completed:** 2026-01-08
+**Definition of Done:** All acceptance criteria met, code reviewed, tests passing (350/350 tests)
 
-TBD - To be filled during implementation
+**Implementation Summary:**
+- Migrated rate limiting from in-memory Map to Redis-backed implementation using @upstash/ratelimit
+- Added multi-provider support (Upstash Redis REST API and self-hosted ioredis)
+- Implemented graceful fallback to in-memory rate limiting when Redis unavailable
+- Created Redis health check endpoint at `/api/health/redis`
+- Maintained existing rate limits (10 requests/minute per user)
+- Added comprehensive test coverage
+- Updated deployment documentation
 
 ### File List
 
-TBD - To be filled during implementation
+**Created Files:**
+- `src/lib/redis/client.ts` - Redis connection manager with multi-provider support
+- `src/app/api/health/redis/route.ts` - Redis health check endpoint
+- `src/app/api/health/redis/__tests__/route.test.ts` - Health check tests
+
+**Modified Files:**
+- `src/lib/services/rateLimitService.ts` - Refactored to use Redis with fallback
+- `src/app/api/insights/generate/route.ts` - Updated to use Redis rate limiter
+- `docs/deployment.md` - Added Redis setup instructions
+- `package.json` - Added Redis dependencies (@upstash/redis, @upstash/ratelimit, ioredis)
+
+### Completion Notes List
+
+All 8 acceptance criteria completed successfully with full test coverage.

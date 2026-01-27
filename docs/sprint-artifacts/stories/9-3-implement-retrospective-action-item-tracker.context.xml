@@ -1,0 +1,212 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>9</epicId>
+    <storyId>9.3</storyId>
+    <title>Implement Retrospective Action Item Tracker</title>
+    <status>drafted</status>
+    <generatedAt>2026-01-27</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/9-3-implement-retrospective-action-item-tracker.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a Scrum Master</asA>
+    <iWant>retrospective action items automatically tracked in a centralized YAML file</iWant>
+    <soThat>HIGH priority findings from previous epics are not forgotten during future epic planning</soThat>
+    <tasks>
+      - Create YAML schema and initial file (AC: 9.3.1, 9.3.5)
+      - Extend retrospective workflow (AC: 9.3.2, 9.3.3)
+      - Implement aged item warning logic (AC: 9.3.4)
+      - Add cross-reference validation (AC: 9.3.7)
+      - Create status update helper (AC: 9.3.6)
+      - Write documentation (AC: 9.3.8)
+      - Write unit tests (AC: All)
+      - Integration test with retrospective workflow (AC: 9.3.2, 9.3.3, 9.3.4)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    AC-9.3.1: YAML Schema Creation - Create docs/sprint-artifacts/retrospective-action-items.yaml with structured schema for tracking action items
+    AC-9.3.2: Auto-Extraction from Retrospective - Extend retrospective workflow to automatically extract action items from "Recommended Actions" section
+    AC-9.3.3: YAML File Updates - Workflow appends new action items to YAML file with fields: id, priority, description, status, epic_assigned, story_id
+    AC-9.3.4: Warning for Aged Items - Workflow warns if HIGH priority items unaddressed for 2+ epics
+    AC-9.3.5: Backfill Historical Data - Manually backfill Epic 6 and Epic 8 action items into initial YAML file
+    AC-9.3.6: Status Tracking - Support status values: pending, in-progress, completed, deferred, obsolete
+    AC-9.3.7: Cross-Reference Validation - Validate epic_assigned and story_id references exist in sprint-status.yaml
+    AC-9.3.8: Documentation - Document action item tracker workflow in docs/process/retrospective-action-item-tracking.md
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>Story 9-3: Implement Retrospective Action Item Tracker</section>
+        <snippet>Defines YAML schema structure with fields: id, priority, description, status, epic_assigned, story_id. Includes automated extraction from retrospective markdown and aged item warning logic (HIGH priority items unaddressed for 2+ epics).</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/epic-6-retrospective.md</path>
+        <title>Epic 6 Retrospective</title>
+        <section>Recommended Actions for Future Epics</section>
+        <snippet>Contains 8 outstanding action items to backfill into YAML tracker. High priority items include: Redis migration, insight engagement analytics, Story 6-3 pagination UI completion, deployment checklist, TypeScript modernization.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/epic-8-retrospective.md</path>
+        <title>Epic 8 Retrospective</title>
+        <section>Recommended Actions for Future Epics</section>
+        <snippet>Contains 10 identified gaps to backfill into YAML tracker. Critical items include: test utilities library (CRITICAL), analytics instrumentation (HIGH), retrospective action item tracker itself (HIGH), device session management (MEDIUM).</snippet>
+      </doc>
+      <doc>
+        <path>.bmad/bmm/workflows/4-implementation/retrospective/workflow.yaml</path>
+        <title>Retrospective Workflow Configuration</title>
+        <section>Workflow Configuration</section>
+        <snippet>Current retrospective workflow YAML structure. Needs extension to add: action item extraction step, YAML file update step, aged item warning step.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart Budget Application Architecture</title>
+        <section>Project Structure</section>
+        <snippet>BMAD workflow system uses .bmad/ directory for workflow configurations. YAML files used for configuration (sprint-status.yaml pattern). Node.js/JavaScript used for scripting tasks.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>.bmad/bmm/workflows/4-implementation/retrospective/workflow.yaml</path>
+        <kind>workflow configuration</kind>
+        <symbol>retrospective workflow</symbol>
+        <lines>1-56</lines>
+        <reason>Existing retrospective workflow configuration that needs to be extended with action item extraction, YAML update, and aged item warning steps</reason>
+      </artifact>
+      <artifact>
+        <path>.bmad/bmm/workflows/4-implementation/retrospective/instructions.md</path>
+        <kind>workflow instructions</kind>
+        <symbol>retrospective process</symbol>
+        <lines>1-100</lines>
+        <reason>Current retrospective workflow instructions showing epic discovery logic and facilitation process - new steps will be added after document generation</reason>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/sprint-status.yaml</path>
+        <kind>configuration file</kind>
+        <symbol>sprint status tracking</symbol>
+        <lines>all</lines>
+        <reason>Sprint status YAML that will be read for cross-reference validation of epic_assigned and story_id fields</reason>
+      </artifact>
+      <artifact>
+        <path>node_modules/js-yaml</path>
+        <kind>library</kind>
+        <symbol>js-yaml</symbol>
+        <lines>n/a</lines>
+        <reason>YAML parsing library already available as transitive dependency - can be used for YAML file read/write operations</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package>next</package>
+        <version>^15.5.7</version>
+        <usage>Framework (already installed)</usage>
+      </node>
+      <node>
+        <package>typescript</package>
+        <version>^5.3.0</version>
+        <usage>Type safety for scripts (already installed)</usage>
+      </node>
+      <node>
+        <package>ts-node</package>
+        <version>^10.9.2</version>
+        <usage>Execute TypeScript scripts (already installed)</usage>
+      </node>
+      <node>
+        <package>tsx</package>
+        <version>^4.21.0</version>
+        <usage>Alternative TypeScript executor (already installed)</usage>
+      </node>
+      <node>
+        <package>js-yaml</package>
+        <version>transitive dependency</version>
+        <usage>YAML parsing and serialization (already available via other packages)</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - YAML schema must support status values: pending, in-progress, completed, deferred, obsolete
+    - Action items must have unique IDs: format epic{N}-{priority}-{index}
+    - Retrospective markdown "Recommended Actions" section must follow consistent format for parsing
+    - Cross-reference validation must check sprint-status.yaml for epic_assigned and story_id
+    - Aged item warnings: HIGH priority items pending 2+ epics, CRITICAL items pending 1+ epic
+    - Workflow must be non-breaking: existing retrospective functionality must continue working
+    - Manual override capability: SMs can manually edit YAML file
+    - File location: docs/sprint-artifacts/retrospective-action-items.yaml
+  </constraints>
+  <interfaces>
+    - retrospective workflow.yaml: Add new steps after document generation
+    - sprint-status.yaml: Read for cross-reference validation of epic/story IDs
+    - retrospective markdown files: Parse "Recommended Actions" section for extraction
+    - YAML file API: Read existing items, append new items, validate structure
+  </interfaces>
+  <tests>
+    <standards>
+      - Jest testing framework with @testing-library for component tests
+      - TypeScript for all test files (.test.ts, .test.tsx)
+      - Tests located in __tests__ directories next to source files
+      - Test pattern: **/__tests__/**/*.test.ts(x)
+      - Coverage reporting with lcov format
+      - Mock patterns: jest.fn(), jest.mock(), jest.spyOn()
+      - Existing test utilities library at src/lib/test-utils for provider mocking
+      - Node.js scripts can be tested with ts-node or tsx
+      - YAML file operations can be tested with mock fs module
+    </standards>
+    <locations>
+      - .bmad/bmm/workflows/4-implementation/retrospective/__tests__/ (new - for workflow extension tests)
+      - .bmad/core/tasks/__tests__/ (new - for status update helper tests)
+      - docs/sprint-artifacts/__tests__/ (new - for YAML validation tests)
+    </locations>
+    <ideas>
+      <test id="AC-9.3.1" criteria="YAML Schema Creation">
+        - Test: Create YAML file with valid schema structure
+        - Test: Validate YAML file parses without errors
+        - Test: Verify all required fields present in schema
+      </test>
+      <test id="AC-9.3.2" criteria="Auto-Extraction from Retrospective">
+        - Test: Extract action items from mock retrospective markdown with "Recommended Actions" section
+        - Test: Parse priority levels (CRITICAL, HIGH, MEDIUM, LOW) correctly
+        - Test: Handle retrospective without "Recommended Actions" section gracefully
+        - Test: Extract multiple action items from single retrospective
+      </test>
+      <test id="AC-9.3.3" criteria="YAML File Updates">
+        - Test: Append new action items to existing YAML file
+        - Test: Generate unique IDs (epic{N}-{priority}-{index} format)
+        - Test: Initialize fields (id, priority, description, status=pending, epic_assigned, story_id)
+        - Test: Preserve existing YAML content when appending
+      </test>
+      <test id="AC-9.3.4" criteria="Warning for Aged Items">
+        - Test: Warn if HIGH priority item pending for 2+ epics
+        - Test: Warn if CRITICAL priority item pending for 1+ epic
+        - Test: Calculate epic age correctly (current_epic - epic_with_action_item)
+        - Test: Format warning message with action item details
+        - Test: No warnings for recently created action items
+      </test>
+      <test id="AC-9.3.5" criteria="Backfill Historical Data">
+        - Test: Backfill Epic 6 action items (8 items) from retrospective
+        - Test: Backfill Epic 8 action items (10 items) from retrospective
+        - Test: Validate backfilled items have correct structure
+      </test>
+      <test id="AC-9.3.6" criteria="Status Tracking">
+        - Test: Accept valid status values (pending, in-progress, completed, deferred, obsolete)
+        - Test: Reject invalid status values
+        - Test: Update status via helper script
+      </test>
+      <test id="AC-9.3.7" criteria="Cross-Reference Validation">
+        - Test: Validate epic_assigned exists in sprint-status.yaml
+        - Test: Validate story_id exists in sprint-status.yaml (if not null)
+        - Test: Warn for invalid epic_assigned references
+        - Test: Warn for invalid story_id references
+      </test>
+      <test id="AC-9.3.8" criteria="Documentation">
+        - Test: Documentation file exists at docs/process/retrospective-action-item-tracking.md
+        - Test: Documentation includes YAML schema explanation
+        - Test: Documentation includes workflow integration steps
+      </test>
+    </ideas>
+  </tests>
+</story-context>

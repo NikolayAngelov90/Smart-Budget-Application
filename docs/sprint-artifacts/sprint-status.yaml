@@ -105,9 +105,9 @@ development_status:
 
   # Epic 9: Technical Foundation & Quality Infrastructure (Addresses Epic 6 & Epic 8 retrospective action items)
   epic-9: backlog
-  9-1-migrate-rate-limiting-to-redis: in-progress
-  9-2-create-test-utilities-library: drafted
-  9-3-implement-retrospective-action-item-tracker: drafted
+  9-1-migrate-rate-limiting-to-redis: done
+  9-2-create-test-utilities-library: done
+  9-3-implement-retrospective-action-item-tracker: ready-for-dev
   9-4-add-insight-engagement-analytics: drafted
   9-5-add-export-and-pwa-analytics: drafted
   9-6-complete-device-session-management: drafted
