@@ -1,6 +1,6 @@
 # Story 9.4: Add Insight Engagement Analytics
 
-Status: drafted
+Status: ready-for-dev
 
 ## Story
 
@@ -179,7 +179,7 @@ const handleDismiss = (insightId: string, insightType: string) => {
 
 ### Context Reference
 
-- [Story 9-4 Context](9-4-add-insight-engagement-analytics.context.xml) - To be created during dev workflow
+- [Story 9-4 Context](9-4-add-insight-engagement-analytics.context.xml) - Generated 2026-01-27
 
 ### Agent Model Used
 

@@ -1,0 +1,522 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Story Context File: 9-4-add-insight-engagement-analytics
+  Generated: 2026-01-27
+  Epic: 9 - Technical Foundation & Quality Infrastructure
+
+  This context file provides comprehensive information needed to implement
+  insight engagement analytics tracking as specified in Story 9-4.
+-->
+
+<story-context>
+  <metadata>
+    <story_id>9-4</story_id>
+    <story_key>9-4-add-insight-engagement-analytics</story_key>
+    <epic_id>9</epic_id>
+    <title>Add Insight Engagement Analytics</title>
+    <status>ready-for-dev</status>
+    <priority>HIGH</priority>
+    <estimated_effort>3-5 days</estimated_effort>
+  </metadata>
+
+  <user_story>
+    <as_a>product manager</as_a>
+    <i_want>to track insight engagement metrics (views, dismissals, category breakdown)</i_want>
+    <so_that>I can measure which insights are most valuable and improve low-engagement insights</so_that>
+  </user_story>
+
+  <acceptance_criteria>
+    <criterion id="AC-9.4.1">
+      <description>Analytics Events Table - Create `analytics_events` table in Supabase with RLS policies (user can only read own events)</description>
+      <status>pending</status>
+    </criterion>
+    <criterion id="AC-9.4.2">
+      <description>Analytics Service - Create `analyticsService.trackEvent()` function for client-side event tracking</description>
+      <status>pending</status>
+    </criterion>
+    <criterion id="AC-9.4.3">
+      <description>Insights Page View Tracking - Track `insights_page_viewed` event when user navigates to `/insights` page</description>
+      <status>pending</status>
+    </criterion>
+    <criterion id="AC-9.4.4">
+      <description>Individual Insight View Tracking - Track `insight_viewed` event with `insight_id` and `insight_type` when user expands/views insight details</description>
+      <status>pending</status>
+    </criterion>
+    <criterion id="AC-9.4.5">
+      <description>Insight Dismissal Tracking - Track `insight_dismissed` event with `insight_id` and `insight_type` when user dismisses insight</description>
+      <status>pending</status>
+    </criterion>
+    <criterion id="AC-9.4.6">
+      <description>Analytics API Endpoint - Add `POST /api/analytics/track` endpoint for storing events</description>
+      <status>pending</status>
+    </criterion>
+    <criterion id="AC-9.4.7">
+      <description>Privacy Compliance - Only track event metadata (no PII like transaction amounts, category names beyond IDs)</description>
+      <status>pending</status>
+    </criterion>
+    <criterion id="AC-9.4.8">
+      <description>Unit Tests - Comprehensive unit tests for analyticsService and API endpoint</description>
+      <status>pending</status>
+    </criterion>
+    <criterion id="AC-9.4.9">
+      <description>Event Properties Schema - Validate event properties match expected schema for each event type</description>
+      <status>pending</status>
+    </criterion>
+    <criterion id="AC-9.4.10">
+      <description>Data Retention - Document 90-day retention policy for analytics events (manual cleanup or automated)</description>
+      <status>pending</status>
+    </criterion>
+  </acceptance_criteria>
+
+  <story_tasks>
+    <task id="T1" status="pending">
+      <description>Create Supabase migration for analytics_events table with RLS policies</description>
+      <acceptance_criteria>AC-9.4.1</acceptance_criteria>
+      <subtasks>
+        <subtask>Create migration file: supabase/migrations/006_analytics_events_table.sql</subtask>
+        <subtask>Define analytics_events table schema (id, user_id, event_name, event_properties, timestamp, session_id, device_type)</subtask>
+        <subtask>Enable RLS on analytics_events table</subtask>
+        <subtask>Create RLS policies (INSERT own events, SELECT own events)</subtask>
+        <subtask>Create indexes on user_id and timestamp for query performance</subtask>
+        <subtask>Run migration in development environment</subtask>
+      </subtasks>
+    </task>
+    <task id="T2" status="pending">
+      <description>Create TypeScript types for analytics events</description>
+      <acceptance_criteria>AC-9.4.9</acceptance_criteria>
+      <subtasks>
+        <subtask>Create src/types/analytics.types.ts with AnalyticsEvent interface</subtask>
+        <subtask>Define InsightEvent union type for type-safe event tracking</subtask>
+        <subtask>Define TrackEventPayload and TrackEventResponse interfaces</subtask>
+      </subtasks>
+    </task>
+    <task id="T3" status="pending">
+      <description>Create analyticsService for client-side event tracking</description>
+      <acceptance_criteria>AC-9.4.2, AC-9.4.7</acceptance_criteria>
+      <subtasks>
+        <subtask>Create src/lib/services/analyticsService.ts</subtask>
+        <subtask>Implement trackEvent(event_name, event_properties) function</subtask>
+        <subtask>Detect device type (mobile/tablet/desktop) using user agent</subtask>
+        <subtask>Generate/retrieve session_id from localStorage</subtask>
+        <subtask>Call POST /api/analytics/track with event payload</subtask>
+        <subtask>Handle errors gracefully (analytics failures should not break app)</subtask>
+        <subtask>Add privacy safeguards: never include PII in event_properties</subtask>
+      </subtasks>
+    </task>
+    <task id="T4" status="pending">
+      <description>Create analytics API endpoint</description>
+      <acceptance_criteria>AC-9.4.6</acceptance_criteria>
+      <subtasks>
+        <subtask>Create src/app/api/analytics/track/route.ts</subtask>
+        <subtask>Implement POST handler with authentication validation</subtask>
+        <subtask>Validate event_name and event_properties schema</subtask>
+        <subtask>Insert event into analytics_events table</subtask>
+        <subtask>Return success response with event_id</subtask>
+        <subtask>Handle errors (authentication, validation, database)</subtask>
+      </subtasks>
+    </task>
+    <task id="T5" status="pending">
+      <description>Add tracking to Insights page</description>
+      <acceptance_criteria>AC-9.4.3</acceptance_criteria>
+      <subtasks>
+        <subtask>Update src/app/insights/page.tsx or components/insights/InsightsPageContent.tsx</subtask>
+        <subtask>Track insights_page_viewed on page mount (useEffect)</subtask>
+        <subtask>Include filter parameter if active</subtask>
+        <subtask>Debounce page view events to avoid tracking on every re-render</subtask>
+      </subtasks>
+    </task>
+    <task id="T6" status="pending">
+      <description>Add tracking to individual insights (view and dismiss events)</description>
+      <acceptance_criteria>AC-9.4.4, AC-9.4.5</acceptance_criteria>
+      <subtasks>
+        <subtask>Locate InsightCard or similar component</subtask>
+        <subtask>Track insight_viewed when user expands insight or clicks for details</subtask>
+        <subtask>Track insight_dismissed when user clicks dismiss button</subtask>
+        <subtask>Include insight_id (UUID) and insight_type in event properties</subtask>
+      </subtasks>
+    </task>
+    <task id="T7" status="pending">
+      <description>Write unit tests for analyticsService and API</description>
+      <acceptance_criteria>AC-9.4.8</acceptance_criteria>
+      <subtasks>
+        <subtask>Test analyticsService.trackEvent() with valid event</subtask>
+        <subtask>Test device type detection (mobile, tablet, desktop)</subtask>
+        <subtask>Test session_id generation and persistence</subtask>
+        <subtask>Test error handling (network failure, API error)</subtask>
+        <subtask>Test API endpoint POST handler with authentication</subtask>
+        <subtask>Test event validation (reject invalid event_name or properties)</subtask>
+        <subtask>Test database insertion and RLS enforcement</subtask>
+      </subtasks>
+    </task>
+    <task id="T8" status="pending">
+      <description>Write integration tests for end-to-end tracking</description>
+      <acceptance_criteria>AC-9.4.3, AC-9.4.4, AC-9.4.5</acceptance_criteria>
+      <subtasks>
+        <subtask>Test insights page view tracking (page load → API call → database)</subtask>
+        <subtask>Test insight viewed event tracking</subtask>
+        <subtask>Test insight dismissed event tracking</subtask>
+        <subtask>Test event properties match schema</subtask>
+        <subtask>Test RLS policies (user can only read own events)</subtask>
+      </subtasks>
+    </task>
+    <task id="T9" status="pending">
+      <description>Add data retention documentation</description>
+      <acceptance_criteria>AC-9.4.10</acceptance_criteria>
+      <subtasks>
+        <subtask>Document 90-day retention policy in docs/analytics/data-retention.md</subtask>
+        <subtask>Create manual cleanup SQL script for old analytics events</subtask>
+        <subtask>Optionally create scheduled job for automated cleanup</subtask>
+      </subtasks>
+    </task>
+  </story_tasks>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-9.md</path>
+        <title>Epic 9 Technical Specification</title>
+        <section>Story 9-4: Add Insight Engagement Analytics</section>
+        <snippet>Story 9-4 implements a generic analytics events table for tracking insight engagement (views, dismissals, category breakdown) plus export and PWA usage. Uses analytics_events table with JSONB event_properties for flexibility.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart Budget Application - Technical Architecture</title>
+        <section>Data Architecture</section>
+        <snippet>Application uses PostgreSQL via Supabase with Row Level Security (RLS). Existing tables include categories, transactions, insights. New analytics_events table follows same RLS patterns.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/epic-6-retrospective.md</path>
+        <title>Epic 6 Retrospective</title>
+        <section>Recommended Actions - HIGH Priority</section>
+        <snippet>Add insight engagement analytics (view count, dismissal rate, metadata clicks) to measure which insights are most valuable and improve low-engagement insights.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>src/lib/services/insightService.ts</path>
+        <kind>service</kind>
+        <symbol>generateInsights</symbol>
+        <lines>68-236</lines>
+        <reason>Main insight generation service - context for understanding how insights are created and stored</reason>
+      </artifact>
+      <artifact>
+        <path>src/lib/ai/insightRules.ts</path>
+        <kind>service</kind>
+        <symbol>detectSpendingIncrease, recommendBudgetLimit, flagUnusualExpense, generatePositiveReinforcement</symbol>
+        <lines>1-100</lines>
+        <reason>Insight rules engine - defines insight types that will be tracked in analytics</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/insights/[id]/track/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>POST</symbol>
+        <lines>1-185</lines>
+        <reason>EXISTING analytics tracking endpoint for insight views/metadata expansions - Story 9-4 creates NEW separate analytics_events table and generic tracking endpoint</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/api/insights/analytics/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>GET</symbol>
+        <lines>1-220</lines>
+        <reason>EXISTING analytics retrieval endpoint - uses insight table columns. Story 9-4 creates NEW analytics_events table for more flexible event tracking</reason>
+      </artifact>
+      <artifact>
+        <path>src/app/insights/page.tsx</path>
+        <kind>page</kind>
+        <symbol>InsightsPage</symbol>
+        <lines>1-23</lines>
+        <reason>Insights page - location where insights_page_viewed event tracking will be added</reason>
+      </artifact>
+      <artifact>
+        <path>supabase/migrations/003_insights_engagement_analytics.sql</path>
+        <kind>migration</kind>
+        <symbol>ALTER TABLE insights</symbol>
+        <lines>1-101</lines>
+        <reason>EXISTING migration that adds engagement tracking columns to insights table. Story 9-4 creates NEW analytics_events table for generic event tracking.</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>@supabase/supabase-js</package>
+        <version>^2.81.1</version>
+        <reason>Supabase client for database operations and RLS</reason>
+      </node>
+      <node>
+        <package>@supabase/ssr</package>
+        <version>^0.7.0</version>
+        <reason>Supabase server-side rendering utilities</reason>
+      </node>
+      <node>
+        <package>date-fns</package>
+        <version>^4.1.0</version>
+        <reason>Date handling for timestamp formatting</reason>
+      </node>
+      <node>
+        <package>zod</package>
+        <version>^4.1.12</version>
+        <reason>Schema validation for event properties (AC-9.4.9)</reason>
+      </node>
+      <node>
+        <package>next</package>
+        <version>^15.5.7</version>
+        <reason>Next.js framework for API routes and pages</reason>
+      </node>
+      <node>
+        <package>react</package>
+        <version>^18.3.0</version>
+        <reason>React hooks (useEffect) for page view tracking</reason>
+      </node>
+      <node>
+        <package>@testing-library/react</package>
+        <version>^16.3.0</version>
+        <reason>Testing library for unit and integration tests</reason>
+      </node>
+      <node>
+        <package>jest</package>
+        <version>^30.2.0</version>
+        <reason>Test framework for unit tests</reason>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <interfaces>
+    <interface>
+      <name>POST /api/analytics/track</name>
+      <kind>REST endpoint</kind>
+      <signature>
+        Request:
+        POST /api/analytics/track
+        Headers: { Authorization: Bearer <supabase_jwt> }
+        Body: {
+          event_name: string,
+          event_properties?: Record<string, any>
+        }
+
+        Response (200):
+        {
+          success: true,
+          event_id: string
+        }
+
+        Response (401):
+        {
+          success: false,
+          error: "Unauthorized"
+        }
+
+        Response (400):
+        {
+          success: false,
+          error: "Invalid event_name or event_properties"
+        }
+      </signature>
+      <path>src/app/api/analytics/track/route.ts</path>
+    </interface>
+
+    <interface>
+      <name>analyticsService.trackEvent</name>
+      <kind>Client-side service function</kind>
+      <signature>
+        async function trackEvent(
+          event_name: string,
+          event_properties?: Record<string, any>
+        ): Promise<{ success: boolean; event_id?: string }>
+      </signature>
+      <path>src/lib/services/analyticsService.ts</path>
+    </interface>
+
+    <interface>
+      <name>AnalyticsEvent (Database Table)</name>
+      <kind>Database schema</kind>
+      <signature>
+        CREATE TABLE analytics_events (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+          event_name TEXT NOT NULL,
+          event_properties JSONB,
+          timestamp TIMESTAMPTZ DEFAULT NOW(),
+          session_id UUID,
+          device_type TEXT
+        );
+      </signature>
+      <path>supabase/migrations/006_analytics_events_table.sql</path>
+    </interface>
+
+    <interface>
+      <name>InsightEvent (TypeScript Union Type)</name>
+      <kind>TypeScript type definition</kind>
+      <signature>
+        type InsightEvent =
+          | { event_name: 'insights_page_viewed'; properties: { filter?: string } }
+          | { event_name: 'insight_viewed'; properties: { insight_id: string; insight_type: string } }
+          | { event_name: 'insight_dismissed'; properties: { insight_id: string; insight_type: string } };
+      </signature>
+      <path>src/types/analytics.types.ts</path>
+    </interface>
+  </interfaces>
+
+  <constraints>
+    <constraint type="security">
+      <description>RLS Policies Required</description>
+      <details>Analytics events table MUST have Row Level Security enabled. Users can only INSERT and SELECT their own events (user_id = auth.uid()). No UPDATE or DELETE policies needed.</details>
+    </constraint>
+
+    <constraint type="privacy">
+      <description>No PII in Event Properties (AC-9.4.7)</description>
+      <details>Event properties MUST NOT contain personally identifiable information (PII) such as transaction amounts, category names (use IDs only), descriptions, or financial data. Only track event metadata (IDs, types, counts).</details>
+    </constraint>
+
+    <constraint type="privacy">
+      <description>GDPR Compliance - Cascade Delete</description>
+      <details>Analytics events MUST cascade delete when user deletes account (ON DELETE CASCADE in schema). This ensures GDPR compliance for data removal.</details>
+    </constraint>
+
+    <constraint type="error-handling">
+      <description>Non-Blocking Analytics Failures</description>
+      <details>Analytics tracking failures MUST NOT break user experience. All analytics calls MUST be wrapped in try-catch blocks. Errors logged but not thrown to user.</details>
+    </constraint>
+
+    <constraint type="performance">
+      <description>Debounced Page View Events</description>
+      <details>Page view events (insights_page_viewed) MUST be debounced to avoid tracking on every re-render. Track once per page mount using useEffect with empty dependency array.</details>
+    </constraint>
+
+    <constraint type="data-retention">
+      <description>90-Day Retention Policy (AC-9.4.10)</description>
+      <details>Analytics events older than 90 days SHOULD be deleted to prevent unbounded database growth. Document manual cleanup script and optional automated job.</details>
+    </constraint>
+
+    <constraint type="architecture">
+      <description>Separate Analytics Table</description>
+      <details>Story 9-4 creates a NEW analytics_events table, separate from the existing insight engagement tracking in migration 003. The existing /api/insights/[id]/track endpoint updates insight table columns directly. The new /api/analytics/track endpoint stores events in analytics_events table for generic event tracking (insights, exports, PWA).</details>
+    </constraint>
+
+    <constraint type="testing">
+      <description>Test Utilities Library Usage</description>
+      <details>Use test utilities library from Story 9-2 (src/lib/test-utils) for all unit and integration tests. Use renderWithProviders() for component tests, mockSupabase for database mocking.</details>
+    </constraint>
+  </constraints>
+
+  <tests>
+    <standards>
+      <description>Project uses Jest + React Testing Library for unit tests and integration tests. Test files located in __tests__/ directories adjacent to source files or in root __tests__/ directory. Use test utilities library from Story 9-2 (src/lib/test-utils/testUtils.tsx) with renderWithProviders() for component tests. Mock Supabase client for database operations. Aim for 80%+ code coverage.</description>
+    </standards>
+
+    <locations>
+      <location>src/lib/services/__tests__/analyticsService.test.ts</location>
+      <location>src/app/api/analytics/track/__tests__/route.test.ts</location>
+      <location>__tests__/integration/analytics-tracking.test.ts</location>
+    </locations>
+
+    <ideas>
+      <test_idea criterion="AC-9.4.2">
+        <description>Unit test for analyticsService.trackEvent() function</description>
+        <approach>Mock fetch API, call trackEvent('insights_page_viewed', { filter: 'spending' }), verify POST request sent to /api/analytics/track with correct payload including device_type and session_id</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.2">
+        <description>Test device type detection in analyticsService</description>
+        <approach>Mock navigator.userAgent for mobile, tablet, desktop. Verify analyticsService correctly detects device_type for each case.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.2">
+        <description>Test session_id generation and persistence</description>
+        <approach>Mock localStorage. Call trackEvent() twice. Verify same session_id used for both calls (retrieved from localStorage). Clear localStorage, call again, verify new session_id generated.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.2">
+        <description>Test error handling in analyticsService</description>
+        <approach>Mock fetch to throw network error. Call trackEvent(). Verify error caught, logged, but not thrown (non-blocking). App continues to function.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.6">
+        <description>Unit test for POST /api/analytics/track endpoint - valid event</description>
+        <approach>Mock Supabase client, mock authenticated user. Send valid POST request with event_name='insight_viewed' and properties={insight_id:'abc', insight_type:'spending_increase'}. Verify 200 response with success=true and event_id returned.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.6">
+        <description>Test authentication requirement for analytics API</description>
+        <approach>Mock Supabase to return no user (unauthenticated). Send POST request to /api/analytics/track. Verify 401 Unauthorized response.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.6">
+        <description>Test event validation in analytics API</description>
+        <approach>Send POST request with invalid event_name (empty string or undefined). Verify 400 Bad Request response with validation error message.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.6">
+        <description>Test database insertion and RLS</description>
+        <approach>Mock Supabase insert operation. Verify insert called with correct event data (user_id, event_name, event_properties, timestamp, session_id, device_type). Verify RLS enforced (user_id matches authenticated user).</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.3">
+        <description>Integration test for insights page view tracking</description>
+        <approach>Render InsightsPage component with mocked analyticsService. Verify trackEvent('insights_page_viewed') called once on mount. Verify not called again on re-render.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.4">
+        <description>Integration test for insight viewed event</description>
+        <approach>Render InsightCard component. Simulate user expanding insight (click expand button). Verify trackEvent('insight_viewed', {insight_id, insight_type}) called with correct parameters.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.5">
+        <description>Integration test for insight dismissed event</description>
+        <approach>Render InsightCard component. Simulate user dismissing insight (click dismiss button). Verify trackEvent('insight_dismissed', {insight_id, insight_type}) called with correct parameters.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.9">
+        <description>Test event properties schema validation</description>
+        <approach>Create Zod schema for InsightEvent union type. Test valid events pass validation. Test invalid events (missing insight_id, wrong insight_type) fail validation with clear error messages.</approach>
+      </test_idea>
+
+      <test_idea criterion="AC-9.4.1">
+        <description>Test RLS policies on analytics_events table</description>
+        <approach>Create test user A and user B. User A inserts event. User A can SELECT own event. User B cannot SELECT user A's event (RLS blocks). Verify INSERT allowed for own user_id, blocked for other user_ids.</approach>
+      </test_idea>
+    </ideas>
+  </tests>
+
+  <notes>
+    <note type="important">
+      <title>IMPORTANT: Story 9-4 creates NEW analytics system</title>
+      <description>There is already a partial implementation of insight engagement analytics in migration 003_insights_engagement_analytics.sql and API endpoints /api/insights/[id]/track and /api/insights/analytics. These track engagement DIRECTLY on the insights table (view_count, first_viewed_at, etc.). Story 9-4 creates a NEW separate analytics_events table and generic /api/analytics/track endpoint for flexible event tracking (insights, exports, PWA). This is a different approach - analytics_events table stores all events as rows, not columns on insights table.</description>
+    </note>
+
+    <note type="architecture">
+      <title>Existing vs New Analytics Implementation</title>
+      <description>EXISTING: Migration 003 adds columns to insights table (view_count, dismissed_at, etc.). API endpoint /api/insights/[id]/track updates these columns directly. NEW (Story 9-4): Creates analytics_events table with generic event_name and JSONB event_properties. API endpoint /api/analytics/track inserts event rows. Benefits of new approach: (1) Flexible schema - can track any event type without schema changes, (2) Event history preserved - multiple views/dismissals tracked as separate rows, (3) Generic - works for insights, exports, PWA installs.</description>
+    </note>
+
+    <note type="privacy">
+      <title>Privacy-First Analytics (AC-9.4.7)</title>
+      <description>No PII tracked in event properties. For insight events, only track insight_id (UUID) and insight_type (string enum), NOT category names, amounts, or transaction details. For export events (Story 9-5), only track transaction_count, page_count, NOT actual transaction data. Device type detected from user agent (mobile/tablet/desktop), NOT full user agent string.</description>
+    </note>
+
+    <note type="testing">
+      <title>Use Test Utilities Library from Story 9-2</title>
+      <description>Story 9-2 created comprehensive test utilities library in src/lib/test-utils/. Use renderWithProviders() for component tests (automatically mocks Supabase, Auth, SWR, Router). Use mockSupabase from test utilities for database mocking. This reduces test code complexity from 30 lines to 5 lines per test.</description>
+    </note>
+
+    <note type="performance">
+      <title>Non-Blocking Analytics Calls</title>
+      <description>Analytics tracking failures MUST NOT break user experience. All analyticsService.trackEvent() calls wrapped in try-catch. Errors logged to console but not thrown. API calls to /api/analytics/track made asynchronously without awaiting response (fire-and-forget pattern acceptable for analytics).</description>
+    </note>
+
+    <note type="data-retention">
+      <title>90-Day Retention Policy (AC-9.4.10)</title>
+      <description>Analytics events table will grow unbounded without retention policy. Implement 90-day retention: (1) Document policy in docs/analytics/data-retention.md, (2) Create manual cleanup SQL script: DELETE FROM analytics_events WHERE timestamp < NOW() - INTERVAL '90 days', (3) Optionally create Supabase Edge Function or cron job for automated cleanup (future enhancement).</description>
+    </note>
+
+    <note type="session-tracking">
+      <title>Session ID Generation</title>
+      <description>Session ID stored in localStorage to group events by user session. On first trackEvent() call, generate UUID and store in localStorage with key 'analytics_session_id'. On subsequent calls, retrieve from localStorage. Session persists until localStorage cleared. Useful for funnel analysis (e.g., user viewed 3 insights in session before dismissing 1).</description>
+    </note>
+
+    <note type="device-detection">
+      <title>Device Type Detection</title>
+      <description>Use navigator.userAgent to detect mobile/tablet/desktop. Simple heuristic acceptable for MVP: if userAgent includes 'Mobile', set device_type='mobile'. If includes 'Tablet' or 'iPad', set device_type='tablet'. Otherwise device_type='desktop'. More sophisticated detection (screen size, touch events) can be added in future if needed.</description>
+    </note>
+  </notes>
+</story-context>

@@ -1,0 +1,159 @@
+# Retrospective Action Items Tracking System
+# Generated: 2026-01-27
+# Purpose: Track HIGH/CRITICAL priority action items from epic retrospectives
+#          to ensure findings are not forgotten during future epic planning
+#
+# Status Values:
+#   - pending: Not yet started
+#   - in-progress: Currently being worked on
+#   - completed: Implementation finished
+#   - deferred: Postponed to future epic
+#   - obsolete: No longer relevant or superseded
+#
+# Priority Values:
+#   - CRITICAL: Production blocker or test blocker
+#   - HIGH: Feature completeness or strategic gap
+#   - MEDIUM: Quality improvement or process enhancement
+#   - LOW: Nice-to-have or future consideration
+
+epic-6:
+  retrospective_date: 2025-12-07
+  action_items:
+    - id: epic6-high-1
+      priority: HIGH
+      description: Migrate rate limiting to Redis/Upstash for multi-instance production support
+      status: completed
+      epic_assigned: 9
+      story_id: 9-1-migrate-rate-limiting-to-redis
+      notes: Completed in Epic 9 Story 9-1. Production-ready with Upstash Redis integration.
+
+    - id: epic6-high-2
+      priority: HIGH
+      description: Add insight engagement analytics (view count, dismissal rate, metadata clicks)
+      status: in-progress
+      epic_assigned: 9
+      story_id: 9-4-add-insight-engagement-analytics
+      notes: Drafted in Epic 9 Story 9-4. Addresses repeated issue from Epic 6 and Epic 8.
+
+    - id: epic6-medium-1
+      priority: MEDIUM
+      description: Complete Story 6-3 pagination UI (AC7 missing - page size selector, jump-to-page)
+      status: in-progress
+      epic_assigned: 9
+      story_id: 9-7-complete-story-6-3-pagination-ui
+      notes: Technical debt from Epic 6. Drafted in Epic 9 Story 9-7.
+
+    - id: epic6-medium-2
+      priority: MEDIUM
+      description: Create deployment checklist documenting all required environment variables
+      status: in-progress
+      epic_assigned: 9
+      story_id: 9-8-create-deployment-checklist
+      notes: Drafted in Epic 9 Story 9-8.
+
+    - id: epic6-medium-3
+      priority: MEDIUM
+      description: Review and modernize tsconfig.json (eliminate downlevelIteration errors, strict mode)
+      status: in-progress
+      epic_assigned: 9
+      story_id: 9-9-modernize-tsconfig
+      notes: Drafted in Epic 9 Story 9-9.
+
+    - id: epic6-low-1
+      priority: LOW
+      description: Add E2E test suite for cron jobs (Playwright/Cypress with mock time)
+      status: deferred
+      epic_assigned: null
+      story_id: null
+      notes: Deferred to future epic. Current manual testing sufficient for now.
+
+    - id: epic6-low-2
+      priority: LOW
+      description: Benchmark cron job performance (validate Vercel timeout at 1000+ users)
+      status: deferred
+      epic_assigned: null
+      story_id: null
+      notes: Deferred to future epic. Current user count well below limit.
+
+epic-8:
+  retrospective_date: 2026-01-06
+  action_items:
+    - id: epic8-critical-1
+      priority: CRITICAL
+      description: Create test utilities library to unblock integration tests (mocking complexity barrier)
+      status: completed
+      epic_assigned: 9
+      story_id: 9-2-create-test-utilities-library
+      notes: Completed in Epic 9 Story 9-2. Reduces integration test setup from 30 lines to 5.
+
+    - id: epic8-high-1
+      priority: HIGH
+      description: Add analytics instrumentation for Epic 8 features (CSV/PDF exports, PWA adoption)
+      status: in-progress
+      epic_assigned: 9
+      story_id: 9-5-add-export-and-pwa-analytics
+      notes: Drafted in Epic 9 Story 9-5. REPEAT ISSUE from Epic 6 - must be addressed.
+
+    - id: epic8-high-2
+      priority: HIGH
+      description: Implement retrospective action item tracker (YAML tracking, aged item warnings)
+      status: in-progress
+      epic_assigned: 9
+      story_id: 9-3-implement-retrospective-action-item-tracker
+      notes: Currently being implemented in Epic 9 Story 9-3. Process fix to prevent repeated failures.
+
+    - id: epic8-high-3
+      priority: HIGH
+      description: Allocate 20% infrastructure time (1 of 5 stories per epic)
+      status: in-progress
+      epic_assigned: 9
+      story_id: 9-10-formalize-20-percent-infrastructure-rule
+      notes: Drafted in Epic 9 Story 9-10. Strategic shift to address technical debt accumulation.
+
+    - id: epic8-medium-1
+      priority: MEDIUM
+      description: Complete device session management AC-8.4.5 (view/revoke device sessions)
+      status: in-progress
+      epic_assigned: 9
+      story_id: 9-6-complete-device-session-management
+      notes: Security feature gap. Drafted in Epic 9 Story 9-6.
+
+    - id: epic8-medium-2
+      priority: MEDIUM
+      description: Add pre-review checklist to story template (raise first-time-right rate from 80% to 90%+)
+      status: pending
+      epic_assigned: null
+      story_id: null
+      notes: Process improvement. Consider for future epic.
+
+    - id: epic8-medium-3
+      priority: MEDIUM
+      description: Formalize story completion template (mandatory File List, Completion Notes, Dev Notes)
+      status: pending
+      epic_assigned: null
+      story_id: null
+      notes: Documentation standard. Consider for future epic.
+
+    - id: epic8-medium-4
+      priority: MEDIUM
+      description: Add performance benchmarking to CI (Lighthouse CI for offline page load, SWR cache)
+      status: pending
+      epic_assigned: null
+      story_id: null
+      notes: AC-8.5.8 performance targets assumed, not validated. Consider for Epic 9 or 10.
+
+    - id: epic8-low-1
+      priority: LOW
+      description: Explore dependency injection for testability (long-term refactor alternative)
+      status: deferred
+      epic_assigned: null
+      story_id: null
+      notes: Deferred to Epic 10+. Test utilities library from Story 9-2 may be sufficient pragmatic solution.
+
+    - id: epic8-low-2
+      priority: LOW
+      description: Create custom type declaration guidelines documentation
+      status: pending
+      epic_assigned: null
+      story_id: null
+      notes: Document process for libraries without @types. Low priority documentation task.

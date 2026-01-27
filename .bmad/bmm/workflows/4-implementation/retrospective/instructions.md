@@ -1354,6 +1354,131 @@ Retrospective document was saved successfully, but {sprint_status_file} may need
 </output>
 </check>
 
+<substep n="11.5" goal="Track Action Items from Retrospective">
+
+<action>Extract action items from retrospective document that was just saved</action>
+
+<action>Parse the "Recommended Actions for Future Epics" section from {retrospectives_folder}/epic-{{epic_number}}-retro-{date}.md</action>
+
+<check if="Recommended Actions section exists">
+  <output>
+Bob (Scrum Master): "Now I'm going to extract action items from our retrospective and add them to our tracking system..."
+  </output>
+
+  <action>For each action item in the section:</action>
+  - Extract priority level (CRITICAL, HIGH, MEDIUM, LOW) from section headings or item labels
+  - Extract description from action item title and details
+  - Generate unique ID: epic{{epic_number}}-{priority_lowercase}-{index}
+  - Set status: "pending" (default for new action items)
+  - Set epic_assigned: null (to be assigned during next epic planning)
+  - Set story_id: null (to be populated when story is created)
+  - Extract notes from "Why", "Effort", "Epic" fields if present
+
+  <action>Load existing action items from {sprint_artifacts}/retrospective-action-items.yaml</action>
+
+  <action>Append new action items to the YAML file under epic-{{epic_number}} section:</action>
+  ```yaml
+  epic-{{epic_number}}:
+    retrospective_date: {{retro_date}}
+    action_items:
+      - id: epic{{epic_number}}-{priority}-{index}
+        priority: {PRIORITY}
+        description: {description}
+        status: pending
+        epic_assigned: null
+        story_id: null
+        notes: {notes}
+  ```
+
+  <action>Save updated retrospective-action-items.yaml file</action>
+
+  <output>
+✅ Action Items Tracking Updated
+
+{{action_item_count}} new action items added to retrospective-action-items.yaml
+Epic {{epic_number}} action items are now being tracked
+  </output>
+</check>
+
+<check if="Recommended Actions section NOT found">
+  <output>
+⚠️ No "Recommended Actions" section found in retrospective document.
+Skipping action item extraction. Action items can be manually added to retrospective-action-items.yaml if needed.
+  </output>
+</check>
+
+<action>Check for aged action items from previous epics</action>
+
+<action>Load all action items from {sprint_artifacts}/retrospective-action-items.yaml</action>
+
+<action>For each action item with status "pending":</action>
+- Calculate age: current_epic_number - epic_where_item_was_created
+- Check warning thresholds:
+  - CRITICAL priority: Warn if age >= 1 epic
+  - HIGH priority: Warn if age >= 2 epics
+  - MEDIUM priority: Warn if age >= 3 epics
+  - LOW priority: No warning
+
+<action>Collect all aged items that exceed their warning threshold</action>
+
+<check if="aged items found">
+  <output>
+⚠️ **AGED ACTION ITEMS WARNING**
+
+The following action items have been pending for too long:
+
+{{#each aged_items}}
+- **{{this.id}}** ({{this.priority}}) - Created {{this.age}} epics ago
+  Description: {{this.description}}
+  Status: {{this.status}}
+  Epic Assigned: {{this.epic_assigned || "None"}}
+{{/each}}
+
+**Recommendation**: Review these items in next epic planning and either:
+1. Assign to a story in Epic {{next_epic_num}}
+2. Mark as "deferred" with a note explaining why
+3. Mark as "obsolete" if no longer relevant
+  </output>
+</check>
+
+<check if="NO aged items found">
+  <output>
+✅ No aged action items - all HIGH/CRITICAL items are being tracked appropriately
+  </output>
+</check>
+
+<action>Validate cross-references for action items</action>
+
+<action>Load {sprint_status_file} to check epic and story references</action>
+
+<action>For each action item with epic_assigned or story_id values:</action>
+- Verify epic_assigned exists in development_status (key like "epic-{N}")
+- Verify story_id exists in development_status (key matching story_id format)
+- Collect any invalid references
+
+<check if="invalid references found">
+  <output>
+⚠️ **CROSS-REFERENCE VALIDATION WARNINGS**
+
+The following action items have invalid references:
+
+{{#each invalid_refs}}
+- **{{this.id}}**: {{this.error}}
+  Current reference: epic_assigned={{this.epic_assigned}}, story_id={{this.story_id}}
+{{/each}}
+
+**Recommendation**: Update retrospective-action-items.yaml to fix these references.
+  </output>
+</check>
+
+<check if="all references valid">
+  <output>
+✅ All cross-references validated - epic and story IDs are correct
+  </output>
+</check>
+
+</substep>
+
 </step>
 
 <step n="12" goal="Final Summary and Handoff">
