@@ -108,7 +108,7 @@ development_status:
   9-1-migrate-rate-limiting-to-redis: done
   9-2-create-test-utilities-library: done
   9-3-implement-retrospective-action-item-tracker: done
-  9-4-add-insight-engagement-analytics: ready-for-dev
+  9-4-add-insight-engagement-analytics: done
   9-5-add-export-and-pwa-analytics: drafted
   9-6-complete-device-session-management: drafted
   9-7-complete-story-6-3-pagination-ui: drafted

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Box, Heading, Text, VStack, HStack, useToast, Button } from '@chakra-ui/react';
@@ -11,6 +11,7 @@ import { InsightsList } from './InsightsList';
 import { EmptyInsightsState } from './EmptyInsightsState';
 import { RefreshInsightsButton } from './RefreshInsightsButton';
 import { InsightsPagination } from './InsightsPagination';
+import { trackInsightsPageViewed, trackInsightDismissed } from '@/lib/services/analyticsService';
 import type { Insight } from '@/types/database.types';
 
 // API response type
@@ -83,6 +84,16 @@ export function InsightsPageContent() {
   const insights = data?.insights || [];
   const totalInsights = data?.total || 0;
 
+  // Track page view once on mount (AC-9.4.3)
+  const hasTrackedPageView = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedPageView.current) {
+      hasTrackedPageView.current = true;
+      trackInsightsPageViewed(filters.type, filters.page);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - track once on mount, not on filter changes
+
   // Handle filter changes (reset to page 1 when filters change)
   const handleFilterChange = (newFilters: Partial<typeof filters>) => {
     const updatedFilters = { ...filters, ...newFilters, page: 1 };
@@ -135,10 +146,13 @@ export function InsightsPageContent() {
   const handleDismiss = async (id: string) => {
     if (!data) return;
 
+    // Find the insight to get its type for analytics
+    const insight = data.insights.find(i => i.id === id);
+
     // Optimistic update
     const optimisticData: InsightsResponse = {
-      insights: data.insights.map(insight =>
-        insight.id === id ? { ...insight, is_dismissed: true } : insight
+      insights: data.insights.map(i =>
+        i.id === id ? { ...i, is_dismissed: true } : i
       ),
       total: data.total,
     };
@@ -151,6 +165,11 @@ export function InsightsPageContent() {
 
       if (!res.ok) {
         throw new Error('Failed to dismiss insight');
+      }
+
+      // Track dismissal event (AC-9.4.5)
+      if (insight) {
+        trackInsightDismissed(id, insight.type);
       }
 
       // Revalidate

@@ -219,6 +219,43 @@ export interface Database {
           }
         ];
       };
+      analytics_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          event_name: string;
+          event_properties: Json;
+          timestamp: string;
+          session_id: string | null;
+          device_type: 'mobile' | 'tablet' | 'desktop' | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          event_name: string;
+          event_properties?: Json;
+          timestamp?: string;
+          session_id?: string | null;
+          device_type?: 'mobile' | 'tablet' | 'desktop' | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          event_name?: string;
+          event_properties?: Json;
+          timestamp?: string;
+          session_id?: string | null;
+          device_type?: 'mobile' | 'tablet' | 'desktop' | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'analytics_events_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

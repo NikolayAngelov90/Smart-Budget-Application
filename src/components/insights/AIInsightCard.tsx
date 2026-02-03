@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, ReactNode } from 'react';
+import { useState, useRef, ReactNode } from 'react';
 import {
   Card,
   CardBody,
@@ -26,6 +26,7 @@ import {
 } from '@chakra-ui/icons';
 import type { Insight } from '@/types/database.types';
 import { InsightErrorBoundary } from './InsightErrorBoundary';
+import { trackInsightViewed } from '@/lib/services/analyticsService';
 
 interface AIInsightCardProps {
   insight: Insight;
@@ -94,6 +95,7 @@ export function AIInsightCard({
 }: AIInsightCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isMobile = useBreakpointValue({ base: true, md: false });
+  const hasTrackedView = useRef(false);
 
   const colorScheme = getColorScheme(insight.type);
   const icon = getIcon(insight.type);
@@ -109,6 +111,12 @@ export function AIInsightCard({
   };
 
   const handleSeeDetails = () => {
+    // Track insight view event once per card (AC-9.4.4)
+    if (!hasTrackedView.current) {
+      hasTrackedView.current = true;
+      trackInsightViewed(insight.id, insight.type);
+    }
+
     if (isMobile && onOpenModal) {
       // On mobile, trigger modal
       onOpenModal();
