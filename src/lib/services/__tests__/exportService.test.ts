@@ -13,6 +13,12 @@ import { exportTransactionsToCSV } from '../exportService';
 jest.mock('papaparse');
 const mockUnparse = Papa.unparse as jest.MockedFunction<typeof Papa.unparse>;
 
+// Mock analytics service to prevent actual tracking during tests
+jest.mock('../analyticsService', () => ({
+  trackCSVExported: jest.fn().mockResolvedValue({ success: true }),
+  trackPDFExported: jest.fn().mockResolvedValue({ success: true }),
+}));
+
 // Type for CSV row data in tests
 type CSVRowData = Record<string, string | number>;
 

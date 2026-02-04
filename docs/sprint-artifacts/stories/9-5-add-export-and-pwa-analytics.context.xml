@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Story Context File: 9-5-add-export-and-pwa-analytics
+  Generated: 2026-02-04
+  Epic: 9 - Technical Foundation & Quality Infrastructure
+-->
+<story-context>
+  <metadata>
+    <story_id>9-5</story_id>
+    <story_key>9-5-add-export-and-pwa-analytics</story_key>
+    <epic_id>9</epic_id>
+    <title>Add Export and PWA Analytics</title>
+    <status>ready-for-dev</status>
+    <priority>HIGH</priority>
+  </metadata>
+
+  <acceptance_criteria>
+    <criterion id="AC-9.5.1">Track csv_exported with transaction_count</criterion>
+    <criterion id="AC-9.5.2">Track pdf_exported with month and page_count</criterion>
+    <criterion id="AC-9.5.3">Track pwa_installed with platform</criterion>
+    <criterion id="AC-9.5.4">Track offline_mode_active with cached_data_size</criterion>
+    <criterion id="AC-9.5.5">Integrate analytics into exportService</criterion>
+    <criterion id="AC-9.5.6">Service Worker integration for PWA events</criterion>
+    <criterion id="AC-9.5.7">Unit tests for all events</criterion>
+    <criterion id="AC-9.5.8">Prevent duplicate PWA install events</criterion>
+    <criterion id="AC-9.5.9">Offline event buffering</criterion>
+  </acceptance_criteria>
+
+  <artifacts>
+    <code>
+      <artifact path="src/lib/services/exportService.ts" reason="Add CSV/PDF export tracking"/>
+      <artifact path="src/lib/services/analyticsService.ts" reason="Add offline buffering"/>
+      <artifact path="src/types/analytics.types.ts" reason="Add ExportEvent, PWAEvent types"/>
+      <artifact path="src/app/api/analytics/track/route.ts" reason="API already supports new events"/>
+    </code>
+  </artifacts>
+
+  <constraints>
+    <constraint type="error-handling">Analytics failures must not break exports</constraint>
+    <constraint type="privacy">No PII - only counts and sizes</constraint>
+    <constraint type="deduplication">PWA install tracked once per device</constraint>
+  </constraints>
+</story-context>

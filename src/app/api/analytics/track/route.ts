@@ -1,6 +1,7 @@
 /**
  * Analytics Event Tracking Endpoint
  * Story 9-4: Add Insight Engagement Analytics
+ * Story 9-5: Add Export and PWA Analytics
  *
  * POST /api/analytics/track
  *
@@ -19,9 +20,10 @@ const VALID_EVENT_NAMES = [
   'insights_page_viewed',
   'insight_viewed',
   'insight_dismissed',
-  // Export events (Story 9-5 - future)
+  // Export events (Story 9-5)
   'csv_exported',
   'pdf_exported',
+  // PWA events (Story 9-5)
   'pwa_installed',
   'offline_mode_active',
 ] as const;

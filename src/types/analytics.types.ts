@@ -48,12 +48,55 @@ export type InsightEvent =
   | { event_name: 'insight_viewed'; properties: InsightViewedProperties }
   | { event_name: 'insight_dismissed'; properties: InsightDismissedProperties };
 
-// Export event types (Story 9-5 - future use)
+// Export event types (Story 9-5)
 export type ExportEventName =
   | 'csv_exported'
-  | 'pdf_exported'
+  | 'pdf_exported';
+
+// PWA event types (Story 9-5)
+export type PWAEventName =
   | 'pwa_installed'
   | 'offline_mode_active';
+
+// Export event properties
+export interface CSVExportedProperties {
+  transaction_count: number;
+}
+
+export interface PDFExportedProperties {
+  month: string;
+  page_count: number;
+}
+
+// Union type for type-safe export events
+export type ExportEvent =
+  | { event_name: 'csv_exported'; properties: CSVExportedProperties }
+  | { event_name: 'pdf_exported'; properties: PDFExportedProperties };
+
+// PWA event properties
+export type PWAPlatform = 'iOS' | 'Android' | 'Desktop';
+
+export interface PWAInstalledProperties {
+  platform: PWAPlatform;
+}
+
+export interface OfflineModeActiveProperties {
+  cached_data_size: number;
+}
+
+// Union type for type-safe PWA events
+export type PWAEvent =
+  | { event_name: 'pwa_installed'; properties: PWAInstalledProperties }
+  | { event_name: 'offline_mode_active'; properties: OfflineModeActiveProperties };
+
+// Buffered event for offline storage
+export interface BufferedEvent {
+  event_name: string;
+  event_properties: Record<string, unknown>;
+  timestamp: string;
+  session_id: string;
+  device_type: DeviceType;
+}
 
 // API request/response types
 export interface TrackEventPayload {

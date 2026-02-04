@@ -14,6 +14,7 @@ const mockSetFontSize = jest.fn();
 const mockSetTextColor = jest.fn();
 const mockSetFont = jest.fn();
 const mockText = jest.fn();
+const mockGetNumberOfPages = jest.fn().mockReturnValue(1);
 
 jest.mock('jspdf', () => {
   return jest.fn().mockImplementation(() => ({
@@ -23,9 +24,15 @@ jest.mock('jspdf', () => {
     text: mockText,
     addPage: mockAddPage,
     save: mockSave,
+    getNumberOfPages: mockGetNumberOfPages,
     lastAutoTable: { finalY: 100 },
   }));
 });
+
+// Mock analytics service to prevent actual tracking during tests
+jest.mock('../analyticsService', () => ({
+  trackPDFExported: jest.fn().mockResolvedValue({ success: true }),
+}));
 
 // Mock jspdf-autotable
 const mockAutoTable = jest.fn();

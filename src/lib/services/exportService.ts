@@ -2,6 +2,7 @@
  * Export Service
  * Story 8.1: Export Transactions to CSV
  * Story 8.2: Export Financial Report to PDF
+ * Story 9.5: Export Analytics Integration
  *
  * Client-side export functionality for transactions and reports.
  * Privacy-first design: All processing happens in the browser.
@@ -12,6 +13,7 @@ import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { PDFReportData } from '@/types/export.types';
+import { trackCSVExported, trackPDFExported } from './analyticsService';
 
 /**
  * Transaction type with category information
@@ -134,6 +136,11 @@ export async function exportTransactionsToCSV(
 
     // Report completion
     onProgress?.(100);
+
+    // AC-9.5.1, AC-9.5.5: Track CSV export (fire-and-forget, don't break export)
+    trackCSVExported(totalTransactions).catch(() => {
+      // Analytics failure should not break export
+    });
   } catch (error) {
     console.error('Error exporting transactions to CSV:', error);
     throw new Error('Failed to export transactions. Please try again.');
@@ -331,8 +338,16 @@ export async function exportMonthlyReportToPDF(
     // AC-8.2.3: Filename format budget-report-YYYY-MM.pdf
     const filename = `budget-report-${reportData.month}.pdf`;
 
+    // Get page count before saving
+    const pageCount = doc.getNumberOfPages();
+
     // AC-8.2.10: Trigger browser download (client-side)
     doc.save(filename);
+
+    // AC-9.5.2, AC-9.5.5: Track PDF export (fire-and-forget, don't break export)
+    trackPDFExported(reportData.month, pageCount).catch(() => {
+      // Analytics failure should not break export
+    });
   } catch (error) {
     console.error('Error generating PDF report:', error);
     throw new Error('Failed to generate PDF report. Please try again.');
