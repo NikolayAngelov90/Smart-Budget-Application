@@ -256,6 +256,49 @@ export interface Database {
           }
         ];
       };
+      user_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          session_token: string;
+          device_name: string;
+          device_type: 'mobile' | 'tablet' | 'desktop';
+          browser: string | null;
+          ip_address: string | null;
+          last_active: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          session_token: string;
+          device_name?: string;
+          device_type?: 'mobile' | 'tablet' | 'desktop';
+          browser?: string | null;
+          ip_address?: string | null;
+          last_active?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          session_token?: string;
+          device_name?: string;
+          device_type?: 'mobile' | 'tablet' | 'desktop';
+          browser?: string | null;
+          ip_address?: string | null;
+          last_active?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_sessions_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -294,6 +337,10 @@ export type TransactionUpdate = Database['public']['Tables']['transactions']['Up
 export type Insight = Database['public']['Tables']['insights']['Row'];
 export type InsightInsert = Database['public']['Tables']['insights']['Insert'];
 export type InsightUpdate = Database['public']['Tables']['insights']['Update'];
+
+export type UserSession = Database['public']['Tables']['user_sessions']['Row'];
+export type UserSessionInsert = Database['public']['Tables']['user_sessions']['Insert'];
+export type UserSessionUpdate = Database['public']['Tables']['user_sessions']['Update'];
 
 // Transaction with category details (for joined queries)
 export type TransactionWithCategory = Transaction & {

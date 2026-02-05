@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Story Context File: 9-6-complete-device-session-management
+  Generated: 2026-02-04
+  Epic: 9 - Technical Foundation & Quality Infrastructure
+-->
+<story-context>
+  <metadata>
+    <story_id>9-6</story_id>
+    <story_key>9-6-complete-device-session-management</story_key>
+    <epic_id>9</epic_id>
+    <title>Complete Device Session Management (AC-8.4.5)</title>
+    <status>ready-for-dev</status>
+    <priority>HIGH</priority>
+  </metadata>
+
+  <acceptance_criteria>
+    <criterion id="AC-9.6.1">Extend user_sessions table with device_name and last_active columns</criterion>
+    <criterion id="AC-9.6.2">Settings page displays active device sessions with names, types, timestamps</criterion>
+    <criterion id="AC-9.6.3">User can edit device name inline with optimistic UI</criterion>
+    <criterion id="AC-9.6.4">Display "Last active: X minutes/hours/days ago" for each session</criterion>
+    <criterion id="AC-9.6.5">User can revoke device session (remote logout)</criterion>
+    <criterion id="AC-9.6.6">Confirmation modal before revoking session</criterion>
+    <criterion id="AC-9.6.7">Cannot revoke current session (button disabled)</criterion>
+    <criterion id="AC-9.6.8">Real-time updates via Supabase Realtime</criterion>
+    <criterion id="AC-9.6.9">Unit and integration tests</criterion>
+  </acceptance_criteria>
+
+  <artifacts>
+    <code>
+      <artifact path="supabase/migrations/006_user_sessions_table.sql" reason="Create user_sessions table with device_name, last_active"/>
+      <artifact path="src/types/session.types.ts" reason="DeviceSession TypeScript interface"/>
+      <artifact path="src/types/database.types.ts" reason="Add user_sessions table type"/>
+      <artifact path="src/lib/services/sessionService.ts" reason="Session management functions"/>
+      <artifact path="src/app/api/user/sessions/route.ts" reason="GET sessions API"/>
+      <artifact path="src/app/api/user/sessions/[id]/route.ts" reason="PUT/DELETE session API"/>
+      <artifact path="src/components/settings/ActiveDevicesSection.tsx" reason="Active devices UI component"/>
+      <artifact path="src/components/settings/ConfirmRevokeSessionModal.tsx" reason="Revoke confirmation modal"/>
+      <artifact path="src/app/(dashboard)/settings/page.tsx" reason="Add Active Devices section"/>
+    </code>
+    <dependencies>
+      <dependency>date-fns (formatDistanceToNow for timestamps)</dependency>
+      <dependency>@chakra-ui/react (UI components)</dependency>
+      <dependency>swr (data fetching, optimistic updates)</dependency>
+      <dependency>@supabase/supabase-js (Realtime subscriptions)</dependency>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="security">Users can only view/manage their own sessions (RLS)</constraint>
+    <constraint type="security">Cannot revoke current session (self-lockout prevention)</constraint>
+    <constraint type="ux">Optimistic UI updates with SWR mutate</constraint>
+    <constraint type="ux">Confirmation modal required before session revocation</constraint>
+    <constraint type="realtime">Supabase Realtime for live session updates</constraint>
+  </constraints>
+
+  <existing_patterns>
+    <pattern name="Settings Page Structure">
+      Settings page uses Card components with VStack layout.
+      Each section has Heading, form controls, and action buttons.
+      Uses SWR for data fetching with optimistic updates.
+      Success/error feedback via Chakra toast.
+    </pattern>
+    <pattern name="API Route Pattern">
+      API routes in src/app/api/ with GET/POST/PUT/DELETE handlers.
+      Authentication via supabase.auth.getUser().
+      Return { data, error } JSON structure.
+    </pattern>
+    <pattern name="Database Types">
+      Types defined in src/types/database.types.ts.
+      Pattern: Row, Insert, Update types per table.
+      Helper types exported at bottom of file.
+    </pattern>
+    <pattern name="Modal Pattern">
+      ConfirmDeleteModal exists in src/components/settings/.
+      Uses Chakra Modal with isOpen/onOpen/onClose from useDisclosure.
+    </pattern>
+  </existing_patterns>
+</story-context>

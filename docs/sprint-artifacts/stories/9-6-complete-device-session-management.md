@@ -1,6 +1,6 @@
 # Story 9.6: Complete Device Session Management (AC-8.4.5)
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -202,20 +202,54 @@ Settings > Active Devices
 
 ### Context Reference
 
-- [Story 9-6 Context](9-6-complete-device-session-management.context.xml) - To be created during dev workflow
+- [Story 9-6 Context](9-6-complete-device-session-management.context.xml) - Generated 2026-02-04
 
 ### Agent Model Used
 
-TBD (Claude Sonnet 4.5)
+Claude Opus 4.5
 
 ### Debug Log References
 
-TBD
+None - implementation completed without issues
 
 ### Completion Notes List
 
-TBD - To be filled during implementation
+**Completed:** 2026-02-04
+**All Acceptance Criteria Met:**
+
+- ✅ AC-9.6.1: Created `user_sessions` table with `device_name` and `last_active` columns (migration 006)
+- ✅ AC-9.6.2: Settings page displays active device sessions via `ActiveDevicesSection` component
+- ✅ AC-9.6.3: User can edit device name inline with optimistic UI (click-to-edit pattern)
+- ✅ AC-9.6.4: Last active timestamp shown as "X minutes/hours/days ago" using formatDistanceToNow
+- ✅ AC-9.6.5: User can revoke device session via DELETE API (remote logout)
+- ✅ AC-9.6.6: Confirmation modal (`ConfirmRevokeSessionModal`) before revoking session
+- ✅ AC-9.6.7: Current session protected (button disabled, tooltip shown, API returns 400)
+- ✅ AC-9.6.8: Real-time updates via Supabase Realtime subscription on user_sessions table
+- ✅ AC-9.6.9: Comprehensive unit tests (28 tests) for service and API routes
+
+**Test Results:**
+- 28 new tests added
+- Total test suite: 483/483 passing
+- TypeScript: 0 errors
+- ESLint: 0 warnings/errors
 
 ### File List
 
-TBD - To be filled during implementation
+**New Files (10):**
+- `supabase/migrations/006_user_sessions_table.sql` - User sessions table with RLS
+- `src/types/session.types.ts` - DeviceSession TypeScript interface
+- `src/lib/services/sessionService.ts` - Session management service
+- `src/app/api/user/sessions/route.ts` - GET sessions API
+- `src/app/api/user/sessions/[id]/route.ts` - PUT/DELETE session API
+- `src/components/settings/ConfirmRevokeSessionModal.tsx` - Revoke confirmation modal
+- `src/components/settings/ActiveDevicesSection.tsx` - Active devices UI component
+- `src/lib/services/__tests__/sessionService.test.ts` - Service unit tests (14 tests)
+- `src/app/api/user/sessions/__tests__/route.test.ts` - GET API tests (3 tests)
+- `src/app/api/user/sessions/[id]/__tests__/route.test.ts` - PUT/DELETE API tests (11 tests)
+
+**Modified Files (3):**
+- `src/types/database.types.ts` - Added user_sessions table type
+- `src/app/(dashboard)/settings/page.tsx` - Added ActiveDevicesSection component
+- `docs/sprint-artifacts/stories/9-6-complete-device-session-management.context.xml` - Context file
+
+**Total:** 10 new files, 3 modified files, ~750 lines added

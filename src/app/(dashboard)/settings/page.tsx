@@ -4,6 +4,7 @@
  * Settings Page
  * Story 8.2: Export Financial Report to PDF
  * Story 8.3: Settings Page and Account Management
+ * Story 9.6: Complete Device Session Management
  *
  * AC-8.3.1: Settings page at /settings route
  * AC-8.3.2: Account Information section
@@ -14,6 +15,7 @@
  * AC-8.3.7: Success feedback
  * AC-8.3.8: Account deletion confirmation
  * AC-8.3.9: Mobile responsive
+ * AC-9.6.2: Active Devices section
  */
 
 import { useState, useEffect } from 'react';
@@ -46,6 +48,7 @@ import { exportMonthlyReportToPDF, exportTransactionsToCSV } from '@/lib/service
 import { ConfirmDeleteModal } from '@/components/settings/ConfirmDeleteModal';
 import { ProfilePictureUpload } from '@/components/settings/ProfilePictureUpload';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
+import { ActiveDevicesSection } from '@/components/settings/ActiveDevicesSection';
 import type { PDFReportData } from '@/types/export.types';
 import type { UserProfile } from '@/types/user.types';
 
@@ -613,6 +616,9 @@ export default function SettingsPage() {
               </VStack>
             </CardBody>
           </Card>
+
+          {/* Story 9.6: Active Devices Section - AC-9.6.2 */}
+          <ActiveDevicesSection />
 
           {/* AC-8.3.4: Privacy & Security Section */}
           <Card>
