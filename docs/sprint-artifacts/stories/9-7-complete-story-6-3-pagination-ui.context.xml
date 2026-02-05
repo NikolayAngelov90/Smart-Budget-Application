@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Story Context File: 9-7-complete-story-6-3-pagination-ui
+  Generated: 2026-02-05
+  Epic: 9 - Technical Foundation & Quality Infrastructure
+-->
+<story-context>
+  <metadata>
+    <story_id>9-7</story_id>
+    <story_key>9-7-complete-story-6-3-pagination-ui</story_key>
+    <epic_id>9</epic_id>
+    <title>Complete Story 6-3 Pagination UI</title>
+    <status>ready-for-dev</status>
+    <priority>MEDIUM</priority>
+  </metadata>
+
+  <acceptance_criteria>
+    <criterion id="AC-9.7.1">Page Size Selector - "Items per page" dropdown with options: 10, 25, 50, 100</criterion>
+    <criterion id="AC-9.7.2">Jump to Page Input - Input field with validation (1 to max page number)</criterion>
+    <criterion id="AC-9.7.3">Persistent Page Size Preference - Store in localStorage, restore on load</criterion>
+    <criterion id="AC-9.7.4">Dynamic Total Page Count - Recalculate when page size changes</criterion>
+    <criterion id="AC-9.7.5">Mobile-Responsive Controls - Stack vertically on mobile, horizontal on desktop</criterion>
+    <criterion id="AC-9.7.6">Validation and Error Handling - Jump-to-page rejects invalid values, shows error</criterion>
+    <criterion id="AC-9.7.7">Accessibility - Keyboard navigable (Tab, Enter), screen reader compatible</criterion>
+    <criterion id="AC-9.7.8">Unit Tests - Comprehensive tests for pagination interactions</criterion>
+  </acceptance_criteria>
+
+  <artifacts>
+    <code>
+      <file path="src/app/transactions/page.tsx" role="primary-modification">
+        Transactions page with filtering, search, SWR data fetching.
+        Currently hardcodes limit=100, offset=0 with NO pagination controls.
+        API response format: { data: Transaction[], count: number, limit: number, offset: number }
+        The API already supports limit/offset params and returns exact count.
+        Need to: add page state, dynamic limit/offset, and PaginationControls component.
+      </file>
+      <file path="src/app/api/transactions/route.ts" role="api-reference">
+        GET /api/transactions - Already supports limit, offset, count: 'exact'.
+        Query params: startDate, endDate, category, type, search, limit (default 100), offset (default 0), all.
+        Returns: { data: Transaction[], count: number, limit: number, offset: number }
+        No API changes needed - frontend-only story.
+      </file>
+      <file path="src/components/insights/InsightsPagination.tsx" role="reference-pattern">
+        Existing pagination component for insights page.
+        Has: Previous/Next buttons, page number buttons (max 7), mobile "Page X of Y" text.
+        Missing: Page size selector, jump-to-page, localStorage persistence.
+        Can use as reference pattern for page number generation algorithm.
+      </file>
+    </code>
+
+    <types>
+      <interface name="TransactionResponse">
+        <field name="data" type="Transaction[]" />
+        <field name="count" type="number" description="Total count from Supabase exact count" />
+        <field name="limit" type="number" />
+        <field name="offset" type="number" />
+      </interface>
+    </types>
+
+    <dependencies>
+      <dependency name="@chakra-ui/react" usage="Select, NumberInput, FormControl, HStack, Box, Button, IconButton, Text" />
+      <dependency name="@chakra-ui/icons" usage="ChevronLeftIcon, ChevronRightIcon" />
+      <dependency name="swr" usage="Already used on transactions page for data fetching" />
+      <dependency name="next/navigation" usage="useSearchParams for URL-based state" />
+    </dependencies>
+
+    <patterns>
+      <pattern name="localStorage-preference">
+        Key: transactions_page_size
+        Default: 25
+        Restore on mount, save on change.
+        Pattern used by: theme preferences, analytics session ID.
+      </pattern>
+      <pattern name="responsive-layout">
+        Chakra responsive props: flexDirection={{ base: 'column', md: 'row' }}
+        Mobile: stack vertically, Desktop: horizontal flex
+        Consistent with existing filter controls in transactions page.
+      </pattern>
+      <pattern name="pagination-state">
+        Current page + page size managed via useState.
+        Reset to page 1 when: page size changes, filters change, search changes.
+        API query: limit=pageSize, offset=(currentPage-1)*pageSize
+      </pattern>
+    </patterns>
+  </artifacts>
+
+  <implementation_notes>
+    <note>This is a frontend-only story. No API or database changes needed.</note>
+    <note>The transactions API already supports limit/offset and returns exact count.</note>
+    <note>Create a new PaginationControls component in src/components/transactions/</note>
+    <note>The InsightsPagination component is insights-specific; create a separate component for transactions.</note>
+    <note>When page size changes, reset to page 1 to avoid showing an empty page.</note>
+    <note>When filters or search change, also reset to page 1.</note>
+    <note>Page size options: 10, 25, 50, 100. Default: 25.</note>
+    <note>localStorage key: transactions_page_size (avoid generic names).</note>
+  </implementation_notes>
+</story-context>

@@ -59,6 +59,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
 import { FilterBreadcrumbs } from '@/components/transactions/FilterBreadcrumbs';
+import { PaginationControls, DEFAULT_PAGE_SIZE, LOCAL_STORAGE_KEY } from '@/components/transactions/PaginationControls';
 import { createClient } from '@/lib/supabase/client';
 import { exportTransactionsToCSV } from '@/lib/services/exportService'; // Story 8.1
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -130,6 +131,19 @@ function TransactionsContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // Story 9-7: Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if ([10, 25, 50, 100].includes(parsed)) return parsed;
+      }
+    }
+    return DEFAULT_PAGE_SIZE;
+  });
+
   // Network status tracking (Task 6)
   const [isOnline, setIsOnline] = useState(true);
 
@@ -170,7 +184,12 @@ function TransactionsContent() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Build query string for API
+  // Story 9-7: Reset to page 1 when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [startDate, endDate, categoryFilter, typeFilter, debouncedSearch]);
+
+  // Build query string for API (Story 9-7: dynamic pagination)
   const buildQueryString = useCallback(() => {
     const params = new URLSearchParams();
 
@@ -179,11 +198,11 @@ function TransactionsContent() {
     if (categoryFilter) params.append('category', categoryFilter);
     if (typeFilter !== 'all') params.append('type', typeFilter);
     if (debouncedSearch) params.append('search', debouncedSearch);
-    params.append('limit', '100');
-    params.append('offset', '0');
+    params.append('limit', pageSize.toString());
+    params.append('offset', ((currentPage - 1) * pageSize).toString());
 
     return params.toString();
-  }, [startDate, endDate, categoryFilter, typeFilter, debouncedSearch]);
+  }, [startDate, endDate, categoryFilter, typeFilter, debouncedSearch, pageSize, currentPage]);
 
   // Fetch transactions with optimized SWR configuration
   const {
@@ -307,6 +326,15 @@ function TransactionsContent() {
     setCategoryFilter('');
     setTypeFilter('all');
     setSearchQuery('');
+  };
+
+  // Story 9-7: AC-9.7.1 & AC-9.7.3: Handle page size change with localStorage persistence
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LOCAL_STORAGE_KEY, newSize.toString());
+    }
   };
 
   // Edit transaction handler
@@ -884,6 +912,18 @@ function TransactionsContent() {
               })}
             </VStack>
           )}
+
+        {/* Story 9-7: Pagination Controls */}
+        {!transactionsLoading && !transactionsError && transactionsResponse && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalItems={transactionsResponse.count}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={transactionsLoading}
+          />
+        )}
       </Container>
 
       {/* Edit Transaction Modal */}
