@@ -40,21 +40,29 @@ import { createClient } from '@/lib/supabase/client';
 import { ConfirmRevokeSessionModal } from './ConfirmRevokeSessionModal';
 import type { DeviceSession } from '@/types/session.types';
 
-const fetcher = async (url: string) => {
+interface SessionsResponse {
+  data: DeviceSession[];
+  current_session_token: string | null;
+}
+
+const fetcher = async (url: string): Promise<SessionsResponse> => {
   const res = await fetch(url);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to fetch');
-  return data.data;
+  return { data: data.data, current_session_token: data.current_session_token };
 };
 
 export function ActiveDevicesSection() {
   const toast = useToast();
 
   // Fetch sessions with SWR
-  const { data: sessions, error, isLoading } = useSWR<DeviceSession[]>(
+  const { data: response, error, isLoading } = useSWR<SessionsResponse>(
     '/api/user/sessions',
     fetcher
   );
+
+  const sessions = response?.data;
+  const currentSessionToken = response?.current_session_token || null;
 
   // State for editing device name
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -66,18 +74,8 @@ export function ActiveDevicesSection() {
   const [sessionToRevoke, setSessionToRevoke] = useState<DeviceSession | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
 
-  // Current session token (from localStorage analytics session ID)
-  const [currentSessionToken, setCurrentSessionToken] = useState<string | null>(null);
-
   // Ref for tracking component mount
   const isMounted = useRef(true);
-
-  // Get current session token on mount
-  useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      setCurrentSessionToken(localStorage.getItem('analytics_session_id'));
-    }
-  }, []);
 
   // AC-9.6.8: Set up Supabase Realtime subscription
   useEffect(() => {
@@ -160,15 +158,17 @@ export function ActiveDevicesSection() {
       const optimisticSessions = sessions?.map((s) =>
         s.id === sessionId ? { ...s, device_name: editedName.trim() } : s
       );
-      mutate('/api/user/sessions', optimisticSessions, false);
+      if (response) {
+        mutate('/api/user/sessions', { ...response, data: optimisticSessions || [] }, false);
+      }
 
-      const response = await fetch(`/api/user/sessions/${sessionId}`, {
+      const res = await fetch(`/api/user/sessions/${sessionId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ device_name: editedName.trim() }),
       });
 
-      if (!response.ok) {
+      if (!res.ok) {
         throw new Error('Failed to update device name');
       }
 
@@ -211,13 +211,15 @@ export function ActiveDevicesSection() {
     try {
       // Optimistic update - remove session from list
       const optimisticSessions = sessions?.filter((s) => s.id !== sessionToRevoke.id);
-      mutate('/api/user/sessions', optimisticSessions, false);
+      if (response) {
+        mutate('/api/user/sessions', { ...response, data: optimisticSessions || [] }, false);
+      }
 
-      const response = await fetch(`/api/user/sessions/${sessionToRevoke.id}`, {
+      const res = await fetch(`/api/user/sessions/${sessionToRevoke.id}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) {
+      if (!res.ok) {
         throw new Error('Failed to revoke session');
       }
 
@@ -247,16 +249,13 @@ export function ActiveDevicesSection() {
     }
   };
 
-  // Check if session is current session (simplified check using session_token comparison)
-  // Note: In a real implementation, we'd compare the actual session token
-  // For now, we mark the most recently active session as "current"
+  // Check if session is current session using the token returned by the API
   const isCurrentSession = (session: DeviceSession) => {
-    // If we have a current session token, compare it
-    if (currentSessionToken && session.session_token === currentSessionToken) {
-      return true;
+    if (currentSessionToken) {
+      return session.session_token === currentSessionToken;
     }
     // Fallback: assume most recently active is current (first in sorted list)
-    return sessions && sessions[0]?.id === session.id;
+    return sessions ? sessions[0]?.id === session.id : false;
   };
 
   // Loading state
