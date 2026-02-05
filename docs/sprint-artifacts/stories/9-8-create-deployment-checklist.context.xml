@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Story Context File: 9-8-create-deployment-checklist
+  Generated: 2026-02-05
+  Epic: 9 - Technical Foundation & Quality Infrastructure
+-->
+<story-context>
+  <metadata>
+    <story_id>9-8</story_id>
+    <story_key>9-8-create-deployment-checklist</story_key>
+    <epic_id>9</epic_id>
+    <title>Create Deployment Checklist</title>
+    <status>ready-for-dev</status>
+    <priority>MEDIUM</priority>
+  </metadata>
+
+  <acceptance_criteria>
+    <criterion id="AC-9.8.1">Deployment checklist document at docs/deployment-checklist.md</criterion>
+    <criterion id="AC-9.8.2">Environment variable validation (Supabase, Redis, OAuth, Cron)</criterion>
+    <criterion id="AC-9.8.3">Database migration verification steps</criterion>
+    <criterion id="AC-9.8.4">Build and type check validation commands</criterion>
+    <criterion id="AC-9.8.5">Test suite execution steps</criterion>
+    <criterion id="AC-9.8.6">Performance benchmarks (Lighthouse CI)</criterion>
+    <criterion id="AC-9.8.7">Automated validation script at scripts/pre-deployment-check.js</criterion>
+    <criterion id="AC-9.8.8">Exit codes 0/1 for CI/CD integration</criterion>
+    <criterion id="AC-9.8.9">Verbose output with pass/fail/warning symbols</criterion>
+    <criterion id="AC-9.8.10">Documentation explaining usage</criterion>
+  </acceptance_criteria>
+
+  <artifacts>
+    <existing_files>
+      <file path=".env.example" role="env-var-reference">
+        Required vars: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET,
+        CRON_SECRET, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, NEXT_PUBLIC_APP_URL
+      </file>
+      <file path="package.json" role="scripts-reference">
+        Existing scripts: dev, build, start, type-check, lint, format, format:check,
+        test, test:watch, test:coverage, benchmark.
+        Need to add: pre-deploy script.
+      </file>
+      <file path=".github/workflows/test.yml" role="ci-reference">
+        Runs type-check, lint, tests, build, benchmarks on PR/push to main.
+        Deploys to Vercel on main push after tests pass.
+      </file>
+      <file path=".github/workflows/lighthouse.yml" role="perf-reference">
+        Lighthouse CI on PRs: performance >90, accessibility >95, best-practices >90.
+      </file>
+      <file path=".github/workflows/coverage.yml" role="coverage-reference">
+        Daily coverage report, Codecov upload.
+      </file>
+      <file path="supabase/migrations/" role="migrations-reference">
+        6 migration files: 001-006 (schema, RLS, analytics, profiles, events, sessions).
+      </file>
+      <file path="src/app/api/health/redis/route.ts" role="health-check">
+        GET /api/health/redis - Returns Redis status, provider, latency.
+      </file>
+    </existing_files>
+  </artifacts>
+
+  <implementation_notes>
+    <note>This is a DevOps/tooling story - no production code changes.</note>
+    <note>Pre-deployment script should be a Node.js script (consistent with existing tooling).</note>
+    <note>Script must work in CI (no interactive input, exit codes for automation).</note>
+    <note>Existing CI workflows already cover most checks - script is for local/manual use.</note>
+    <note>Environment variable list should be parsed from .env.example for maintainability.</note>
+  </implementation_notes>
+</story-context>

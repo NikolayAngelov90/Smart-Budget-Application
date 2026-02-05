@@ -1,6 +1,6 @@
 # Story 9.8: Create Deployment Checklist
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -218,20 +218,41 @@ Exit code: 0
 
 ### Context Reference
 
-- [Story 9-8 Context](9-8-create-deployment-checklist.context.xml) - To be created during dev workflow
+- [Story 9-8 Context](9-8-create-deployment-checklist.context.xml)
 
 ### Agent Model Used
 
-TBD (Claude Sonnet 4.5)
+Claude Opus 4.5
 
 ### Debug Log References
 
-TBD
+- Fixed test failures: (1) `checkEnvVars()` loads `.env.local` internally bypassing test env cleanup — mocked `fs.existsSync` to return false for `.env.local`, (2) Deployment checklist exit code regex didn't match across newlines — switched to `toContain` assertions, (3) TypeScript redeclare errors from non-module `.ts` test files — added `export {}` and renamed `fs` to `nodeFs`
 
 ### Completion Notes List
 
-TBD - To be filled during implementation
+All 10 acceptance criteria met:
+- AC-9.8.1: Deployment checklist at `docs/deployment-checklist.md` with 9 sections
+- AC-9.8.2: Environment variable validation for all 10 required vars (Supabase, Redis, OAuth, Cron)
+- AC-9.8.3: Database migration verification steps listing all 6 migration files
+- AC-9.8.4: Build and type check validation commands
+- AC-9.8.5: Test suite execution steps with coverage thresholds
+- AC-9.8.6: Performance benchmarks (Lighthouse CI thresholds, benchmark script)
+- AC-9.8.7: Automated validation script at `scripts/pre-deployment-check.js`
+- AC-9.8.8: Exit codes 0/1 for CI/CD integration
+- AC-9.8.9: Verbose output with [PASS], [FAIL], [WARN], [SKIP] symbols
+- AC-9.8.10: Documentation in checklist with automated validation section, CI/CD table, rollback procedure
+
+Test results: 559/559 passing, TypeScript: 0 errors, ESLint: 0 warnings
 
 ### File List
 
-TBD - To be filled during implementation
+**New Files (5):**
+- `docs/deployment-checklist.md` - Comprehensive pre-deployment checklist document
+- `scripts/check-env-vars.js` - Environment variable validation script
+- `scripts/pre-deployment-check.js` - Automated pre-deployment validation script
+- `scripts/__tests__/check-env-vars.test.ts` - 13 unit tests for env var checker
+- `scripts/__tests__/pre-deployment-check.test.ts` - 16 unit tests for pre-deploy script
+- `docs/sprint-artifacts/stories/9-8-create-deployment-checklist.context.xml` - Story context
+
+**Modified Files (1):**
+- `package.json` - Added `pre-deploy`, `pre-deploy:quick`, `check-env` npm scripts
