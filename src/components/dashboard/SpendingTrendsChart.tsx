@@ -71,7 +71,7 @@ function CustomTooltip({
   }>;
 }) {
   if (active && payload && payload.length) {
-    const data = payload[0].payload as LineChartDataPoint;
+    const data = payload[0]!.payload as LineChartDataPoint;
     const income = payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'income')?.value ?? 0;
     const expenses = payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'expenses')?.value ?? 0;
 

@@ -6,7 +6,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
-import { ConfirmDeleteModal } from '../ConfirmDeleteModal';
+import { ConfirmDeleteModal } from '@/components/settings/ConfirmDeleteModal';
 
 // Wrapper component for Chakra UI
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {

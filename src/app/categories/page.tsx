@@ -225,7 +225,7 @@ export default function CategoriesPage() {
             colorScheme="blue"
             onChange={(index) => {
               const types: Array<'all' | 'income' | 'expense'> = ['all', 'expense', 'income'];
-              setSelectedType(types[index]);
+              setSelectedType(types[index] ?? 'all');
             }}
           >
             <TabList>

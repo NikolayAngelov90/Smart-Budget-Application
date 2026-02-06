@@ -1,6 +1,6 @@
 # Story 9.9: Modernize tsconfig.json
 
-Status: drafted
+Status: done
 
 ## Story
 

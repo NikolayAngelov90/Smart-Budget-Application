@@ -16,7 +16,7 @@ import {
   getCachedDataTimestamp,
   clearOfflineCache,
   getCacheHealth,
-} from '../offlineService';
+} from '@/lib/services/offlineService';
 import * as localStorageProvider from '@/lib/swr/localStorageProvider';
 
 // Mock localStorage

@@ -3,7 +3,7 @@
  * Unit Tests for PDF Export Functionality
  */
 
-import { exportMonthlyReportToPDF } from '../exportService';
+import { exportMonthlyReportToPDF } from '@/lib/services/exportService';
 import type { PDFReportData } from '@/types/export.types';
 import jsPDF from 'jspdf';
 

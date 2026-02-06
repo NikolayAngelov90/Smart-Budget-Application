@@ -6,7 +6,7 @@
  * Coverage: AC-9.1.4
  */
 
-import { GET, POST } from '../route';
+import { GET, POST } from '@/app/api/health/redis/route';
 
 // Mock dependencies
 jest.mock('@/lib/redis/client');

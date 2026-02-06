@@ -4,7 +4,7 @@
  */
 
 import { renderHook, act } from '@testing-library/react';
-import { usePWAAnalytics } from '../usePWAAnalytics';
+import { usePWAAnalytics } from '@/hooks/usePWAAnalytics';
 
 // Mock analytics service
 jest.mock('@/lib/services/analyticsService', () => ({
@@ -109,7 +109,7 @@ describe('usePWAAnalytics', () => {
     renderHook(() => usePWAAnalytics());
 
     await act(async () => {
-      eventListeners.appinstalled.forEach(listener => listener(new Event('appinstalled')));
+      eventListeners.appinstalled!.forEach(listener => listener(new Event('appinstalled')));
     });
 
     expect(mockTrackPWAInstalled).toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe('usePWAAnalytics', () => {
     renderHook(() => usePWAAnalytics());
 
     await act(async () => {
-      eventListeners.offline.forEach(listener => listener(new Event('offline')));
+      eventListeners.offline!.forEach(listener => listener(new Event('offline')));
     });
 
     expect(mockTrackOfflineModeActive).toHaveBeenCalledWith(0); // Empty cache
@@ -130,7 +130,7 @@ describe('usePWAAnalytics', () => {
     mockFlushBufferedEvents.mockClear();
 
     await act(async () => {
-      eventListeners.online.forEach(listener => listener(new Event('online')));
+      eventListeners.online!.forEach(listener => listener(new Event('online')));
     });
 
     expect(mockFlushBufferedEvents).toHaveBeenCalled();
@@ -141,10 +141,10 @@ describe('usePWAAnalytics', () => {
 
     // Trigger offline twice
     await act(async () => {
-      eventListeners.offline.forEach(listener => listener(new Event('offline')));
+      eventListeners.offline!.forEach(listener => listener(new Event('offline')));
     });
     await act(async () => {
-      eventListeners.offline.forEach(listener => listener(new Event('offline')));
+      eventListeners.offline!.forEach(listener => listener(new Event('offline')));
     });
 
     // Should only track once
@@ -156,17 +156,17 @@ describe('usePWAAnalytics', () => {
 
     // Go offline
     await act(async () => {
-      eventListeners.offline.forEach(listener => listener(new Event('offline')));
+      eventListeners.offline!.forEach(listener => listener(new Event('offline')));
     });
 
     // Go online
     await act(async () => {
-      eventListeners.online.forEach(listener => listener(new Event('online')));
+      eventListeners.online!.forEach(listener => listener(new Event('online')));
     });
 
     // Go offline again
     await act(async () => {
-      eventListeners.offline.forEach(listener => listener(new Event('offline')));
+      eventListeners.offline!.forEach(listener => listener(new Event('offline')));
     });
 
     // Should track twice (once per offline session)

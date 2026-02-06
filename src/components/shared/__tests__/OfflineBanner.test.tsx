@@ -9,7 +9,7 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
-import { OfflineBanner } from '../OfflineBanner';
+import { OfflineBanner } from '@/components/shared/OfflineBanner';
 import * as useOnlineStatusHook from '@/lib/hooks/useOnlineStatus';
 
 // Mock useOnlineStatus hook

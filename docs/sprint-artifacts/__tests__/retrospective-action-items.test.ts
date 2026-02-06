@@ -70,7 +70,7 @@ describe('Retrospective Action Items YAML', () => {
       const epicKeys = Object.keys(data).filter((key) => key.startsWith('epic-'));
 
       epicKeys.forEach((epicKey) => {
-        const epicData = data[epicKey];
+        const epicData = data[epicKey]!;
         expect(epicData).toHaveProperty('retrospective_date');
         expect(epicData).toHaveProperty('action_items');
         expect(Array.isArray(epicData.action_items)).toBe(true);
@@ -84,7 +84,7 @@ describe('Retrospective Action Items YAML', () => {
       const epicKeys = Object.keys(data).filter((key) => key.startsWith('epic-'));
 
       epicKeys.forEach((epicKey) => {
-        const epicData = data[epicKey];
+        const epicData = data[epicKey]!;
         epicData.action_items.forEach((item: unknown) => {
           expect(item).toHaveProperty('id');
           expect(item).toHaveProperty('priority');
@@ -103,8 +103,8 @@ describe('Retrospective Action Items YAML', () => {
       const data = yaml.load(fileContents) as YAMLData;
 
       expect(data['epic-6']).toBeDefined();
-      expect(data['epic-6'].action_items).toBeDefined();
-      expect(data['epic-6'].action_items.length).toBeGreaterThanOrEqual(7);
+      expect(data['epic-6']!.action_items).toBeDefined();
+      expect(data['epic-6']!.action_items.length).toBeGreaterThanOrEqual(7);
     });
 
     test('Epic 8 action items are present', () => {
@@ -112,15 +112,15 @@ describe('Retrospective Action Items YAML', () => {
       const data = yaml.load(fileContents) as YAMLData;
 
       expect(data['epic-8']).toBeDefined();
-      expect(data['epic-8'].action_items).toBeDefined();
-      expect(data['epic-8'].action_items.length).toBeGreaterThanOrEqual(10);
+      expect(data['epic-8']!.action_items).toBeDefined();
+      expect(data['epic-8']!.action_items.length).toBeGreaterThanOrEqual(10);
     });
 
     test('Epic 6 has correct retrospective date', () => {
       const fileContents = fs.readFileSync(YAML_PATH, 'utf8');
       const data = yaml.load(fileContents) as YAMLData;
 
-      const date = data['epic-6'].retrospective_date;
+      const date = data['epic-6']!.retrospective_date;
       // YAML may parse as Date object or string
       const dateStr = date instanceof Date ? date.toISOString().split('T')[0] : date;
       expect(dateStr).toBe('2025-12-07');
@@ -130,7 +130,7 @@ describe('Retrospective Action Items YAML', () => {
       const fileContents = fs.readFileSync(YAML_PATH, 'utf8');
       const data = yaml.load(fileContents) as YAMLData;
 
-      const date = data['epic-8'].retrospective_date;
+      const date = data['epic-8']!.retrospective_date;
       // YAML may parse as Date object or string
       const dateStr = date instanceof Date ? date.toISOString().split('T')[0] : date;
       expect(dateStr).toBe('2026-01-06');
@@ -140,7 +140,7 @@ describe('Retrospective Action Items YAML', () => {
       const fileContents = fs.readFileSync(YAML_PATH, 'utf8');
       const data = yaml.load(fileContents) as YAMLData;
 
-      const highItems = data['epic-6'].action_items.filter(
+      const highItems = data['epic-6']!.action_items.filter(
         (item: { priority: string }) => item.priority === 'HIGH'
       );
 
@@ -157,7 +157,7 @@ describe('Retrospective Action Items YAML', () => {
       const fileContents = fs.readFileSync(YAML_PATH, 'utf8');
       const data = yaml.load(fileContents) as YAMLData;
 
-      const criticalItems = data['epic-8'].action_items.filter(
+      const criticalItems = data['epic-8']!.action_items.filter(
         (item: { priority: string }) => item.priority === 'CRITICAL'
       );
 

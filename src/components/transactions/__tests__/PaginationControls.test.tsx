@@ -11,8 +11,8 @@ import {
   PAGE_SIZE_OPTIONS,
   DEFAULT_PAGE_SIZE,
   LOCAL_STORAGE_KEY,
-} from '../PaginationControls';
-import type { PaginationControlsProps } from '../PaginationControls';
+} from '@/components/transactions/PaginationControls';
+import type { PaginationControlsProps } from '@/components/transactions/PaginationControls';
 
 // Wrap with ChakraProvider for tests
 const renderWithChakra = (props: PaginationControlsProps) => {

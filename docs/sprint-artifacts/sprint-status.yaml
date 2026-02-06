@@ -113,6 +113,6 @@ development_status:
   9-6-complete-device-session-management: done
   9-7-complete-story-6-3-pagination-ui: done
   9-8-create-deployment-checklist: done
-  9-9-modernize-tsconfig: drafted
+  9-9-modernize-tsconfig: done
   9-10-formalize-20-percent-infrastructure-rule: drafted
   epic-9-retrospective: optional

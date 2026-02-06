@@ -6,7 +6,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
-import { ProfilePictureUpload } from '../ProfilePictureUpload';
+import { ProfilePictureUpload } from '@/components/settings/ProfilePictureUpload';
 import * as uploadService from '@/lib/services/uploadService';
 import { createClient } from '@/lib/supabase/client';
 

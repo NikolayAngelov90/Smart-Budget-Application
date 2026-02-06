@@ -8,7 +8,7 @@ import {
   updateUserProfile,
   updatePreferences,
   deleteUserAccount,
-} from '../settingsService';
+} from '@/lib/services/settingsService';
 import { createClient } from '@/lib/supabase/server';
 import type { UserProfile, UpdateUserProfilePayload } from '@/types/user.types';
 

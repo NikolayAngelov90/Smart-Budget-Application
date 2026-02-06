@@ -8,7 +8,7 @@ import {
   detectBrowser,
   generateDeviceName,
   getCurrentSessionToken,
-} from '../sessionService';
+} from '@/lib/services/sessionService';
 
 // Mock localStorage
 let localStorageStore: Record<string, string> = {};

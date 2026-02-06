@@ -186,7 +186,7 @@ describe('AIBudgetCoach', () => {
 
     render(<AIBudgetCoach />, { wrapper: AllProviders });
 
-    const dismissButton = screen.getAllByText('Dismiss')[0];
+    const dismissButton = screen.getAllByText('Dismiss')[0]!;
     fireEvent.click(dismissButton);
 
     await waitFor(() => {
@@ -222,7 +222,7 @@ describe('AIBudgetCoach', () => {
 
     render(<AIBudgetCoach />, { wrapper: AllProviders });
 
-    const dismissButton = screen.getAllByText('Dismiss')[0];
+    const dismissButton = screen.getAllByText('Dismiss')[0]!;
     fireEvent.click(dismissButton);
 
     await waitFor(() => {

@@ -9,7 +9,7 @@ import {
   uploadProfilePicture,
   deleteProfilePicture,
   isValidSupabaseStorageUrl,
-} from '../uploadService';
+} from '@/lib/services/uploadService';
 import { createClient } from '@/lib/supabase/client';
 
 // Mock Supabase client

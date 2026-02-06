@@ -25,7 +25,7 @@ import {
   detectPWAPlatform,
   trackPWAInstalled,
   trackOfflineModeActive,
-} from '../analyticsService';
+} from '@/lib/services/analyticsService';
 
 // Mock fetch globally
 const mockFetch = jest.fn();

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { PUT, DELETE } from '../route';
+import { PUT, DELETE } from '@/app/api/user/sessions/[id]/route';
 
 // Mock Supabase client
 const mockGetUser = jest.fn();

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { GET, PUT } from '../route';
+import { GET, PUT } from '@/app/api/user/profile/route';
 import { createClient } from '@/lib/supabase/server';
 import * as settingsService from '@/lib/services/settingsService';
 import type { UserProfile } from '@/types/user.types';

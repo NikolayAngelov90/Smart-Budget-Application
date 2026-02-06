@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Story Context File: 9-9-modernize-tsconfig
+  Generated: 2026-02-05
+  Epic: 9 - Technical Foundation & Quality Infrastructure
+-->
+<story-context>
+  <metadata>
+    <story_id>9-9</story_id>
+    <story_key>9-9-modernize-tsconfig</story_key>
+    <epic_id>9</epic_id>
+    <title>Modernize tsconfig.json</title>
+    <status>ready-for-dev</status>
+    <priority>MEDIUM</priority>
+  </metadata>
+
+  <acceptance_criteria>
+    <criterion id="AC-9.9.1">Enable strict: true for full type safety</criterion>
+    <criterion id="AC-9.9.2">Configure path aliases: @/lib/*, @/components/*, @/types/*, @/app/*</criterion>
+    <criterion id="AC-9.9.3">Update target to ES2022</criterion>
+    <criterion id="AC-9.9.4">Enable moduleResolution: "bundler"</criterion>
+    <criterion id="AC-9.9.5">Evaluate skipLibCheck setting</criterion>
+    <criterion id="AC-9.9.6">Fix all new TypeScript errors introduced by changes</criterion>
+    <criterion id="AC-9.9.7">Update imports to use path aliases</criterion>
+    <criterion id="AC-9.9.8">Validate build succeeds with zero TypeScript errors</criterion>
+    <criterion id="AC-9.9.9">Document tsconfig changes</criterion>
+  </acceptance_criteria>
+
+  <artifacts>
+    <existing_files>
+      <file path="tsconfig.json" role="main-config">
+        Current state: target ES2017, strict true, strictNullChecks true (redundant),
+        moduleResolution Bundler, paths @/* -> ./src/*, skipLibCheck true,
+        forceConsistentCasingInFileNames true, incremental true.
+        Already has: strict, bundler resolution, @/* alias, noEmit.
+        Needs: ES2022 target, noUncheckedIndexedAccess, noImplicitOverride,
+        noFallthroughCasesInSwitch, remove redundant strictNullChecks.
+      </file>
+      <file path="jest.config.js" role="test-config">
+        Has moduleNameMapper for @/* alias. Uses next/jest.
+        May need additional path alias mappings if specific aliases are added.
+      </file>
+      <file path="package.json" role="scripts-reference">
+        Scripts: type-check (tsc --noEmit), build (next build), test (jest).
+      </file>
+    </existing_files>
+
+    <import_analysis>
+      <summary>102 files use @/ path aliases, 26 files use relative imports (../)</summary>
+      <relative_imports>
+        All 26 files using relative imports are test files (in __tests__ directories)
+        plus one service file (offlineService.ts -> ../swr/localStorageProvider).
+        Test files import ../route, ../page, ../PaginationControls, etc. from adjacent parent.
+      </relative_imports>
+    </import_analysis>
+  </artifacts>
+
+  <implementation_notes>
+    <note>AC-9.9.1 already met: strict: true is already enabled.</note>
+    <note>AC-9.9.4 already met: moduleResolution: "Bundler" is already set.</note>
+    <note>AC-9.9.2 partially met: @/* already covers all sub-paths. Add specific aliases for clarity.</note>
+    <note>Main changes: ES2022 target, additional strict options, import conversions.</note>
+    <note>noUncheckedIndexedAccess may introduce many errors - evaluate carefully.</note>
+    <note>skipLibCheck should stay true for Next.js projects (recommended by Next.js docs).</note>
+    <note>Remove redundant strictNullChecks: true (covered by strict: true).</note>
+  </implementation_notes>
+</story-context>

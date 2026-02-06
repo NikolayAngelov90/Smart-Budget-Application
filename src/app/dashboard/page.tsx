@@ -47,7 +47,7 @@ export default function DashboardPage() {
           // Get the measurement
           const measurements = performance.getEntriesByName('dashboard-render');
           if (measurements.length > 0) {
-            const renderTime = measurements[measurements.length - 1].duration;
+            const renderTime = measurements[measurements.length - 1]!.duration;
             console.log(`📊 Dashboard render time: ${Math.round(renderTime)}ms`);
 
             // Vercel Analytics automatically captures these performance marks

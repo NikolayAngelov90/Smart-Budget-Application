@@ -14,7 +14,7 @@ import {
   isRedisConfigured,
   pingRedis,
   __resetRedisForTesting,
-} from '../client';
+} from '@/lib/redis/client';
 
 // Mock dependencies
 jest.mock('@upstash/redis');

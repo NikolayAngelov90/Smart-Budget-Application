@@ -4,7 +4,7 @@
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useOnlineStatus, updateLastSync } from '../useOnlineStatus';
+import { useOnlineStatus, updateLastSync } from '@/lib/hooks/useOnlineStatus';
 import { createClient } from '@/lib/supabase/client';
 
 // Mock Supabase client

@@ -20,7 +20,7 @@ jest.mock('next/server', () => ({
   },
 }));
 
-import { GET } from '../route';
+import { GET } from '@/app/api/transactions/route';
 import { createClient } from '@/lib/supabase/server';
 
 // Mock Supabase

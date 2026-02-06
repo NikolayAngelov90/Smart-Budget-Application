@@ -227,7 +227,7 @@ export default function SettingsPage() {
   const handleExportPDF = async () => {
     setIsExportingPDF(true);
     try {
-      const [year, month] = selectedMonth.split('-');
+      const [year = '', month = ''] = selectedMonth.split('-');
       const startDate = `${year}-${month}-01`;
       const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
       const endDate = `${year}-${month}-${lastDay}`;

@@ -32,7 +32,7 @@ export class InsightErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log the error to console for debugging
     console.error('InsightErrorBoundary caught an error:', error, errorInfo);
   }
@@ -41,7 +41,7 @@ export class InsightErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: null });
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       // Custom fallback UI if provided
       if (this.props.fallback) {

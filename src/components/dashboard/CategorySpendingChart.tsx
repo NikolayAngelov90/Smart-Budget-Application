@@ -130,7 +130,7 @@ export function CategorySpendingChart({
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: ChartDataPoint }> }) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      const data = payload[0]!.payload;
       return (
         <Box
           bg="white"

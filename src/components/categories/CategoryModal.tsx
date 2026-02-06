@@ -91,7 +91,7 @@ export function CategoryModal({
   editMode = false,
   category = null,
 }: CategoryModalProps) {
-  const [selectedColor, setSelectedColor] = useState<string>(PRESET_COLORS[0].value);
+  const [selectedColor, setSelectedColor] = useState<string>(PRESET_COLORS[0]!.value);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const toast = useToast();
@@ -108,7 +108,7 @@ export function CategoryModal({
     mode: 'onChange',
     defaultValues: {
       type: 'expense',
-      color: PRESET_COLORS[0].value,
+      color: PRESET_COLORS[0]!.value,
     },
   });
 
@@ -124,7 +124,7 @@ export function CategoryModal({
     } else if (!editMode && isOpen) {
       // Reset to defaults when opening in create mode
       reset();
-      setSelectedColor(PRESET_COLORS[0].value);
+      setSelectedColor(PRESET_COLORS[0]!.value);
     }
   }, [editMode, category, isOpen, setValue, reset]);
 
@@ -174,7 +174,7 @@ export function CategoryModal({
 
       // Reset form and close modal
       reset();
-      setSelectedColor(PRESET_COLORS[0].value);
+      setSelectedColor(PRESET_COLORS[0]!.value);
       setApiError(null);
       onClose();
     } catch (error) {
@@ -194,7 +194,7 @@ export function CategoryModal({
 
   const handleClose = () => {
     reset();
-    setSelectedColor(PRESET_COLORS[0].value);
+    setSelectedColor(PRESET_COLORS[0]!.value);
     setApiError(null);
     onClose();
   };

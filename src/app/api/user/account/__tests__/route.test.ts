@@ -3,7 +3,7 @@
  * Unit Tests for /api/user/account route (DELETE - Account Deletion)
  */
 
-import { DELETE } from '../route';
+import { DELETE } from '@/app/api/user/account/route';
 import { createClient } from '@/lib/supabase/server';
 import * as settingsService from '@/lib/services/settingsService';
 import * as exportService from '@/lib/services/exportService';

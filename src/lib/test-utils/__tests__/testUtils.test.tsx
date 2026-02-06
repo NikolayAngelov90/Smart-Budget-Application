@@ -12,7 +12,7 @@ import {
   createMockToast,
   mockUser,
   mockSession,
-} from '../index';
+} from '@/lib/test-utils/index';
 
 describe('renderWithProviders', () => {
   test('renders component successfully', () => {

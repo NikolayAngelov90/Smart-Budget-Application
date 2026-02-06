@@ -51,7 +51,7 @@ async function measureDashboardLoad(page: Page): Promise<Partial<BenchmarkResult
 
   // Get Web Vitals using Performance API
   const metrics = await page.evaluate(() => {
-    const perfEntries = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
+    const perfEntries = performance.getEntriesByType('navigation')[0]! as PerformanceNavigationTiming
     const paintEntries = performance.getEntriesByType('paint')
 
     const fcp = paintEntries.find(entry => entry.name === 'first-contentful-paint')?.startTime || 0
@@ -60,7 +60,7 @@ async function measureDashboardLoad(page: Page): Promise<Partial<BenchmarkResult
     let lcp = 0
     const lcpEntries = performance.getEntriesByType('largest-contentful-paint')
     if (lcpEntries.length > 0) {
-      lcp = lcpEntries[lcpEntries.length - 1].startTime
+      lcp = lcpEntries[lcpEntries.length - 1]!.startTime
     }
 
     return {
@@ -99,7 +99,7 @@ async function measureChartRenderTime(page: Page, chartName: string, selector: s
     const renderTime = await page.evaluate((name) => {
       performance.mark(`${name}-end`)
       performance.measure(`${name}-render`, `${name}-start`, `${name}-end`)
-      const measure = performance.getEntriesByName(`${name}-render`)[0]
+      const measure = performance.getEntriesByName(`${name}-render`)[0]!
       return measure.duration
     }, chartName)
 

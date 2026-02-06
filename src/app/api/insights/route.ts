@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     if (orderByParam) {
       // Parse orderBy parameter (e.g., "priority" or "created_at DESC")
       const orderParts = orderByParam.split(' ');
-      const column = orderParts[0];
+      const column = orderParts[0] ?? 'created_at';
       const ascending = orderParts[1]?.toUpperCase() !== 'DESC';
       query = query.order(column, { ascending });
 

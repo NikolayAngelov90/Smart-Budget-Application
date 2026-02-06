@@ -7,7 +7,7 @@
  */
 
 import Papa from 'papaparse';
-import { exportTransactionsToCSV } from '../exportService';
+import { exportTransactionsToCSV } from '@/lib/services/exportService';
 
 // Mock papaparse
 jest.mock('papaparse');
@@ -121,8 +121,8 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
-    expect(csvData[0].Notes).toBe('Bought groceries, milk, and bread\n"Special quote"');
+    const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
+    expect(csvData[0]!.Notes).toBe('Bought groceries, milk, and bread\n"Special quote"');
   });
 
   // AC-8.1.4: Test empty notes display as empty string, not "null"
@@ -146,9 +146,9 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
-    expect(csvData[0].Notes).toBe('');
-    expect(csvData[0].Notes).not.toBe('null');
+    const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
+    expect(csvData[0]!.Notes).toBe('');
+    expect(csvData[0]!.Notes).not.toBe('null');
   });
 
   // AC-8.1.7: Test amount formatting as $123.45
@@ -172,8 +172,8 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
-    expect(csvData[0].Amount).toBe('$123.46'); // toFixed rounds
+    const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
+    expect(csvData[0]!.Amount).toBe('$123.46'); // toFixed rounds
   });
 
   // Test missing category handling (category.name fallback to "Unknown")
@@ -192,8 +192,8 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
-    expect(csvData[0].Category).toBe('Unknown');
+    const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
+    expect(csvData[0]!.Category).toBe('Unknown');
   });
 
   // AC-8.1.5: Test transactions sorted by date (newest first) - this is handled by API, but verify we preserve order
@@ -230,12 +230,12 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
+    const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
     expect(csvData).toHaveLength(3);
     // Order should be preserved as provided (API handles sorting)
-    expect(csvData[0].Amount).toBe('$30.00');
-    expect(csvData[1].Amount).toBe('$20.00');
-    expect(csvData[2].Amount).toBe('$10.00');
+    expect(csvData[0]!.Amount).toBe('$30.00');
+    expect(csvData[1]!.Amount).toBe('$20.00');
+    expect(csvData[2]!.Amount).toBe('$10.00');
   });
 
   // AC-8.1.2: Test CSV file download is triggered
@@ -323,7 +323,7 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
+    const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
     expect(csvData).toEqual([]);
   });
 
@@ -352,8 +352,8 @@ describe('exportTransactionsToCSV', () => {
 
     await exportTransactionsToCSV(transactions);
 
-    const csvData = mockUnparse.mock.calls[0][0] as CSVRowData[];
-    expect(csvData[0].Type).toBe('income');
-    expect(csvData[1].Type).toBe('expense');
+    const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
+    expect(csvData[0]!.Type).toBe('income');
+    expect(csvData[1]!.Type).toBe('expense');
   });
 });

@@ -6,7 +6,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
-import SettingsPage from '../page';
+import SettingsPage from '@/app/(dashboard)/settings/page';
 import * as exportService from '@/lib/services/exportService';
 import type { UserProfile } from '@/types/user.types';
 
@@ -287,7 +287,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     const initialValue = monthSelector.value;
 
     // Get the second option from the dropdown (previous month)
-    const secondOption = monthSelector.options[1].value;
+    const secondOption = monthSelector.options[1]!.value;
 
     // Change month selection to previous month
     fireEvent.change(monthSelector, { target: { value: secondOption } });

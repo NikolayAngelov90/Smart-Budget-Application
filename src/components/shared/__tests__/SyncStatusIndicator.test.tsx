@@ -6,7 +6,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
-import { SyncStatusIndicator } from '../SyncStatusIndicator';
+import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import * as useOnlineStatusModule from '@/lib/hooks/useOnlineStatus';
 
 // Mock the useOnlineStatus hook

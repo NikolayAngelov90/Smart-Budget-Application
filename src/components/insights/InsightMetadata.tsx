@@ -229,7 +229,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             {/* Transaction Link */}
             {meta.category_id && meta.months_analyzed && meta.months_analyzed.length > 0 && (
               <Link
-                href={buildTransactionLink(meta.category_id, meta.months_analyzed[meta.months_analyzed.length - 1])}
+                href={buildTransactionLink(meta.category_id, meta.months_analyzed[meta.months_analyzed.length - 1]!)}
                 style={{
                   color: 'var(--chakra-colors-blue-600)',
                   fontWeight: 'medium',

@@ -16,7 +16,7 @@ import {
   clearRateLimit,
   getRemainingTime,
   __resetRateLimitForTesting,
-} from '../rateLimitService';
+} from '@/lib/services/rateLimitService';
 
 // Mock dependencies
 jest.mock('@upstash/ratelimit');

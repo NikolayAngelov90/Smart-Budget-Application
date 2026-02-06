@@ -3,7 +3,7 @@
  * Story 9-6: Complete Device Session Management (AC-9.6.9)
  */
 
-import { GET } from '../route';
+import { GET } from '@/app/api/user/sessions/route';
 
 // Mock next/headers
 jest.mock('next/headers', () => ({

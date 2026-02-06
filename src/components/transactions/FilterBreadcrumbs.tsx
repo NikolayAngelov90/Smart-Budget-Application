@@ -75,7 +75,7 @@ export function FilterBreadcrumbs() {
   let monthFormatted: string | null = null;
   if (month) {
     try {
-      const [year, monthNum] = month.split('-');
+      const [year = '', monthNum = ''] = month.split('-');
       const date = new Date(parseInt(year), parseInt(monthNum) - 1);
       monthFormatted = format(date, 'MMMM yyyy'); // e.g., "November 2024"
     } catch (error) {

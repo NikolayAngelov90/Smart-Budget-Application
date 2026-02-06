@@ -8,7 +8,7 @@ import {
   getCacheSizeMB,
   clearSWRCache,
   isCacheOverLimit,
-} from '../swr/localStorageProvider';
+} from '@/lib/swr/localStorageProvider';
 
 export interface OfflineState {
   isOnline: boolean;

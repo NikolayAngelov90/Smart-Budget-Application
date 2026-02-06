@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { POST, GET } from '../route';
+import { POST, GET } from '@/app/api/analytics/track/route';
 
 // Mock Supabase client
 const mockGetUser = jest.fn();
