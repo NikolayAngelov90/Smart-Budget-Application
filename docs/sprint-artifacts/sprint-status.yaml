@@ -22,6 +22,15 @@
 #   - optional: Can be completed but not required
 #   - completed: Retrospective has been done
 #
+# Story Type (for infrastructure tracking):
+#   - infrastructure: Tech debt, quality, testing, process, tooling, security, performance
+#   - feature: User-facing features, product functionality, bug fixes
+#
+# Infrastructure Tracking:
+#   Target: 20% of stories per epic (1 of 5)
+#   Warning if <15% or >30%
+#   See docs/process/infrastructure-policy.md for full policy
+#
 # WORKFLOW NOTES:
 # ===============
 # - Epics should be 'contexted' before stories can be 'drafted'
@@ -114,5 +123,55 @@ development_status:
   9-7-complete-story-6-3-pagination-ui: done
   9-8-create-deployment-checklist: done
   9-9-modernize-tsconfig: done
-  9-10-formalize-20-percent-infrastructure-rule: drafted
+  9-10-formalize-20-percent-infrastructure-rule: done
   epic-9-retrospective: optional
+
+# INFRASTRUCTURE TRACKING
+# =======================
+# Tracks infrastructure vs feature story allocation per epic.
+# Target: 20% infrastructure (1 of 5 stories). Warning if <15% or >30%.
+# See docs/process/infrastructure-policy.md for full policy.
+
+infrastructure_tracking:
+  epic-7:
+    total_stories: 4
+    infrastructure_stories:
+      - 7-1-test-framework-setup-baseline-tests
+      - 7-2-performance-validation-infrastructure
+      - 7-3-code-quality-improvements
+      - 7-4-documentation
+    feature_stories: []
+    infrastructure_percentage: 100
+    status: above_target
+    notes: "Full infrastructure epic - addresses tech debt from Epics 1-6"
+
+  epic-8:
+    total_stories: 5
+    infrastructure_stories: []
+    feature_stories:
+      - 8-1-export-transactions-to-csv
+      - 8-2-export-financial-report-to-pdf
+      - 8-3-settings-page-and-account-management
+      - 8-4-data-sync-status-and-multi-device-information
+      - 8-5-offline-data-caching-for-viewing-phase-1
+    infrastructure_percentage: 0
+    status: below_target
+    notes: "Pure feature epic - tech debt addressed in Epic 7 and Epic 9"
+
+  epic-9:
+    total_stories: 10
+    infrastructure_stories:
+      - 9-1-migrate-rate-limiting-to-redis
+      - 9-2-create-test-utilities-library
+      - 9-3-implement-retrospective-action-item-tracker
+      - 9-8-create-deployment-checklist
+      - 9-9-modernize-tsconfig
+      - 9-10-formalize-20-percent-infrastructure-rule
+    feature_stories:
+      - 9-4-add-insight-engagement-analytics
+      - 9-5-add-export-and-pwa-analytics
+      - 9-6-complete-device-session-management
+      - 9-7-complete-story-6-3-pagination-ui
+    infrastructure_percentage: 60
+    status: above_target
+    notes: "Infrastructure-heavy epic addressing Epic 6 and Epic 8 retrospective action items"

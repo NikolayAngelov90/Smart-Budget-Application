@@ -20,7 +20,8 @@
     "benchmark": "node --import tsx scripts/benchmark.ts",
     "pre-deploy": "node scripts/pre-deployment-check.js",
     "pre-deploy:quick": "node scripts/pre-deployment-check.js --skip-build",
-    "check-env": "node scripts/check-env-vars.js"
+    "check-env": "node scripts/check-env-vars.js",
+    "check-infra": "node scripts/check-infra-percentage.js"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",

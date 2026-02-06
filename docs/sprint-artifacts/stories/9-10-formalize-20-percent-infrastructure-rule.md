@@ -1,6 +1,6 @@
 # Story 9.10: Formalize 20% Infrastructure Time Rule
 
-Status: drafted
+Status: done
 
 ## Story
 

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Story Context File: 9-10-formalize-20-percent-infrastructure-rule
+  Generated: 2026-02-06
+  Epic: 9 - Technical Foundation & Quality Infrastructure
+-->
+<story-context>
+  <metadata>
+    <story_id>9-10</story_id>
+    <story_key>9-10-formalize-20-percent-infrastructure-rule</story_key>
+    <epic_id>9</epic_id>
+    <title>Formalize 20% Infrastructure Time Rule</title>
+    <status>ready-for-dev</status>
+    <priority>MEDIUM</priority>
+    <type>process</type>
+  </metadata>
+
+  <acceptance_criteria>
+    <criterion id="AC-9.10.1">Create docs/process/infrastructure-policy.md with 20% rule and rationale</criterion>
+    <criterion id="AC-9.10.2">Update epic planning to reserve 1 of 5 story slots for infrastructure</criterion>
+    <criterion id="AC-9.10.3">Document criteria for what qualifies as infrastructure work</criterion>
+    <criterion id="AC-9.10.4">Create infrastructure story template</criterion>
+    <criterion id="AC-9.10.5">Add infrastructure time tracking to sprint-status.yaml</criterion>
+    <criterion id="AC-9.10.6">Retrospective workflow checks infra % and warns if below 15%</criterion>
+    <criterion id="AC-9.10.7">Document examples and anti-patterns</criterion>
+    <criterion id="AC-9.10.8">Create team announcement explaining policy</criterion>
+  </acceptance_criteria>
+
+  <artifacts>
+    <existing_files>
+      <file path="docs/sprint-artifacts/sprint-status.yaml" role="tracking">
+        Current format: flat key-value pairs with story-key: status.
+        Needs: infrastructure_tracking section with type annotations and percentage.
+      </file>
+      <file path="docs/process/retrospective-action-item-tracking.md" role="reference">
+        Existing process doc in docs/process/ directory.
+      </file>
+      <file path="docs/sprint-artifacts/epic-8-retrospective.md" role="rationale">
+        Source of the 20% rule recommendation.
+      </file>
+    </existing_files>
+
+    <new_files>
+      <file path="docs/process/infrastructure-policy.md">Main policy document (AC-9.10.1, 9.10.3, 9.10.7)</file>
+      <file path="docs/templates/infrastructure-story-template.md">Story template (AC-9.10.4)</file>
+      <file path="docs/process/infrastructure-policy-announcement.md">Team announcement (AC-9.10.8)</file>
+    </new_files>
+  </artifacts>
+
+  <implementation_notes>
+    <note>This is a PROCESS story - primarily documentation, no production code changes.</note>
+    <note>Sprint-status.yaml update should add tracking section without breaking existing format.</note>
+    <note>Policy and examples combined in one doc for simplicity (AC-9.10.1 + 9.10.3 + 9.10.7).</note>
+    <note>Write a validation script for infra percentage (AC-9.10.5, 9.10.6) with tests.</note>
+  </implementation_notes>
+</story-context>
