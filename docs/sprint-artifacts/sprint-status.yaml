@@ -129,7 +129,7 @@ development_status:
 
   # Epic 10: Internationalization, Multi-Currency & Mobile Production
   epic-10: backlog
-  10-1-i18n-framework-setup-and-language-switcher: backlog
+  10-1-i18n-framework-setup-and-language-switcher: ready-for-dev
   10-2-bulgarian-language-translations: backlog
   10-3-multi-currency-user-settings: backlog
   10-4-currency-formatting-and-display: backlog

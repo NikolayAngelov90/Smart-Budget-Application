@@ -1,0 +1,420 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>10</epicId>
+    <storyId>1</storyId>
+    <title>i18n Framework Setup &amp; Language Switcher</title>
+    <status>drafted</status>
+    <generatedAt>2026-02-07</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/10-1-i18n-framework-setup-and-language-switcher.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user who speaks Bulgarian</asA>
+    <iWant>the application to support multiple languages with a language switcher</iWant>
+    <soThat>I can use the budget application entirely in my native language</soThat>
+    <tasks>
+      <task id="1" ac="10.1.1">Install and configure next-intl
+        <subtask>Install next-intl package via npm</subtask>
+        <subtask>Create src/i18n/ directory structure</subtask>
+        <subtask>Create src/i18n/request.ts for server-side locale configuration</subtask>
+        <subtask>Create src/i18n/routing.ts for locale routing configuration</subtask>
+        <subtask>Create or update src/middleware.ts to add next-intl middleware for locale detection</subtask>
+        <subtask>Update src/app/layout.tsx to wrap with NextIntlClientProvider</subtask>
+        <subtask>Update src/app/providers.tsx to include i18n provider if needed</subtask>
+        <subtask>Verify app still builds and runs correctly with next-intl configured</subtask>
+      </task>
+      <task id="2" ac="10.1.2">Create translation file structure
+        <subtask>Create messages/en.json with namespaced structure</subtask>
+        <subtask>Organize keys by namespace: common, navigation, dashboard, transactions, categories, insights, settings, onboarding, validation, toast</subtask>
+        <subtask>Create messages/bg.json as skeleton with same keys (English placeholder values)</subtask>
+        <subtask>Verify translation files load correctly via next-intl</subtask>
+      </task>
+      <task id="3" ac="10.1.3">Extract hardcoded strings from components
+        <subtask>Extract strings from src/components/layout/Sidebar.tsx (navigation labels)</subtask>
+        <subtask>Extract strings from src/components/layout/Header.tsx (logout error)</subtask>
+        <subtask>Extract strings from src/components/dashboard/DashboardStats.tsx (stat card labels)</subtask>
+        <subtask>Extract strings from src/components/transactions/TransactionEntryModal.tsx (form labels, validation, toasts)</subtask>
+        <subtask>Extract strings from src/app/(dashboard)/settings/page.tsx (section headings, labels, descriptions, buttons)</subtask>
+        <subtask>Extract strings from src/components/common/OnboardingModal.tsx (step titles, descriptions, buttons)</subtask>
+        <subtask>Extract strings from src/components/categories/CategoryModal.tsx (validation messages)</subtask>
+        <subtask>Extract strings from src/components/shared/OfflineBanner.tsx (offline/online messages)</subtask>
+        <subtask>Extract strings from src/components/shared/SyncStatusIndicator.tsx (sync status labels)</subtask>
+        <subtask>Extract strings from src/components/settings/ActiveDevicesSection.tsx (device management labels)</subtask>
+        <subtask>Extract strings from src/components/settings/ProfilePictureUpload.tsx (upload messages)</subtask>
+        <subtask>Extract strings from insights components (dismiss/restore, refresh messages)</subtask>
+        <subtask>Extract default category names from src/lib/utils/constants.ts</subtask>
+        <subtask>Extract Zod validation messages from form schemas</subtask>
+      </task>
+      <task id="4" ac="10.1.4">Create language switcher component
+        <subtask>Create src/components/settings/LanguageSwitcher.tsx component</subtask>
+        <subtask>Implement as Chakra UI Select dropdown matching existing Settings page style</subtask>
+        <subtask>Options: English (en), Bulgarian (bg)</subtask>
+        <subtask>Wire up locale change via next-intl useRouter and usePathname</subtask>
+        <subtask>Add to Settings page Preferences section</subtask>
+      </task>
+      <task id="5" ac="10.1.5">Persist language preference in user profile
+        <subtask>Add language field to UserPreferences interface in src/types/user.types.ts</subtask>
+        <subtask>Update default preferences in Supabase migration to include language: en</subtask>
+        <subtask>Update useUserPreferences hook to expose language field</subtask>
+        <subtask>Wire LanguageSwitcher to save preference via existing preferences PATCH endpoint</subtask>
+        <subtask>Load saved language preference on app initialization and set next-intl locale</subtask>
+      </task>
+      <task id="6" ac="10.1.6">Implement browser language detection
+        <subtask>Create src/i18n/detectLocale.ts utility function</subtask>
+        <subtask>Check navigator.language for bg prefix</subtask>
+        <subtask>Only apply detection when no saved user preference exists</subtask>
+        <subtask>Integrate detection into app initialization flow</subtask>
+      </task>
+      <task id="7" ac="10.1.7">Update date formatting for locale awareness
+        <subtask>Update src/lib/utils/dateFormatter.ts to import date-fns/locale/bg and date-fns/locale/enUS</subtask>
+        <subtask>Add locale parameter to formatDate() and related functions</subtask>
+        <subtask>Map user locale to date-fns locale object</subtask>
+        <subtask>Update all date formatting call sites to pass current locale</subtask>
+        <subtask>Verify Bulgarian date format: DD.MM.YYYY with Bulgarian month names</subtask>
+      </task>
+      <task id="8" ac="10.1.8">Update number/currency formatting for locale awareness
+        <subtask>Update src/lib/utils/currency.ts formatCurrency() to accept locale parameter</subtask>
+        <subtask>Replace hardcoded en-US in Intl.NumberFormat with dynamic locale</subtask>
+        <subtask>Map bg locale to bg-BG for Intl.NumberFormat</subtask>
+        <subtask>Update all formatCurrency() call sites to pass current locale</subtask>
+        <subtask>Verify Bulgarian number format: 1 234,56 with correct separators</subtask>
+      </task>
+      <task id="9" ac="10.1.9,10.1.10">Write unit tests
+        <subtask>Create or update test helper renderWithIntl() wrapping components with next-intl provider</subtask>
+        <subtask>Write tests for LanguageSwitcher component</subtask>
+        <subtask>Write tests for detectLocale() utility</subtask>
+        <subtask>Write tests for formatCurrency() with en and bg locales</subtask>
+        <subtask>Write tests for formatDate() with en and bg locales</subtask>
+        <subtask>Write tests for translation key resolution</subtask>
+        <subtask>Update existing test setup to provide i18n context</subtask>
+        <subtask>Run full test suite to verify all 585+ existing tests still pass</subtask>
+        <subtask>Run TypeScript type-check and ESLint to verify zero errors</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC-10.1.1">Install and configure next-intl with Next.js App Router. Install next-intl package, configure Next.js middleware for locale routing, set up next-intl provider in app layout. Default locale: en, supported locales: en, bg.</criterion>
+    <criterion id="AC-10.1.2">Create translation file structure: messages/en.json and messages/bg.json. English file with all extracted strings organized by namespace (common, navigation, dashboard, transactions, categories, insights, settings, onboarding, validation, toast). Bulgarian file as skeleton with identical keys.</criterion>
+    <criterion id="AC-10.1.3">Extract all hardcoded English strings (~200+) from components into translation keys. Replace string literals with useTranslations() hook calls. Extract default category names from constants.ts and Zod validation messages.</criterion>
+    <criterion id="AC-10.1.4">Add language switcher component in Settings page (dropdown: English / Български). Place under Preferences section alongside existing Currency Format and Date Format dropdowns. Language change takes effect immediately without page reload.</criterion>
+    <criterion id="AC-10.1.5">Language preference persisted in user profile. Add language field to UserPreferences interface. Update Supabase user_profiles table defaults. Persist via useUserPreferences hook and PATCH /api/user/preferences endpoint. Syncs across devices.</criterion>
+    <criterion id="AC-10.1.6">Default language detection from browser navigator.language on first visit. If browser language starts with bg, default to Bulgarian; otherwise English. User-set preference overrides browser detection.</criterion>
+    <criterion id="AC-10.1.7">All date formatting uses locale-aware formatters. Update dateFormatter.ts to accept locale parameter. en: MM/DD/YYYY, bg: DD.MM.YYYY with Bulgarian month/day names. Integrate date-fns locale imports.</criterion>
+    <criterion id="AC-10.1.8">All number formatting uses locale-aware formatters. Update currency.ts formatCurrency() to accept locale parameter. en: 1,234.56, bg: 1 234,56. Use Intl.NumberFormat with dynamic locale.</criterion>
+    <criterion id="AC-10.1.9">Unit tests for language switching, locale detection, and format helpers. Test next-intl provider, language switcher, browser detection, formatCurrency with both locales, dateFormatter with both locales, translation key lookup.</criterion>
+    <criterion id="AC-10.1.10">Existing tests remain passing (585+ tests). All existing unit tests pass with minimal i18n wrapper updates. Provide renderWithIntl() test helper or update existing renderWithProviders().</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-10.md</path>
+        <title>Epic 10: Internationalization, Multi-Currency &amp; Mobile Production</title>
+        <section>Story 10-1: i18n Framework Setup &amp; Language Switcher</section>
+        <snippet>Defines AC-10.1.1 through AC-10.1.10 with detailed acceptance criteria for next-intl setup, translation files, string extraction, language switcher, preference persistence, locale detection, date/number formatting, and testing.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart-Budget-Application - Technical Architecture</title>
+        <section>Core Technologies, State Management, Testing Strategy</section>
+        <snippet>Next.js 15+ App Router, Chakra UI 2.8+, SWR for server state management, React Context for UI state. Jest + React Testing Library for testing. date-fns for date handling, Intl.NumberFormat patterns for currency.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart-Budget-Application - Technical Architecture</title>
+        <section>Project Structure</section>
+        <snippet>Feature-based structure within Next.js App Router pattern. Components in src/components/ by feature. Business logic in src/lib/. Types in src/types/. Tests in src/__tests__/.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Smart-Budget-Application - Technical Architecture</title>
+        <section>Data Architecture - Database Schema</section>
+        <snippet>PostgreSQL via Supabase with RLS. user_profiles table stores preferences as JSONB. Categories table with predefined names (11 defaults). Transactions with amount DECIMAL(12,2).</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/stories/9-10-formalize-20-percent-infrastructure-rule.md</path>
+        <title>Story 9.10: Formalize 20% Infrastructure Time Rule</title>
+        <section>Dev Agent Record</section>
+        <snippet>Previous story was process/documentation only. No reusable code patterns created. Infrastructure tracking added to sprint-status.yaml with percentage tracking per epic.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <!-- User Preferences System -->
+      <file>
+        <path>src/types/user.types.ts</path>
+        <kind>type-definitions</kind>
+        <symbol>UserPreferences, UserProfile, UpdateUserProfilePayload</symbol>
+        <lines>12-60</lines>
+        <reason>UserPreferences interface needs language field added. Currently has currency_format, date_format, onboarding_completed. UserProfile wraps preferences. UpdateUserProfilePayload allows partial preference updates.</reason>
+      </file>
+      <file>
+        <path>src/lib/hooks/useUserPreferences.ts</path>
+        <kind>hook</kind>
+        <symbol>useUserPreferences, DEFAULT_PREFERENCES</symbol>
+        <lines>17-44</lines>
+        <reason>SWR hook fetching user preferences from /api/user/profile. DEFAULT_PREFERENCES object needs language: 'en' added. Returns preferences, isLoading, error.</reason>
+      </file>
+      <file>
+        <path>src/lib/services/settingsService.ts</path>
+        <kind>service</kind>
+        <symbol>getUserProfile, updateUserProfile, updatePreferences</symbol>
+        <lines>20-201</lines>
+        <reason>Core service for user profile CRUD. Default preferences at lines 43-47 need language field. updatePreferences() merges partial preferences - will handle language updates automatically.</reason>
+      </file>
+      <file>
+        <path>src/app/api/user/profile/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>GET, PUT</symbol>
+        <lines>24-125</lines>
+        <reason>REST endpoint for user profile. GET returns profile with preferences. PUT accepts UpdateUserProfilePayload with partial preferences. Already supports preference updates - no API changes needed for language field.</reason>
+      </file>
+      <file>
+        <path>supabase/migrations/004_user_profiles_table.sql</path>
+        <kind>migration</kind>
+        <symbol>user_profiles table, handle_new_user trigger</symbol>
+        <lines>11-104</lines>
+        <reason>Database schema for preferences stored as JSONB. Default JSON at lines 21-25 needs language field. handle_new_user() trigger creates profile on signup - will inherit updated defaults.</reason>
+      </file>
+
+      <!-- Currency Formatting -->
+      <file>
+        <path>src/lib/utils/currency.ts</path>
+        <kind>utility</kind>
+        <symbol>formatCurrency, formatCurrencyWithSign, calculateTrend</symbol>
+        <lines>13-53</lines>
+        <reason>formatCurrency() uses Intl.NumberFormat('en-US') hardcoded. Needs locale parameter. formatCurrencyWithSign() wraps formatCurrency with +/- prefix. calculateTrend() unaffected.</reason>
+      </file>
+
+      <!-- Date Formatting -->
+      <file>
+        <path>src/lib/utils/dateFormatter.ts</path>
+        <kind>utility</kind>
+        <symbol>formatDate, formatTransactionDate, DATE_FORMAT_MAP, SHORT_DATE_FORMAT_MAP</symbol>
+        <lines>1-69</lines>
+        <reason>Uses date-fns format(). DATE_FORMAT_MAP maps user preference strings to date-fns patterns. formatDate() needs locale parameter and date-fns/locale/bg import. formatTransactionDate() calls formatDate with short:true.</reason>
+      </file>
+
+      <!-- Middleware -->
+      <file>
+        <path>src/middleware.ts</path>
+        <kind>middleware</kind>
+        <symbol>middleware, config</symbol>
+        <lines>25-103</lines>
+        <reason>Next.js request middleware handling auth redirects. Needs next-intl createIntlMiddleware integration before auth logic. Config matcher at lines 92-103 already covers relevant routes.</reason>
+      </file>
+
+      <!-- App Layout and Providers -->
+      <file>
+        <path>src/app/layout.tsx</path>
+        <kind>layout</kind>
+        <symbol>RootLayout</symbol>
+        <lines>31-45</lines>
+        <reason>Root HTML layout with html lang="en" hardcoded. Needs dynamic lang={locale} attribute. Wraps with Providers component. NextIntlClientProvider should be added here or in providers.</reason>
+      </file>
+      <file>
+        <path>src/app/providers.tsx</path>
+        <kind>provider</kind>
+        <symbol>Providers, PWAAnalyticsProvider</symbol>
+        <lines>18-33</lines>
+        <reason>Provider chain: ChakraProvider > SWRConfig > PWAAnalyticsProvider > children. NextIntlClientProvider may need to wrap at this level or at layout level.</reason>
+      </file>
+
+      <!-- Settings Page -->
+      <file>
+        <path>src/app/(dashboard)/settings/page.tsx</path>
+        <kind>page-component</kind>
+        <symbol>SettingsPage, handleUpdatePreferences</symbol>
+        <lines>536-593</lines>
+        <reason>Preferences section with Currency Format and Date Format dropdowns. Language switcher goes here. handleUpdatePreferences() at lines 172-224 calls PUT /api/user/profile. ~30+ hardcoded English strings throughout file (670 lines total).</reason>
+      </file>
+
+      <!-- Constants -->
+      <file>
+        <path>src/lib/utils/constants.ts</path>
+        <kind>constants</kind>
+        <symbol>DEFAULT_CATEGORIES</symbol>
+        <lines>25-40</lines>
+        <reason>11 hardcoded English category names (Dining, Transport, Entertainment, Utilities, Shopping, Healthcare, Rent, Salary, Freelance, Investment, Gift). Need extraction to translation keys.</reason>
+      </file>
+
+      <!-- Components with Hardcoded Strings -->
+      <file>
+        <path>src/components/layout/Sidebar.tsx</path>
+        <kind>component</kind>
+        <symbol>Sidebar, NAV_ITEMS</symbol>
+        <lines>8-34</lines>
+        <reason>Navigation labels: Dashboard, Transactions, Categories, Insights, Settings. 5 strings to extract. 123 lines total.</reason>
+      </file>
+      <file>
+        <path>src/components/layout/Header.tsx</path>
+        <kind>component</kind>
+        <symbol>Header</symbol>
+        <lines>1-159</lines>
+        <reason>User menu with logout. Error messages for logout failure. 3-5 strings to extract.</reason>
+      </file>
+      <file>
+        <path>src/components/dashboard/DashboardStats.tsx</path>
+        <kind>component</kind>
+        <symbol>DashboardStats</symbol>
+        <lines>1-100</lines>
+        <reason>StatCard labels: Total Balance, Monthly Income, Monthly Expenses, trend text. ~5 strings to extract.</reason>
+      </file>
+      <file>
+        <path>src/components/transactions/TransactionEntryModal.tsx</path>
+        <kind>component</kind>
+        <symbol>TransactionEntryModal</symbol>
+        <lines>1-504</lines>
+        <reason>Highest string density form component. Form labels, validation messages, Zod schema messages, toast notifications. ~20+ strings to extract.</reason>
+      </file>
+      <file>
+        <path>src/components/common/OnboardingModal.tsx</path>
+        <kind>component</kind>
+        <symbol>OnboardingModal, ONBOARDING_STEPS</symbol>
+        <lines>44-50</lines>
+        <reason>Onboarding step titles and descriptions, button labels (Skip, Next, Let's Get Started). ~10-15 strings to extract. 193 lines total.</reason>
+      </file>
+      <file>
+        <path>src/components/categories/CategoryModal.tsx</path>
+        <kind>component</kind>
+        <symbol>CategoryModal</symbol>
+        <lines>1-347</lines>
+        <reason>Category creation/editing form with validation messages. ~10 strings to extract.</reason>
+      </file>
+      <file>
+        <path>src/components/shared/OfflineBanner.tsx</path>
+        <kind>component</kind>
+        <symbol>OfflineBanner</symbol>
+        <lines>58-82</lines>
+        <reason>Offline/online status messages. ~4 strings to extract. 90 lines total.</reason>
+      </file>
+      <file>
+        <path>src/components/shared/SyncStatusIndicator.tsx</path>
+        <kind>component</kind>
+        <symbol>SyncStatusIndicator</symbol>
+        <lines>61-116</lines>
+        <reason>Sync status labels: All data synced, Syncing..., Offline, No connection. ~6 strings to extract. 128 lines total.</reason>
+      </file>
+      <file>
+        <path>src/components/settings/ActiveDevicesSection.tsx</path>
+        <kind>component</kind>
+        <symbol>ActiveDevicesSection</symbol>
+        <lines>1-434</lines>
+        <reason>Device management with labels, action buttons, toast messages. ~15 strings to extract.</reason>
+      </file>
+      <file>
+        <path>src/components/settings/ProfilePictureUpload.tsx</path>
+        <kind>component</kind>
+        <symbol>ProfilePictureUpload</symbol>
+        <lines>1-357</lines>
+        <reason>Upload instructions, error messages, success toasts. ~8 strings to extract.</reason>
+      </file>
+
+      <!-- Test Utilities -->
+      <file>
+        <path>__tests__/setup/test-utils.tsx</path>
+        <kind>test-utility</kind>
+        <symbol>AllTheProviders, customRender</symbol>
+        <lines>16-38</lines>
+        <reason>Custom render function wrapping components with ChakraProvider and SWRConfig. Needs NextIntlClientProvider added to AllTheProviders wrapper for i18n testing.</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package name="next" version="^15.5.7" relevance="App Router framework - next-intl integrates with App Router" />
+        <package name="react" version="^18.3.0" relevance="UI library" />
+        <package name="@chakra-ui/react" version="^2.8.0" relevance="UI framework for LanguageSwitcher Select component" />
+        <package name="date-fns" version="^4.1.0" relevance="Date formatting - needs date-fns/locale/bg import for Bulgarian locale" />
+        <package name="react-hook-form" version="^7.66.0" relevance="Form handling - validation messages need i18n extraction" />
+        <package name="zod" version="^4.1.12" relevance="Schema validation - error messages need i18n extraction" />
+        <package name="swr" version="latest" relevance="Data fetching for user preferences including language" />
+        <package name="@supabase/supabase-js" version="latest" relevance="Database client for persisting language preference" />
+        <package-to-add name="next-intl" version="^3.x" relevance="PRIMARY DEPENDENCY - i18n framework for Next.js App Router with server component support" />
+      </node>
+      <node-dev>
+        <package name="jest" version="^30.2.0" relevance="Test runner" />
+        <package name="ts-jest" version="^29.4.6" relevance="TypeScript test transformer" />
+        <package name="@testing-library/react" version="latest" relevance="Component testing - renderWithIntl helper needed" />
+        <package name="typescript" version="^5.3.0" relevance="Type checking - UserPreferences interface update" />
+      </node-dev>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Use Next.js App Router patterns for next-intl configuration, not Pages Router. Server components use getTranslations(), client components use useTranslations().</constraint>
+    <constraint type="architecture">Provider chain order: NextIntlClientProvider should wrap at layout level. Existing chain (ChakraProvider > SWRConfig > PWAAnalyticsProvider) remains inside.</constraint>
+    <constraint type="architecture">User preferences stored as JSONB in Supabase user_profiles table. Language field merges into existing preferences object via updatePreferences() service method.</constraint>
+    <constraint type="pattern">SWR for server state: Language preference fetched via useUserPreferences() hook, updated via PUT /api/user/profile endpoint. Follow existing preference update pattern in handleUpdatePreferences().</constraint>
+    <constraint type="pattern">Chakra UI components only: LanguageSwitcher must use Chakra Select or Menu component matching existing Settings page Preferences section style.</constraint>
+    <constraint type="pattern">All paths use @/ alias (configured in tsconfig.json). New i18n files at src/i18n/ accessible as @/i18n/.</constraint>
+    <constraint type="security">Supabase RLS enforces that users can only read/update their own preferences. No additional auth changes needed for language field.</constraint>
+    <constraint type="performance">Translation files loaded once at app initialization. Language switching should not trigger full page reload - use next-intl client-side routing.</constraint>
+    <constraint type="testing">All tests use Jest + React Testing Library. Test utility at __tests__/setup/test-utils.tsx must be updated with i18n provider. Existing 585+ tests must continue passing.</constraint>
+    <constraint type="naming">Components: PascalCase (LanguageSwitcher.tsx). Utilities: camelCase (detectLocale.ts). Translation keys: dot-notation namespaced (navigation.dashboard, settings.preferences.language).</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>UserPreferences</name>
+      <kind>TypeScript interface</kind>
+      <signature>interface UserPreferences { currency_format: 'USD' | 'EUR' | 'GBP'; date_format: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD'; onboarding_completed: boolean; language?: 'en' | 'bg'; }</signature>
+      <path>src/types/user.types.ts</path>
+    </interface>
+    <interface>
+      <name>useUserPreferences</name>
+      <kind>React hook</kind>
+      <signature>function useUserPreferences(): { preferences: UserPreferences; isLoading: boolean; error: Error | undefined; }</signature>
+      <path>src/lib/hooks/useUserPreferences.ts</path>
+    </interface>
+    <interface>
+      <name>formatCurrency</name>
+      <kind>utility function</kind>
+      <signature>function formatCurrency(amount: number): string</signature>
+      <path>src/lib/utils/currency.ts</path>
+    </interface>
+    <interface>
+      <name>formatDate</name>
+      <kind>utility function</kind>
+      <signature>function formatDate(date: Date | string, dateFormat: UserPreferences['date_format'], short?: boolean): string</signature>
+      <path>src/lib/utils/dateFormatter.ts</path>
+    </interface>
+    <interface>
+      <name>PUT /api/user/profile</name>
+      <kind>REST endpoint</kind>
+      <signature>PUT /api/user/profile - Body: { preferences?: Partial&lt;UserPreferences&gt;, display_name?: string } - Response: { data: UserProfile }</signature>
+      <path>src/app/api/user/profile/route.ts</path>
+    </interface>
+    <interface>
+      <name>updatePreferences</name>
+      <kind>service function</kind>
+      <signature>function updatePreferences(userId: string, preferences: Partial&lt;UserPreferences&gt;): Promise&lt;UserProfile&gt;</signature>
+      <path>src/lib/services/settingsService.ts</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Jest 30.2 with React Testing Library for component and unit tests. Tests use custom render wrapper from __tests__/setup/test-utils.tsx that provides ChakraProvider and SWRConfig. Module aliases via moduleNameMapper (@/ maps to src/). jest-environment-jsdom for DOM testing. jest.setup.js mocks next/navigation, @chakra-ui/react hooks, and Supabase clients. All new tests should follow existing patterns and use the updated renderWithIntl() or renderWithProviders() helper that includes NextIntlClientProvider.</standards>
+    <locations>
+      <location>__tests__/</location>
+      <location>__tests__/setup/test-utils.tsx</location>
+      <location>__tests__/components/</location>
+      <location>__tests__/services/</location>
+      <location>__tests__/utils/</location>
+    </locations>
+    <ideas>
+      <idea ac="AC-10.1.1">Test that NextIntlClientProvider renders without errors with en and bg locales. Test that middleware correctly detects and routes locale.</idea>
+      <idea ac="AC-10.1.2">Test that en.json and bg.json have identical key structures. Test that no translation keys are missing in either file.</idea>
+      <idea ac="AC-10.1.3">Test that components render correctly with translation keys instead of hardcoded strings. Snapshot tests for key components with both locales.</idea>
+      <idea ac="AC-10.1.4">Test LanguageSwitcher renders with English and Bulgarian options. Test selection triggers locale change. Test component integrates into Settings page.</idea>
+      <idea ac="AC-10.1.5">Test language preference persists via PUT /api/user/profile. Test useUserPreferences returns language field. Test preference syncs across components.</idea>
+      <idea ac="AC-10.1.6">Test detectLocale() returns 'bg' when navigator.language is 'bg', 'bg-BG', or 'bg-Cyrl'. Test returns 'en' for 'en-US', 'fr', or undefined. Test saved preference overrides detection.</idea>
+      <idea ac="AC-10.1.7">Test formatDate() with en locale produces MM/DD/YYYY format. Test formatDate() with bg locale produces DD.MM.YYYY format. Test Bulgarian month names render correctly.</idea>
+      <idea ac="AC-10.1.8">Test formatCurrency(1234.56, 'en') returns '$1,234.56'. Test formatCurrency(1234.56, 'bg') returns appropriate Bulgarian format. Test edge cases: 0, negative, very large numbers.</idea>
+      <idea ac="AC-10.1.9">Comprehensive test suite covering all locale switching, detection, and formatting functions.</idea>
+      <idea ac="AC-10.1.10">Run full test suite after all changes to verify 585+ existing tests pass. Update test-utils.tsx AllTheProviders with NextIntlClientProvider.</idea>
+    </ideas>
+  </tests>
+</story-context>
