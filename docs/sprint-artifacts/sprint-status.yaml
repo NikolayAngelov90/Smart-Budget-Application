@@ -124,7 +124,21 @@ development_status:
   9-8-create-deployment-checklist: done
   9-9-modernize-tsconfig: done
   9-10-formalize-20-percent-infrastructure-rule: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: completed
+
+  # Epic 10: Internationalization, Multi-Currency & Mobile Production
+  epic-10: backlog
+  10-1-i18n-framework-setup-and-language-switcher: backlog
+  10-2-bulgarian-language-translations: backlog
+  10-3-multi-currency-user-settings: backlog
+  10-4-currency-formatting-and-display: backlog
+  10-5-exchange-rate-integration: backlog
+  10-6-transaction-multi-currency-support: backlog
+  10-7-enhanced-pwa-for-mobile-production: backlog
+  10-8-mobile-optimized-touch-ui: backlog
+  10-9-write-integration-tests: backlog
+  10-10-cicd-pipeline-integration: backlog
+  epic-10-retrospective: optional
 
 # INFRASTRUCTURE TRACKING
 # =======================
@@ -175,3 +189,21 @@ infrastructure_tracking:
     infrastructure_percentage: 60
     status: above_target
     notes: "Infrastructure-heavy epic addressing Epic 6 and Epic 8 retrospective action items"
+
+  epic-10:
+    total_stories: 10
+    infrastructure_stories:
+      - 10-9-write-integration-tests
+      - 10-10-cicd-pipeline-integration
+    feature_stories:
+      - 10-1-i18n-framework-setup-and-language-switcher
+      - 10-2-bulgarian-language-translations
+      - 10-3-multi-currency-user-settings
+      - 10-4-currency-formatting-and-display
+      - 10-5-exchange-rate-integration
+      - 10-6-transaction-multi-currency-support
+      - 10-7-enhanced-pwa-for-mobile-production
+      - 10-8-mobile-optimized-touch-ui
+    infrastructure_percentage: 20
+    status: on_target
+    notes: "Feature-focused epic with i18n, multi-currency, mobile. 20% infrastructure per policy."

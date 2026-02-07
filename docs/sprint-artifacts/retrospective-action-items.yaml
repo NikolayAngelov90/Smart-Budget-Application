@@ -30,34 +30,34 @@ epic-6:
     - id: epic6-high-2
       priority: HIGH
       description: Add insight engagement analytics (view count, dismissal rate, metadata clicks)
-      status: in-progress
+      status: completed
       epic_assigned: 9
       story_id: 9-4-add-insight-engagement-analytics
-      notes: Drafted in Epic 9 Story 9-4. Addresses repeated issue from Epic 6 and Epic 8.
+      notes: Completed in Epic 9 Story 9-4. Privacy-first analytics with RLS and non-blocking architecture.
 
     - id: epic6-medium-1
       priority: MEDIUM
       description: Complete Story 6-3 pagination UI (AC7 missing - page size selector, jump-to-page)
-      status: in-progress
+      status: completed
       epic_assigned: 9
       story_id: 9-7-complete-story-6-3-pagination-ui
-      notes: Technical debt from Epic 6. Drafted in Epic 9 Story 9-7.
+      notes: Completed in Epic 9 Story 9-7. Full pagination with page size selector, jump-to-page, localStorage persistence.
 
     - id: epic6-medium-2
       priority: MEDIUM
       description: Create deployment checklist documenting all required environment variables
-      status: in-progress
+      status: completed
       epic_assigned: 9
       story_id: 9-8-create-deployment-checklist
-      notes: Drafted in Epic 9 Story 9-8.
+      notes: Completed in Epic 9 Story 9-8. Manual checklist + automated validation scripts.
 
     - id: epic6-medium-3
       priority: MEDIUM
       description: Review and modernize tsconfig.json (eliminate downlevelIteration errors, strict mode)
-      status: in-progress
+      status: completed
       epic_assigned: 9
       story_id: 9-9-modernize-tsconfig
-      notes: Drafted in Epic 9 Story 9-9.
+      notes: Completed in Epic 9 Story 9-9. ES2022 target, noUncheckedIndexedAccess, path aliases.
 
     - id: epic6-low-1
       priority: LOW
@@ -89,34 +89,34 @@ epic-8:
     - id: epic8-high-1
       priority: HIGH
       description: Add analytics instrumentation for Epic 8 features (CSV/PDF exports, PWA adoption)
-      status: in-progress
+      status: completed
       epic_assigned: 9
       story_id: 9-5-add-export-and-pwa-analytics
-      notes: Drafted in Epic 9 Story 9-5. REPEAT ISSUE from Epic 6 - must be addressed.
+      notes: Completed in Epic 9 Story 9-5. Export tracking + PWA install detection + offline buffering.
 
     - id: epic8-high-2
       priority: HIGH
       description: Implement retrospective action item tracker (YAML tracking, aged item warnings)
-      status: in-progress
+      status: completed
       epic_assigned: 9
       story_id: 9-3-implement-retrospective-action-item-tracker
-      notes: Currently being implemented in Epic 9 Story 9-3. Process fix to prevent repeated failures.
+      notes: Completed in Epic 9 Story 9-3. YAML tracking with auto-extraction and aged item warnings.
 
     - id: epic8-high-3
       priority: HIGH
       description: Allocate 20% infrastructure time (1 of 5 stories per epic)
-      status: in-progress
+      status: completed
       epic_assigned: 9
       story_id: 9-10-formalize-20-percent-infrastructure-rule
-      notes: Drafted in Epic 9 Story 9-10. Strategic shift to address technical debt accumulation.
+      notes: Completed in Epic 9 Story 9-10. Policy document, story template, validation script.
 
     - id: epic8-medium-1
       priority: MEDIUM
       description: Complete device session management AC-8.4.5 (view/revoke device sessions)
-      status: in-progress
+      status: completed
       epic_assigned: 9
       story_id: 9-6-complete-device-session-management
-      notes: Security feature gap. Drafted in Epic 9 Story 9-6.
+      notes: Completed in Epic 9 Story 9-6. View, name, revoke sessions with real-time sync.
 
     - id: epic8-medium-2
       priority: MEDIUM
@@ -157,3 +157,70 @@ epic-8:
       epic_assigned: null
       story_id: null
       notes: Document process for libraries without @types. Low priority documentation task.
+
+epic-9:
+  retrospective_date: 2026-02-07
+  action_items:
+    - id: epic9-critical-1
+      priority: CRITICAL
+      description: Write integration tests using test utilities library (deferred 3 epics since Epic 6)
+      status: pending
+      epic_assigned: 10
+      story_id: null
+      notes: Test utilities from Story 9-2 removed the barrier. Must allocate dedicated story in Epic 10.
+
+    - id: epic9-high-1
+      priority: HIGH
+      description: Multi-currency support (Euro default, USD, user-selectable currencies)
+      status: pending
+      epic_assigned: 10
+      story_id: null
+      notes: Project Lead request. Currency settings, exchange rates, formatting throughout UI.
+
+    - id: epic9-high-2
+      priority: HIGH
+      description: Bulgarian language UI (i18n/localization framework)
+      status: pending
+      epic_assigned: 10
+      story_id: null
+      notes: Project Lead request. i18n framework setup, translation files, language switcher.
+
+    - id: epic9-high-3
+      priority: HIGH
+      description: Mobile app production preparation (enhanced PWA or native)
+      status: pending
+      epic_assigned: 10
+      story_id: null
+      notes: Project Lead request. Evaluate PWA enhancement vs React Native for app store presence.
+
+    - id: epic9-medium-1
+      priority: MEDIUM
+      description: Integrate deployment scripts into CI/CD pipeline
+      status: pending
+      epic_assigned: 10
+      story_id: null
+      notes: Scripts from Story 9-8 exist but run manually. Automate in CI.
+
+    - id: epic9-medium-2
+      priority: MEDIUM
+      description: Replace non-null assertions with proper null handling in source files
+      status: pending
+      epic_assigned: 10
+      story_id: null
+      notes: ~15 locations using ! assertions bypass strict TypeScript safety from Story 9-9.
+
+    - id: epic9-medium-3
+      priority: MEDIUM
+      description: Analytics visualization dashboard for collected events
+      status: pending
+      epic_assigned: null
+      story_id: null
+      notes: Stories 9-4 and 9-5 collect analytics but no admin view exists to visualize data.
+
+    - id: epic9-medium-4
+      priority: MEDIUM
+      description: Auto-update action item status when linked stories complete
+      status: pending
+      epic_assigned: null
+      story_id: null
+      notes: Tracking YAML shows in-progress for completed stories. Needs workflow automation.
