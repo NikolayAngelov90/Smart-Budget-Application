@@ -29,6 +29,9 @@ const PWA_INSTALLED_KEY = 'analytics_pwa_installed';
 // API endpoint
 const ANALYTICS_ENDPOINT = '/api/analytics/track';
 
+// Max retry attempts before dropping a buffered event
+const MAX_RETRY_COUNT = 3;
+
 /**
  * Detect device type from user agent
  */
@@ -153,6 +156,14 @@ export async function flushBufferedEvents(): Promise<void> {
   const failedEvents: BufferedEvent[] = [];
 
   for (const event of events) {
+    const retryCount = event.retry_count ?? 0;
+
+    // Drop events that have exceeded max retries
+    if (retryCount >= MAX_RETRY_COUNT) {
+      console.warn(`[Analytics] Dropping event '${event.event_name}' after ${retryCount} failed retries`);
+      continue;
+    }
+
     try {
       const response = await fetch(ANALYTICS_ENDPOINT, {
         method: 'POST',
@@ -168,10 +179,10 @@ export async function flushBufferedEvents(): Promise<void> {
       });
 
       if (!response.ok) {
-        failedEvents.push(event);
+        failedEvents.push({ ...event, retry_count: retryCount + 1 });
       }
     } catch {
-      failedEvents.push(event);
+      failedEvents.push({ ...event, retry_count: retryCount + 1 });
     }
   }
 

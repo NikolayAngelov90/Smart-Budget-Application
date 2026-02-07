@@ -51,7 +51,7 @@ async function measureDashboardLoad(page: Page): Promise<Partial<BenchmarkResult
 
   // Get Web Vitals using Performance API
   const metrics = await page.evaluate(() => {
-    const perfEntries = performance.getEntriesByType('navigation')[0]! as PerformanceNavigationTiming
+    const perfEntries = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
     const paintEntries = performance.getEntriesByType('paint')
 
     const fcp = paintEntries.find(entry => entry.name === 'first-contentful-paint')?.startTime || 0
@@ -59,12 +59,13 @@ async function measureDashboardLoad(page: Page): Promise<Partial<BenchmarkResult
     // Get LCP using PerformanceObserver (may not be available immediately)
     let lcp = 0
     const lcpEntries = performance.getEntriesByType('largest-contentful-paint')
-    if (lcpEntries.length > 0) {
-      lcp = lcpEntries[lcpEntries.length - 1]!.startTime
+    const lastLcpEntry = lcpEntries[lcpEntries.length - 1]
+    if (lastLcpEntry) {
+      lcp = lastLcpEntry.startTime
     }
 
     return {
-      ttfb: perfEntries.responseStart - perfEntries.requestStart,
+      ttfb: perfEntries ? perfEntries.responseStart - perfEntries.requestStart : 0,
       fcp: fcp,
       lcp: lcp || fcp * 1.2, // Fallback estimate
     }
@@ -99,8 +100,8 @@ async function measureChartRenderTime(page: Page, chartName: string, selector: s
     const renderTime = await page.evaluate((name) => {
       performance.mark(`${name}-end`)
       performance.measure(`${name}-render`, `${name}-start`, `${name}-end`)
-      const measure = performance.getEntriesByName(`${name}-render`)[0]!
-      return measure.duration
+      const measure = performance.getEntriesByName(`${name}-render`)[0]
+      return measure?.duration ?? 0
     }, chartName)
 
     console.log(`  ✓ ${chartName} render: ${Math.round(renderTime)}ms`)
@@ -175,13 +176,13 @@ async function runBenchmarks(): Promise<BenchmarkResults> {
 
     return {
       date: new Date().toISOString(),
-      dashboard_load_ms: loadMetrics.dashboard_load_ms!,
+      dashboard_load_ms: loadMetrics.dashboard_load_ms ?? 0,
       pie_chart_render_ms: pieChartTime,
       line_chart_render_ms: lineChartTime,
       realtime_latency_ms: realtimeLatency,
-      ttfb_ms: loadMetrics.ttfb_ms!,
-      fcp_ms: loadMetrics.fcp_ms!,
-      lcp_ms: loadMetrics.lcp_ms!,
+      ttfb_ms: loadMetrics.ttfb_ms ?? 0,
+      fcp_ms: loadMetrics.fcp_ms ?? 0,
+      lcp_ms: loadMetrics.lcp_ms ?? 0,
     }
   } catch (error) {
     if (browser) {

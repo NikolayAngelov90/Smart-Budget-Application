@@ -76,6 +76,8 @@ const PRESET_COLORS = [
   { name: 'Emerald', value: '#38a169' },  // Emerald (Salary green from defaults)
 ];
 
+const DEFAULT_COLOR = PRESET_COLORS[0]?.value ?? '#4299e1';
+
 interface CategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -91,7 +93,7 @@ export function CategoryModal({
   editMode = false,
   category = null,
 }: CategoryModalProps) {
-  const [selectedColor, setSelectedColor] = useState<string>(PRESET_COLORS[0]!.value);
+  const [selectedColor, setSelectedColor] = useState<string>(DEFAULT_COLOR);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const toast = useToast();
@@ -108,7 +110,7 @@ export function CategoryModal({
     mode: 'onChange',
     defaultValues: {
       type: 'expense',
-      color: PRESET_COLORS[0]!.value,
+      color: DEFAULT_COLOR,
     },
   });
 
@@ -124,7 +126,7 @@ export function CategoryModal({
     } else if (!editMode && isOpen) {
       // Reset to defaults when opening in create mode
       reset();
-      setSelectedColor(PRESET_COLORS[0]!.value);
+      setSelectedColor(DEFAULT_COLOR);
     }
   }, [editMode, category, isOpen, setValue, reset]);
 
@@ -174,7 +176,7 @@ export function CategoryModal({
 
       // Reset form and close modal
       reset();
-      setSelectedColor(PRESET_COLORS[0]!.value);
+      setSelectedColor(DEFAULT_COLOR);
       setApiError(null);
       onClose();
     } catch (error) {
@@ -194,7 +196,7 @@ export function CategoryModal({
 
   const handleClose = () => {
     reset();
-    setSelectedColor(PRESET_COLORS[0]!.value);
+    setSelectedColor(DEFAULT_COLOR);
     setApiError(null);
     onClose();
   };

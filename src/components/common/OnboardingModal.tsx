@@ -76,7 +76,8 @@ export function OnboardingModal({
   const [currentStep, setCurrentStep] = useState(0);
 
   const isLastStep = currentStep === ONBOARDING_STEPS.length - 1;
-  const currentStepData = ONBOARDING_STEPS[currentStep]!;
+  const currentStepData = ONBOARDING_STEPS[currentStep];
+  if (!currentStepData) return null;
   const progress = ((currentStep + 1) / ONBOARDING_STEPS.length) * 100;
 
   const handleNext = () => {

@@ -29,6 +29,12 @@ const fallbackCache = new Map<
 >();
 
 /**
+ * Counter tracking how many times the in-memory fallback has been activated.
+ * Useful for monitoring Redis reliability in production.
+ */
+let fallbackActivationCount = 0;
+
+/**
  * Rate limit configuration
  * Story 9-1 AC-9.1.3: Exactly 10 requests per 60 seconds
  */
@@ -111,7 +117,15 @@ export async function checkRateLimit(
       console.log(`[Rate Limit] User ${userId} within limit (${result.remaining}/${result.limit} remaining)`);
       return { exceeded: false, remainingSeconds: 0 };
     } catch (error) {
-      console.error('[Rate Limit] @upstash/ratelimit error, falling back to in-memory:', error);
+      fallbackActivationCount++;
+      console.warn(JSON.stringify({
+        level: 'warn',
+        service: 'rateLimitService',
+        event: 'redis_fallback_activated',
+        userId,
+        fallbackActivationCount,
+        error: error instanceof Error ? error.message : String(error),
+      }));
       // Fall through to in-memory fallback
     }
   }
@@ -244,4 +258,13 @@ export async function getRemainingTime(
 export function __resetRateLimitForTesting(): void {
   fallbackCache.clear();
   ratelimiter = null;
+  fallbackActivationCount = 0;
+}
+
+/**
+ * Get the number of times the in-memory fallback has been activated.
+ * Useful for monitoring and alerting on Redis health.
+ */
+export function getFallbackActivationCount(): number {
+  return fallbackActivationCount;
 }

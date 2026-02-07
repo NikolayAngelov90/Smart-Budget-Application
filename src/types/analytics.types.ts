@@ -96,6 +96,7 @@ export interface BufferedEvent {
   timestamp: string;
   session_id: string;
   device_type: DeviceType;
+  retry_count?: number;
 }
 
 // API request/response types

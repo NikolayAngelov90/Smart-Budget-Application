@@ -166,7 +166,7 @@ epic-9:
       description: Write integration tests using test utilities library (deferred 3 epics since Epic 6)
       status: pending
       epic_assigned: 10
-      story_id: null
+      story_id: 10-9-write-integration-tests
       notes: Test utilities from Story 9-2 removed the barrier. Must allocate dedicated story in Epic 10.
 
     - id: epic9-high-1
@@ -174,40 +174,40 @@ epic-9:
       description: Multi-currency support (Euro default, USD, user-selectable currencies)
       status: pending
       epic_assigned: 10
-      story_id: null
-      notes: Project Lead request. Currency settings, exchange rates, formatting throughout UI.
+      story_id: 10-3-multi-currency-user-settings
+      notes: Project Lead request. Stories 10-3 through 10-6 cover currency settings, exchange rates, formatting.
 
     - id: epic9-high-2
       priority: HIGH
       description: Bulgarian language UI (i18n/localization framework)
       status: pending
       epic_assigned: 10
-      story_id: null
-      notes: Project Lead request. i18n framework setup, translation files, language switcher.
+      story_id: 10-1-i18n-framework-setup-and-language-switcher
+      notes: Project Lead request. Stories 10-1 (framework) and 10-2 (translations) cover full i18n.
 
     - id: epic9-high-3
       priority: HIGH
       description: Mobile app production preparation (enhanced PWA or native)
       status: pending
       epic_assigned: 10
-      story_id: null
-      notes: Project Lead request. Evaluate PWA enhancement vs React Native for app store presence.
+      story_id: 10-7-enhanced-pwa-for-mobile-production
+      notes: Project Lead request. Stories 10-7 (PWA) and 10-8 (touch UI) cover mobile production.
 
     - id: epic9-medium-1
       priority: MEDIUM
       description: Integrate deployment scripts into CI/CD pipeline
       status: pending
       epic_assigned: 10
-      story_id: null
+      story_id: 10-10-cicd-pipeline-integration
       notes: Scripts from Story 9-8 exist but run manually. Automate in CI.
 
     - id: epic9-medium-2
       priority: MEDIUM
       description: Replace non-null assertions with proper null handling in source files
-      status: pending
-      epic_assigned: 10
-      story_id: null
-      notes: ~15 locations using ! assertions bypass strict TypeScript safety from Story 9-9.
+      status: completed
+      epic_assigned: 9
+      story_id: epic-9-retro-enhancement
+      notes: Completed as Epic 9 retrospective enhancement. Fixed ~15 non-null assertions across 7 source files with proper null guards.
 
     - id: epic9-medium-3
       priority: MEDIUM
