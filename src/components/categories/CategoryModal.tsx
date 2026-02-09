@@ -42,6 +42,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Category } from '@/types/category.types';
 
 // Validation schema (used for both create and edit)
@@ -97,6 +98,9 @@ export function CategoryModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const toast = useToast();
+  const t = useTranslations('categories');
+  const tCommon = useTranslations('common');
+  const tTransactions = useTranslations('transactions');
 
   const {
     register,
@@ -183,7 +187,7 @@ export function CategoryModal({
       console.error(`Category ${editMode ? 'update' : 'creation'} error:`, error);
       setApiError('Network error. Please try again.');
       toast({
-        title: 'Network Error',
+        title: t('networkError'),
         description: `Failed to ${editMode ? 'update' : 'create'} category. Please check your connection.`,
         status: 'error',
         duration: 5000,
@@ -210,7 +214,7 @@ export function CategoryModal({
     >
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>{editMode ? 'Edit Category' : 'Add Category'}</ModalHeader>
+        <ModalHeader>{editMode ? t('editCategory') : t('addCategory')}</ModalHeader>
         <ModalCloseButton />
 
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -218,7 +222,7 @@ export function CategoryModal({
             <VStack spacing={5}>
               {/* Category Name */}
               <FormControl isInvalid={!!errors.name}>
-                <FormLabel>Category Name</FormLabel>
+                <FormLabel>{t('categoryName')}</FormLabel>
                 <HStack>
                   <Box
                     w={6}
@@ -230,7 +234,7 @@ export function CategoryModal({
                   />
                   <Input
                     {...register('name')}
-                    placeholder="e.g., Groceries, Coffee, etc."
+                    placeholder={t('categoryNamePlaceholder')}
                     maxLength={100}
                     autoFocus
                   />
@@ -240,7 +244,7 @@ export function CategoryModal({
 
               {/* Type Selector */}
               <FormControl isInvalid={!!errors.type}>
-                <FormLabel>Type</FormLabel>
+                <FormLabel>{tTransactions('type')}</FormLabel>
                 <HStack spacing={3}>
                   <Button
                     flex={1}
@@ -251,7 +255,7 @@ export function CategoryModal({
                     isDisabled={editMode}
                     cursor={editMode ? 'not-allowed' : 'pointer'}
                   >
-                    Expense
+                    {tTransactions('expense')}
                   </Button>
                   <Button
                     flex={1}
@@ -262,7 +266,7 @@ export function CategoryModal({
                     isDisabled={editMode}
                     cursor={editMode ? 'not-allowed' : 'pointer'}
                   >
-                    Income
+                    {tTransactions('income')}
                   </Button>
                 </HStack>
                 {editMode && (
@@ -275,7 +279,7 @@ export function CategoryModal({
 
               {/* Color Picker */}
               <FormControl isInvalid={!!errors.color}>
-                <FormLabel>Color</FormLabel>
+                <FormLabel>{t('color')}</FormLabel>
                 <Grid templateColumns="repeat(6, 1fr)" gap={2}>
                   {PRESET_COLORS.map((color) => (
                     <Box
@@ -328,16 +332,15 @@ export function CategoryModal({
 
           <ModalFooter>
             <Button variant="ghost" mr={3} onClick={handleClose} isDisabled={isSubmitting}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               colorScheme="blue"
               type="submit"
               isLoading={isSubmitting}
               isDisabled={!isValid || isSubmitting}
-              loadingText={editMode ? 'Updating...' : 'Saving...'}
             >
-              {editMode ? 'Update' : 'Save'}
+              {tCommon('save')}
             </Button>
           </ModalFooter>
         </form>

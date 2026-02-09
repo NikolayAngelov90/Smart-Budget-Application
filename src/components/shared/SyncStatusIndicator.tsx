@@ -14,6 +14,7 @@ import React from 'react';
 import { Badge, HStack, Text, Tooltip, Icon } from '@chakra-ui/react';
 import { CheckCircleIcon, WarningIcon, TimeIcon } from '@chakra-ui/icons';
 import { formatDistanceToNow } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 
 export interface SyncStatusIndicatorProps {
@@ -45,11 +46,12 @@ export function SyncStatusIndicator({
   showTimestamp = true,
 }: SyncStatusIndicatorProps) {
   const { lastSync, syncStatus } = useOnlineStatus();
+  const t = useTranslations('sync');
 
   // Format last sync time as "X minutes ago"
   const lastSyncText = lastSync
-    ? `Last synced: ${formatDistanceToNow(lastSync, { addSuffix: true })}`
-    : 'Never synced';
+    ? t('lastSynced', { time: formatDistanceToNow(lastSync, { addSuffix: true }) })
+    : t('neverSynced');
 
   // Determine badge color, icon, and text based on sync status
   const getStatusConfig = () => {
@@ -58,28 +60,28 @@ export function SyncStatusIndicator({
         return {
           colorScheme: 'green',
           icon: CheckCircleIcon,
-          text: 'All data synced',
+          text: t('allDataSynced'),
           iconColor: 'green.500',
         };
       case 'syncing':
         return {
           colorScheme: 'yellow',
           icon: TimeIcon,
-          text: 'Syncing...',
+          text: t('syncing'),
           iconColor: 'yellow.500',
         };
       case 'offline':
         return {
           colorScheme: 'red',
           icon: WarningIcon,
-          text: 'Offline',
+          text: t('offline'),
           iconColor: 'red.500',
         };
       default:
         return {
           colorScheme: 'gray',
           icon: TimeIcon,
-          text: 'Unknown',
+          text: t('unknown'),
           iconColor: 'gray.500',
         };
     }
@@ -113,7 +115,7 @@ export function SyncStatusIndicator({
           </Text>
           {syncStatus === 'offline' && (
             <Badge colorScheme={config.colorScheme} fontSize="xs">
-              No connection
+              {t('noConnection')}
             </Badge>
           )}
         </HStack>

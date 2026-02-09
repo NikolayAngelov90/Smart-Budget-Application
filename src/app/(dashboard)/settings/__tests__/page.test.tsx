@@ -107,6 +107,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
       currency_format: 'USD' as const,
       date_format: 'MM/DD/YYYY' as const,
       onboarding_completed: true,
+      language: 'en' as const,
     },
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z',
@@ -149,7 +150,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     customRender(<SettingsPage />);
 
     await waitFor(() => {
-      const monthSelector = screen.getByLabelText(/select month for pdf report/i);
+      const monthSelector = screen.getByLabelText(/select month/i);
       expect(monthSelector).toBeInTheDocument();
 
       // Check that there are 12 options (one for each of the last 12 months)
@@ -278,10 +279,10 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     customRender(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/select month for pdf report/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/select month/i)).toBeInTheDocument();
     });
 
-    const monthSelector = screen.getByLabelText(/select month for pdf report/i) as HTMLSelectElement;
+    const monthSelector = screen.getByLabelText(/select month/i) as HTMLSelectElement;
 
     // Get the initial value (current month)
     const initialValue = monthSelector.value;
@@ -320,7 +321,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     });
 
     const exportButton = screen.getByRole('button', { name: /export monthly report \(pdf\)/i });
-    const monthSelector = screen.getByLabelText(/select month for pdf report/i);
+    const monthSelector = screen.getByLabelText(/select month/i);
 
     fireEvent.click(exportButton);
 
@@ -372,8 +373,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Export failed',
-          description: 'Failed to generate PDF report. Please try again.',
+          title: 'PDF export failed',
           status: 'error',
         })
       );
@@ -433,7 +433,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Export failed',
+          title: 'PDF export failed',
           status: 'error',
         })
       );

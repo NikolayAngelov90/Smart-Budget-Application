@@ -23,6 +23,7 @@ import {
   generatePreviewUrl,
   deleteProfilePicture,
 } from '@/lib/services/uploadService';
+import { useTranslations } from 'next-intl';
 import { useSWRConfig } from 'swr';
 
 interface ProfilePictureUploadProps {
@@ -46,6 +47,8 @@ export function ProfilePictureUpload({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+  const t = useTranslations('profile');
+  const tCommon = useTranslations('common');
   const { mutate } = useSWRConfig();
 
   // Cleanup preview URL when component unmounts or file changes
@@ -71,7 +74,7 @@ export function ProfilePictureUpload({
     const validation = validateProfilePicture(file);
     if (!validation.valid) {
       toast({
-        title: 'Invalid file',
+        title: t('previewFailed'),
         description: validation.error,
         status: 'error',
         duration: 5000,
@@ -92,7 +95,7 @@ export function ProfilePictureUpload({
       setPreviewUrl(preview);
     } catch {
       toast({
-        title: 'Preview failed',
+        title: t('previewFailed'),
         description: 'Could not generate file preview',
         status: 'error',
         duration: 3000,
@@ -155,7 +158,7 @@ export function ProfilePictureUpload({
 
       // Show success toast
       toast({
-        title: 'Profile picture updated',
+        title: t('pictureUpdated'),
         description: 'Your profile picture has been successfully updated.',
         status: 'success',
         duration: 3000,
@@ -179,7 +182,7 @@ export function ProfilePictureUpload({
       console.error('Upload error:', error);
 
       toast({
-        title: 'Upload failed',
+        title: t('uploadFailed'),
         description: error instanceof Error ? error.message : 'Failed to upload profile picture',
         status: 'error',
         duration: 5000,
@@ -236,7 +239,7 @@ export function ProfilePictureUpload({
       mutate('/api/user/profile');
 
       toast({
-        title: 'Profile picture removed',
+        title: t('pictureRemoved'),
         description: 'Your profile picture has been removed.',
         status: 'success',
         duration: 3000,
@@ -246,7 +249,7 @@ export function ProfilePictureUpload({
       console.error('Delete error:', error);
 
       toast({
-        title: 'Delete failed',
+        title: t('deleteFailed'),
         description: 'Failed to remove profile picture',
         status: 'error',
         duration: 5000,
@@ -311,7 +314,7 @@ export function ProfilePictureUpload({
             colorScheme="brand"
             onClick={triggerFileInput}
           >
-            {currentPictureUrl ? 'Change Picture' : 'Upload Picture'}
+            {currentPictureUrl ? t('changePicture') : t('uploadPicture')}
           </Button>
 
           {currentPictureUrl && (
@@ -322,7 +325,7 @@ export function ProfilePictureUpload({
               onClick={handleDelete}
               isLoading={isDeleting}
             >
-              Remove
+              {t('removePicture')}
             </Button>
           )}
         </HStack>
@@ -343,7 +346,7 @@ export function ProfilePictureUpload({
             variant="outline"
             onClick={handleCancel}
           >
-            Cancel
+            {tCommon('cancel')}
           </Button>
         </HStack>
       )}

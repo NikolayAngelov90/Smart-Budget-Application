@@ -1,17 +1,29 @@
 /**
  * Currency formatting utility
  * Story 5.2: Financial Summary Cards
+ * Story 10-1: i18n Framework Setup & Language Switcher
  *
  * Provides consistent currency formatting across the application
+ * Supports locale-aware number formatting
  */
 
 /**
- * Formats a number as USD currency with $ symbol and 2 decimal places
+ * Map language codes to Intl locale identifiers for number formatting
+ */
+const LOCALE_MAP: Record<string, string> = {
+  en: 'en-US',
+  bg: 'bg-BG',
+};
+
+/**
+ * Formats a number as currency with locale-aware formatting
  * @param amount - The numeric amount to format
+ * @param language - Optional language code for locale-aware formatting
  * @returns Formatted currency string (e.g., "$1,234.56")
  */
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(amount: number, language?: string): string {
+  const locale = language ? LOCALE_MAP[language] || 'en-US' : 'en-US';
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,

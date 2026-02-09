@@ -13,12 +13,14 @@
 'use client';
 
 import { Alert, AlertIcon, AlertDescription, CloseButton } from '@chakra-ui/react';
+import { useTranslations } from 'next-intl';
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 
 export function OfflineBanner() {
   const { isOnline, cachedDataTimestamp, syncStatus } = useOnlineStatus();
+  const t = useTranslations('offline');
   const [showReconnectionBanner, setShowReconnectionBanner] = useState(false);
   const [wasOffline, setWasOffline] = useState(false);
 
@@ -55,8 +57,8 @@ export function OfflineBanner() {
         <AlertIcon />
         <AlertDescription flex="1">
           {syncStatus === 'syncing'
-            ? 'Back online! Syncing latest data...'
-            : 'Back online! Data synced successfully.'}
+            ? t('backOnlineSyncing')
+            : t('backOnlineSynced')}
         </AlertDescription>
         <CloseButton
           alignSelf="flex-start"
@@ -79,7 +81,7 @@ export function OfflineBanner() {
       <Alert status="warning" variant="solid" position="sticky" top={0} zIndex={1000}>
         <AlertIcon />
         <AlertDescription flex="1">
-          You&apos;re offline. Viewing cached data from {cacheTimeText}.
+          {t('youAreOffline', { time: cacheTimeText })}
         </AlertDescription>
       </Alert>
     );

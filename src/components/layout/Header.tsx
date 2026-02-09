@@ -19,6 +19,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import type { User } from '@supabase/supabase-js';
@@ -37,6 +38,7 @@ interface UserProfile {
 export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
   const toast = useToast();
+  const t = useTranslations('header');
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
 
@@ -75,7 +77,7 @@ export function Header({ onMenuClick }: HeaderProps) {
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast({
-        title: 'Error logging out',
+        title: t('logoutError'),
         description: error.message,
         status: 'error',
         duration: 3000,
@@ -148,7 +150,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                   </Text>
                 </MenuItem>
                 <MenuDivider />
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                <MenuItem onClick={handleLogout}>{t('logout')}</MenuItem>
               </MenuList>
             </Menu>
           </HStack>

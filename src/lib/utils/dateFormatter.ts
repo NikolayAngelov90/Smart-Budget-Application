@@ -1,12 +1,26 @@
 /**
  * Story 8.3: Settings Page and Account Management
+ * Story 10-1: i18n Framework Setup & Language Switcher
  * Date Formatting Utilities
  *
- * Formats dates according to user's date format preference
+ * Formats dates according to user's date format preference and locale
  */
 
 import { format } from 'date-fns';
+import { bg } from 'date-fns/locale';
 import type { UserPreferences } from '@/types/user.types';
+
+/**
+ * Get the date-fns locale object for a given language code
+ */
+function getDateLocale(language?: string) {
+  switch (language) {
+    case 'bg':
+      return bg;
+    default:
+      return undefined; // date-fns defaults to English
+  }
+}
 
 /**
  * Map user date format preference to date-fns format string
@@ -37,7 +51,8 @@ const SHORT_DATE_FORMAT_MAP: Record<UserPreferences['date_format'], string> = {
 export function formatDate(
   date: Date | string,
   dateFormat: UserPreferences['date_format'] = 'MM/DD/YYYY',
-  short: boolean = false
+  short: boolean = false,
+  language?: string
 ): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
 
@@ -49,7 +64,8 @@ export function formatDate(
     ? SHORT_DATE_FORMAT_MAP[dateFormat]
     : DATE_FORMAT_MAP[dateFormat];
 
-  return format(dateObj, formatString);
+  const locale = getDateLocale(language);
+  return format(dateObj, formatString, locale ? { locale } : undefined);
 }
 
 /**
@@ -62,7 +78,8 @@ export function formatDate(
  */
 export function formatTransactionDate(
   date: Date | string,
-  dateFormat: UserPreferences['date_format'] = 'MM/DD/YYYY'
+  dateFormat: UserPreferences['date_format'] = 'MM/DD/YYYY',
+  language?: string
 ): string {
-  return formatDate(date, dateFormat, true);
+  return formatDate(date, dateFormat, true, language);
 }

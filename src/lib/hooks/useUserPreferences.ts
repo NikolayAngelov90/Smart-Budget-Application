@@ -18,6 +18,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   currency_format: 'USD',
   date_format: 'MM/DD/YYYY',
   onboarding_completed: false,
+  language: 'en',
 };
 
 /**

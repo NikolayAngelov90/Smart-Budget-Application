@@ -56,6 +56,7 @@ import {
   Tooltip,
 } from '@chakra-ui/react';
 import { format, subDays } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import { CategoryMenu } from '@/components/categories/CategoryMenu';
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 
@@ -131,6 +132,8 @@ export default function TransactionEntryModal({
   transaction = null,
 }: TransactionEntryModalProps) {
   const toast = useToast();
+  const t = useTranslations('transactions');
+  const tCommon = useTranslations('common');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [recentCategories, setRecentCategories] = useState<Category[]>([]);
@@ -179,7 +182,7 @@ export default function TransactionEntryModal({
         setRecentCategories(data.recent || []); // Story 4.5: Use recent categories from API
       } else {
         toast({
-          title: 'Failed to load categories',
+          title: t('failedToLoadCategories'),
           status: 'error',
           duration: 3000,
         });
@@ -187,14 +190,14 @@ export default function TransactionEntryModal({
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast({
-        title: 'Failed to load categories',
+        title: t('failedToLoadCategories'),
         status: 'error',
         duration: 3000,
       });
     } finally {
       setIsLoadingCategories(false);
     }
-  }, [transactionType, toast]);
+  }, [transactionType, toast, t]);
 
   // Fetch categories when modal opens or type changes
   useEffect(() => {
@@ -236,8 +239,8 @@ export default function TransactionEntryModal({
     // Story 8.5 AC-8.5.3: Prevent submission when offline
     if (!isOnline) {
       toast({
-        title: 'You are offline',
-        description: 'Please check your internet connection and try again',
+        title: t('offlineMessage'),
+        description: t('offlineDescription'),
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -285,7 +288,7 @@ export default function TransactionEntryModal({
 
       // Success!
       toast({
-        title: mode === 'edit' ? 'Transaction updated successfully' : 'Transaction added successfully',
+        title: mode === 'edit' ? t('updatedSuccess') : t('addedSuccess'),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -312,7 +315,7 @@ export default function TransactionEntryModal({
     } catch (error) {
       console.error(`Error ${mode === 'edit' ? 'updating' : 'creating'} transaction:`, error);
       toast({
-        title: 'Failed to save transaction',
+        title: t('failedToSave'),
         description: error instanceof Error ? error.message : 'Network error - please try again',
         status: 'error',
         duration: 5000,
@@ -334,7 +337,7 @@ export default function TransactionEntryModal({
     >
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>{mode === 'edit' ? 'Edit Transaction' : 'Add Transaction'}</ModalHeader>
+        <ModalHeader>{mode === 'edit' ? t('editTransaction') : t('addTransaction')}</ModalHeader>
         <ModalCloseButton />
 
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -342,7 +345,7 @@ export default function TransactionEntryModal({
             <VStack spacing={5} align="stretch">
               {/* Amount Field */}
               <FormControl isInvalid={!!errors.amount} isRequired>
-                <FormLabel htmlFor="amount">Amount</FormLabel>
+                <FormLabel htmlFor="amount">{t('amount')}</FormLabel>
                 <Input
                   id="amount"
                   type="text"
@@ -368,7 +371,7 @@ export default function TransactionEntryModal({
 
               {/* Transaction Type Toggle */}
               <FormControl>
-                <FormLabel htmlFor="type">Type</FormLabel>
+                <FormLabel htmlFor="type">{t('type')}</FormLabel>
                 <HStack spacing={2}>
                   <Button
                     flex={1}
@@ -377,7 +380,7 @@ export default function TransactionEntryModal({
                     onClick={() => setValue('type', 'expense', { shouldValidate: true })}
                     minH="44px"
                   >
-                    Expense
+                    {t('expense')}
                   </Button>
                   <Button
                     flex={1}
@@ -386,25 +389,25 @@ export default function TransactionEntryModal({
                     onClick={() => setValue('type', 'income', { shouldValidate: true })}
                     minH="44px"
                   >
-                    Income
+                    {t('income')}
                   </Button>
                 </HStack>
               </FormControl>
 
               {/* Category Dropdown */}
               <FormControl isInvalid={!!errors.category_id} isRequired>
-                <FormLabel htmlFor="category_id">Category</FormLabel>
+                <FormLabel htmlFor="category_id">{t('category')}</FormLabel>
                 {isLoadingCategories ? (
                   <Box display="flex" alignItems="center" justifyContent="center" py={4}>
                     <Spinner size="md" color="#2b6cb0" />
-                    <Text ml={3}>Loading categories...</Text>
+                    <Text ml={3}>{tCommon('loading')}</Text>
                   </Box>
                 ) : (
                   <CategoryMenu
                     categories={categories}
                     value={watch('category_id')}
                     onChange={(categoryId) => setValue('category_id', categoryId, { shouldValidate: true })}
-                    placeholder="Select a category"
+                    placeholder={t('selectCategory')}
                     isInvalid={!!errors.category_id}
                     size="lg"
                     recentCategories={recentCategories}
@@ -417,16 +420,16 @@ export default function TransactionEntryModal({
 
               {/* Date Picker with Quick Options */}
               <FormControl isInvalid={!!errors.date} isRequired>
-                <FormLabel htmlFor="date">Date</FormLabel>
+                <FormLabel htmlFor="date">{t('date')}</FormLabel>
                 <HStack spacing={2} mb={2}>
                   <Button size="sm" variant="outline" onClick={() => setQuickDate(0)}>
-                    Today
+                    {t('today')}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setQuickDate(1)}>
-                    Yesterday
+                    {t('yesterday')}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setQuickDate(2)}>
-                    2 days ago
+                    {t('twoDaysAgo')}
                   </Button>
                 </HStack>
                 <Input
@@ -445,10 +448,10 @@ export default function TransactionEntryModal({
 
               {/* Notes Field (Optional) */}
               <FormControl isInvalid={!!errors.notes}>
-                <FormLabel htmlFor="notes">Notes (optional)</FormLabel>
+                <FormLabel htmlFor="notes">{t('notes')} ({tCommon('optional')})</FormLabel>
                 <Textarea
                   id="notes"
-                  placeholder="e.g., Grocery store, Coffee with Sarah"
+                  placeholder={t('notesPlaceholder')}
                   size="md"
                   rows={2}
                   maxLength={100}
@@ -460,7 +463,7 @@ export default function TransactionEntryModal({
                 />
                 {errors.notes && <FormErrorMessage>{errors.notes.message}</FormErrorMessage>}
                 <Text fontSize="xs" color="gray.500" mt={1}>
-                  Max 100 characters
+                  {t('maxCharacters', { max: 100 })}
                 </Text>
               </FormControl>
             </VStack>
@@ -474,10 +477,10 @@ export default function TransactionEntryModal({
               isDisabled={isSubmitting}
               minH="44px"
             >
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Tooltip
-              label={!isOnline ? 'Available when online' : ''}
+              label={!isOnline ? t('availableWhenOnline') : ''}
               placement="top"
               hasArrow
             >
@@ -493,7 +496,7 @@ export default function TransactionEntryModal({
                 minH="44px"
                 opacity={!isOnline ? 0.4 : 1}
               >
-                {mode === 'edit' ? 'Save' : 'Add'}
+                {mode === 'edit' ? tCommon('save') : t('add')}
               </Button>
             </Tooltip>
           </ModalFooter>

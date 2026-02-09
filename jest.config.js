@@ -26,9 +26,9 @@ const customJestConfig = {
     'lcov',           // Generate lcov report for Codecov
     'json-summary',   // Generate coverage-summary.json for GitHub Actions
   ],
-  // Story 9.1: Transform @upstash packages and dependencies (ESM modules)
+  // Story 9.1, 10-1: Transform ESM modules (upstash, next-intl, use-intl)
   transformIgnorePatterns: [
-    'node_modules/(?!(@upstash|uncrypto)/)',
+    'node_modules/(?!(@upstash|uncrypto|next-intl|use-intl)/)',
   ],
   // Coverage thresholds removed - allowing gradual improvement
   // The GitHub Actions workflow enforces a 5% minimum threshold

@@ -55,6 +55,7 @@ describe('settingsService', () => {
         currency_format: 'USD',
         date_format: 'MM/DD/YYYY',
         onboarding_completed: false,
+        language: 'en',
       },
       created_at: '2025-01-01T00:00:00Z',
       updated_at: '2025-01-01T00:00:00Z',
@@ -133,6 +134,7 @@ describe('settingsService', () => {
         preferences: {
           currency_format: 'USD',
           date_format: 'MM/DD/YYYY',
+          language: 'en',
           onboarding_completed: false,
         },
       });
@@ -347,6 +349,7 @@ describe('settingsService', () => {
         currency_format: 'USD',
         date_format: 'MM/DD/YYYY',
         onboarding_completed: false,
+        language: 'en',
       },
       created_at: '2025-01-01T00:00:00Z',
       updated_at: '2025-01-01T00:00:00Z',

@@ -10,6 +10,7 @@
  */
 
 import { SimpleGrid, Alert, AlertIcon, AlertTitle, AlertDescription } from '@chakra-ui/react';
+import { useTranslations } from 'next-intl';
 import { StatCard } from './StatCard';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
@@ -17,6 +18,7 @@ import { formatCurrency, formatCurrencyWithSign } from '@/lib/utils/currency';
 
 export function DashboardStats() {
   const { data, error, isLoading, mutate } = useDashboardStats();
+  const t = useTranslations('dashboard');
 
   // Subscribe to real-time transaction changes via centralized manager
   useRealtimeSubscription((event) => {
@@ -30,9 +32,9 @@ export function DashboardStats() {
     return (
       <Alert status="error" borderRadius="md">
         <AlertIcon />
-        <AlertTitle>Failed to load dashboard stats</AlertTitle>
+        <AlertTitle>{t('failedToLoad')}</AlertTitle>
         <AlertDescription>
-          Unable to fetch financial data. Please try refreshing the page.
+          {t('failedToLoadDescription')}
         </AlertDescription>
       </Alert>
     );
@@ -55,30 +57,30 @@ export function DashboardStats() {
     <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={{ base: 4, md: 6 }} w="full">
       {/* Total Balance Card */}
       <StatCard
-        label="Total Balance"
+        label={t('totalBalance')}
         value={balanceFormatted}
         trend={incomeTrend - expensesTrend}
-        trendLabel="vs last month"
+        trendLabel={t('vsLastMonth')}
         colorScheme={balanceColorScheme}
         isLoading={isLoading}
       />
 
       {/* Monthly Income Card */}
       <StatCard
-        label="Monthly Income"
+        label={t('monthlyIncome')}
         value={incomeFormatted}
         trend={incomeTrend}
-        trendLabel="vs last month"
+        trendLabel={t('vsLastMonth')}
         colorScheme="green"
         isLoading={isLoading}
       />
 
       {/* Monthly Expenses Card */}
       <StatCard
-        label="Monthly Expenses"
+        label={t('monthlyExpenses')}
         value={expensesFormatted}
         trend={expensesTrend}
-        trendLabel="vs last month"
+        trendLabel={t('vsLastMonth')}
         colorScheme="red"
         isLoading={isLoading}
       />

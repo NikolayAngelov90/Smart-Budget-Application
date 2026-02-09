@@ -44,6 +44,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
         currency_format: 'USD',
         date_format: 'MM/DD/YYYY',
         onboarding_completed: false,
+        language: 'en',
       };
 
       const { data: newProfile, error: insertError } = await supabase

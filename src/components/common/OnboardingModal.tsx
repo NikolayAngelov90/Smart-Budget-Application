@@ -26,6 +26,7 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { AddIcon, ViewIcon, StarIcon } from '@chakra-ui/icons';
+import { useTranslations } from 'next-intl';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -34,8 +35,8 @@ interface OnboardingModalProps {
 }
 
 interface OnboardingStep {
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   icon: typeof AddIcon;
   iconColor: string;
   iconBg: string;
@@ -43,25 +44,22 @@ interface OnboardingStep {
 
 const ONBOARDING_STEPS: OnboardingStep[] = [
   {
-    title: 'Track Your Spending in Under 30 Seconds',
-    description:
-      'Quickly log every expense and income with our intuitive transaction entry. Just tap, enter the amount, pick a category, and you\'re done. It\'s that simple!',
+    titleKey: 'step1Title',
+    descriptionKey: 'step1Description',
     icon: AddIcon,
     iconColor: 'white',
     iconBg: '#2b6cb0',
   },
   {
-    title: 'See Where Your Money Goes',
-    description:
-      'Your personalized dashboard shows beautiful visual charts breaking down your spending by category, tracking trends over time, and highlighting your financial patterns at a glance.',
+    titleKey: 'step2Title',
+    descriptionKey: 'step2Description',
     icon: ViewIcon,
     iconColor: 'white',
     iconBg: '#38a169',
   },
   {
-    title: 'Get Personalized AI Coaching',
-    description:
-      'Smart Budget analyzes your spending habits and provides actionable insights to help you optimize your budget, spot unusual expenses, and celebrate your wins.',
+    titleKey: 'step3Title',
+    descriptionKey: 'step3Description',
     icon: StarIcon,
     iconColor: 'white',
     iconBg: '#d69e2e',
@@ -74,6 +72,8 @@ export function OnboardingModal({
   onSkip,
 }: OnboardingModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const t = useTranslations('onboarding');
+  const tCommon = useTranslations('common');
 
   const isLastStep = currentStep === ONBOARDING_STEPS.length - 1;
   const currentStepData = ONBOARDING_STEPS[currentStep];
@@ -105,10 +105,10 @@ export function OnboardingModal({
         <ModalHeader pt={8} pb={4}>
           <VStack spacing={4} align="stretch">
             <Heading as="h2" size="lg" textAlign="center" color="gray.800">
-              Welcome to Smart Budget!
+              {t('welcome')}
             </Heading>
             <Text fontSize="sm" color="gray.600" textAlign="center">
-              Let&apos;s get you started with a quick tour
+              {t('welcomeDescription')}
             </Text>
             <Progress
               value={progress}
@@ -140,10 +140,10 @@ export function OnboardingModal({
             {/* Content */}
             <VStack spacing={4} textAlign="center" maxW="md">
               <Heading as="h3" size="md" color="gray.800">
-                {currentStepData.title}
+                {t(currentStepData.titleKey)}
               </Heading>
               <Text color="gray.700" fontSize="md" lineHeight="tall">
-                {currentStepData.description}
+                {t(currentStepData.descriptionKey)}
               </Text>
             </VStack>
 
@@ -170,7 +170,7 @@ export function OnboardingModal({
             color="gray.600"
             _hover={{ bg: 'gray.100' }}
           >
-            Skip
+            {tCommon('skip')}
           </Button>
 
           <Button
@@ -184,7 +184,7 @@ export function OnboardingModal({
             onClick={handleNext}
             rightIcon={isLastStep ? <StarIcon /> : undefined}
           >
-            {isLastStep ? "Let's Get Started!" : 'Next'}
+            {isLastStep ? t('letsGetStarted') : tCommon('next')}
           </Button>
         </ModalFooter>
       </ModalContent>

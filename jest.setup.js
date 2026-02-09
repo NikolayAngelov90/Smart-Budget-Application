@@ -126,6 +126,46 @@ if (typeof global.Headers === 'undefined') {
   };
 }
 
+// Mock next-intl (ESM module that Jest cannot parse directly)
+// Load actual English translations so existing tests that query for English text continue to work
+jest.mock('next-intl', () => {
+  const messages = require('./messages/en.json');
+  return {
+    useTranslations: jest.fn((namespace) => {
+      const nsMessages = messages[namespace] || {};
+      const t = (key, params) => {
+        const value = nsMessages[key];
+        if (value === undefined) return `${namespace}.${key}`;
+        if (params) {
+          return Object.entries(params).reduce(
+            (str, [k, v]) => String(str).replace(`{${k}}`, String(v)),
+            value
+          );
+        }
+        return value;
+      };
+      t.rich = (key, params) => {
+        const value = nsMessages[key];
+        return value !== undefined ? value : `${namespace}.${key}`;
+      };
+      return t;
+    }),
+    useLocale: jest.fn(() => 'en'),
+    useMessages: jest.fn(() => messages),
+    useNow: jest.fn(() => new Date()),
+    useTimeZone: jest.fn(() => 'UTC'),
+    NextIntlClientProvider: ({ children }) => children,
+  };
+})
+
+// Mock next-intl/server (ESM module)
+jest.mock('next-intl/server', () => ({
+  getLocale: jest.fn(async () => 'en'),
+  getMessages: jest.fn(async () => ({})),
+  getTranslations: jest.fn(async () => (key) => key),
+  getRequestConfig: jest.fn((fn) => fn),
+}))
+
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({

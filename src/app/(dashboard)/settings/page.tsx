@@ -42,6 +42,7 @@ import {
 } from '@chakra-ui/react';
 import { DownloadIcon, DeleteIcon } from '@chakra-ui/icons';
 import { format, subMonths } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import useSWR, { mutate } from 'swr';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { exportMonthlyReportToPDF, exportTransactionsToCSV } from '@/lib/services/exportService';
@@ -49,6 +50,8 @@ import { ConfirmDeleteModal } from '@/components/settings/ConfirmDeleteModal';
 import { ProfilePictureUpload } from '@/components/settings/ProfilePictureUpload';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import { ActiveDevicesSection } from '@/components/settings/ActiveDevicesSection';
+import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
+import type { SupportedLocale } from '@/i18n/routing';
 import type { PDFReportData } from '@/types/export.types';
 import type { UserProfile } from '@/types/user.types';
 
@@ -77,6 +80,8 @@ const fetcher = async (url: string) => {
 export default function SettingsPage() {
   const router = useRouter();
   const toast = useToast();
+  const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
 
   // Data fetching with SWR (AC-8.3.6: Optimistic UI)
   const { data: profile, error, isLoading } = useSWR<UserProfile>('/api/user/profile', fetcher);
@@ -92,6 +97,7 @@ export default function SettingsPage() {
     'MM/DD/YYYY'
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const [language, setLanguage] = useState<SupportedLocale>('en');
 
   // Modal control
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -102,6 +108,7 @@ export default function SettingsPage() {
       setDisplayName(profile.display_name || '');
       setCurrencyFormat(profile.preferences.currency_format);
       setDateFormat(profile.preferences.date_format);
+      setLanguage(profile.preferences.language || 'en');
     }
   }, [profile]);
 
@@ -145,7 +152,7 @@ export default function SettingsPage() {
 
       // AC-8.3.7: Success toast
       toast({
-        title: 'Profile updated!',
+        title: t('profileUpdated'),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -157,8 +164,7 @@ export default function SettingsPage() {
       await mutate('/api/user/profile');
 
       toast({
-        title: 'Update failed',
-        description: 'Failed to update profile. Please try again.',
+        title: t('profileUpdateFailed'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -202,7 +208,7 @@ export default function SettingsPage() {
 
       // AC-8.3.7: Success toast
       toast({
-        title: 'Preferences updated!',
+        title: t('preferencesUpdated'),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -214,12 +220,25 @@ export default function SettingsPage() {
       await mutate('/api/user/profile');
 
       toast({
-        title: 'Update failed',
-        description: 'Failed to update preferences. Please try again.',
+        title: t('preferencesUpdateFailed'),
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
+    }
+  };
+
+  // AC-10.1.4, AC-10.1.5: Update language preference and persist
+  const handleLanguageChange = async (newLocale: SupportedLocale) => {
+    if (!profile) return;
+    try {
+      await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferences: { language: newLocale } }),
+      });
+    } catch (error) {
+      console.error('Error saving language preference:', error);
     }
   };
 
@@ -289,7 +308,7 @@ export default function SettingsPage() {
       await exportMonthlyReportToPDF(reportData);
 
       toast({
-        title: 'PDF report downloaded!',
+        title: t('pdfDownloaded'),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -297,8 +316,7 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toast({
-        title: 'Export failed',
-        description: 'Failed to generate PDF report. Please try again.',
+        title: t('pdfFailed'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -321,7 +339,7 @@ export default function SettingsPage() {
       await exportTransactionsToCSV(transactions);
 
       toast({
-        title: 'CSV file downloaded!',
+        title: t('csvDownloaded'),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -329,8 +347,7 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Error exporting CSV:', error);
       toast({
-        title: 'Export failed',
-        description: 'Failed to generate CSV file. Please try again.',
+        title: t('csvFailed'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -358,8 +375,7 @@ export default function SettingsPage() {
 
       // Account deleted successfully
       toast({
-        title: 'Account deleted',
-        description: 'Your account has been permanently deleted.',
+        title: t('accountDeleted'),
         status: 'success',
         duration: 5000,
         isClosable: true,
@@ -382,7 +398,7 @@ export default function SettingsPage() {
         <Container maxW="container.xl" py={8}>
           <VStack spacing={8}>
             <Spinner size="xl" />
-            <Text>Loading settings...</Text>
+            <Text>{tCommon('loading')}</Text>
           </VStack>
         </Container>
       </AppLayout>
@@ -407,7 +423,7 @@ export default function SettingsPage() {
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="stretch">
           <Heading as="h1" size="xl" color="gray.800">
-            Settings
+            {t('title')}
           </Heading>
 
           {/* AC-8.3.2: Account Information Section */}
@@ -415,7 +431,7 @@ export default function SettingsPage() {
             <CardBody>
               <VStack spacing={6} align="stretch">
                 <Heading as="h2" size="md" color="gray.700">
-                  Account Information
+                  {t('accountInformation')}
                 </Heading>
 
                 <VStack spacing={4}>
@@ -434,7 +450,7 @@ export default function SettingsPage() {
                       if (!isNaN(date.getTime())) {
                         return (
                           <Text fontSize="sm" color="gray.600">
-                            Member since {format(date, 'MMMM yyyy')}
+                            {t('memberSince')} {format(date, 'MMMM yyyy')}
                           </Text>
                         );
                       }
@@ -446,16 +462,16 @@ export default function SettingsPage() {
                 </VStack>
 
                 <FormControl>
-                  <FormLabel>Display Name</FormLabel>
+                  <FormLabel>{t('displayName')}</FormLabel>
                   <Input
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Enter your display name"
+                    placeholder={t('displayNamePlaceholder')}
                   />
                 </FormControl>
 
                 <FormControl>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t('email')}</FormLabel>
                   <Input value={profile?.email || ''} isReadOnly bg="gray.50" />
                   <Text fontSize="xs" color="gray.500" mt={1}>
                     Email cannot be changed (from auth provider)
@@ -469,7 +485,7 @@ export default function SettingsPage() {
                   loadingText="Saving..."
                   isDisabled={displayName === (profile?.display_name || '')}
                 >
-                  Save Profile
+                  {t('saveProfile')}
                 </Button>
               </VStack>
             </CardBody>
@@ -480,17 +496,17 @@ export default function SettingsPage() {
             <CardBody>
               <VStack spacing={6} align="stretch">
                 <Heading as="h2" size="md" color="gray.700">
-                  Export Data
+                  {t('exportData')}
                 </Heading>
 
                 <Text color="gray.600">
-                  Download your financial data for backup or analysis.
+                  {t('exportDescription')}
                 </Text>
 
                 <Divider />
 
                 <FormControl>
-                  <FormLabel>Select Month for PDF Report</FormLabel>
+                  <FormLabel>{t('selectMonth')}</FormLabel>
                   <Select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
@@ -514,7 +530,7 @@ export default function SettingsPage() {
                     flex="1"
                     minW="200px"
                   >
-                    Export Monthly Report (PDF)
+                    {t('exportMonthlyReport')}
                   </Button>
 
                   <Button
@@ -526,7 +542,7 @@ export default function SettingsPage() {
                     flex="1"
                     minW="200px"
                   >
-                    Export All Transactions (CSV)
+                    {t('exportAllTransactions')}
                   </Button>
                 </HStack>
               </VStack>
@@ -538,11 +554,11 @@ export default function SettingsPage() {
             <CardBody>
               <VStack spacing={6} align="stretch">
                 <Heading as="h2" size="md" color="gray.700">
-                  Preferences
+                  {t('preferences')}
                 </Heading>
 
                 <FormControl>
-                  <FormLabel>Currency Format</FormLabel>
+                  <FormLabel>{t('currencyFormat')}</FormLabel>
                   <Select
                     value={currencyFormat}
                     onChange={(e) => {
@@ -565,7 +581,7 @@ export default function SettingsPage() {
                 </FormControl>
 
                 <FormControl>
-                  <FormLabel>Date Format</FormLabel>
+                  <FormLabel>{t('dateFormat')}</FormLabel>
                   <Select
                     value={dateFormat}
                     onChange={(e) => {
@@ -583,10 +599,16 @@ export default function SettingsPage() {
                   </Select>
                 </FormControl>
 
+                {/* AC-10.1.4: Language Switcher */}
+                <LanguageSwitcher
+                  currentLocale={language}
+                  onLanguageChange={handleLanguageChange}
+                />
+
                 <Divider />
 
                 <Button variant="outline" colorScheme="blue" isDisabled>
-                  Restart Onboarding Tutorial (Coming soon)
+                  {t('restartOnboarding')}
                 </Button>
               </VStack>
             </CardBody>
@@ -597,7 +619,7 @@ export default function SettingsPage() {
             <CardBody>
               <VStack spacing={6} align="stretch">
                 <Heading as="h2" size="md" color="gray.700">
-                  Data Sync Status
+                  {t('dataSyncStatus')}
                 </Heading>
 
                 <VStack spacing={4} align="stretch">
@@ -610,7 +632,7 @@ export default function SettingsPage() {
 
                   <Alert status="success" variant="left-accent">
                     <AlertIcon />
-                    All changes are saved automatically. No manual sync required.
+                    {t('syncDescription')}
                   </Alert>
                 </VStack>
               </VStack>
@@ -625,12 +647,12 @@ export default function SettingsPage() {
             <CardBody>
               <VStack spacing={6} align="stretch">
                 <Heading as="h2" size="md" color="gray.700">
-                  Privacy & Security
+                  {t('privacyAndSecurity')}
                 </Heading>
 
                 <Alert status="info" variant="left-accent">
                   <AlertIcon />
-                  Your data is securely stored in the cloud with bank-level encryption.
+                  {t('bankLevelEncryption')}
                 </Alert>
 
                 <Divider />
@@ -640,7 +662,7 @@ export default function SettingsPage() {
                     Danger Zone
                   </Text>
                   <Text fontSize="sm" color="gray.600">
-                    Once you delete your account, there is no going back. Please be certain.
+                    {t('deleteAccountWarning')}
                   </Text>
                   <Button
                     leftIcon={<DeleteIcon />}
@@ -648,7 +670,7 @@ export default function SettingsPage() {
                     variant="outline"
                     onClick={onOpen}
                   >
-                    Delete My Account
+                    {t('deleteAccount')}
                   </Button>
                 </VStack>
               </VStack>

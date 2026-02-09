@@ -4,33 +4,14 @@ import { Box, VStack, Link as ChakraLink, Icon, HStack, Text, IconButton, Toolti
 import { ViewIcon, EditIcon, AtSignIcon, InfoIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
-const navItems = [
-  {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: ViewIcon,
-  },
-  {
-    name: 'Transactions',
-    href: '/transactions',
-    icon: EditIcon,
-  },
-  {
-    name: 'Categories',
-    href: '/categories',
-    icon: AtSignIcon,
-  },
-  {
-    name: 'Insights',
-    href: '/insights',
-    icon: InfoIcon,
-  },
-  {
-    name: 'Settings',
-    href: '/settings',
-    icon: SettingsIcon,
-  },
+const navItemKeys = [
+  { key: 'dashboard' as const, href: '/dashboard', icon: ViewIcon },
+  { key: 'transactions' as const, href: '/transactions', icon: EditIcon },
+  { key: 'categories' as const, href: '/categories', icon: AtSignIcon },
+  { key: 'insights' as const, href: '/insights', icon: InfoIcon },
+  { key: 'settings' as const, href: '/settings', icon: SettingsIcon },
 ];
 
 interface SidebarProps {
@@ -40,6 +21,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations('navigation');
 
   return (
     <Box
@@ -57,9 +39,9 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
       {/* Toggle Button */}
       {onToggleCollapse && (
         <Box position="absolute" top={2} right={-3} zIndex={1}>
-          <Tooltip label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} placement="right">
+          <Tooltip label={isCollapsed ? t('expandSidebar') : t('collapseSidebar')} placement="right">
             <IconButton
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
               icon={isCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
               size="sm"
               onClick={onToggleCollapse}
@@ -73,12 +55,13 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
       )}
 
       <VStack align="stretch" spacing={1} mt={onToggleCollapse ? 8 : 0}>
-        {navItems.map((item) => {
+        {navItemKeys.map((item) => {
           const isActive = pathname === item.href;
+          const name = t(item.key);
           return (
             <Tooltip
               key={item.href}
-              label={isCollapsed ? item.name : ''}
+              label={isCollapsed ? name : ''}
               placement="right"
               isDisabled={!isCollapsed}
             >
@@ -111,7 +94,7 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
                   justifyContent={isCollapsed ? 'center' : 'flex-start'}
                 >
                   <Icon as={item.icon} boxSize={5} />
-                  {!isCollapsed && <Text>{item.name}</Text>}
+                  {!isCollapsed && <Text>{name}</Text>}
                 </HStack>
               </ChakraLink>
             </Tooltip>

@@ -18,6 +18,9 @@ export interface UserPreferences {
 
   /** Whether user has completed onboarding tutorial */
   onboarding_completed: boolean;
+
+  /** UI language preference (Story 10-1) */
+  language: 'en' | 'bg';
 }
 
 /**

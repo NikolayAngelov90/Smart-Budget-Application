@@ -35,6 +35,7 @@ import {
 import { EditIcon, CheckIcon, CloseIcon } from '@chakra-ui/icons';
 import { FaMobileAlt, FaTabletAlt, FaDesktop } from 'react-icons/fa';
 import { formatDistanceToNow } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import useSWR, { mutate } from 'swr';
 import { createClient } from '@/lib/supabase/client';
 import { ConfirmRevokeSessionModal } from './ConfirmRevokeSessionModal';
@@ -54,6 +55,7 @@ const fetcher = async (url: string): Promise<SessionsResponse> => {
 
 export function ActiveDevicesSection() {
   const toast = useToast();
+  const t = useTranslations('devices');
 
   // Fetch sessions with SWR
   const { data: response, error, isLoading } = useSWR<SessionsResponse>(
@@ -144,7 +146,7 @@ export function ActiveDevicesSection() {
   const handleSaveName = async (sessionId: string) => {
     if (!editedName.trim()) {
       toast({
-        title: 'Device name cannot be empty',
+        title: t('deviceNameEmpty'),
         status: 'error',
         duration: 3000,
       });
@@ -176,7 +178,7 @@ export function ActiveDevicesSection() {
       await mutate('/api/user/sessions');
 
       toast({
-        title: 'Device name updated',
+        title: t('deviceNameUpdated'),
         status: 'success',
         duration: 3000,
       });
@@ -187,7 +189,7 @@ export function ActiveDevicesSection() {
       await mutate('/api/user/sessions');
 
       toast({
-        title: 'Failed to update device name',
+        title: t('deviceNameUpdateFailed'),
         status: 'error',
         duration: 3000,
       });
@@ -227,7 +229,7 @@ export function ActiveDevicesSection() {
       await mutate('/api/user/sessions');
 
       toast({
-        title: 'Device access revoked',
+        title: t('deviceRevoked'),
         description: `${sessionToRevoke.device_name} has been logged out.`,
         status: 'success',
         duration: 3000,
@@ -240,7 +242,7 @@ export function ActiveDevicesSection() {
       await mutate('/api/user/sessions');
 
       toast({
-        title: 'Failed to revoke access',
+        title: t('deviceRevokeFailed'),
         status: 'error',
         duration: 3000,
       });
@@ -264,7 +266,7 @@ export function ActiveDevicesSection() {
       <Card>
         <CardBody>
           <VStack align="stretch" spacing={4}>
-            <Heading size="md">Active Devices</Heading>
+            <Heading size="md">{t('title')}</Heading>
             <Skeleton height="80px" />
             <Skeleton height="80px" />
           </VStack>
@@ -279,7 +281,7 @@ export function ActiveDevicesSection() {
       <Card>
         <CardBody>
           <VStack align="stretch" spacing={4}>
-            <Heading size="md">Active Devices</Heading>
+            <Heading size="md">{t('title')}</Heading>
             <Alert status="error">
               <AlertIcon />
               Failed to load active devices. Please try again.
@@ -296,7 +298,7 @@ export function ActiveDevicesSection() {
       <Card>
         <CardBody>
           <VStack align="stretch" spacing={4}>
-            <Heading size="md">Active Devices</Heading>
+            <Heading size="md">{t('title')}</Heading>
             <Text color="gray.600">No active sessions found.</Text>
           </VStack>
         </CardBody>
@@ -309,7 +311,7 @@ export function ActiveDevicesSection() {
       <Card>
         <CardBody>
           <VStack align="stretch" spacing={4}>
-            <Heading size="md">Active Devices</Heading>
+            <Heading size="md">{t('title')}</Heading>
             <Text color="gray.600" fontSize="sm">
               Manage devices logged into your account. You can rename devices or revoke access
               to log them out remotely.
@@ -370,11 +372,11 @@ export function ActiveDevicesSection() {
                             <Text fontWeight="medium">{session.device_name}</Text>
                             {isCurrent && (
                               <Badge colorScheme="blue" fontSize="xs">
-                                Current Device
+                                {t('currentDevice')}
                               </Badge>
                             )}
                             <IconButton
-                              aria-label="Edit device name"
+                              aria-label={t('editName')}
                               icon={<EditIcon />}
                               size="xs"
                               variant="ghost"
@@ -389,8 +391,7 @@ export function ActiveDevicesSection() {
                         <Text>•</Text>
                         {/* AC-9.6.4: Last active timestamp */}
                         <Text>
-                          Last active:{' '}
-                          {formatDistanceToNow(new Date(session.last_active), { addSuffix: true })}
+                          {t('lastActive', { time: formatDistanceToNow(new Date(session.last_active), { addSuffix: true }) })}
                         </Text>
                       </HStack>
                     </VStack>
@@ -407,7 +408,7 @@ export function ActiveDevicesSection() {
                         isDisabled={isCurrent}
                         onClick={() => handleOpenRevokeModal(session)}
                       >
-                        Revoke Access
+                        {t('revokeAccess')}
                       </Button>
                     </Tooltip>
                   </HStack>
