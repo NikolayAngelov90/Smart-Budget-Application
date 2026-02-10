@@ -78,6 +78,7 @@ jobs:
           UPSTASH_REDIS_REST_URL: https://test.upstash.io
           UPSTASH_REDIS_REST_TOKEN: test-token
           SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          BENCHMARK_MODE: 'true'
 
       - name: Start Next.js server in background
         run: |
@@ -91,6 +92,7 @@ jobs:
           UPSTASH_REDIS_REST_URL: https://test.upstash.io
           UPSTASH_REDIS_REST_TOKEN: test-token
           SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          BENCHMARK_MODE: 'true'
 
       - name: Run performance benchmarks
         id: benchmarks
@@ -101,6 +103,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
           NEXT_PUBLIC_APP_URL: http://localhost:3000
+          BENCHMARK_MODE: 'true'
 
       - name: Post benchmark results as PR comment
         if: github.event_name == 'pull_request'

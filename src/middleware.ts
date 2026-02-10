@@ -23,6 +23,11 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Validates authentication state and enforces route access rules
  */
 export async function middleware(request: NextRequest) {
+  // Skip auth for benchmark mode (CI performance testing only)
+  if (process.env.BENCHMARK_MODE === 'true') {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });

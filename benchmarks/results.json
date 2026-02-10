@@ -1,10 +1,10 @@
 {
-  "date": "2025-12-09T19:37:09.149Z",
-  "dashboard_load_ms": 672,
-  "pie_chart_render_ms": -1,
-  "line_chart_render_ms": -1,
-  "realtime_latency_ms": 7,
-  "ttfb_ms": 4,
-  "fcp_ms": 48,
-  "lcp_ms": 58
+  "date": "2026-02-10T13:51:18.305Z",
+  "dashboard_load_ms": 1374,
+  "pie_chart_render_ms": 31,
+  "line_chart_render_ms": 7,
+  "realtime_latency_ms": 2,
+  "ttfb_ms": 178,
+  "fcp_ms": 652,
+  "lcp_ms": 782
 }

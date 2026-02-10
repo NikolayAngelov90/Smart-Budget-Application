@@ -11,6 +11,9 @@
  * - Pie chart render: <100ms
  * - Line chart render: <150ms
  * - Real-time latency: <300ms
+ *
+ * In BENCHMARK_MODE (CI), API responses are mocked via Playwright route
+ * interception so charts render with realistic data without a real backend.
  */
 
 import { chromium } from 'playwright'
@@ -37,6 +40,132 @@ const DASHBOARD_URL = 'http://localhost:3000/dashboard'
 const RESULTS_DIR = path.join(process.cwd(), 'benchmarks')
 const RESULTS_FILE = path.join(RESULTS_DIR, 'results.json')
 const BASELINE_FILE = path.join(RESULTS_DIR, 'baseline.json')
+
+/**
+ * Set up Playwright route interception to mock all API responses.
+ * Used in BENCHMARK_MODE (CI) where there is no real Supabase backend.
+ */
+async function setupMockRoutes(page: Page): Promise<void> {
+  // Mock spending by category (CategorySpendingChart)
+  await page.route('**/api/dashboard/spending-by-category**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        month: '2025-12',
+        total: 2850.00,
+        categories: [
+          { category_id: 'cat-1', category_name: 'Housing', category_color: '#E53E3E', amount: 1200.00, percentage: 42.1, transaction_count: 2 },
+          { category_id: 'cat-2', category_name: 'Food & Dining', category_color: '#DD6B20', amount: 650.00, percentage: 22.8, transaction_count: 15 },
+          { category_id: 'cat-3', category_name: 'Transportation', category_color: '#3182CE', amount: 450.00, percentage: 15.8, transaction_count: 8 },
+          { category_id: 'cat-4', category_name: 'Entertainment', category_color: '#805AD5', amount: 300.00, percentage: 10.5, transaction_count: 5 },
+          { category_id: 'cat-5', category_name: 'Utilities', category_color: '#38A169', amount: 250.00, percentage: 8.8, transaction_count: 4 },
+        ],
+      }),
+    })
+  })
+
+  // Mock spending trends (SpendingTrendsChart)
+  await page.route('**/api/dashboard/trends**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        months: [
+          { month: '2025-07', monthLabel: 'Jul', income: 5200, expenses: 3100, net: 2100 },
+          { month: '2025-08', monthLabel: 'Aug', income: 5400, expenses: 2900, net: 2500 },
+          { month: '2025-09', monthLabel: 'Sep', income: 5200, expenses: 3400, net: 1800 },
+          { month: '2025-10', monthLabel: 'Oct', income: 5600, expenses: 3200, net: 2400 },
+          { month: '2025-11', monthLabel: 'Nov', income: 5300, expenses: 2800, net: 2500 },
+          { month: '2025-12', monthLabel: 'Dec', income: 5500, expenses: 2850, net: 2650 },
+        ],
+        startDate: '2025-07-01T00:00:00.000Z',
+        endDate: '2025-12-31T23:59:59.999Z',
+      }),
+    })
+  })
+
+  // Mock dashboard stats (DashboardStats)
+  await page.route('**/api/dashboard/stats**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        balance: 2650.00,
+        income: { current: 5500, previous: 5300, trend: 3.8 },
+        expenses: { current: 2850, previous: 2800, trend: 1.8 },
+        month: '2025-12',
+      }),
+    })
+  })
+
+  // Mock month-over-month comparison (MonthOverMonth)
+  await page.route('**/api/dashboard/month-over-month**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        changes: [
+          { categoryId: 'cat-4', categoryName: 'Entertainment', categoryColor: '#805AD5', currentAmount: 300, previousAmount: 200, percentChange: 50, absoluteChange: 100, direction: 'increase' },
+          { categoryId: 'cat-3', categoryName: 'Transportation', categoryColor: '#3182CE', currentAmount: 450, previousAmount: 600, percentChange: -25, absoluteChange: -150, direction: 'decrease' },
+        ],
+        currentMonth: '2025-12',
+        previousMonth: '2025-11',
+      }),
+    })
+  })
+
+  // Mock AI insights (AIBudgetCoach)
+  await page.route('**/api/insights**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ insights: [], total: 0 }),
+    })
+  })
+
+  // Mock user profile (Header)
+  await page.route('**/api/user/profile**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          display_name: 'Benchmark User',
+          profile_picture_url: null,
+          email: 'benchmark@test.com',
+          preferences: { currency_format: 'USD', date_format: 'MM/DD/YYYY', language: 'en', onboarding_completed: true },
+        },
+      }),
+    })
+  })
+
+  // Block all calls to the fake Supabase URL to prevent hanging
+  // (Header component calls supabase.auth.getUser() client-side)
+  await page.route('**test.supabase.co/**', async (route) => {
+    const url = route.request().url()
+    if (url.includes('/auth/v1/user')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'benchmark-user-id',
+          email: 'benchmark@test.com',
+          app_metadata: {},
+          user_metadata: { display_name: 'Benchmark User' },
+          aud: 'authenticated',
+          created_at: '2025-01-01T00:00:00.000Z',
+        }),
+      })
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      })
+    }
+  })
+}
 
 async function measureDashboardLoad(page: Page): Promise<Partial<BenchmarkResults>> {
   console.log('📊 Measuring dashboard load time...')
@@ -150,6 +279,13 @@ async function runBenchmarks(): Promise<BenchmarkResults> {
     })
     const page = await context.newPage()
 
+    // In benchmark mode, set up mock API routes so the dashboard renders
+    // with realistic data even without a real Supabase backend
+    if (process.env.BENCHMARK_MODE === 'true') {
+      console.log('🔧 BENCHMARK_MODE active - using mock API data\n')
+      await setupMockRoutes(page)
+    }
+
     // Measure dashboard load
     const loadMetrics = await measureDashboardLoad(page)
 
@@ -239,6 +375,18 @@ function compareToBaseline(current: BenchmarkResults): void {
     }
 
     const baselineValue = baseline[key] as number
+
+    // If baseline was also -1 (never measured), just show current value
+    if (baselineValue === -1) {
+      const status = currentValue > threshold ? '❌' : '✅'
+      console.log(`${status} ${label}: ${currentValue}ms (no baseline)`)
+      if (currentValue > threshold) {
+        failed = true
+        console.log(`   ⚠️  EXCEEDS THRESHOLD: ${threshold}ms`)
+      }
+      return
+    }
+
     const change = currentValue - baselineValue
     const changePercent = ((change / baselineValue) * 100).toFixed(1)
     const status = currentValue > threshold ? '❌' : '✅'
@@ -264,8 +412,12 @@ function compareToBaseline(current: BenchmarkResults): void {
 
 async function main() {
   console.log('🚀 Starting Performance Benchmarks...')
-  console.log('📝 Note: For accurate chart measurements, ensure you are logged in')
-  console.log('   and have transaction data in the dashboard.\n')
+  if (process.env.BENCHMARK_MODE === 'true') {
+    console.log('📝 Running in BENCHMARK_MODE with mock API data\n')
+  } else {
+    console.log('📝 Note: For accurate chart measurements, ensure you are logged in')
+    console.log('   and have transaction data in the dashboard.\n')
+  }
 
   try {
     const results = await runBenchmarks()
