@@ -24,6 +24,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
 } from '@chakra-ui/icons';
+import { useTranslations } from 'next-intl';
 import type { Insight } from '@/types/database.types';
 import { InsightErrorBoundary } from './InsightErrorBoundary';
 import { trackInsightViewed } from '@/lib/services/analyticsService';
@@ -60,16 +61,13 @@ const getIcon = (type: string) => {
   return iconMap[type] || <InfoIcon boxSize={5} />;
 };
 
-// Priority label mapping
-const getPriorityLabel = (priority: number): string => {
-  const labels: Record<number, string> = {
-    5: 'Critical',
-    4: 'High',
-    3: 'Medium',
-    2: 'Low',
-    1: 'Info',
-  };
-  return labels[priority] || 'Unknown';
+// Priority label key mapping
+const priorityLabelKeys: Record<number, string> = {
+  5: 'priorityCritical',
+  4: 'priorityHigh',
+  3: 'priorityMedium',
+  2: 'priorityLow',
+  1: 'priorityInfo',
 };
 
 // Priority badge color scheme
@@ -96,10 +94,12 @@ export function AIInsightCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const isMobile = useBreakpointValue({ base: true, md: false });
   const hasTrackedView = useRef(false);
+  const t = useTranslations('insights');
 
   const colorScheme = getColorScheme(insight.type);
   const icon = getIcon(insight.type);
-  const priorityLabel = getPriorityLabel(insight.priority);
+  const priorityLabelKey = priorityLabelKeys[insight.priority] || 'priorityUnknown';
+  const priorityLabel = t(priorityLabelKey);
   const priorityColorScheme = getPriorityColorScheme(insight.priority);
 
   const handleAction = () => {
@@ -145,7 +145,7 @@ export function AIInsightCard({
       <CardBody p={{ base: 4, md: 5 }}>
         {/* Dismiss/Undismiss button */}
         <IconButton
-          aria-label={isDismissed ? 'Restore insight' : 'Dismiss insight'}
+          aria-label={isDismissed ? t('restoreInsight') : t('dismissInsight')}
           icon={<CloseIcon />}
           size="sm"
           variant="ghost"
@@ -158,7 +158,7 @@ export function AIInsightCard({
           _hover={{
             bg: isDismissed ? 'green.50' : `${colorScheme}.50`,
           }}
-          title={isDismissed ? 'Undismiss' : 'Dismiss'}
+          title={isDismissed ? t('undismiss') : t('dismiss')}
         />
 
         {/* Dismissed badge */}
@@ -170,7 +170,7 @@ export function AIInsightCard({
             right={14}
             fontSize="xs"
           >
-            Dismissed
+            {t('dismissedBadge')}
           </Badge>
         )}
 
@@ -192,7 +192,7 @@ export function AIInsightCard({
               py={1}
               borderRadius="md"
             >
-              Priority {insight.priority} - {priorityLabel}
+              {t('priority', { priority: insight.priority })} - {priorityLabel}
             </Badge>
           </HStack>
 
@@ -231,15 +231,15 @@ export function AIInsightCard({
               }
               aria-label={
                 isMobile
-                  ? 'Open details in modal'
+                  ? t('openDetailsModal')
                   : isExpanded
-                    ? 'Hide details'
-                    : 'Show details'
+                    ? t('hideDetailsLabel')
+                    : t('showDetails')
               }
               aria-expanded={!isMobile && isExpanded}
               mt={2}
             >
-              {isMobile ? 'See Details' : isExpanded ? 'Hide Details' : 'See Details'}
+              {isMobile ? t('seeDetails') : isExpanded ? t('hideDetails') : t('seeDetails')}
             </Button>
           )}
 

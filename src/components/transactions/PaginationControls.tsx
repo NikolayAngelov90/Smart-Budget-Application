@@ -27,6 +27,7 @@ import {
   Flex,
 } from '@chakra-ui/react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { useTranslations } from 'next-intl';
 
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 export const DEFAULT_PAGE_SIZE = 25;
@@ -49,6 +50,7 @@ export function PaginationControls({
   onPageSizeChange,
   isLoading = false,
 }: PaginationControlsProps) {
+  const t = useTranslations('transactions');
   const [jumpToValue, setJumpToValue] = useState('');
   const [jumpToError, setJumpToError] = useState('');
 
@@ -85,19 +87,19 @@ export function PaginationControls({
     const pageNum = parseInt(trimmed, 10);
 
     if (isNaN(pageNum) || !Number.isInteger(Number(trimmed))) {
-      setJumpToError('Enter a valid page number');
+      setJumpToError(t('enterValidPage'));
       return;
     }
 
     if (pageNum < 1 || pageNum > totalPages) {
-      setJumpToError(`Page must be between 1 and ${totalPages}`);
+      setJumpToError(t('pageMustBeBetween', { total: totalPages }));
       return;
     }
 
     setJumpToError('');
     setJumpToValue('');
     onPageChange(pageNum);
-  }, [jumpToValue, totalPages, onPageChange]);
+  }, [jumpToValue, totalPages, onPageChange, t]);
 
   const handleJumpToKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -147,7 +149,7 @@ export function PaginationControls({
   }
 
   return (
-    <Box w="full" py={4} aria-label="Pagination controls" role="navigation">
+    <Box w="full" py={4} aria-label={t('paginationControls')} role="navigation">
       {/* AC-9.7.5: Responsive layout */}
       <Flex
         direction={{ base: 'column', md: 'row' }}
@@ -159,7 +161,7 @@ export function PaginationControls({
         <HStack spacing={2} justify="center">
           {/* Previous Button */}
           <IconButton
-            aria-label="Go to previous page"
+            aria-label={t('goToPreviousPage')}
             icon={<ChevronLeftIcon />}
             onClick={handlePrevious}
             isDisabled={currentPage === 1 || isLoading}
@@ -181,7 +183,7 @@ export function PaginationControls({
               return (
                 <Button
                   key={page}
-                  aria-label={`Go to page ${page}`}
+                  aria-label={t('goToPage', { page })}
                   aria-current={currentPage === page ? 'page' : undefined}
                   onClick={() => onPageChange(page as number)}
                   isDisabled={isLoading}
@@ -204,12 +206,12 @@ export function PaginationControls({
             fontWeight="medium"
             aria-live="polite"
           >
-            Page {currentPage} of {totalPages}
+            {t('pageOfTotal', { current: currentPage, total: totalPages })}
           </Text>
 
           {/* Next Button */}
           <IconButton
-            aria-label="Go to next page"
+            aria-label={t('goToNextPage')}
             icon={<ChevronRightIcon />}
             onClick={handleNext}
             isDisabled={currentPage === totalPages || isLoading}
@@ -228,10 +230,10 @@ export function PaginationControls({
           {/* AC-9.7.1: Page size selector */}
           <HStack spacing={2}>
             <Text fontSize="sm" whiteSpace="nowrap" color="gray.600">
-              Items per page:
+              {t('itemsPerPage')}
             </Text>
             <Select
-              aria-label="Items per page"
+              aria-label={t('itemsPerPage')}
               value={pageSize}
               onChange={handlePageSizeChange}
               size="sm"
@@ -251,10 +253,10 @@ export function PaginationControls({
             <FormControl isInvalid={!!jumpToError} maxW={{ base: 'full', sm: '200px' }}>
               <HStack spacing={2}>
                 <Text fontSize="sm" whiteSpace="nowrap" color="gray.600">
-                  Go to:
+                  {t('goTo')}
                 </Text>
                 <Input
-                  aria-label="Jump to page number"
+                  aria-label={t('jumpToPage')}
                   placeholder={`1-${totalPages}`}
                   value={jumpToValue}
                   onChange={(e) => {
@@ -273,9 +275,9 @@ export function PaginationControls({
                   size="sm"
                   onClick={handleJumpToPage}
                   isDisabled={isLoading || !jumpToValue.trim()}
-                  aria-label="Go to page"
+                  aria-label={t('goToPageButton')}
                 >
-                  Go
+                  {t('go')}
                 </Button>
               </HStack>
               {jumpToError && (
@@ -296,7 +298,7 @@ export function PaginationControls({
         mt={2}
         aria-live="polite"
       >
-        Showing {startItem}-{endItem} of {totalItems} transactions
+        {t('showingItems', { start: startItem, end: endItem, total: totalItems })}
       </Text>
     </Box>
   );

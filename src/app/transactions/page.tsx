@@ -64,6 +64,7 @@ import { createClient } from '@/lib/supabase/client';
 import { exportTransactionsToCSV } from '@/lib/services/exportService'; // Story 8.1
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatTransactionDate } from '@/lib/utils/dateFormatter';
+import { useTranslations } from 'next-intl';
 
 // Types
 interface Category {
@@ -95,6 +96,9 @@ interface TransactionResponse {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 function TransactionsContent() {
+  const t = useTranslations('transactions');
+  const tCommon = useTranslations('common');
+
   // Get URL search params for drill-down navigation (Story 5.5)
   const searchParams = useSearchParams();
 
@@ -280,8 +284,8 @@ function TransactionsContent() {
       setIsOnline(true);
       console.log('🌐 Connection restored');
       toast({
-        title: 'Connection restored',
-        description: 'Your data will sync automatically',
+        title: t('connectionRestored'),
+        description: t('dataWillSync'),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -294,8 +298,8 @@ function TransactionsContent() {
       setIsOnline(false);
       console.log('📡 Connection lost');
       toast({
-        title: 'Connection lost',
-        description: 'Changes will sync when connection is restored',
+        title: t('connectionLost'),
+        description: t('changesWillSync'),
         status: 'warning',
         duration: 5000,
         isClosable: true,
@@ -313,7 +317,7 @@ function TransactionsContent() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [toast, mutate]);
+  }, [toast, mutate, t]);
 
   // Check if any filters are active
   const hasActiveFilters =
@@ -385,7 +389,7 @@ function TransactionsContent() {
 
       // Show success toast with undo button
       toast({
-        title: 'Transaction deleted successfully',
+        title: t('deletedSuccess'),
         status: 'success',
         duration: 5000,
         isClosable: true,
@@ -393,7 +397,7 @@ function TransactionsContent() {
         render: ({ onClose }) => (
           <Box p={4} bg="green.500" borderRadius="md" color="white">
             <HStack justify="space-between">
-              <Text>Transaction deleted successfully</Text>
+              <Text>{t('deletedSuccess')}</Text>
               <Button
                 size="sm"
                 variant="solid"
@@ -422,7 +426,7 @@ function TransactionsContent() {
                       // Refresh list
                       mutate();
                       toast({
-                        title: 'Transaction restored',
+                        title: t('transactionRestored'),
                         status: 'success',
                         duration: 2000,
                       });
@@ -432,7 +436,7 @@ function TransactionsContent() {
                   } catch (error) {
                     console.error('Error restoring transaction:', error);
                     toast({
-                      title: 'Failed to restore transaction',
+                      title: t('failedToRestore'),
                       status: 'error',
                       duration: 3000,
                     });
@@ -441,7 +445,7 @@ function TransactionsContent() {
                   }
                 }}
               >
-                Undo
+                {t('undo')}
               </Button>
             </HStack>
           </Box>
@@ -469,8 +473,8 @@ function TransactionsContent() {
           // Rollback optimistic update
           mutate();
           toast({
-            title: 'Failed to delete transaction',
-            description: 'The transaction has been restored',
+            title: t('failedToDelete'),
+            description: t('transactionHasBeenRestored'),
             status: 'error',
             duration: 5000,
           });
@@ -481,7 +485,7 @@ function TransactionsContent() {
       // Rollback optimistic update
       mutate();
       toast({
-        title: 'Failed to delete transaction',
+        title: t('failedToDelete'),
         status: 'error',
         duration: 3000,
       });
@@ -504,8 +508,8 @@ function TransactionsContent() {
 
       if (data.data.length === 0) {
         toast({
-          title: 'No transactions to export',
-          description: 'Add some transactions first',
+          title: t('noTransactionsToExport'),
+          description: t('addTransactionsFirst'),
           status: 'info',
           duration: 3000,
         });
@@ -532,8 +536,8 @@ function TransactionsContent() {
 
       // AC-8.1.11: Success toast
       toast({
-        title: 'CSV exported successfully!',
-        description: `Exported ${data.data.length} transactions`,
+        title: t('csvExportedSuccess'),
+        description: t('exportedCount', { count: data.data.length }),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -547,8 +551,8 @@ function TransactionsContent() {
       }
 
       toast({
-        title: 'Export failed',
-        description: 'Failed to export transactions. Please try again.',
+        title: t('exportFailed'),
+        description: t('exportFailedDescription'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -593,8 +597,8 @@ function TransactionsContent() {
   const renderEmptyState = () => {
     const hasFilters = hasActiveFilters;
     const message = hasFilters
-      ? 'No transactions found. Try different filters.'
-      : 'No transactions yet. Add your first one!';
+      ? t('noTransactionsFiltered')
+      : t('noTransactions');
 
     return (
       <Box
@@ -611,7 +615,7 @@ function TransactionsContent() {
         </Text>
         {!hasFilters && (
           <Text fontSize="sm" color="gray.500">
-            Click the + button to add a transaction
+            {t('clickToAdd')}
           </Text>
         )}
       </Box>
@@ -632,14 +636,14 @@ function TransactionsContent() {
             size="sm"
             _hover={{ bg: 'blue.50' }}
           >
-            Back to Dashboard
+            {t('backToDashboard')}
           </Button>
         </Box>
 
         {/* Page Header */}
         <Flex justify="space-between" align="center" mb={6}>
           <Heading as="h1" size="xl" color="gray.800">
-            Transactions
+            {t('title')}
           </Heading>
           {/* Story 8.1: Export to CSV Button */}
           <Button
@@ -649,9 +653,9 @@ function TransactionsContent() {
             onClick={handleExportCSV}
             size={{ base: 'sm', md: 'md' }}
             isLoading={isExporting}
-            loadingText="Exporting..."
+            loadingText={t('exporting')}
           >
-            Export Transactions (CSV)
+            {t('exportTransactionsCSV')}
           </Button>
         </Flex>
 
@@ -667,7 +671,7 @@ function TransactionsContent() {
           >
             <HStack>
               <Text fontSize="sm" fontWeight="medium" color="orange.800">
-                📡 You're offline - Changes will sync when connection is restored
+                {t('offlineBanner')}
               </Text>
             </HStack>
           </Box>
@@ -682,7 +686,7 @@ function TransactionsContent() {
                 {/* Date Range Filters */}
                 <Box>
                   <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
-                    Start Date
+                    {t('startDate')}
                   </Text>
                   <Input
                     type="date"
@@ -695,7 +699,7 @@ function TransactionsContent() {
 
                 <Box>
                   <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
-                    End Date
+                    {t('endDate')}
                   </Text>
                   <Input
                     type="date"
@@ -709,12 +713,12 @@ function TransactionsContent() {
                 {/* Category Filter */}
                 <Box>
                   <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
-                    Category
+                    {t('category')}
                   </Text>
                   <Select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    placeholder="All Categories"
+                    placeholder={t('allCategories')}
                     size="md"
                   >
                     {categories.map((category) => (
@@ -728,7 +732,7 @@ function TransactionsContent() {
                 {/* Type Filter */}
                 <Box>
                   <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
-                    Type
+                    {t('type')}
                   </Text>
                   <Select
                     value={typeFilter}
@@ -737,9 +741,9 @@ function TransactionsContent() {
                     }
                     size="md"
                   >
-                    <option value="all">All</option>
-                    <option value="income">Income</option>
-                    <option value="expense">Expense</option>
+                    <option value="all">{t('all')}</option>
+                    <option value="income">{t('income')}</option>
+                    <option value="expense">{t('expense')}</option>
                   </Select>
                 </Box>
               </SimpleGrid>
@@ -747,7 +751,7 @@ function TransactionsContent() {
               {/* Search Input */}
               <Box>
                 <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
-                  Search
+                  {tCommon('search')}
                 </Text>
                 <HStack>
                   <InputGroup>
@@ -755,7 +759,7 @@ function TransactionsContent() {
                       <SearchIcon color="gray.400" />
                     </InputLeftElement>
                     <Input
-                      placeholder="Search by notes, category, or amount..."
+                      placeholder={t('searchPlaceholder')}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       size="md"
@@ -763,7 +767,7 @@ function TransactionsContent() {
                   </InputGroup>
                   {searchQuery && (
                     <IconButton
-                      aria-label="Clear search"
+                      aria-label={t('clearSearch')}
                       icon={<CloseIcon />}
                       onClick={() => setSearchQuery('')}
                       variant="ghost"
@@ -782,7 +786,7 @@ function TransactionsContent() {
                     size="sm"
                     colorScheme="gray"
                   >
-                    Clear All Filters
+                    {t('clearAllFilters')}
                   </Button>
                 </Flex>
               )}
@@ -806,7 +810,7 @@ function TransactionsContent() {
             border="1px"
             borderColor="red.200"
           >
-            <Text color="red.600">Failed to load transactions. Please try again.</Text>
+            <Text color="red.600">{t('failedToLoadRetry')}</Text>
           </Box>
         )}
 
@@ -871,7 +875,7 @@ function TransactionsContent() {
                         {/* Middle: Action Buttons */}
                         <HStack spacing={2}>
                           <IconButton
-                            aria-label="Edit transaction"
+                            aria-label={t('editTransactionAriaLabel')}
                             icon={<EditIcon />}
                             size="sm"
                             variant="ghost"
@@ -883,7 +887,7 @@ function TransactionsContent() {
                             _hover={{ bg: 'blue.50' }}
                           />
                           <IconButton
-                            aria-label="Delete transaction"
+                            aria-label={t('deleteTransactionAriaLabel')}
                             icon={<DeleteIcon />}
                             size="sm"
                             variant="ghost"
@@ -947,28 +951,28 @@ function TransactionsContent() {
         <AlertDialogOverlay>
           <AlertDialogContent>
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Delete Transaction
+              {t('deleteConfirmTitle')}
             </AlertDialogHeader>
 
             <AlertDialogBody>
-              Delete this transaction? This cannot be undone.
+              {t('deleteConfirmBody')}
               <Text mt={2} fontSize="sm" color="gray.600">
-                (You will have 5 seconds to undo after deletion)
+                {t('undoHint')}
               </Text>
             </AlertDialogBody>
 
             <AlertDialogFooter>
               <Button ref={cancelRef} onClick={onDeleteAlertClose} isDisabled={isDeleting}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button
                 colorScheme="red"
                 onClick={confirmDelete}
                 ml={3}
                 isLoading={isDeleting}
-                loadingText="Deleting..."
+                loadingText={t('deleting')}
               >
-                Delete
+                {tCommon('delete')}
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -985,11 +989,11 @@ function TransactionsContent() {
       >
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Exporting Transactions</ModalHeader>
+          <ModalHeader>{t('exportingTransactions')}</ModalHeader>
           <ModalBody pb={6}>
             <VStack spacing={4} align="stretch">
               <Text>
-                Processing large dataset... This may take a moment.
+                {t('processingLargeDataset')}
               </Text>
               <Progress
                 value={exportProgress}
@@ -999,7 +1003,7 @@ function TransactionsContent() {
                 isAnimated
               />
               <Text fontSize="sm" color="gray.600" textAlign="center">
-                {exportProgress}% complete
+                {t('percentComplete', { percent: exportProgress })}
               </Text>
             </VStack>
           </ModalBody>

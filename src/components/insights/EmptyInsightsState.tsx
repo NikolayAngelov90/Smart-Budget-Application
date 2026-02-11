@@ -2,6 +2,7 @@
 
 import { VStack, Text, Card, CardBody, Icon } from '@chakra-ui/react';
 import { InfoIcon, SearchIcon } from '@chakra-ui/icons';
+import { useTranslations } from 'next-intl';
 
 interface EmptyInsightsStateProps {
   message: string;
@@ -9,6 +10,7 @@ interface EmptyInsightsStateProps {
 }
 
 export function EmptyInsightsState({ message, hasFilters = false }: EmptyInsightsStateProps) {
+  const t = useTranslations('insights');
   return (
     <Card w="full" bg="gray.50" borderStyle="dashed" borderWidth="2px" borderColor="gray.300">
       <CardBody py={12}>
@@ -28,7 +30,7 @@ export function EmptyInsightsState({ message, hasFilters = false }: EmptyInsight
           </Text>
           {hasFilters && (
             <Text fontSize="sm" color="gray.500" textAlign="center">
-              Try adjusting your filters or search terms
+              {t('adjustFilters')}
             </Text>
           )}
         </VStack>

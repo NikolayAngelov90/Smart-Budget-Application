@@ -68,7 +68,7 @@ describe('PaginationControls', () => {
   describe('AC-9.7.1: Page Size Selector', () => {
     it('renders page size selector with correct options', () => {
       renderWithChakra(defaultProps);
-      const select = screen.getByLabelText('Items per page');
+      const select = screen.getByLabelText(/Items per page/);
       expect(select).toBeInTheDocument();
 
       PAGE_SIZE_OPTIONS.forEach((size) => {
@@ -78,7 +78,7 @@ describe('PaginationControls', () => {
 
     it('shows the current page size as selected', () => {
       renderWithChakra({ ...defaultProps, pageSize: 50 });
-      const select = screen.getByLabelText('Items per page') as HTMLSelectElement;
+      const select = screen.getByLabelText(/Items per page/) as HTMLSelectElement;
       expect(select.value).toBe('50');
     });
 
@@ -86,7 +86,7 @@ describe('PaginationControls', () => {
       const onPageSizeChange = jest.fn();
       renderWithChakra({ ...defaultProps, onPageSizeChange });
 
-      const select = screen.getByLabelText('Items per page');
+      const select = screen.getByLabelText(/Items per page/);
       fireEvent.change(select, { target: { value: '50' } });
 
       expect(onPageSizeChange).toHaveBeenCalledWith(50);
@@ -94,7 +94,7 @@ describe('PaginationControls', () => {
 
     it('is disabled when loading', () => {
       renderWithChakra({ ...defaultProps, isLoading: true });
-      const select = screen.getByLabelText('Items per page');
+      const select = screen.getByLabelText(/Items per page/);
       expect(select).toBeDisabled();
     });
   });
@@ -287,7 +287,7 @@ describe('PaginationControls', () => {
 
     it('has aria-label on page size select', () => {
       renderWithChakra(defaultProps);
-      expect(screen.getByLabelText('Items per page')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Items per page/)).toBeInTheDocument();
     });
 
     it('has aria-label on jump to page input', () => {
@@ -354,7 +354,7 @@ describe('PaginationControls', () => {
       renderWithChakra({ ...defaultProps, isLoading: true });
       expect(screen.getByLabelText('Go to previous page')).toBeDisabled();
       expect(screen.getByLabelText('Go to next page')).toBeDisabled();
-      expect(screen.getByLabelText('Items per page')).toBeDisabled();
+      expect(screen.getByLabelText(/Items per page/)).toBeDisabled();
     });
   });
 

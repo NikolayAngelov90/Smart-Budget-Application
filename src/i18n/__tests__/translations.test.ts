@@ -1,9 +1,10 @@
 /**
- * Story 10-1: i18n Framework Setup & Language Switcher
- * Tests for translation file structure
+ * Story 10-1 & 10-2: i18n Framework Setup & Bulgarian Translations
+ * Tests for translation file structure and completeness
  *
  * AC-10.1.2: Translation file structure
  * AC-10.1.9: Translation key consistency
+ * AC-10.2.2: All bg.json values translated to Bulgarian
  */
 
 import enMessages from '../../../messages/en.json';
@@ -91,5 +92,50 @@ describe('Translation files', () => {
     });
 
     expect(emptyKeys).toEqual([]);
+  });
+
+  test('no empty string values in bg.json', () => {
+    const emptyKeys = bgKeys.filter((key) => {
+      const parts = key.split('.');
+      let value: unknown = bgMessages;
+      for (const part of parts) {
+        value = (value as Record<string, unknown>)[part];
+      }
+      return value === '';
+    });
+
+    expect(emptyKeys).toEqual([]);
+  });
+
+  test('bg.json values are actually translated (not identical to en.json)', () => {
+    // Keys that are intentionally the same in both languages (proper nouns, abbreviations, etc.)
+    const allowlist = new Set([
+      'common.appName',             // Brand name stays the same
+      'settings.languageEnglish',   // "English" stays in English
+      'settings.languageBulgarian', // "Български" is already Bulgarian
+      'common.or',                  // Short words may coincide
+      'common.and',
+    ]);
+
+    const untranslatedKeys = enKeys.filter((key) => {
+      if (allowlist.has(key)) return false;
+
+      const parts = key.split('.');
+      let enValue: unknown = enMessages;
+      let bgValue: unknown = bgMessages;
+      for (const part of parts) {
+        enValue = (enValue as Record<string, unknown>)?.[part];
+        bgValue = (bgValue as Record<string, unknown>)?.[part];
+      }
+
+      // Only flag string values that are exactly the same
+      return typeof enValue === 'string' && typeof bgValue === 'string' && enValue === bgValue;
+    });
+
+    if (untranslatedKeys.length > 0) {
+      console.warn('Potentially untranslated keys (bg.json value equals en.json value):', untranslatedKeys);
+    }
+
+    expect(untranslatedKeys).toEqual([]);
   });
 });

@@ -11,6 +11,7 @@
 
 import { HStack, Button, Text, IconButton, Box } from '@chakra-ui/react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { useTranslations } from 'next-intl';
 
 interface InsightsPaginationProps {
   currentPage: number;
@@ -27,6 +28,7 @@ export function InsightsPagination({
   onPageChange,
   isLoading = false,
 }: InsightsPaginationProps) {
+  const t = useTranslations('insights');
   const totalPages = Math.ceil(totalInsights / insightsPerPage);
 
   // Don't show pagination if there's only one page or no insights
@@ -91,7 +93,7 @@ export function InsightsPagination({
       <HStack spacing={2}>
         {/* Previous Button */}
         <IconButton
-          aria-label="Previous page"
+          aria-label={t('previousPage')}
           icon={<ChevronLeftIcon />}
           onClick={handlePrevious}
           isDisabled={currentPage === 1 || isLoading}
@@ -133,12 +135,12 @@ export function InsightsPagination({
           fontSize="sm"
           fontWeight="medium"
         >
-          Page {currentPage} of {totalPages}
+          {t('pageOfTotal', { current: currentPage, total: totalPages })}
         </Text>
 
         {/* Next Button */}
         <IconButton
-          aria-label="Next page"
+          aria-label={t('nextPage')}
           icon={<ChevronRightIcon />}
           onClick={handleNext}
           isDisabled={currentPage === totalPages || isLoading}

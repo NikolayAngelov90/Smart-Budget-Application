@@ -1,0 +1,106 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>10</epicId>
+    <storyId>2</storyId>
+    <title>Bulgarian Language Translations</title>
+    <status>in-progress</status>
+    <generatedAt>2026-02-10</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/10-2-bulgarian-language-translations.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>Bulgarian-speaking user</asA>
+    <iWant>the entire application UI to be translated to Bulgarian</iWant>
+    <soThat>I can use the budget application comfortably in my native language</soThat>
+    <tasks>
+      <task id="1" ac="admin">Create story and context files, update sprint status</task>
+      <task id="2" ac="10.2.1-10.2.7">Translate all existing bg.json values to Bulgarian
+        <subtask>Translate all 14+ namespaces (~150+ keys)</subtask>
+        <subtask>Preserve interpolation variables</subtask>
+        <subtask>Use natural Bulgarian phrasing</subtask>
+      </task>
+      <task id="3" ac="10.2.1,10.2.3-10.2.5">Extract hardcoded strings from remaining components
+        <subtask>Dashboard page, AIBudgetCoach, InsightsPageContent</subtask>
+        <subtask>AIInsightCard, InsightsFilters, ConfirmDeleteModal</subtask>
+        <subtask>PaginationControls, Transactions page, Categories page</subtask>
+      </task>
+      <task id="4" ac="10.2.10">Update translation consistency tests
+        <subtask>Add untranslated value detection test</subtask>
+        <subtask>Ensure new namespaces covered in key parity tests</subtask>
+      </task>
+      <task id="5" ac="10.2.9,10.2.10">Run full verification</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC-10.2.1">Complete messages/bg.json with all UI strings translated to Bulgarian. All namespaces fully translated with natural, contextually appropriate Bulgarian text.</criterion>
+    <criterion id="AC-10.2.2">Navigation labels translated: Dashboard/Табло, Transactions/Транзакции, Categories/Категории, Insights/Прегледи, Settings/Настройки.</criterion>
+    <criterion id="AC-10.2.3">All form labels, placeholders, and validation messages translated to proper Bulgarian.</criterion>
+    <criterion id="AC-10.2.4">All error messages and toast notifications translated.</criterion>
+    <criterion id="AC-10.2.5">AI insight text templates translated with coaching tone preserved in Bulgarian.</criterion>
+    <criterion id="AC-10.2.6">Onboarding modal content translated preserving motivational tone.</criterion>
+    <criterion id="AC-10.2.7">Pre-defined category names translated (Dining/Хранене, Transport/Транспорт, etc.).</criterion>
+    <criterion id="AC-10.2.8">Date picker and calendar components display Bulgarian month/day names (handled by date-fns bg locale from Story 10-1).</criterion>
+    <criterion id="AC-10.2.9">No text overflow or layout breaks with Bulgarian Cyrillic strings.</criterion>
+    <criterion id="AC-10.2.10">Unit tests verifying all translation keys exist in both en.json and bg.json, with untranslated value detection.</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-10.md</path>
+        <title>Epic 10 Tech Spec</title>
+        <section>Story 10-2: Bulgarian Language Translations</section>
+        <snippet>AC-10.2.1 through AC-10.2.10 defining complete Bulgarian translation requirements.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/stories/10-1-i18n-framework-setup-and-language-switcher.md</path>
+        <title>Story 10-1 (prerequisite)</title>
+        <section>Completion Notes</section>
+        <snippet>i18n framework set up with next-intl. bg.json has English placeholders. Some components not yet i18n-ized: ConfirmDeleteModal, PaginationControls, Insights components, Dashboard page, Transactions page, Categories page.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>messages/en.json</path>
+        <kind>translation-file</kind>
+        <symbol>14 namespaces, ~150 keys</symbol>
+        <reason>Source of truth for English translations. New keys added here for extracted strings.</reason>
+      </file>
+      <file>
+        <path>messages/bg.json</path>
+        <kind>translation-file</kind>
+        <symbol>14 namespaces, ~150 keys (English placeholders)</symbol>
+        <reason>PRIMARY deliverable - all values to be replaced with Bulgarian translations.</reason>
+      </file>
+      <file>
+        <path>src/i18n/__tests__/translations.test.ts</path>
+        <kind>test</kind>
+        <symbol>Translation key consistency tests</symbol>
+        <reason>Extend with untranslated value detection test.</reason>
+      </file>
+      <file>
+        <path>jest.setup.js</path>
+        <kind>test-setup</kind>
+        <symbol>next-intl mock loading en.json</symbol>
+        <reason>Tests load real en.json translations. New keys automatically picked up.</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package name="next-intl" version="^3.x" relevance="i18n framework - useTranslations hook for component string extraction" />
+        <package name="date-fns" version="^4.1.0" relevance="bg locale already configured in Story 10-1" />
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="i18n">All translations must use natural Bulgarian phrasing, not word-for-word translations. Preserve coaching/motivational tone in onboarding and insights.</constraint>
+    <constraint type="i18n">Interpolation variables ({variableName}) must be preserved exactly as in en.json.</constraint>
+    <constraint type="testing">Jest mock in jest.setup.js loads en.json. Tests query by English text. Adding new keys to en.json means tests automatically work.</constraint>
+    <constraint type="pattern">Use useTranslations(namespace) hook pattern established in Story 10-1. Import at component top, call t('key').</constraint>
+  </constraints>
+</story-context>

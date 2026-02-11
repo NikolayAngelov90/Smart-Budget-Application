@@ -50,6 +50,7 @@ import {
 import { AddIcon, EditIcon, DeleteIcon, ChevronLeftIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CategoryModal } from '@/components/categories/CategoryModal';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
@@ -58,6 +59,8 @@ import type { Category } from '@/types/category.types';
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function CategoriesPage() {
+  const t = useTranslations('categories');
+  const tToast = useTranslations('toast');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
     isOpen: isDeleteOpen,
@@ -92,7 +95,7 @@ export default function CategoriesPage() {
     );
 
     toast({
-      title: `Category '${newCategory.name}' created successfully`,
+      title: t('createdSuccess', { name: newCategory.name }),
       status: 'success',
       duration: 3000,
       isClosable: true,
@@ -114,7 +117,7 @@ export default function CategoriesPage() {
     );
 
     toast({
-      title: `Category '${updatedCategory.name}' updated successfully`,
+      title: t('updatedSuccess', { name: updatedCategory.name }),
       status: 'success',
       duration: 3000,
       isClosable: true,
@@ -159,7 +162,7 @@ export default function CategoriesPage() {
       );
 
       toast({
-        title: `Category '${categoryToDelete.name}' deleted successfully`,
+        title: t('deletedSuccessNamed', { name: categoryToDelete.name }),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -170,9 +173,9 @@ export default function CategoriesPage() {
     } catch (error) {
       console.error('Delete category error:', error);
       toast({
-        title: 'Error',
+        title: tToast('error'),
         description:
-          error instanceof Error ? error.message : 'Failed to delete category',
+          error instanceof Error ? error.message : t('failedToDelete'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -202,20 +205,20 @@ export default function CategoriesPage() {
               size="sm"
               _hover={{ bg: 'blue.50' }}
             >
-              Back to Dashboard
+              {t('backToDashboard')}
             </Button>
           </Box>
 
           {/* Header */}
           <HStack justify="space-between">
-            <Heading size="lg">Manage Categories</Heading>
+            <Heading size="lg">{t('manageCategories')}</Heading>
             <Button
               leftIcon={<AddIcon />}
               colorScheme="blue"
               onClick={onOpen}
-              aria-label="Add Category"
+              aria-label={t('addCategory')}
             >
-              Add Category
+              {t('addCategory')}
             </Button>
           </HStack>
 
@@ -229,9 +232,9 @@ export default function CategoriesPage() {
             }}
           >
             <TabList>
-              <Tab>All Categories</Tab>
-              <Tab>Expense</Tab>
-              <Tab>Income</Tab>
+              <Tab>{t('allCategories')}</Tab>
+              <Tab>{t('expense')}</Tab>
+              <Tab>{t('income')}</Tab>
             </TabList>
 
             <TabPanels>
@@ -305,12 +308,14 @@ function CategoryList({
   onEdit,
   onDelete,
 }: CategoryListProps) {
+  const t = useTranslations('categories');
+
   if (isLoading) {
     return (
       <Box textAlign="center" py={10}>
         <Spinner size="lg" color="blue.500" />
         <Text mt={4} color="gray.600">
-          Loading categories...
+          {t('loading')}
         </Text>
       </Box>
     );
@@ -319,7 +324,7 @@ function CategoryList({
   if (error) {
     return (
       <Box textAlign="center" py={10}>
-        <Text color="red.500">Failed to load categories. Please try again.</Text>
+        <Text color="red.500">{t('failedToLoad')}</Text>
       </Box>
     );
   }
@@ -327,7 +332,7 @@ function CategoryList({
   if (categories.length === 0) {
     return (
       <Box textAlign="center" py={10}>
-        <Text color="gray.500">No categories found.</Text>
+        <Text color="gray.500">{t('noCategories')}</Text>
       </Box>
     );
   }
@@ -362,6 +367,7 @@ interface CategoryCardProps {
 }
 
 function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) {
+  const t = useTranslations('categories');
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -391,7 +397,7 @@ function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) {
             </Badge>
             {category.is_predefined && (
               <Badge colorScheme="gray" fontSize="xs">
-                Default
+                {t('default')}
               </Badge>
             )}
           </HStack>
@@ -405,7 +411,7 @@ function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) {
             transition="opacity 0.2s"
           >
             <IconButton
-              aria-label="Edit category"
+              aria-label={t('editCategoryAriaLabel')}
               icon={<EditIcon />}
               size="sm"
               variant="ghost"
@@ -413,7 +419,7 @@ function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) {
               onClick={() => onEdit(category)}
             />
             <IconButton
-              aria-label="Delete category"
+              aria-label={t('deleteCategoryAriaLabel')}
               icon={<DeleteIcon />}
               size="sm"
               variant="ghost"
@@ -442,6 +448,8 @@ function DeleteConfirmationModal({
   category,
   isDeleting,
 }: DeleteConfirmationModalProps) {
+  const t = useTranslations('categories');
+  const tCommon = useTranslations('common');
   const cancelRef = React.useRef<HTMLButtonElement>(null);
 
   return (
@@ -454,29 +462,28 @@ function DeleteConfirmationModal({
       <AlertDialogOverlay>
         <AlertDialogContent>
           <AlertDialogHeader fontSize="lg" fontWeight="bold">
-            Delete Category?
+            {t('deleteConfirmTitle')}
           </AlertDialogHeader>
 
           <AlertDialogBody>
-            Are you sure you want to delete the <strong>{category.name}</strong> category?
+            {t('deleteConfirmMessage', { name: category.name })}
             <br />
             <br />
-            Any transactions using this category will become uncategorized and can be
-            re-categorized later.
+            {t('deleteConfirmWarning')}
           </AlertDialogBody>
 
           <AlertDialogFooter>
             <Button ref={cancelRef} onClick={onClose} isDisabled={isDeleting}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               colorScheme="red"
               onClick={onConfirm}
               ml={3}
               isLoading={isDeleting}
-              loadingText="Deleting..."
+              loadingText={t('deleting')}
             >
-              Delete Anyway
+              {t('deleteAnyway')}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

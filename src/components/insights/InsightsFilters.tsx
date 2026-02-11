@@ -12,6 +12,7 @@ import {
   InputLeftElement,
 } from '@chakra-ui/react';
 import { SearchIcon } from '@chakra-ui/icons';
+import { useTranslations } from 'next-intl';
 
 interface FiltersType {
   type: string;
@@ -25,6 +26,8 @@ interface InsightsFiltersProps {
 }
 
 export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProps) {
+  const t = useTranslations('insights');
+  const tCommon = useTranslations('common');
   const [searchInput, setSearchInput] = useState(filters.search);
 
   // Debounce search input (300ms)
@@ -48,7 +51,7 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
       {/* Type Filter */}
       <FormControl flex="1" minW={{ base: 'auto', md: '200px' }} maxW={{ base: 'full', md: '300px' }}>
         <FormLabel htmlFor="insight-type-filter" fontSize="sm" fontWeight="medium" mb={2}>
-          Insight Type
+          {t('insightType')}
         </FormLabel>
         <Select
           id="insight-type-filter"
@@ -61,18 +64,18 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
           _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3182ce' }}
           w="full"
         >
-          <option value="all">All Types</option>
-          <option value="spending_increase">Spending Increases</option>
-          <option value="budget_recommendation">Budget Recommendations</option>
-          <option value="unusual_expense">Unusual Expenses</option>
-          <option value="positive_reinforcement">Positive Reinforcement</option>
+          <option value="all">{t('allTypes')}</option>
+          <option value="spending_increase">{t('spendingIncreases')}</option>
+          <option value="budget_recommendation">{t('budgetRecommendations')}</option>
+          <option value="unusual_expense">{t('unusualExpenses')}</option>
+          <option value="positive_reinforcement">{t('positiveReinforcement')}</option>
         </Select>
       </FormControl>
 
       {/* Search Input */}
       <FormControl flex="1" minW={{ base: 'auto', md: '200px' }} maxW={{ base: 'full', md: '300px' }}>
         <FormLabel htmlFor="search-insights" fontSize="sm" fontWeight="medium" mb={2}>
-          Search
+          {tCommon('search')}
         </FormLabel>
         <InputGroup size="md">
           <InputLeftElement pointerEvents="none" height="full">
@@ -80,7 +83,7 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
           </InputLeftElement>
           <Input
             id="search-insights"
-            placeholder="Search insights..."
+            placeholder={t('searchPlaceholder')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             bg="white"
@@ -102,7 +105,7 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
         gap={2}
       >
         <FormLabel htmlFor="show-dismissed" mb="0" fontSize="sm" fontWeight="medium" whiteSpace="nowrap">
-          Show dismissed
+          {t('showDismissed')}
         </FormLabel>
         <Switch
           id="show-dismissed"

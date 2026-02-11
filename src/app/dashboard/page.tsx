@@ -15,6 +15,7 @@
 
 import { useEffect } from 'react';
 import { Box, Heading, Text, VStack, Grid } from '@chakra-ui/react';
+import { useTranslations } from 'next-intl';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { AIBudgetCoach } from '@/components/dashboard/AIBudgetCoach';
 import { CategorySpendingChart } from '@/components/dashboard/CategorySpendingChart';
@@ -22,6 +23,8 @@ import { SpendingTrendsChart } from '@/components/dashboard/SpendingTrendsChart'
 import { MonthOverMonth } from '@/components/dashboard/MonthOverMonth';
 
 export default function DashboardPage() {
+  const t = useTranslations('dashboard');
+
   // Performance monitoring: Mark dashboard render start
   useEffect(() => {
     if (typeof window !== 'undefined' && window.performance) {
@@ -75,10 +78,10 @@ export default function DashboardPage() {
           fontSize={{ base: '2rem', lg: '2.5rem' }}
           color="gray.800"
         >
-          Dashboard
+          {t('title')}
         </Heading>
         <Text fontSize={{ base: '0.875rem', lg: '1rem' }} color="gray.600">
-          Your financial overview
+          {t('subtitle')}
         </Text>
       </VStack>
 
@@ -104,7 +107,7 @@ export default function DashboardPage() {
             mb={4}
             color="gray.700"
           >
-            Spending by Category
+            {t('spendingByCategory')}
           </Heading>
           <CategorySpendingChart chartType="donut" height={300} />
         </Box>
@@ -117,7 +120,7 @@ export default function DashboardPage() {
             mb={4}
             color="gray.700"
           >
-            Spending Trends (Last 6 Months)
+            {t('spendingTrends')}
           </Heading>
           <SpendingTrendsChart months={6} height={300} />
         </Box>

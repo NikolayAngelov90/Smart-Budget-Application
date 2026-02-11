@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Box, Heading, Text, VStack, HStack, useToast, Button } from '@chakra-ui/react';
 import { ChevronLeftIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import { InsightsFilters } from './InsightsFilters';
 import { InsightsList } from './InsightsList';
 import { EmptyInsightsState } from './EmptyInsightsState';
@@ -37,6 +38,8 @@ export function InsightsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
+  const t = useTranslations('insights');
+  const tCommon = useTranslations('common');
 
   // Extract filters from URL
   const filters = useMemo(() => ({
@@ -176,7 +179,7 @@ export function InsightsPageContent() {
       await mutate();
 
       toast({
-        title: 'Insight dismissed',
+        title: t('dismissed'),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -186,8 +189,8 @@ export function InsightsPageContent() {
       mutate();
 
       toast({
-        title: 'Failed to dismiss insight',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: t('failedToDismiss'),
+        description: error instanceof Error ? error.message : tCommon('unknownError'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -221,7 +224,7 @@ export function InsightsPageContent() {
       await mutate();
 
       toast({
-        title: 'Insight restored',
+        title: t('restored'),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -231,8 +234,8 @@ export function InsightsPageContent() {
       mutate();
 
       toast({
-        title: 'Failed to restore insight',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: t('failedToRestore'),
+        description: error instanceof Error ? error.message : tCommon('unknownError'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -246,9 +249,9 @@ export function InsightsPageContent() {
   // Determine empty state message
   const getEmptyMessage = () => {
     if (hasActiveFilters) {
-      return 'No insights match your filters';
+      return t('noMatchingInsights');
     }
-    return 'No insights available yet. Check back soon for personalized budget recommendations!';
+    return t('noInsightsYet');
   };
 
   return (
@@ -265,7 +268,7 @@ export function InsightsPageContent() {
             size="sm"
             _hover={{ bg: 'blue.50' }}
           >
-            Back to Dashboard
+            {t('backToDashboard')}
           </Button>
         </Box>
 
@@ -280,10 +283,10 @@ export function InsightsPageContent() {
           >
             <Box flex="1">
               <Heading as="h1" size={{ base: 'xl', md: '2xl' }} mb={2}>
-                AI Budget Insights
+                {t('pageTitle')}
               </Heading>
               <Text color="gray.600" fontSize={{ base: 'md', md: 'lg' }}>
-                View and manage all your personalized budget recommendations
+                {t('pageSubtitle')}
               </Text>
             </Box>
             {/* Refresh Button - positioned right on desktop, full-width on mobile */}
@@ -302,7 +305,7 @@ export function InsightsPageContent() {
         {/* Error State */}
         {error && (
           <EmptyInsightsState
-            message="Failed to load insights. Please try again later."
+            message={t('failedToLoad')}
             hasFilters={false}
           />
         )}

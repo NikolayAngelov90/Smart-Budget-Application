@@ -31,6 +31,7 @@ import {
   AlertDescription,
 } from '@chakra-ui/react';
 import { WarningIcon } from '@chakra-ui/icons';
+import { useTranslations } from 'next-intl';
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -45,12 +46,14 @@ export function ConfirmDeleteModal({
   onConfirm,
   isDeleting,
 }: ConfirmDeleteModalProps) {
+  const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleConfirm = async () => {
     if (!password) {
-      setError('Password is required');
+      setError(t('passwordRequired'));
       return;
     }
 
@@ -59,7 +62,7 @@ export function ConfirmDeleteModal({
     try {
       await onConfirm(password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete account');
+      setError(err instanceof Error ? err.message : t('accountDeleteFailed'));
     }
   };
 
@@ -75,7 +78,7 @@ export function ConfirmDeleteModal({
       <ModalContent>
         <ModalHeader color="red.600" display="flex" alignItems="center" gap={2}>
           <WarningIcon />
-          Delete Account Permanently
+          {t('deleteAccountPermanently')}
         </ModalHeader>
         <ModalCloseButton />
 
@@ -84,24 +87,22 @@ export function ConfirmDeleteModal({
             <Alert status="error" variant="subtle">
               <AlertIcon />
               <VStack align="start" spacing={1}>
-                <AlertTitle>This action cannot be undone!</AlertTitle>
+                <AlertTitle>{t('cannotBeUndone')}</AlertTitle>
                 <AlertDescription>
-                  All your data including transactions, categories, and insights will be
-                  permanently deleted.
+                  {t('allDataDeleted')}
                 </AlertDescription>
               </VStack>
             </Alert>
 
             <Text color="gray.600">
-              Before proceeding, please make sure you have exported your data using the
-              &quot;Export Transactions (CSV)&quot; button above.
+              {t('exportBeforeDelete')}
             </Text>
 
             <FormControl isRequired>
-              <FormLabel>Enter your password to confirm</FormLabel>
+              <FormLabel>{t('enterPasswordToConfirm')}</FormLabel>
               <Input
                 type="password"
-                placeholder="Your password"
+                placeholder={t('yourPassword')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 isDisabled={isDeleting}
@@ -120,15 +121,15 @@ export function ConfirmDeleteModal({
 
         <ModalFooter gap={3}>
           <Button variant="ghost" onClick={handleClose} isDisabled={isDeleting}>
-            Cancel
+            {tCommon('cancel')}
           </Button>
           <Button
             colorScheme="red"
             onClick={handleConfirm}
             isLoading={isDeleting}
-            loadingText="Deleting account..."
+            loadingText={t('deletingAccount')}
           >
-            Confirm Deletion
+            {t('confirmDeletion')}
           </Button>
         </ModalFooter>
       </ModalContent>

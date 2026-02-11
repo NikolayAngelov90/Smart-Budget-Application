@@ -37,6 +37,7 @@ import {
   Box,
 } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
+import { useTranslations } from 'next-intl';
 import { CategoryBadge } from './CategoryBadge';
 
 interface Category {
@@ -67,6 +68,8 @@ export function CategoryMenu({
   recentCategories = [],
   isDisabled = false,
 }: CategoryMenuProps) {
+  const t = useTranslations('categories');
+
   // Find selected category
   const selectedCategory = categories.find((cat) => cat.id === value);
 
@@ -113,7 +116,7 @@ export function CategoryMenu({
         {/* Recently-Used Categories Section */}
         {hasRecentCategories && (
           <>
-            <MenuGroup title="Recently Used" fontSize="xs" color="gray.600">
+            <MenuGroup title={t('recentlyUsed')} fontSize="xs" color="gray.600">
               {recentCategories.map((category) => (
                 <MenuItem
                   key={category.id}
@@ -133,7 +136,7 @@ export function CategoryMenu({
 
         {/* All Categories Section */}
         <MenuGroup
-          title={hasRecentCategories ? 'All Categories' : 'Categories'}
+          title={hasRecentCategories ? t('allCategories') : t('categories')}
           fontSize="xs"
           color="gray.600"
         >
@@ -155,7 +158,7 @@ export function CategoryMenu({
         {categories.length === 0 && (
           <Box p={4} textAlign="center">
             <Text fontSize="sm" color="gray.500">
-              No categories available
+              {t('noCategoriesAvailable')}
             </Text>
           </Box>
         )}

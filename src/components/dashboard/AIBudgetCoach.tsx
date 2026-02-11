@@ -16,6 +16,7 @@ import {
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import { InfoIcon } from '@chakra-ui/icons';
 import { AIInsightCard } from '@/components/insights/AIInsightCard';
 import type { Insight } from '@/types/database.types';
@@ -35,6 +36,7 @@ const fetcher = async (url: string): Promise<InsightsResponse> => {
 };
 
 export function AIBudgetCoach() {
+  const t = useTranslations('insights');
   const {
     data,
     error,
@@ -96,7 +98,7 @@ export function AIBudgetCoach() {
         mb={4}
         color="gray.800"
       >
-        AI Budget Coach
+        {t('aiBudgetCoach')}
       </Heading>
 
       {/* Loading State */}
@@ -121,7 +123,7 @@ export function AIBudgetCoach() {
         <Card borderLeft="4px" borderColor="red.500">
           <CardBody>
             <Text color="red.600">
-              Unable to load insights. Please try again later.
+              {t('unableToLoad')}
             </Text>
           </CardBody>
         </Card>
@@ -135,12 +137,11 @@ export function AIBudgetCoach() {
               <Flex align="center" gap={2}>
                 <Icon as={InfoIcon} color="blue.500" boxSize={5} />
                 <Heading size="md" color="gray.800">
-                  Keep tracking!
+                  {t('keepTracking')}
                 </Heading>
               </Flex>
               <Text color="gray.600">
-                We'll have insights after a few weeks of data. Keep logging your transactions,
-                and we'll provide personalized recommendations to help you budget better.
+                {t('keepTrackingDescription')}
               </Text>
             </VStack>
           </CardBody>
@@ -177,7 +178,7 @@ export function AIBudgetCoach() {
                   textDecoration: 'underline',
                 }}
               >
-                See all {data.total} insights →
+                {t('seeAllInsights', { count: data.total })}
               </ChakraLink>
             </Flex>
           )}

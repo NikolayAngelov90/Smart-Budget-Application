@@ -19,6 +19,7 @@ import { HStack, Text, IconButton, Box } from '@chakra-ui/react';
 import { MdClose } from 'react-icons/md';
 import useSWR from 'swr';
 import { format } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
 
 /**
@@ -51,6 +52,7 @@ async function fetcher(url: string): Promise<Category[]> {
  * Displays active category and/or month filters
  */
 export function FilterBreadcrumbs() {
+  const t = useTranslations('transactions');
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -100,7 +102,7 @@ export function FilterBreadcrumbs() {
     >
       <HStack spacing={3} align="center" flexWrap="wrap">
         <Text fontSize="sm" fontWeight="semibold" color="gray.700">
-          Filtering:
+          {t('filtering')}
         </Text>
 
         {/* Category filter */}
@@ -121,7 +123,7 @@ export function FilterBreadcrumbs() {
 
         {/* Clear filters button */}
         <IconButton
-          aria-label="Clear filters"
+          aria-label={t('clearFilters')}
           icon={<MdClose />}
           size="sm"
           variant="ghost"
