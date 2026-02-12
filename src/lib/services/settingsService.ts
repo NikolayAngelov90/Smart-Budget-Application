@@ -1,6 +1,7 @@
 /**
  * Settings Service
  * Story 8.3: Settings Page and Account Management
+ * Story 10-3: Multi-Currency User Settings & Configuration
  *
  * Handles user profile and preferences management with Supabase
  * RLS policies ensure users can only access their own data
@@ -41,7 +42,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       console.log('Profile not found, creating default profile for user:', userId);
 
       const defaultPreferences = {
-        currency_format: 'USD',
+        currency_format: 'EUR',
         date_format: 'MM/DD/YYYY',
         onboarding_completed: false,
         language: 'en',
@@ -140,7 +141,7 @@ export async function updateUserProfile(
 
       const currentPreferences =
         (currentProfile?.preferences as unknown as UserPreferences) || {
-          currency_format: 'USD',
+          currency_format: 'EUR',
           date_format: 'MM/DD/YYYY',
           onboarding_completed: false,
         };

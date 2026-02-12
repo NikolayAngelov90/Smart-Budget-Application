@@ -279,7 +279,15 @@
     "yourPassword": "Вашата парола",
     "passwordRequired": "Паролата е задължителна",
     "deletingAccount": "Изтриване на акаунта...",
-    "confirmDeletion": "Потвърди изтриването"
+    "confirmDeletion": "Потвърди изтриването",
+    "currencyDescription": "Изберете предпочитаната си валута за всички парични стойности",
+    "emailReadOnly": "Имейлът не може да бъде променен (от доставчика на удостоверяване)",
+    "dataSyncDescription": "Данните ви се синхронизират автоматично на всички ваши устройства в реално време.",
+    "dangerZone": "Опасна зона",
+    "saving": "Запазване...",
+    "generatingPdf": "Генериране на PDF...",
+    "generatingCsv": "Генериране на CSV...",
+    "failedToLoadProfile": "Неуспешно зареждане на профила. Моля, презаредете страницата."
   },
   "onboarding": {
     "welcome": "Добре дошли в Smart Budget!",

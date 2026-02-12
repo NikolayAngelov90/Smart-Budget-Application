@@ -279,7 +279,15 @@
     "yourPassword": "Your password",
     "passwordRequired": "Password is required",
     "deletingAccount": "Deleting account...",
-    "confirmDeletion": "Confirm Deletion"
+    "confirmDeletion": "Confirm Deletion",
+    "currencyDescription": "Choose your preferred currency for all monetary displays",
+    "emailReadOnly": "Email cannot be changed (from auth provider)",
+    "dataSyncDescription": "Your data automatically syncs across all your devices in real-time.",
+    "dangerZone": "Danger Zone",
+    "saving": "Saving...",
+    "generatingPdf": "Generating PDF...",
+    "generatingCsv": "Generating CSV...",
+    "failedToLoadProfile": "Failed to load profile. Please refresh the page."
   },
   "onboarding": {
     "welcome": "Welcome to Smart Budget!",

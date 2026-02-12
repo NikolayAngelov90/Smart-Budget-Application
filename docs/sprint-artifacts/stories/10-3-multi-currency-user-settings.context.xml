@@ -1,0 +1,136 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>10</epicId>
+    <storyId>3</storyId>
+    <title>Multi-Currency User Settings &amp; Configuration</title>
+    <status>in-progress</status>
+    <generatedAt>2026-02-12</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/10-3-multi-currency-user-settings.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>budget-conscious user</asA>
+    <iWant>to choose my preferred currency (EUR or USD) in settings</iWant>
+    <soThat>all monetary amounts display in the currency I use daily</soThat>
+    <tasks>
+      <task id="1" ac="admin">Create story and context files, update sprint status</task>
+      <task id="2" ac="10.3.2,10.3.3">Create currency configuration module
+        <subtask>Define CurrencyConfig type and SUPPORTED_CURRENCIES array</subtask>
+        <subtask>Add helper functions: getCurrencyConfig, getDefaultCurrency</subtask>
+      </task>
+      <task id="3" ac="10.3.5,10.3.6">Update formatCurrency utility
+        <subtask>Add currencyCode parameter to formatCurrency and formatCurrencyWithSign</subtask>
+        <subtask>Default to EUR when no currency specified</subtask>
+      </task>
+      <task id="4" ac="10.3.1,10.3.8">Update user preferences defaults to EUR</task>
+      <task id="5" ac="10.3.9">Create database migration 007_user_currency_preference.sql</task>
+      <task id="6" ac="10.3.4,10.3.7">Enable currency selector in Settings page</task>
+      <task id="7" ac="10.3.4,10.3.5">Add i18n translation keys for multi-currency</task>
+      <task id="8" ac="10.3.10">Write unit tests for currency config and formatting</task>
+      <task id="9">Run full verification (TypeScript, tests, lint)</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC-10.3.1">Add preferred_currency default to EUR in user preferences JSONB.</criterion>
+    <criterion id="AC-10.3.2">Create currency configuration: supported currencies array with code, symbol, name, locale.</criterion>
+    <criterion id="AC-10.3.3">Initial supported currencies: EUR (Euro, default), USD (US Dollar).</criterion>
+    <criterion id="AC-10.3.4">Currency selector in Settings page enabled for EUR and USD.</criterion>
+    <criterion id="AC-10.3.5">Currency symbol displayed correctly: EUR (&#8364;), USD ($).</criterion>
+    <criterion id="AC-10.3.6">Currency formatting respects locale: EUR &#8364;1.234,56 / USD $1,234.56.</criterion>
+    <criterion id="AC-10.3.7">Changing preferred currency triggers SWR revalidation for immediate UI update.</criterion>
+    <criterion id="AC-10.3.8">Currency preference syncs via existing Supabase user_profiles.preferences JSONB.</criterion>
+    <criterion id="AC-10.3.9">Migration script: 007_user_currency_preference.sql updates defaults to EUR.</criterion>
+    <criterion id="AC-10.3.10">Unit tests for currency configuration, formatting, and preference persistence.</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-10.md</path>
+        <title>Epic 10 Tech Spec</title>
+        <section>Story 10-3: Multi-Currency User Settings &amp; Configuration</section>
+        <snippet>AC-10.3.1 through AC-10.3.10 defining multi-currency settings requirements. EUR default, USD secondary. Currency config, formatting, settings UI, migration.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <file>
+        <path>src/lib/utils/currency.ts</path>
+        <kind>utility</kind>
+        <symbol>formatCurrency, formatCurrencyWithSign, calculateTrend</symbol>
+        <reason>PRIMARY target - update to accept currencyCode parameter, change default from USD to EUR.</reason>
+      </file>
+      <file>
+        <path>src/lib/utils/__tests__/currency.test.ts</path>
+        <kind>test</kind>
+        <symbol>Currency formatting tests</symbol>
+        <reason>Update tests for multi-currency support, add EUR formatting tests.</reason>
+      </file>
+      <file>
+        <path>src/types/user.types.ts</path>
+        <kind>types</kind>
+        <symbol>UserPreferences, UserProfile</symbol>
+        <reason>currency_format type already supports EUR/USD/GBP. Update JSDoc to reflect EUR default.</reason>
+      </file>
+      <file>
+        <path>src/lib/hooks/useUserPreferences.ts</path>
+        <kind>hook</kind>
+        <symbol>useUserPreferences, DEFAULT_PREFERENCES</symbol>
+        <reason>Change DEFAULT_PREFERENCES.currency_format from USD to EUR.</reason>
+      </file>
+      <file>
+        <path>src/lib/services/settingsService.ts</path>
+        <kind>service</kind>
+        <symbol>getUserProfile, updateUserProfile, updatePreferences</symbol>
+        <reason>Change default currency_format from USD to EUR in fallback preferences.</reason>
+      </file>
+      <file>
+        <path>src/app/(dashboard)/settings/page.tsx</path>
+        <kind>page</kind>
+        <symbol>SettingsPage</symbol>
+        <reason>Enable currency selector dropdown, remove "Coming soon" restrictions.</reason>
+      </file>
+      <file>
+        <path>src/app/api/user/profile/route.ts</path>
+        <kind>api-route</kind>
+        <symbol>GET, PUT /api/user/profile</symbol>
+        <reason>No changes needed - already supports preference updates.</reason>
+      </file>
+      <file>
+        <path>supabase/migrations/004_user_profiles_table.sql</path>
+        <kind>migration</kind>
+        <symbol>user_profiles table with JSONB preferences</symbol>
+        <reason>Reference for new migration. Default preferences include currency_format.</reason>
+      </file>
+      <file>
+        <path>messages/en.json</path>
+        <kind>translation-file</kind>
+        <symbol>settings namespace</symbol>
+        <reason>Add currency-related translation keys.</reason>
+      </file>
+      <file>
+        <path>messages/bg.json</path>
+        <kind>translation-file</kind>
+        <symbol>settings namespace</symbol>
+        <reason>Add Bulgarian translations for currency-related keys.</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <node>
+        <package name="next-intl" version="^3.x" relevance="i18n for currency labels in Settings UI" />
+        <package name="swr" version="^2.x" relevance="SWR revalidation on currency preference change" />
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="backward-compat">Existing users with USD preference keep it. Only new users default to EUR.</constraint>
+    <constraint type="scope">This story updates the formatCurrency utility and settings UI. Story 10-4 will update all callsites throughout the app to pass currency code.</constraint>
+    <constraint type="database">No new table needed. Uses existing JSONB preferences column. Migration only changes defaults.</constraint>
+    <constraint type="testing">Existing currency tests hardcode USD expectations - must be updated for EUR default.</constraint>
+    <constraint type="i18n">All new UI strings must use useTranslations() hook pattern from Story 10-1.</constraint>
+  </constraints>
+</story-context>

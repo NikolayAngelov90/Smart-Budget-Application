@@ -53,6 +53,7 @@ import { ActiveDevicesSection } from '@/components/settings/ActiveDevicesSection
 import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
 import type { SupportedLocale } from '@/i18n/routing';
 import type { PDFReportData } from '@/types/export.types';
+import { SUPPORTED_CURRENCIES } from '@/lib/config/currencies';
 import type { UserProfile } from '@/types/user.types';
 
 interface Transaction {
@@ -92,7 +93,7 @@ export default function SettingsPage() {
   const [isExportingCSV, setIsExportingCSV] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [currencyFormat, setCurrencyFormat] = useState<'USD' | 'EUR' | 'GBP'>('USD');
+  const [currencyFormat, setCurrencyFormat] = useState<'USD' | 'EUR' | 'GBP'>('EUR');
   const [dateFormat, setDateFormat] = useState<'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD'>(
     'MM/DD/YYYY'
   );
@@ -411,7 +412,7 @@ export default function SettingsPage() {
         <Container maxW="container.xl" py={8}>
           <Alert status="error">
             <AlertIcon />
-            Failed to load profile. Please refresh the page.
+            {t('failedToLoadProfile')}
           </Alert>
         </Container>
       </AppLayout>
@@ -474,7 +475,7 @@ export default function SettingsPage() {
                   <FormLabel>{t('email')}</FormLabel>
                   <Input value={profile?.email || ''} isReadOnly bg="gray.50" />
                   <Text fontSize="xs" color="gray.500" mt={1}>
-                    Email cannot be changed (from auth provider)
+                    {t('emailReadOnly')}
                   </Text>
                 </FormControl>
 
@@ -482,7 +483,7 @@ export default function SettingsPage() {
                   colorScheme="blue"
                   onClick={handleUpdateProfile}
                   isLoading={isSavingProfile}
-                  loadingText="Saving..."
+                  loadingText={t('saving')}
                   isDisabled={displayName === (profile?.display_name || '')}
                 >
                   {t('saveProfile')}
@@ -526,7 +527,7 @@ export default function SettingsPage() {
                     colorScheme="blue"
                     onClick={handleExportPDF}
                     isLoading={isExportingPDF}
-                    loadingText="Generating PDF..."
+                    loadingText={t('generatingPdf')}
                     flex="1"
                     minW="200px"
                   >
@@ -538,7 +539,7 @@ export default function SettingsPage() {
                     colorScheme="green"
                     onClick={handleExportCSV}
                     isLoading={isExportingCSV}
-                    loadingText="Generating CSV..."
+                    loadingText={t('generatingCsv')}
                     flex="1"
                     minW="200px"
                   >
@@ -567,16 +568,19 @@ export default function SettingsPage() {
                       handleUpdatePreferences('currency_format', newValue);
                     }}
                   >
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR" disabled>
-                      EUR (€) - Coming soon
-                    </option>
-                    <option value="GBP" disabled>
-                      GBP (£) - Coming soon
-                    </option>
+                    {SUPPORTED_CURRENCIES.map((currency) => (
+                      <option
+                        key={currency.code}
+                        value={currency.code}
+                        disabled={!currency.enabled}
+                      >
+                        {currency.code} ({currency.symbol})
+                        {!currency.enabled ? ` - ${tCommon('comingSoon')}` : ''}
+                      </option>
+                    ))}
                   </Select>
                   <Text fontSize="xs" color="gray.500" mt={1}>
-                    Currently, only USD is supported
+                    {t('currencyDescription')}
                   </Text>
                 </FormControl>
 
@@ -624,7 +628,7 @@ export default function SettingsPage() {
 
                 <VStack spacing={4} align="stretch">
                   <Text fontSize="sm" color="gray.600">
-                    Your data automatically syncs across all your devices in real-time.
+                    {t('dataSyncDescription')}
                   </Text>
 
                   {/* AC-8.4.1, AC-8.4.2: Sync Status with Last Sync Timestamp */}
@@ -659,7 +663,7 @@ export default function SettingsPage() {
 
                 <VStack align="stretch" spacing={3}>
                   <Text fontWeight="bold" color="red.600">
-                    Danger Zone
+                    {t('dangerZone')}
                   </Text>
                   <Text fontSize="sm" color="gray.600">
                     {t('deleteAccountWarning')}

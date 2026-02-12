@@ -1,5 +1,6 @@
 /**
  * Story 8.3: Settings Page and Account Management
+ * Story 10-3: Multi-Currency User Settings & Configuration
  * Custom Hook: useUserPreferences
  *
  * Fetches and provides user preferences (date format, currency format, etc.)
@@ -15,7 +16,7 @@ interface UseUserPreferencesResult {
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
-  currency_format: 'USD',
+  currency_format: 'EUR',
   date_format: 'MM/DD/YYYY',
   onboarding_completed: false,
   language: 'en',

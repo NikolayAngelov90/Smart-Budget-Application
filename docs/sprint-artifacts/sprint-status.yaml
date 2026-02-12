@@ -131,7 +131,7 @@ development_status:
   epic-10: backlog
   10-1-i18n-framework-setup-and-language-switcher: done
   10-2-bulgarian-language-translations: done
-  10-3-multi-currency-user-settings: backlog
+  10-3-multi-currency-user-settings: done
   10-4-currency-formatting-and-display: backlog
   10-5-exchange-rate-integration: backlog
   10-6-transaction-multi-currency-support: backlog

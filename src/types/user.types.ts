@@ -1,6 +1,7 @@
 /**
  * User Types
  * Story 8.3: Settings Page and Account Management
+ * Story 10-3: Multi-Currency User Settings & Configuration
  *
  * Type definitions for user profiles and preferences
  */
@@ -8,9 +9,10 @@
 /**
  * User preferences stored as JSONB in user_profiles table
  * AC-8.3.5: Preferences include currency format, date format, and onboarding status
+ * AC-10.3.1: Default currency is EUR
  */
 export interface UserPreferences {
-  /** Currency format for monetary displays (MVP: USD only enabled) */
+  /** Currency format for monetary displays (default: EUR) */
   currency_format: 'USD' | 'EUR' | 'GBP';
 
   /** Date format for date displays */

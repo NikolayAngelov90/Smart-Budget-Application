@@ -132,7 +132,7 @@ describe('settingsService', () => {
       expect(mockInsert).toHaveBeenCalledWith({
         id: mockUserId,
         preferences: {
-          currency_format: 'USD',
+          currency_format: 'EUR',
           date_format: 'MM/DD/YYYY',
           language: 'en',
           onboarding_completed: false,
