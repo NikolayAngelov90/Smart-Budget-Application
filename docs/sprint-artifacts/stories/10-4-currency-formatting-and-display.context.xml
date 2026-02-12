@@ -1,0 +1,79 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>10</epicId>
+    <storyId>4</storyId>
+    <title>Currency Formatting &amp; Display Throughout App</title>
+    <status>in-progress</status>
+    <generatedAt>2026-02-12</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/10-4-currency-formatting-and-display.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user who has selected my preferred currency</asA>
+    <iWant>all monetary amounts displayed with the correct currency symbol and formatting</iWant>
+    <soThat>my financial data is consistently presented in my chosen currency</soThat>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC-10.4.2">All monetary displays use formatCurrency from shared utility.</criterion>
+    <criterion id="AC-10.4.3">Dashboard summary cards show amounts in user's preferred currency.</criterion>
+    <criterion id="AC-10.4.4">Transaction list shows amounts with correct currency symbol.</criterion>
+    <criterion id="AC-10.4.5">Chart tooltips and axis labels display formatted currency.</criterion>
+    <criterion id="AC-10.4.6">Export CSV/PDF includes currency formatting per user preference.</criterion>
+    <criterion id="AC-10.4.7">AI insight recommendations display amounts in user's preferred currency.</criterion>
+    <criterion id="AC-10.4.8">Category spending chart legend shows formatted currency amounts.</criterion>
+    <criterion id="AC-10.4.9">Month-over-month comparison shows formatted currency with +/- indicators.</criterion>
+    <criterion id="AC-10.4.10">No hardcoded $ or USD strings remain in production source code.</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <code>
+      <file>
+        <path>src/lib/utils/currency.ts</path>
+        <kind>utility</kind>
+        <reason>Shared formatCurrency(amount, language?, currencyCode?) - already updated in Story 10-3.</reason>
+      </file>
+      <file>
+        <path>src/lib/hooks/useUserPreferences.ts</path>
+        <kind>hook</kind>
+        <reason>Provides preferences.currency_format for components to pass to formatCurrency.</reason>
+      </file>
+      <file>
+        <path>src/components/dashboard/DashboardStats.tsx</path>
+        <kind>component</kind>
+        <reason>Uses formatCurrency/formatCurrencyWithSign - needs currency_format param.</reason>
+      </file>
+      <file>
+        <path>src/components/dashboard/CategorySpendingChart.tsx</path>
+        <kind>component</kind>
+        <reason>Uses formatCurrency in tooltips, totals, and accessible table.</reason>
+      </file>
+      <file>
+        <path>src/components/dashboard/SpendingTrendsChart.tsx</path>
+        <kind>component</kind>
+        <reason>Uses formatCurrency in tooltips, Y-axis, and accessible table.</reason>
+      </file>
+      <file>
+        <path>src/components/dashboard/MonthOverMonth.tsx</path>
+        <kind>component</kind>
+        <reason>Uses formatCurrency in comparison display.</reason>
+      </file>
+      <file>
+        <path>src/app/transactions/page.tsx</path>
+        <kind>page</kind>
+        <reason>Has local formatAmount with hardcoded $ - replace with formatCurrency.</reason>
+      </file>
+      <file>
+        <path>src/lib/services/exportService.ts</path>
+        <kind>service</kind>
+        <reason>6 instances of hardcoded $amount.toFixed(2) - replace with formatCurrency.</reason>
+      </file>
+      <file>
+        <path>src/components/insights/InsightMetadata.tsx</path>
+        <kind>component</kind>
+        <reason>Has local formatCurrency with hardcoded USD - replace with shared utility.</reason>
+      </file>
+    </code>
+  </artifacts>
+</story-context>

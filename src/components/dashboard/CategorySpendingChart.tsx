@@ -32,6 +32,7 @@ import {
 } from 'recharts';
 import { useSpendingByCategory } from '@/lib/hooks/useSpendingByCategory';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency } from '@/lib/utils/currency';
 
 export interface CategorySpendingChartProps {
@@ -55,7 +56,9 @@ export function CategorySpendingChart({
   height = 300,
 }: CategorySpendingChartProps) {
   const { data, error, isLoading, mutate } = useSpendingByCategory(month);
+  const { preferences } = useUserPreferences();
   const router = useRouter();
+  const currencyCode = preferences?.currency_format;
 
   // Get current month in YYYY-MM format for drill-down navigation
   const currentMonth = month || format(new Date(), 'yyyy-MM');
@@ -146,7 +149,7 @@ export function CategorySpendingChart({
             {data.name}
           </Text>
           <Text fontSize="sm" color="gray.700">
-            {formatCurrency(data.value)}
+            {formatCurrency(data.value, undefined, currencyCode)}
           </Text>
           <Text fontSize="xs" color="gray.500">
             {data.percentage.toFixed(1)}% of total
@@ -172,7 +175,7 @@ export function CategorySpendingChart({
             Spending by Category
           </Heading>
           <Text fontSize="sm" color="gray.600">
-            Total: {formatCurrency(data.total)}
+            Total: {formatCurrency(data.total, undefined, currencyCode)}
           </Text>
         </Box>
 
@@ -234,7 +237,7 @@ export function CategorySpendingChart({
             {data?.categories.map((cat) => (
               <tr key={cat.category_id}>
                 <td>{cat.category_name}</td>
-                <td>{formatCurrency(cat.amount)}</td>
+                <td>{formatCurrency(cat.amount, undefined, currencyCode)}</td>
                 <td>{cat.percentage.toFixed(1)}%</td>
               </tr>
             ))}

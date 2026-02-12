@@ -35,6 +35,7 @@ import {
 import { MdShowChart } from 'react-icons/md';
 import { useTrends, MonthlyTrendData } from '@/lib/hooks/useTrends';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency } from '@/lib/utils/currency';
 
 /**
@@ -57,51 +58,6 @@ interface LineChartDataPoint {
 }
 
 /**
- * Custom tooltip component for line chart
- */
-function CustomTooltip({
-  active,
-  payload,
-}: {
-  active?: boolean;
-  payload?: Array<{
-    payload: LineChartDataPoint;
-    dataKey?: string;
-    value?: number;
-  }>;
-}) {
-  if (active && payload && payload.length) {
-    const firstPayload = payload[0];
-    if (!firstPayload) return null;
-    const data = firstPayload.payload as LineChartDataPoint;
-    const income = payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'income')?.value ?? 0;
-    const expenses = payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'expenses')?.value ?? 0;
-
-    return (
-      <Box
-        bg="white"
-        p={3}
-        borderRadius="md"
-        boxShadow="lg"
-        borderWidth="1px"
-        borderColor="gray.200"
-      >
-        <Text fontWeight="bold" fontSize="sm" mb={2}>
-          {data.month}
-        </Text>
-        <Text fontSize="sm" color="green.600" mb={1}>
-          Income: {formatCurrency(Number(income))}
-        </Text>
-        <Text fontSize="sm" color="red.600">
-          Expenses: {formatCurrency(Number(expenses))}
-        </Text>
-      </Box>
-    );
-  }
-  return null;
-}
-
-/**
  * SpendingTrendsChart Component
  * Renders a responsive line chart showing income vs expenses trends
  */
@@ -111,7 +67,54 @@ export function SpendingTrendsChart({
 }: SpendingTrendsChartProps) {
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { data, error, isLoading, mutate } = useTrends(isMobile ? 3 : months);
+  const { preferences } = useUserPreferences();
   const router = useRouter();
+  const currencyCode = preferences?.currency_format;
+
+  /**
+   * Custom tooltip component for line chart
+   */
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: Array<{
+      payload: LineChartDataPoint;
+      dataKey?: string;
+      value?: number;
+    }>;
+  }) => {
+    if (active && payload && payload.length) {
+      const firstPayload = payload[0];
+      if (!firstPayload) return null;
+      const tooltipData = firstPayload.payload as LineChartDataPoint;
+      const income = payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'income')?.value ?? 0;
+      const expenses = payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'expenses')?.value ?? 0;
+
+      return (
+        <Box
+          bg="white"
+          p={3}
+          borderRadius="md"
+          boxShadow="lg"
+          borderWidth="1px"
+          borderColor="gray.200"
+        >
+          <Text fontWeight="bold" fontSize="sm" mb={2}>
+            {tooltipData.month}
+          </Text>
+          <Text fontSize="sm" color="green.600" mb={1}>
+            Income: {formatCurrency(Number(income), undefined, currencyCode)}
+          </Text>
+          <Text fontSize="sm" color="red.600">
+            Expenses: {formatCurrency(Number(expenses), undefined, currencyCode)}
+          </Text>
+        </Box>
+      );
+    }
+    return null;
+  };
 
   // Subscribe to real-time transaction changes via centralized manager
   useRealtimeSubscription((event) => {
@@ -234,7 +237,7 @@ export function SpendingTrendsChart({
           <YAxis
             stroke="#718096"
             tick={{ fill: '#4A5568', fontSize: 12 }}
-            tickFormatter={(value) => formatCurrency(value)}
+            tickFormatter={(value) => formatCurrency(value, undefined, currencyCode)}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#CBD5E0', strokeWidth: 2 }} />
           <Legend
@@ -293,9 +296,9 @@ export function SpendingTrendsChart({
           {data?.months.map((monthData: MonthlyTrendData) => (
             <tr key={monthData.month}>
               <td>{monthData.monthLabel}</td>
-              <td>{formatCurrency(monthData.income)}</td>
-              <td>{formatCurrency(monthData.expenses)}</td>
-              <td>{formatCurrency(monthData.net)}</td>
+              <td>{formatCurrency(monthData.income, undefined, currencyCode)}</td>
+              <td>{formatCurrency(monthData.expenses, undefined, currencyCode)}</td>
+              <td>{formatCurrency(monthData.net, undefined, currencyCode)}</td>
             </tr>
           ))}
         </tbody>

@@ -14,11 +14,14 @@ import { useTranslations } from 'next-intl';
 import { StatCard } from './StatCard';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency, formatCurrencyWithSign } from '@/lib/utils/currency';
 
 export function DashboardStats() {
   const { data, error, isLoading, mutate } = useDashboardStats();
+  const { preferences } = useUserPreferences();
   const t = useTranslations('dashboard');
+  const currencyCode = preferences?.currency_format;
 
   // Subscribe to real-time transaction changes via centralized manager
   useRealtimeSubscription((event) => {
@@ -42,15 +45,15 @@ export function DashboardStats() {
 
   // Calculate values and trends
   const balance = data?.balance ?? 0;
-  const balanceFormatted = formatCurrency(balance);
+  const balanceFormatted = formatCurrency(balance, undefined, currencyCode);
   const balanceColorScheme = balance >= 0 ? 'green' : 'red';
 
   const incomeCurrent = data?.income.current ?? 0;
-  const incomeFormatted = formatCurrencyWithSign(incomeCurrent, true);
+  const incomeFormatted = formatCurrencyWithSign(incomeCurrent, true, undefined, currencyCode);
   const incomeTrend = data?.income.trend ?? 0;
 
   const expensesCurrent = data?.expenses.current ?? 0;
-  const expensesFormatted = formatCurrencyWithSign(-expensesCurrent, true);
+  const expensesFormatted = formatCurrencyWithSign(-expensesCurrent, true, undefined, currencyCode);
   const expensesTrend = data?.expenses.trend ?? 0;
 
   return (

@@ -27,6 +27,7 @@ import {
 import { MdTrendingUp, MdTrendingDown, MdShowChart } from 'react-icons/md';
 import { useMonthOverMonth, CategoryChangeData } from '@/lib/hooks/useMonthOverMonth';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency } from '@/lib/utils/currency';
 
 /**
