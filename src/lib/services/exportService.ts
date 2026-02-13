@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { PDFReportData } from '@/types/export.types';
 import { trackCSVExported, trackPDFExported } from './analyticsService';
+import { formatCurrency } from '@/lib/utils/currency';
 
 /**
  * Transaction type with category information
@@ -63,11 +64,13 @@ interface CSVRow {
  *
  * @param transactions - Array of transactions with category information
  * @param onProgress - Optional callback for progress updates (0-100)
+ * @param currencyCode - Optional currency code (defaults to user's preference or EUR)
  * @returns Promise that resolves when download is triggered
  */
 export async function exportTransactionsToCSV(
   transactions: TransactionWithCategory[],
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  currencyCode?: string
 ): Promise<void> {
   try {
     // AC-8.1.9: For large datasets, process in chunks to avoid freezing
@@ -93,8 +96,8 @@ export async function exportTransactionsToCSV(
         // Category name or "Unknown" if missing
         Category: tx.category?.name || 'Unknown',
 
-        // AC-8.1.7: Amount formatted as $123.45
-        Amount: `$${tx.amount.toFixed(2)}`,
+        // AC-8.1.7: Amount formatted with user's preferred currency
+        Amount: formatCurrency(tx.amount, undefined, currencyCode),
 
         // Notes: empty string if null (not "null")
         Notes: tx.notes || '',
@@ -165,10 +168,12 @@ export async function exportTransactionsToCSV(
  * AC-8.2.12: Success toast displays "PDF report downloaded!"
  *
  * @param reportData - Monthly report data with summary, categories, and transactions
+ * @param currencyCode - Optional currency code (defaults to user's preference or EUR)
  * @returns Promise that resolves when PDF download is triggered
  */
 export async function exportMonthlyReportToPDF(
-  reportData: PDFReportData
+  reportData: PDFReportData,
+  currencyCode?: string
 ): Promise<void> {
   try {
     // AC-8.2.11: Create PDF with A4 format (210x297mm)
@@ -213,9 +218,9 @@ export async function exportMonthlyReportToPDF(
       startY: yPosition,
       head: [['Metric', 'Amount']],
       body: [
-        ['Total Income', `$${reportData.summary.totalIncome.toFixed(2)}`],
-        ['Total Expenses', `$${reportData.summary.totalExpenses.toFixed(2)}`],
-        ['Net Balance', `$${reportData.summary.netBalance.toFixed(2)}`],
+        ['Total Income', formatCurrency(reportData.summary.totalIncome, undefined, currencyCode)],
+        ['Total Expenses', formatCurrency(reportData.summary.totalExpenses, undefined, currencyCode)],
+        ['Net Balance', formatCurrency(reportData.summary.netBalance, undefined, currencyCode)],
       ],
       theme: 'grid',
       headStyles: {
@@ -256,7 +261,7 @@ export async function exportMonthlyReportToPDF(
         head: [['Category', 'Amount', 'Percentage']],
         body: reportData.categories.map((cat) => [
           cat.name,
-          `$${cat.amount.toFixed(2)}`,
+          formatCurrency(cat.amount, undefined, currencyCode),
           `${cat.percentage.toFixed(1)}%`,
         ]),
         theme: 'grid',
@@ -306,7 +311,7 @@ export async function exportMonthlyReportToPDF(
         body: reportData.topTransactions.map((tx) => [
           format(new Date(tx.date), 'MMM dd, yyyy'),
           tx.category,
-          `$${tx.amount.toFixed(2)}`,
+          formatCurrency(tx.amount, undefined, currencyCode),
           tx.notes || '-',
         ]),
         theme: 'grid',

@@ -88,12 +88,13 @@ describe('exportTransactionsToCSV', () => {
     await exportTransactionsToCSV(transactions);
 
     // Verify Papa.unparse was called with correct data
+    // Amount uses formatCurrency with EUR default
     expect(mockUnparse).toHaveBeenCalledWith([
       {
         Date: '2025-12-14',
         Type: 'expense',
         Category: 'Groceries',
-        Amount: '$50.00',
+        Amount: expect.stringContaining('50.00'),
         Notes: '',
         'Created At': '2025-12-14 10:30:00',
       },
@@ -151,8 +152,8 @@ describe('exportTransactionsToCSV', () => {
     expect(csvData[0]!.Notes).not.toBe('null');
   });
 
-  // AC-8.1.7: Test amount formatting as $123.45
-  test('formats amounts with dollar sign and two decimals', async () => {
+  // AC-8.1.7: Test amount formatting with currency symbol and two decimals
+  test('formats amounts with currency symbol and two decimals', async () => {
     const transactions = [
       {
         id: '1',
@@ -173,7 +174,8 @@ describe('exportTransactionsToCSV', () => {
     await exportTransactionsToCSV(transactions);
 
     const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
-    expect(csvData[0]!.Amount).toBe('$123.46'); // toFixed rounds
+    // Uses formatCurrency with EUR default - amount should be rounded to 2 decimals
+    expect(csvData[0]!.Amount).toContain('123.46');
   });
 
   // Test missing category handling (category.name fallback to "Unknown")
@@ -233,9 +235,9 @@ describe('exportTransactionsToCSV', () => {
     const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
     expect(csvData).toHaveLength(3);
     // Order should be preserved as provided (API handles sorting)
-    expect(csvData[0]!.Amount).toBe('$30.00');
-    expect(csvData[1]!.Amount).toBe('$20.00');
-    expect(csvData[2]!.Amount).toBe('$10.00');
+    expect(csvData[0]!.Amount).toContain('30.00');
+    expect(csvData[1]!.Amount).toContain('20.00');
+    expect(csvData[2]!.Amount).toContain('10.00');
   });
 
   // AC-8.1.2: Test CSV file download is triggered

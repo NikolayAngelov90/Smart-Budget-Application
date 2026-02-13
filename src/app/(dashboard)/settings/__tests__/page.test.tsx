@@ -233,7 +233,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
       );
     });
 
-    // Verify exportMonthlyReportToPDF was called with correct data
+    // Verify exportMonthlyReportToPDF was called with correct data and currency
     await waitFor(() => {
       expect(mockExportMonthlyReportToPDF).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -259,7 +259,8 @@ describe('Settings Page - PDF Export Integration Tests', () => {
               notes: 'Groceries',
             }),
           ]),
-        })
+        }),
+        expect.any(String)
       );
     });
 
@@ -471,7 +472,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     const exportButton = screen.getByRole('button', { name: /export monthly report \(pdf\)/i });
     fireEvent.click(exportButton);
 
-    // Verify PDF export is called with zero values
+    // Verify PDF export is called with zero values and currency
     await waitFor(() => {
       expect(mockExportMonthlyReportToPDF).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -482,7 +483,8 @@ describe('Settings Page - PDF Export Integration Tests', () => {
           },
           categories: [],
           topTransactions: [],
-        })
+        }),
+        expect.any(String)
       );
     });
 
@@ -579,7 +581,8 @@ describe('Settings Page - PDF Export Integration Tests', () => {
               percentage: 10.0,
             }),
           ]),
-        })
+        }),
+        expect.any(String)
       );
     });
   });
@@ -639,7 +642,8 @@ describe('Settings Page - PDF Export Integration Tests', () => {
             expect.objectContaining({ amount: 300.0, notes: 'Medium' }),
             expect.objectContaining({ amount: 100.0, notes: 'Small' }),
           ],
-        })
+        }),
+        expect.any(String)
       );
     });
   });

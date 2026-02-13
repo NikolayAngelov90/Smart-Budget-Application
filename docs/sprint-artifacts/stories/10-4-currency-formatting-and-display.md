@@ -1,6 +1,6 @@
 # Story 10.4: Currency Formatting & Display Throughout App
 
-Status: in-progress
+Status: done
 
 ## Story
 

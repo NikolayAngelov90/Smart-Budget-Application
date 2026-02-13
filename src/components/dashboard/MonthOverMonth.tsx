@@ -43,9 +43,11 @@ export interface MonthOverMonthProps {
 function ChangeItem({
   change,
   onClick,
+  currencyCode,
 }: {
   change: CategoryChangeData;
   onClick: () => void;
+  currencyCode?: string;
 }) {
   const isIncrease = change.direction === 'increase';
   const ArrowIcon = isIncrease ? MdTrendingUp : MdTrendingDown;
@@ -94,7 +96,7 @@ function ChangeItem({
             {arrow} {Math.abs(change.percentChange).toFixed(0)}%
           </Badge>
           <Text fontSize={{ base: '0.625rem', md: '0.75rem' }} color="gray.600" whiteSpace="nowrap" display={{ base: 'none', sm: 'block' }}>
-            {formatCurrency(change.currentAmount)} vs {formatCurrency(change.previousAmount)}
+            {formatCurrency(change.currentAmount, undefined, currencyCode)} vs {formatCurrency(change.previousAmount, undefined, currencyCode)}
           </Text>
         </Flex>
       </Flex>
@@ -109,6 +111,8 @@ function ChangeItem({
 export function MonthOverMonth({ month }: MonthOverMonthProps) {
   const router = useRouter();
   const { data, error, isLoading, mutate } = useMonthOverMonth(month);
+  const { preferences } = useUserPreferences();
+  const currencyCode = preferences?.currency_format;
 
   // Subscribe to real-time transaction changes via centralized manager
   useRealtimeSubscription((event) => {
@@ -198,6 +202,7 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
             key={change.categoryId}
             change={change}
             onClick={() => handleCategoryClick(change.categoryId, data.currentMonth)}
+            currencyCode={currencyCode}
           />
         ))}
       </List>

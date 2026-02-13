@@ -132,7 +132,7 @@ development_status:
   10-1-i18n-framework-setup-and-language-switcher: done
   10-2-bulgarian-language-translations: done
   10-3-multi-currency-user-settings: done
-  10-4-currency-formatting-and-display: in-progress
+  10-4-currency-formatting-and-display: done
   10-5-exchange-rate-integration: backlog
   10-6-transaction-multi-currency-support: backlog
   10-7-enhanced-pwa-for-mobile-production: backlog

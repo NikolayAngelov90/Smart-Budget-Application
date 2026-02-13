@@ -306,7 +306,7 @@ export default function SettingsPage() {
         topTransactions,
       };
 
-      await exportMonthlyReportToPDF(reportData);
+      await exportMonthlyReportToPDF(reportData, currencyFormat);
 
       toast({
         title: t('pdfDownloaded'),
@@ -337,7 +337,7 @@ export default function SettingsPage() {
       const data = await response.json();
       const transactions: Transaction[] = data.data;
 
-      await exportTransactionsToCSV(transactions);
+      await exportTransactionsToCSV(transactions, undefined, currencyFormat);
 
       toast({
         title: t('csvDownloaded'),

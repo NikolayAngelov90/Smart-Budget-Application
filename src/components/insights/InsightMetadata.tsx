@@ -13,6 +13,8 @@ import Link from 'next/link';
 import { ArrowForwardIcon } from '@chakra-ui/icons';
 import type { Insight } from '@/types/database.types';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/lib/utils/currency';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 
 interface InsightMetadataProps {
   insight: Insight;
@@ -60,14 +62,6 @@ interface PositiveReinforcementMetadata {
   percent_under_budget: number;
   current_month: string;
 }
-
-// Format currency helper
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-};
 
 // Format month helper
 const formatMonth = (monthStr: string): string => {
@@ -120,6 +114,8 @@ function MetadataField({ label, value, highlight = false }: MetadataFieldProps) 
 }
 
 export function InsightMetadata({ insight }: InsightMetadataProps) {
+  const { preferences } = useUserPreferences();
+  const currencyCode = preferences?.currency_format;
   const metadata = insight.metadata as Record<string, unknown>;
 
   // Render metadata based on insight type
@@ -138,7 +134,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
                 label="Current Month"
                 value={
                   <>
-                    {formatCurrency(meta.current_amount ?? 0)}
+                    {formatCurrency(meta.current_amount ?? 0, undefined, currencyCode)}
                     <Badge ml={2} colorScheme="gray" fontSize="xs">
                       {meta.transaction_count_current ?? 0} transactions
                     </Badge>
@@ -149,7 +145,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
                 label="Previous Month"
                 value={
                   <>
-                    {formatCurrency(meta.previous_amount ?? 0)}
+                    {formatCurrency(meta.previous_amount ?? 0, undefined, currencyCode)}
                     <Badge ml={2} colorScheme="gray" fontSize="xs">
                       {meta.transaction_count_previous ?? 0} transactions
                     </Badge>
@@ -158,7 +154,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               />
               <MetadataField
                 label="Absolute Change"
-                value={formatCurrency((meta.current_amount ?? 0) - (meta.previous_amount ?? 0))}
+                value={formatCurrency((meta.current_amount ?? 0) - (meta.previous_amount ?? 0), undefined, currencyCode)}
                 highlight
               />
               <MetadataField
@@ -204,11 +200,11 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
               <MetadataField
                 label="3-Month Average"
-                value={formatCurrency(meta.three_month_average ?? 0)}
+                value={formatCurrency(meta.three_month_average ?? 0, undefined, currencyCode)}
               />
               <MetadataField
                 label="Recommended Budget"
-                value={formatCurrency(meta.recommended_budget ?? 0)}
+                value={formatCurrency(meta.recommended_budget ?? 0, undefined, currencyCode)}
                 highlight
               />
             </Grid>
@@ -257,16 +253,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
               <MetadataField
                 label="Transaction Amount"
-                value={formatCurrency(meta.transaction_amount ?? 0)}
+                value={formatCurrency(meta.transaction_amount ?? 0, undefined, currencyCode)}
                 highlight
               />
               <MetadataField
                 label="Category Average"
-                value={formatCurrency(meta.category_average ?? 0)}
+                value={formatCurrency(meta.category_average ?? 0, undefined, currencyCode)}
               />
               <MetadataField
                 label="Standard Deviation"
-                value={formatCurrency(meta.standard_deviation ?? 0)}
+                value={formatCurrency(meta.standard_deviation ?? 0, undefined, currencyCode)}
               />
               <MetadataField
                 label="Deviation"
@@ -310,15 +306,15 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
               <MetadataField
                 label="Budget Limit"
-                value={formatCurrency(meta.budget_amount ?? 0)}
+                value={formatCurrency(meta.budget_amount ?? 0, undefined, currencyCode)}
               />
               <MetadataField
                 label="Actual Spending"
-                value={formatCurrency(meta.actual_spending ?? 0)}
+                value={formatCurrency(meta.actual_spending ?? 0, undefined, currencyCode)}
               />
               <MetadataField
                 label="Savings"
-                value={formatCurrency(meta.savings_amount ?? 0)}
+                value={formatCurrency(meta.savings_amount ?? 0, undefined, currencyCode)}
                 highlight
               />
               <MetadataField

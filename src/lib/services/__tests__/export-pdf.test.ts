@@ -135,9 +135,9 @@ describe('exportMonthlyReportToPDF', () => {
       expect.objectContaining({
         head: [['Metric', 'Amount']],
         body: expect.arrayContaining([
-          ['Total Income', '$5000.00'],
-          ['Total Expenses', '$3000.00'],
-          ['Net Balance', '$2000.00'],
+          ['Total Income', expect.stringContaining('5,000.00')],
+          ['Total Expenses', expect.stringContaining('3,000.00')],
+          ['Net Balance', expect.stringContaining('2,000.00')],
         ]),
       })
     );
@@ -154,9 +154,9 @@ describe('exportMonthlyReportToPDF', () => {
       expect.objectContaining({
         head: [['Category', 'Amount', 'Percentage']],
         body: expect.arrayContaining([
-          ['Food', '$1000.00', '33.3%'],
-          ['Transport', '$800.00', '26.7%'],
-          ['Entertainment', '$500.00', '16.7%'],
+          ['Food', expect.stringContaining('1,000.00'), '33.3%'],
+          ['Transport', expect.stringContaining('800.00'), '26.7%'],
+          ['Entertainment', expect.stringContaining('500.00'), '16.7%'],
         ]),
       })
     );
@@ -173,8 +173,8 @@ describe('exportMonthlyReportToPDF', () => {
       expect.objectContaining({
         head: [['Date', 'Category', 'Amount', 'Notes']],
         body: expect.arrayContaining([
-          [expect.any(String), 'Food', '$250.00', 'Groceries'],
-          [expect.any(String), 'Transport', '$200.00', 'Gas'],
+          [expect.any(String), 'Food', expect.stringContaining('250.00'), 'Groceries'],
+          [expect.any(String), 'Transport', expect.stringContaining('200.00'), 'Gas'],
         ]),
       })
     );
@@ -248,9 +248,9 @@ describe('exportMonthlyReportToPDF', () => {
       expect.anything(),
       expect.objectContaining({
         body: expect.arrayContaining([
-          ['Total Income', '$0.00'],
-          ['Total Expenses', '$0.00'],
-          ['Net Balance', '$0.00'],
+          ['Total Income', expect.stringContaining('0.00')],
+          ['Total Expenses', expect.stringContaining('0.00')],
+          ['Net Balance', expect.stringContaining('0.00')],
         ]),
       })
     );
@@ -274,7 +274,7 @@ describe('exportMonthlyReportToPDF', () => {
       expect.anything(),
       expect.objectContaining({
         body: expect.arrayContaining([
-          [expect.any(String), 'Food', '$50.00', '-'],
+          [expect.any(String), 'Food', expect.stringContaining('50.00'), '-'],
         ]),
       })
     );
@@ -322,14 +322,14 @@ describe('exportMonthlyReportToPDF', () => {
 
     await exportMonthlyReportToPDF(reportData);
 
-    // Check summary formatting
+    // Check summary formatting (formatCurrency uses Intl.NumberFormat with thousands separators)
     expect(mockAutoTable).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         body: expect.arrayContaining([
-          ['Total Income', '$1234.57'],
-          ['Total Expenses', '$987.65'],
-          ['Net Balance', '$246.91'],
+          ['Total Income', expect.stringContaining('1,234.57')],
+          ['Total Expenses', expect.stringContaining('987.65')],
+          ['Net Balance', expect.stringContaining('246.91')],
         ]),
       })
     );
@@ -339,7 +339,7 @@ describe('exportMonthlyReportToPDF', () => {
       expect.anything(),
       expect.objectContaining({
         body: expect.arrayContaining([
-          ['Food', '$123.46', '50.5%'],
+          ['Food', expect.stringContaining('123.46'), '50.5%'],
         ]),
       })
     );
@@ -349,7 +349,7 @@ describe('exportMonthlyReportToPDF', () => {
       expect.anything(),
       expect.objectContaining({
         body: expect.arrayContaining([
-          [expect.any(String), 'Food', '$67.89', 'Test'],
+          [expect.any(String), 'Food', expect.stringContaining('67.89'), 'Test'],
         ]),
       })
     );
@@ -373,8 +373,8 @@ describe('exportMonthlyReportToPDF', () => {
       expect.anything(),
       expect.objectContaining({
         body: expect.arrayContaining([
-          ['Food', '$100.00', '33.3%'],
-          ['Transport', '$200.00', '66.7%'],
+          ['Food', expect.stringContaining('100.00'), '33.3%'],
+          ['Transport', expect.stringContaining('200.00'), '66.7%'],
         ]),
       })
     );

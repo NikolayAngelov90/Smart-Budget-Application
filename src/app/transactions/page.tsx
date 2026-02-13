@@ -64,6 +64,7 @@ import { createClient } from '@/lib/supabase/client';
 import { exportTransactionsToCSV } from '@/lib/services/exportService'; // Story 8.1
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatTransactionDate } from '@/lib/utils/dateFormatter';
+import { formatCurrencyWithSign } from '@/lib/utils/currency';
 import { useTranslations } from 'next-intl';
 
 // Types
@@ -526,7 +527,8 @@ function TransactionsContent() {
       // Export to CSV using export service with progress callback
       await exportTransactionsToCSV(
         data.data,
-        isLargeDataset ? (progress) => setExportProgress(progress) : undefined
+        isLargeDataset ? (progress) => setExportProgress(progress) : undefined,
+        currencyCode
       );
 
       // Close progress modal if open
@@ -562,13 +564,14 @@ function TransactionsContent() {
     }
   };
 
-  // Format amount with color-coding
+  // Format amount with color-coding using shared currency utility
+  const currencyCode = preferences?.currency_format;
   const formatAmount = (amount: number, type: 'income' | 'expense') => {
-    const formatted = amount.toFixed(2);
-    const prefix = type === 'income' ? '+' : '-';
+    const signedAmount = type === 'expense' ? -amount : amount;
+    const formatted = formatCurrencyWithSign(signedAmount, true, undefined, currencyCode);
     const color = type === 'income' ? 'green.500' : 'red.500';
 
-    return { formatted: `${prefix}$${formatted}`, color };
+    return { formatted, color };
   };
 
   // Render loading skeletons
