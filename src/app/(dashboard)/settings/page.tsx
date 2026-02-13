@@ -54,7 +54,7 @@ import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
 import type { SupportedLocale } from '@/i18n/routing';
 import type { PDFReportData } from '@/types/export.types';
 import { SUPPORTED_CURRENCIES, getEnabledCurrencies } from '@/lib/config/currencies';
-import { formatExchangeRate } from '@/lib/services/exchangeRateService';
+import { formatExchangeRate } from '@/lib/utils/currency';
 import type { ExchangeRateResponse } from '@/types/exchangeRate.types';
 import type { UserProfile } from '@/types/user.types';
 

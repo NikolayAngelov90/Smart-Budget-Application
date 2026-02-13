@@ -365,22 +365,9 @@ export async function convertCurrency(
   };
 }
 
-/**
- * Format exchange rate display string
- * AC-10.5.7: Rate display "1 EUR = X.XX USD"
- *
- * @param fromCurrency - Base currency
- * @param toCurrency - Target currency
- * @param rate - Exchange rate
- * @returns Formatted rate string
- */
-export function formatExchangeRate(
-  fromCurrency: string,
-  toCurrency: string,
-  rate: number
-): string {
-  return `1 ${fromCurrency} = ${rate.toFixed(4)} ${toCurrency}`;
-}
+// Re-export formatExchangeRate from client-safe utility
+// (kept here for backward compatibility with server-side callers)
+export { formatExchangeRate } from '@/lib/utils/currency';
 
 /**
  * Clear exchange rate cache (for testing)

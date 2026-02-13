@@ -77,6 +77,23 @@ export function formatCurrencyWithSign(
  * @param previous - Previous period value
  * @returns Trend percentage, or 0 if previous is 0
  */
+/**
+ * Format exchange rate display string
+ * AC-10.5.7: Rate display "1 EUR = X.XX USD"
+ *
+ * @param fromCurrency - Base currency
+ * @param toCurrency - Target currency
+ * @param rate - Exchange rate
+ * @returns Formatted rate string
+ */
+export function formatExchangeRate(
+  fromCurrency: string,
+  toCurrency: string,
+  rate: number
+): string {
+  return `1 ${fromCurrency} = ${rate.toFixed(4)} ${toCurrency}`;
+}
+
 export function calculateTrend(current: number, previous: number): number {
   if (previous === 0) {
     return current > 0 ? 100 : 0;
