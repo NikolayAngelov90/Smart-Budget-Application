@@ -53,7 +53,9 @@ import { ActiveDevicesSection } from '@/components/settings/ActiveDevicesSection
 import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
 import type { SupportedLocale } from '@/i18n/routing';
 import type { PDFReportData } from '@/types/export.types';
-import { SUPPORTED_CURRENCIES } from '@/lib/config/currencies';
+import { SUPPORTED_CURRENCIES, getEnabledCurrencies } from '@/lib/config/currencies';
+import { formatExchangeRate } from '@/lib/services/exchangeRateService';
+import type { ExchangeRateResponse } from '@/types/exchangeRate.types';
 import type { UserProfile } from '@/types/user.types';
 
 interface Transaction {
@@ -86,6 +88,18 @@ export default function SettingsPage() {
 
   // Data fetching with SWR (AC-8.3.6: Optimistic UI)
   const { data: profile, error, isLoading } = useSWR<UserProfile>('/api/user/profile', fetcher);
+
+  // Exchange rate fetching (Story 10-5: AC-10.5.7)
+  const exchangeRateFetcher = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return res.json() as Promise<ExchangeRateResponse>;
+  };
+  const { data: exchangeRates } = useSWR<ExchangeRateResponse | null>(
+    '/api/exchange-rates?base=EUR',
+    exchangeRateFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
+  );
 
   // State
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -582,6 +596,21 @@ export default function SettingsPage() {
                   <Text fontSize="xs" color="gray.500" mt={1}>
                     {t('currencyDescription')}
                   </Text>
+                  {/* AC-10.5.7: Exchange rate display */}
+                  {exchangeRates && exchangeRates.rates && (
+                    <VStack align="stretch" mt={2} p={2} bg="blue.50" borderRadius="md" spacing={1}>
+                      {getEnabledCurrencies()
+                        .filter((c) => c.code !== 'EUR')
+                        .map((c) => (
+                          <Text key={c.code} fontSize="xs" color="blue.700">
+                            {formatExchangeRate('EUR', c.code, exchangeRates.rates[c.code] || 0)}
+                          </Text>
+                        ))}
+                      <Text fontSize="xs" color="gray.500">
+                        {t('ratesUpdatedAt', { date: new Date(exchangeRates.lastFetched).toLocaleDateString() })}
+                      </Text>
+                    </VStack>
+                  )}
                 </FormControl>
 
                 <FormControl>

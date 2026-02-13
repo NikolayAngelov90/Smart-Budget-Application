@@ -1,0 +1,62 @@
+<story-context story="10-5" title="Exchange Rate Integration &amp; Currency Conversion">
+
+  <prerequisites>
+    <story id="10-3" status="done" title="Multi-Currency User Settings">
+      Currency config module, SUPPORTED_CURRENCIES, DEFAULT_CURRENCY=EUR, formatCurrency utility
+    </story>
+    <story id="10-4" status="done" title="Currency Formatting &amp; Display Throughout App">
+      All monetary displays use formatCurrency with user's preferred currencyCode
+    </story>
+  </prerequisites>
+
+  <key-files>
+    <file path="src/lib/config/currencies.ts" role="Currency configuration with EUR/USD/GBP">
+      SUPPORTED_CURRENCIES array, DEFAULT_CURRENCY, getCurrencyConfig(), getEnabledCurrencies()
+    </file>
+    <file path="src/lib/utils/currency.ts" role="Currency formatting utilities">
+      formatCurrency(amount, language?, currencyCode?), formatCurrencyWithSign(), LOCALE_MAP
+    </file>
+    <file path="src/lib/hooks/useUserPreferences.ts" role="Client-side preferences hook">
+      Returns preferences.currency_format (EUR/USD/GBP), uses SWR with /api/user/profile
+    </file>
+    <file path="src/lib/redis/client.ts" role="Redis client for caching">
+      Upstash Redis REST client, getRedisClient(), isRedisConfigured(), fallback to in-memory Map
+    </file>
+    <file path="src/lib/services/rateLimitService.ts" role="Rate limiting with Redis">
+      Pattern for Redis-based rate limiting and sliding window tracking
+    </file>
+    <file path="src/app/(dashboard)/settings/page.tsx" role="Settings page with currency selector">
+      currencyFormat state, SUPPORTED_CURRENCIES dropdown, preferences update flow
+    </file>
+    <file path="src/app/api/user/profile/route.ts" role="User profile API">
+      GET/PUT /api/user/profile, preferences stored as JSONB in user_profiles
+    </file>
+    <file path="src/types/user.types.ts" role="User type definitions">
+      UserPreferences interface with currency_format field
+    </file>
+  </key-files>
+
+  <patterns>
+    <pattern name="API Route">Next.js App Router: export async function GET/POST(request: NextRequest)</pattern>
+    <pattern name="Service Layer">Business logic in src/lib/services/, imported by API routes</pattern>
+    <pattern name="Redis Caching">Upstash REST client via @upstash/redis, TTL-based key expiry</pattern>
+    <pattern name="SWR Data Fetching">Client-side: useSWR hook with /api/ endpoints, server revalidation</pattern>
+    <pattern name="Error Handling">Try/catch with NextResponse.json({ error }, { status })</pattern>
+    <pattern name="i18n">useTranslations(namespace) from next-intl, keys in messages/en.json and bg.json</pattern>
+  </patterns>
+
+  <new-files>
+    <file path="src/types/exchangeRate.types.ts">Exchange rate type definitions</file>
+    <file path="src/lib/services/exchangeRateService.ts">Exchange rate fetching, caching, conversion</file>
+    <file path="src/app/api/exchange-rates/route.ts">GET /api/exchange-rates endpoint</file>
+    <file path="supabase/migrations/009_exchange_rates_cache.sql">Exchange rates cache table</file>
+    <file path="src/lib/services/__tests__/exchangeRateService.test.ts">Unit tests</file>
+  </new-files>
+
+  <environment>
+    <var name="EXCHANGE_RATE_API_URL" default="https://api.exchangerate-api.com/v4/latest/EUR">
+      Free exchange rate API, no API key required
+    </var>
+  </environment>
+
+</story-context>

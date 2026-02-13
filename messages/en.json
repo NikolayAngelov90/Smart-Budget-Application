@@ -281,6 +281,7 @@
     "deletingAccount": "Deleting account...",
     "confirmDeletion": "Confirm Deletion",
     "currencyDescription": "Choose your preferred currency for all monetary displays",
+    "ratesUpdatedAt": "Rates updated: {date}",
     "emailReadOnly": "Email cannot be changed (from auth provider)",
     "dataSyncDescription": "Your data automatically syncs across all your devices in real-time.",
     "dangerZone": "Danger Zone",
