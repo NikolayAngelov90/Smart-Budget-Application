@@ -1,0 +1,59 @@
+<story-context story="10-6" title="Transaction Multi-Currency Support">
+
+  <prerequisites>
+    <story id="10-3" status="done" title="Multi-Currency User Settings">
+      Currency config module, SUPPORTED_CURRENCIES, DEFAULT_CURRENCY=EUR, formatCurrency utility
+    </story>
+    <story id="10-4" status="done" title="Currency Formatting &amp; Display Throughout App">
+      All monetary displays use formatCurrency with user's preferred currencyCode
+    </story>
+    <story id="10-5" status="done" title="Exchange Rate Integration &amp; Currency Conversion">
+      exchangeRateService with fetchRatesFromApi, getExchangeRates, convertCurrency, formatExchangeRate
+    </story>
+  </prerequisites>
+
+  <key-files>
+    <file path="src/types/database.types.ts" role="Database type definitions">
+      Transaction Row/Insert/Update types - need currency and exchange_rate fields added
+    </file>
+    <file path="src/app/api/transactions/route.ts" role="Transaction API (GET/POST)">
+      GET: select/filter transactions; POST: create transaction - need currency support
+    </file>
+    <file path="src/app/api/transactions/[id]/route.ts" role="Transaction API (PUT/DELETE)">
+      PUT: update transaction - need to accept/preserve currency fields
+    </file>
+    <file path="src/components/transactions/TransactionEntryModal.tsx" role="Transaction form modal">
+      Create/edit form with amount, type, category, date, notes - need currency selector
+    </file>
+    <file path="src/app/transactions/page.tsx" role="Transactions page">
+      Transaction list with filtering - need currency display and currency filter
+    </file>
+    <file path="src/lib/services/exportService.ts" role="CSV/PDF export">
+      exportTransactionsToCSV - need currency, exchange_rate, converted_amount columns
+    </file>
+    <file path="src/lib/services/exchangeRateService.ts" role="Exchange rate service">
+      getExchangeRate(from, to), convertCurrency(amount, from, to) - used for auto-populating rates
+    </file>
+    <file path="src/lib/config/currencies.ts" role="Currency configuration">
+      SUPPORTED_CURRENCIES, getEnabledCurrencies(), DEFAULT_CURRENCY
+    </file>
+    <file path="src/lib/hooks/useUserPreferences.ts" role="User preferences hook">
+      Returns preferences.currency_format for default currency
+    </file>
+    <file path="src/lib/utils/currency.ts" role="Currency formatting utilities">
+      formatCurrency(amount, language?, currencyCode?), formatCurrencyWithSign()
+    </file>
+  </key-files>
+
+  <patterns>
+    <pattern name="API Route">Next.js App Router: export async function GET/POST(request: NextRequest)</pattern>
+    <pattern name="Service Layer">Business logic in src/lib/services/, imported by API routes</pattern>
+    <pattern name="SWR Data Fetching">Client-side: useSWR hook with /api/ endpoints</pattern>
+    <pattern name="i18n">useTranslations(namespace) from next-intl, keys in messages/en.json and bg.json</pattern>
+  </patterns>
+
+  <new-files>
+    <file path="supabase/migrations/010_transaction_currency.sql">Add currency, exchange_rate columns to transactions</file>
+  </new-files>
+
+</story-context>

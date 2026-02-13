@@ -51,6 +51,8 @@ interface CreateTransactionRequest {
   category_id: string;
   date: string;
   notes?: string;
+  currency?: string; // Story 10-6: ISO 4217 currency code
+  exchange_rate?: number | null; // Story 10-6: rate at time of entry
 }
 
 /**
@@ -92,6 +94,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const categoryId = searchParams.get('category');
     const typeFilter = searchParams.get('type') as 'income' | 'expense' | null;
+    const currencyFilter = searchParams.get('currency'); // Story 10-6: currency filter
     const searchQuery = searchParams.get('search');
     const all = searchParams.get('all') === 'true'; // Story 8.1: Export all transactions
     const limit = parseInt(searchParams.get('limit') || '100', 10);
@@ -107,6 +110,8 @@ export async function GET(request: NextRequest) {
         type,
         date,
         notes,
+        currency,
+        exchange_rate,
         created_at,
         updated_at,
         category:categories(id, name, color, type)
@@ -131,6 +136,11 @@ export async function GET(request: NextRequest) {
     // Apply type filter
     if (typeFilter && ['income', 'expense'].includes(typeFilter)) {
       query = query.eq('type', typeFilter);
+    }
+
+    // Story 10-6: Apply currency filter (AC-10.6.7)
+    if (currencyFilter && /^[A-Z]{3}$/.test(currencyFilter)) {
+      query = query.eq('currency', currencyFilter);
     }
 
     // Apply search filter (notes or amount)
@@ -291,6 +301,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Story 10-6: Validate currency if provided
+    const validCurrencies = ['EUR', 'USD', 'GBP'];
+    const currency = body.currency && validCurrencies.includes(body.currency)
+      ? body.currency
+      : 'EUR';
+
     // Create transaction
     const { data: transaction, error: insertError } = await supabase
       .from('transactions')
@@ -301,6 +317,8 @@ export async function POST(request: NextRequest) {
         category_id: body.category_id,
         date: body.date,
         notes: body.notes || null,
+        currency,
+        exchange_rate: body.exchange_rate ?? null,
       })
       .select(
         `
@@ -309,6 +327,8 @@ export async function POST(request: NextRequest) {
         type,
         date,
         notes,
+        currency,
+        exchange_rate,
         created_at,
         updated_at,
         category:categories(id, name, color, type)

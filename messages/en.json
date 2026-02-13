@@ -126,7 +126,10 @@
     "exportFailed": "Export failed",
     "exportFailedDescription": "Failed to export transactions. Please try again.",
     "filtering": "Filtering:",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "currency": "Currency",
+    "allCurrencies": "All Currencies",
+    "convertedAmount": "({amount})"
   },
   "categories": {
     "title": "Categories",

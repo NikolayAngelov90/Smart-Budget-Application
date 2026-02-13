@@ -26,6 +26,8 @@ interface TransactionWithCategory {
   type: 'income' | 'expense';
   date: string;
   notes: string | null;
+  currency?: string; // Story 10-6
+  exchange_rate?: number | null; // Story 10-6
   created_at: string;
   category: {
     id: string;
@@ -38,12 +40,16 @@ interface TransactionWithCategory {
 /**
  * CSV row structure for transaction export
  * AC-8.1.4: Columns - Date, Type, Category, Amount, Notes, Created At
+ * AC-10.6.9: Additional columns - Currency, Exchange Rate, Converted Amount
  */
 interface CSVRow {
   Date: string;
   Type: string;
   Category: string;
   Amount: string;
+  Currency: string; // Story 10-6
+  'Exchange Rate': string; // Story 10-6
+  'Converted Amount': string; // Story 10-6
   Notes: string;
   'Created At': string;
 }
@@ -86,25 +92,45 @@ export async function exportTransactionsToCSV(
       const chunk = transactions.slice(i, i + CHUNK_SIZE);
 
       // AC-8.1.4, 8.1.7, 8.1.8: Map chunk to CSV structure
-      const chunkData = chunk.map((tx) => ({
-        // AC-8.1.8: Date in YYYY-MM-DD format (ISO 8601)
-        Date: format(new Date(tx.date), 'yyyy-MM-dd'),
+      // AC-10.6.9: Include Currency, Exchange Rate, Converted Amount columns
+      const chunkData = chunk.map((tx) => {
+        const txCurrency = tx.currency || currencyCode || 'EUR';
+        const hasConversion = tx.exchange_rate && txCurrency !== (currencyCode || 'EUR');
+        const convertedAmount = hasConversion
+          ? tx.amount * tx.exchange_rate!
+          : tx.amount;
 
-        // Type: income or expense
-        Type: tx.type,
+        return {
+          // AC-8.1.8: Date in YYYY-MM-DD format (ISO 8601)
+          Date: format(new Date(tx.date), 'yyyy-MM-dd'),
 
-        // Category name or "Unknown" if missing
-        Category: tx.category?.name || 'Unknown',
+          // Type: income or expense
+          Type: tx.type,
 
-        // AC-8.1.7: Amount formatted with user's preferred currency
-        Amount: formatCurrency(tx.amount, undefined, currencyCode),
+          // Category name or "Unknown" if missing
+          Category: tx.category?.name || 'Unknown',
 
-        // Notes: empty string if null (not "null")
-        Notes: tx.notes || '',
+          // AC-8.1.7: Amount formatted with transaction's currency
+          Amount: formatCurrency(tx.amount, undefined, txCurrency),
 
-        // Created At: Full timestamp
-        'Created At': format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm:ss'),
-      }));
+          // Story 10-6: Currency code
+          Currency: txCurrency,
+
+          // Story 10-6: Exchange rate (empty if same currency)
+          'Exchange Rate': hasConversion ? tx.exchange_rate!.toFixed(4) : '',
+
+          // Story 10-6: Converted amount in preferred currency
+          'Converted Amount': hasConversion
+            ? formatCurrency(convertedAmount, undefined, currencyCode)
+            : '',
+
+          // Notes: empty string if null (not "null")
+          Notes: tx.notes || '',
+
+          // Created At: Full timestamp
+          'Created At': format(new Date(tx.created_at), 'yyyy-MM-dd HH:mm:ss'),
+        };
+      });
 
       csvData.push(...chunkData);
 

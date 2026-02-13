@@ -26,6 +26,8 @@ interface UpdateTransactionRequest {
   category_id?: string;
   date?: string;
   notes?: string;
+  currency?: string; // Story 10-6
+  exchange_rate?: number | null; // Story 10-6
 }
 
 /**
@@ -158,6 +160,22 @@ export async function PUT(
       updateData.notes = body.notes || null;
     }
 
+    // Story 10-6: Handle currency update (AC-10.6.8)
+    if (body.currency !== undefined) {
+      const validCurrencies = ['EUR', 'USD', 'GBP'];
+      if (!validCurrencies.includes(body.currency)) {
+        return NextResponse.json(
+          { error: 'Invalid currency code' },
+          { status: 400 }
+        );
+      }
+      updateData.currency = body.currency;
+    }
+
+    if (body.exchange_rate !== undefined) {
+      updateData.exchange_rate = body.exchange_rate;
+    }
+
     // Update timestamp
     updateData.updated_at = new Date().toISOString();
 
@@ -174,6 +192,8 @@ export async function PUT(
         type,
         date,
         notes,
+        currency,
+        exchange_rate,
         created_at,
         updated_at,
         category:categories(id, name, color, type)
@@ -255,6 +275,8 @@ export async function DELETE(
         type,
         date,
         notes,
+        currency,
+        exchange_rate,
         created_at,
         updated_at,
         category:categories(id, name, color, type)

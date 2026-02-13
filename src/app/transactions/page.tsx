@@ -65,6 +65,7 @@ import { exportTransactionsToCSV } from '@/lib/services/exportService'; // Story
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatTransactionDate } from '@/lib/utils/dateFormatter';
 import { formatCurrencyWithSign } from '@/lib/utils/currency';
+import { getEnabledCurrencies } from '@/lib/config/currencies';
 import { useTranslations } from 'next-intl';
 
 // Types
@@ -82,6 +83,8 @@ interface Transaction {
   category_id: string;
   date: string;
   notes: string | null;
+  currency?: string; // Story 10-6
+  exchange_rate?: number | null; // Story 10-6
   created_at: string;
   category: Category;
 }
@@ -112,6 +115,7 @@ function TransactionsContent() {
   const [endDate, setEndDate] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [currencyFilter, setCurrencyFilter] = useState(''); // Story 10-6: currency filter
   const [filtersInitialized, setFiltersInitialized] = useState(false);
 
   // Edit modal state
@@ -192,7 +196,7 @@ function TransactionsContent() {
   // Story 9-7: Reset to page 1 when filters or search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [startDate, endDate, categoryFilter, typeFilter, debouncedSearch]);
+  }, [startDate, endDate, categoryFilter, typeFilter, currencyFilter, debouncedSearch]);
 
   // Build query string for API (Story 9-7: dynamic pagination)
   const buildQueryString = useCallback(() => {
@@ -202,12 +206,13 @@ function TransactionsContent() {
     if (endDate) params.append('endDate', endDate);
     if (categoryFilter) params.append('category', categoryFilter);
     if (typeFilter !== 'all') params.append('type', typeFilter);
+    if (currencyFilter) params.append('currency', currencyFilter);
     if (debouncedSearch) params.append('search', debouncedSearch);
     params.append('limit', pageSize.toString());
     params.append('offset', ((currentPage - 1) * pageSize).toString());
 
     return params.toString();
-  }, [startDate, endDate, categoryFilter, typeFilter, debouncedSearch, pageSize, currentPage]);
+  }, [startDate, endDate, categoryFilter, typeFilter, currencyFilter, debouncedSearch, pageSize, currentPage]);
 
   // Fetch transactions with optimized SWR configuration
   const {
@@ -322,7 +327,7 @@ function TransactionsContent() {
 
   // Check if any filters are active
   const hasActiveFilters =
-    startDate || endDate || categoryFilter || typeFilter !== 'all' || searchQuery;
+    startDate || endDate || categoryFilter || typeFilter !== 'all' || currencyFilter || searchQuery;
 
   // Clear all filters
   const handleClearFilters = () => {
@@ -330,6 +335,7 @@ function TransactionsContent() {
     setEndDate('');
     setCategoryFilter('');
     setTypeFilter('all');
+    setCurrencyFilter('');
     setSearchQuery('');
   };
 
@@ -420,6 +426,8 @@ function TransactionsContent() {
                         category_id: transactionToDelete.category_id,
                         date: transactionToDelete.date,
                         notes: transactionToDelete.notes || undefined,
+                        currency: transactionToDelete.currency,
+                        exchange_rate: transactionToDelete.exchange_rate,
                       }),
                     });
 
@@ -565,13 +573,31 @@ function TransactionsContent() {
   };
 
   // Format amount with color-coding using shared currency utility
-  const currencyCode = preferences?.currency_format;
-  const formatAmount = (amount: number, type: 'income' | 'expense') => {
+  const currencyCode = preferences?.currency_format || 'EUR';
+
+  // Story 10-6: Format amount with original currency and optional converted equivalent
+  const formatAmount = (
+    amount: number,
+    type: 'income' | 'expense',
+    transactionCurrency?: string,
+    exchangeRate?: number | null
+  ) => {
     const signedAmount = type === 'expense' ? -amount : amount;
-    const formatted = formatCurrencyWithSign(signedAmount, true, undefined, currencyCode);
+    const txCurrency = transactionCurrency || currencyCode;
+    const formatted = formatCurrencyWithSign(signedAmount, true, undefined, txCurrency);
     const color = type === 'income' ? 'green.500' : 'red.500';
 
-    return { formatted, color };
+    // Show converted equivalent if currency differs from preferred (AC-10.6.6)
+    let convertedText: string | null = null;
+    if (txCurrency !== currencyCode && exchangeRate) {
+      const convertedAmount = amount * exchangeRate;
+      const signedConverted = type === 'expense' ? -convertedAmount : convertedAmount;
+      convertedText = t('convertedAmount', {
+        amount: formatCurrencyWithSign(signedConverted, true, undefined, currencyCode),
+      });
+    }
+
+    return { formatted, color, convertedText };
   };
 
   // Render loading skeletons
@@ -685,7 +711,7 @@ function TransactionsContent() {
           <CardBody>
             <VStack spacing={4} align="stretch">
               {/* Mobile: Vertical Stack, Desktop: Horizontal Grid */}
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4}>
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 5 }} spacing={4}>
                 {/* Date Range Filters */}
                 <Box>
                   <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
@@ -747,6 +773,25 @@ function TransactionsContent() {
                     <option value="all">{t('all')}</option>
                     <option value="income">{t('income')}</option>
                     <option value="expense">{t('expense')}</option>
+                  </Select>
+                </Box>
+
+                {/* Story 10-6: Currency Filter (AC-10.6.7) */}
+                <Box>
+                  <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
+                    {t('currency')}
+                  </Text>
+                  <Select
+                    value={currencyFilter}
+                    onChange={(e) => setCurrencyFilter(e.target.value)}
+                    placeholder={t('allCurrencies')}
+                    size="md"
+                  >
+                    {getEnabledCurrencies().map((curr) => (
+                      <option key={curr.code} value={curr.code}>
+                        {curr.symbol} {curr.code}
+                      </option>
+                    ))}
                   </Select>
                 </Box>
               </SimpleGrid>
@@ -828,9 +873,11 @@ function TransactionsContent() {
           transactionsResponse.data.length > 0 && (
             <VStack spacing={4} align="stretch">
               {transactionsResponse.data.map((transaction) => {
-                const { formatted, color } = formatAmount(
+                const { formatted, color, convertedText } = formatAmount(
                   transaction.amount,
-                  transaction.type
+                  transaction.type,
+                  transaction.currency,
+                  transaction.exchange_rate
                 );
 
                 return (
@@ -904,14 +951,21 @@ function TransactionsContent() {
                         </HStack>
 
                         {/* Right: Amount */}
-                        <Text
-                          fontSize={{ base: 'xl', md: '2xl' }}
-                          fontWeight="bold"
-                          color={color}
-                          whiteSpace="nowrap"
-                        >
-                          {formatted}
-                        </Text>
+                        <VStack align="flex-end" spacing={0}>
+                          <Text
+                            fontSize={{ base: 'xl', md: '2xl' }}
+                            fontWeight="bold"
+                            color={color}
+                            whiteSpace="nowrap"
+                          >
+                            {formatted}
+                          </Text>
+                          {convertedText && (
+                            <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
+                              {convertedText}
+                            </Text>
+                          )}
+                        </VStack>
                       </Flex>
                     </CardBody>
                   </Card>
@@ -1026,7 +1080,8 @@ export default function TransactionsPage() {
             <Card mb={6}>
               <CardBody>
                 <VStack spacing={4}>
-                  <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} w="full">
+                  <SimpleGrid columns={{ base: 1, md: 2, lg: 5 }} spacing={4} w="full">
+                    <Skeleton height="40px" />
                     <Skeleton height="40px" />
                     <Skeleton height="40px" />
                     <Skeleton height="40px" />

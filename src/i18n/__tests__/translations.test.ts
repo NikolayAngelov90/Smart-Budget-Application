@@ -115,6 +115,7 @@ describe('Translation files', () => {
       'settings.languageBulgarian', // "Български" is already Bulgarian
       'common.or',                  // Short words may coincide
       'common.and',
+      'transactions.convertedAmount', // Format pattern: ({amount}) - language-agnostic
     ]);
 
     const untranslatedKeys = enKeys.filter((key) => {

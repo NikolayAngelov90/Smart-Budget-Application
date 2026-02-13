@@ -126,7 +126,10 @@
     "exportFailed": "Неуспешен експорт",
     "exportFailedDescription": "Неуспешно експортиране на транзакциите. Моля, опитайте отново.",
     "filtering": "Филтриране:",
-    "clearFilters": "Изчисти филтрите"
+    "clearFilters": "Изчисти филтрите",
+    "currency": "Валута",
+    "allCurrencies": "Всички валути",
+    "convertedAmount": "({amount})"
   },
   "categories": {
     "title": "Категории",

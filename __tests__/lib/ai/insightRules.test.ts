@@ -27,6 +27,8 @@ function createMockTransaction(
     type: 'expense',
     date: format(date, 'yyyy-MM-dd'),
     notes: null,
+    currency: 'EUR',
+    exchange_rate: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

@@ -84,6 +84,8 @@ export interface Database {
           type: TransactionType;
           date: string; // ISO date string
           notes: string | null;
+          currency: string; // ISO 4217 currency code (Story 10-6)
+          exchange_rate: number | null; // Rate at time of entry (Story 10-6)
           created_at: string;
           updated_at: string;
         };
@@ -95,6 +97,8 @@ export interface Database {
           type: TransactionType;
           date?: string;
           notes?: string | null;
+          currency?: string; // Defaults to 'EUR' (Story 10-6)
+          exchange_rate?: number | null; // Story 10-6
           created_at?: string;
           updated_at?: string;
         };
@@ -106,6 +110,8 @@ export interface Database {
           type?: TransactionType;
           date?: string;
           notes?: string | null;
+          currency?: string; // Story 10-6
+          exchange_rate?: number | null; // Story 10-6
           created_at?: string;
           updated_at?: string;
         };

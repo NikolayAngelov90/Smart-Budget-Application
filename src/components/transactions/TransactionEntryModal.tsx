@@ -59,6 +59,8 @@ import { format, subDays } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import { CategoryMenu } from '@/components/categories/CategoryMenu';
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { getEnabledCurrencies } from '@/lib/config/currencies';
 
 // Transaction type
 type TransactionType = 'expense' | 'income';
@@ -96,6 +98,7 @@ const transactionSchema = z.object({
   category_id: z.string().min(1, 'Please select a category'),
   date: z.string().min(1, 'Date is required'),
   notes: z.string().max(100, 'Notes must be 100 characters or less').optional(),
+  currency: z.string().min(1).optional(), // Story 10-6
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -108,6 +111,8 @@ interface Transaction {
   category_id: string;
   date: string;
   notes?: string | null;
+  currency?: string; // Story 10-6
+  exchange_rate?: number | null; // Story 10-6
   category: {
     id: string;
     name: string;
@@ -141,6 +146,13 @@ export default function TransactionEntryModal({
 
   // Story 8.5: Check online status to disable mutations when offline
   const { isOnline } = useOnlineStatus();
+
+  // Story 10-6: Currency support
+  const { preferences } = useUserPreferences();
+  const preferredCurrency = preferences?.currency_format || 'EUR';
+  const enabledCurrencies = getEnabledCurrencies();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>(preferredCurrency);
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
   const {
     register,
@@ -215,7 +227,10 @@ export default function TransactionEntryModal({
         category_id: transaction.category_id,
         date: transaction.date,
         notes: transaction.notes || '',
+        currency: transaction.currency || preferredCurrency,
       });
+      setSelectedCurrency(transaction.currency || preferredCurrency);
+      setExchangeRate(transaction.exchange_rate ?? null);
     } else if (isOpen && mode === 'create') {
       // Reset to default values for create mode
       reset({
@@ -224,9 +239,41 @@ export default function TransactionEntryModal({
         category_id: '',
         date: format(new Date(), 'yyyy-MM-dd'),
         notes: '',
+        currency: preferredCurrency,
       });
+      setSelectedCurrency(preferredCurrency);
+      setExchangeRate(null);
     }
-  }, [isOpen, mode, transaction, reset]);
+  }, [isOpen, mode, transaction, reset, preferredCurrency]);
+
+  // Story 10-6 AC-10.6.5: Auto-fetch exchange rate when currency changes
+  useEffect(() => {
+    if (selectedCurrency === preferredCurrency) {
+      setExchangeRate(null);
+      return;
+    }
+
+    let cancelled = false;
+    async function fetchRate() {
+      try {
+        const response = await fetch(
+          `/api/exchange-rates?base=${selectedCurrency}`
+        );
+        if (!response.ok || cancelled) return;
+        const data = await response.json();
+        if (cancelled) return;
+        const rate = data.rates?.[preferredCurrency];
+        if (rate) {
+          setExchangeRate(rate);
+        }
+      } catch {
+        // Silently fail - exchange rate is optional
+      }
+    }
+
+    fetchRate();
+    return () => { cancelled = true; };
+  }, [selectedCurrency, preferredCurrency]);
 
   // Quick date setter functions
   const setQuickDate = (daysAgo: number) => {
@@ -264,6 +311,8 @@ export default function TransactionEntryModal({
             category_id: data.category_id,
             date: data.date,
             notes: data.notes || undefined,
+            currency: selectedCurrency,
+            exchange_rate: exchangeRate,
           }),
         });
       } else {
@@ -277,6 +326,8 @@ export default function TransactionEntryModal({
             category_id: data.category_id,
             date: data.date,
             notes: data.notes || undefined,
+            currency: selectedCurrency,
+            exchange_rate: exchangeRate,
           }),
         });
       }
@@ -302,7 +353,10 @@ export default function TransactionEntryModal({
           category_id: '',
           date: format(new Date(), 'yyyy-MM-dd'),
           notes: '',
+          currency: preferredCurrency,
         });
+        setSelectedCurrency(preferredCurrency);
+        setExchangeRate(null);
       }
 
       // Call success callback (e.g., to refresh transaction list)
@@ -368,6 +422,36 @@ export default function TransactionEntryModal({
                   <FormErrorMessage>{errors.amount.message}</FormErrorMessage>
                 )}
               </FormControl>
+
+              {/* Story 10-6: Currency Selector (AC-10.6.3) */}
+              {enabledCurrencies.length > 1 && (
+                <FormControl>
+                  <FormLabel>{t('currency')}</FormLabel>
+                  <HStack spacing={2}>
+                    {enabledCurrencies.map((curr) => (
+                      <Button
+                        key={curr.code}
+                        flex={1}
+                        size="sm"
+                        variant={selectedCurrency === curr.code ? 'solid' : 'outline'}
+                        colorScheme={selectedCurrency === curr.code ? 'blue' : 'gray'}
+                        onClick={() => {
+                          setSelectedCurrency(curr.code);
+                          setValue('currency', curr.code);
+                        }}
+                        minH="36px"
+                      >
+                        {curr.symbol} {curr.code}
+                      </Button>
+                    ))}
+                  </HStack>
+                  {exchangeRate && selectedCurrency !== preferredCurrency && (
+                    <Text fontSize="xs" color="blue.600" mt={1}>
+                      1 {selectedCurrency} = {exchangeRate.toFixed(4)} {preferredCurrency}
+                    </Text>
+                  )}
+                </FormControl>
+              )}
 
               {/* Transaction Type Toggle */}
               <FormControl>
