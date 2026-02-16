@@ -9,6 +9,7 @@ import { MobileNav } from './MobileNav';
 import FloatingActionButton from '@/components/common/FloatingActionButton';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 import { OfflineBanner } from '@/components/shared/OfflineBanner';
+import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -110,6 +111,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         onClose={handleCloseModal}
         onSuccess={handleSuccess}
       />
+
+      {/* PWA Install Prompt (Story 10-7: AC-10.7.4) */}
+      <PWAInstallPrompt />
     </Flex>
   );
 }

@@ -24,7 +24,7 @@ import {
   deleteProfilePicture,
 } from '@/lib/services/uploadService';
 import { useTranslations } from 'next-intl';
-import { useSWRConfig } from 'swr';
+import { refreshProfile } from '@/hooks/useUserProfile';
 
 interface ProfilePictureUploadProps {
   currentPictureUrl: string | null;
@@ -49,8 +49,6 @@ export function ProfilePictureUpload({
   const toast = useToast();
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
-  const { mutate } = useSWRConfig();
-
   // Cleanup preview URL when component unmounts or file changes
   useEffect(() => {
     return () => {
@@ -154,7 +152,7 @@ export function ProfilePictureUpload({
       await response.json();
 
       // Refresh profile data
-      mutate('/api/user/profile');
+      refreshProfile();
 
       // Show success toast
       toast({
@@ -236,7 +234,7 @@ export function ProfilePictureUpload({
       }
 
       // Refresh profile data
-      mutate('/api/user/profile');
+      refreshProfile();
 
       toast({
         title: t('pictureRemoved'),

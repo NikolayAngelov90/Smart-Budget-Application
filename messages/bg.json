@@ -366,5 +366,10 @@
     "logout": "Изход",
     "logoutError": "Грешка при излизане",
     "userMenu": "Потребителско меню"
+  },
+  "pwa": {
+    "installTitle": "Инсталирай Smart Budget",
+    "installDescription": "Добавете към началния екран за най-добро изживяване",
+    "install": "Инсталирай"
   }
 }

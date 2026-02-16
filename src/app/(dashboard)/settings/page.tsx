@@ -43,7 +43,9 @@ import {
 import { DownloadIcon, DeleteIcon } from '@chakra-ui/icons';
 import { format, subMonths } from 'date-fns';
 import { useTranslations } from 'next-intl';
-import useSWR, { mutate } from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
+import { PROFILE_KEY, refreshProfile } from '@/hooks/useUserProfile';
+import type { UserProfile } from '@/types/user.types';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { exportMonthlyReportToPDF, exportTransactionsToCSV } from '@/lib/services/exportService';
 import { ConfirmDeleteModal } from '@/components/settings/ConfirmDeleteModal';
@@ -56,7 +58,6 @@ import type { PDFReportData } from '@/types/export.types';
 import { SUPPORTED_CURRENCIES, getEnabledCurrencies } from '@/lib/config/currencies';
 import { formatExchangeRate } from '@/lib/utils/currency';
 import type { ExchangeRateResponse } from '@/types/exchangeRate.types';
-import type { UserProfile } from '@/types/user.types';
 
 interface Transaction {
   id: string;
@@ -73,21 +74,49 @@ interface Transaction {
   } | null;
 }
 
-const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || 'Failed to fetch');
-  return data.data;
-};
-
 export default function SettingsPage() {
   const router = useRouter();
   const toast = useToast();
+  const { mutate } = useSWRConfig();
   const t = useTranslations('settings');
   const tCommon = useTranslations('common');
 
-  // Data fetching with SWR (AC-8.3.6: Optimistic UI)
-  const { data: profile, error, isLoading } = useSWR<UserProfile>('/api/user/profile', fetcher);
+  // Hydration guard
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // Direct fetch — completely bypasses SWR cache to guarantee fresh API data.
+  // SWR cache deduplication was preventing the fetcher from ever running.
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProfile() {
+      try {
+        setIsLoading(true);
+        const res = await fetch('/api/user/profile');
+        if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) throw new Error('Unexpected response format');
+        const json = await res.json();
+        if (!cancelled && json.data) {
+          setProfile(json.data);
+          // Also update SWR cache so Header picks up the fresh data
+          mutate(PROFILE_KEY, json.data, false);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err : new Error('Unknown error'));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    loadProfile();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Exchange rate fetching (Story 10-5: AC-10.5.7)
   const exchangeRateFetcher = async (url: string) => {
@@ -112,7 +141,10 @@ export default function SettingsPage() {
     'MM/DD/YYYY'
   );
   const [isDeleting, setIsDeleting] = useState(false);
-  const [language, setLanguage] = useState<SupportedLocale>('en');
+  const language: SupportedLocale =
+    typeof document !== 'undefined'
+      ? ((document.cookie.match(/NEXT_LOCALE=(\w+)/)?.[1] as SupportedLocale) || 'en')
+      : 'en';
 
   // Modal control
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -123,7 +155,6 @@ export default function SettingsPage() {
       setDisplayName(profile.display_name || '');
       setCurrencyFormat(profile.preferences.currency_format);
       setDateFormat(profile.preferences.date_format);
-      setLanguage(profile.preferences.language || 'en');
     }
   }, [profile]);
 
@@ -148,8 +179,8 @@ export default function SettingsPage() {
         ...profile,
         display_name: displayName,
       };
-
-      mutate('/api/user/profile', optimisticProfile, false);
+      setProfile(optimisticProfile);
+      mutate(PROFILE_KEY, optimisticProfile, false);
 
       // Send update request
       const response = await fetch('/api/user/profile', {
@@ -162,8 +193,12 @@ export default function SettingsPage() {
         throw new Error('Failed to update profile');
       }
 
-      // Revalidate
-      await mutate('/api/user/profile');
+      const result = await response.json();
+      if (result.data) {
+        setProfile(result.data);
+        mutate(PROFILE_KEY, result.data, false);
+        refreshProfile();
+      }
 
       // AC-8.3.7: Success toast
       toast({
@@ -176,7 +211,9 @@ export default function SettingsPage() {
       console.error('Error updating profile:', error);
 
       // Revert optimistic update
-      await mutate('/api/user/profile');
+      setProfile(profile);
+      mutate(PROFILE_KEY, profile, false);
+      refreshProfile();
 
       toast({
         title: t('profileUpdateFailed'),
@@ -202,8 +239,8 @@ export default function SettingsPage() {
           [field]: value,
         },
       };
-
-      mutate('/api/user/profile', optimisticProfile, false);
+      setProfile(optimisticProfile);
+      mutate(PROFILE_KEY, optimisticProfile, false);
 
       // Send update request
       const response = await fetch('/api/user/profile', {
@@ -218,8 +255,12 @@ export default function SettingsPage() {
         throw new Error('Failed to update preferences');
       }
 
-      // Revalidate
-      await mutate('/api/user/profile');
+      const result = await response.json();
+      if (result.data) {
+        setProfile(result.data);
+        mutate(PROFILE_KEY, result.data, false);
+        refreshProfile();
+      }
 
       // AC-8.3.7: Success toast
       toast({
@@ -232,7 +273,9 @@ export default function SettingsPage() {
       console.error('Error updating preferences:', error);
 
       // Revert optimistic update
-      await mutate('/api/user/profile');
+      setProfile(profile);
+      mutate(PROFILE_KEY, profile, false);
+      refreshProfile();
 
       toast({
         title: t('preferencesUpdateFailed'),
@@ -407,7 +450,10 @@ export default function SettingsPage() {
     }
   };
 
-  if (isLoading) {
+  // Show loading state during SSR, before hydration, and while SWR is fetching.
+  // This prevents hydration mismatch: server always renders spinner (no localStorage),
+  // and client also renders spinner until mounted + data resolves.
+  if (!hasMounted || isLoading) {
     return (
       <AppLayout>
         <Container maxW="container.xl" py={8}>
@@ -424,10 +470,23 @@ export default function SettingsPage() {
     return (
       <AppLayout>
         <Container maxW="container.xl" py={8}>
-          <Alert status="error">
-            <AlertIcon />
-            {t('failedToLoadProfile')}
-          </Alert>
+          <VStack spacing={4}>
+            <Alert status="error">
+              <AlertIcon />
+              {t('failedToLoadProfile')}
+            </Alert>
+            {error && (
+              <Text fontSize="sm" color="gray.500">
+                {error.message}
+              </Text>
+            )}
+            <Button
+              colorScheme="blue"
+              onClick={() => window.location.reload()}
+            >
+              {tCommon('retry')}
+            </Button>
+          </VStack>
         </Container>
       </AppLayout>
     );
@@ -455,8 +514,16 @@ export default function SettingsPage() {
                     currentPictureUrl={profile?.profile_picture_url || null}
                     displayName={displayName}
                     email={profile?.email || ''}
-                    onUploadSuccess={(newUrl) => {
-                      console.log('Profile picture updated:', newUrl);
+                    onUploadSuccess={async () => {
+                      // Refetch profile to pick up new picture URL
+                      const res = await fetch('/api/user/profile');
+                      if (res.ok) {
+                        const json = await res.json();
+                        if (json.data) {
+                          setProfile(json.data);
+                          mutate(PROFILE_KEY, json.data, false);
+                        }
+                      }
                     }}
                   />
                   {profile?.created_at && (() => {

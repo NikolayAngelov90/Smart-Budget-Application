@@ -18,7 +18,7 @@ import { SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/routing';
 
 interface LanguageSwitcherProps {
   currentLocale: string;
-  onLanguageChange?: (locale: SupportedLocale) => void;
+  onLanguageChange?: (locale: SupportedLocale) => Promise<void> | void;
 }
 
 const LOCALE_LABELS: Record<SupportedLocale, string> = {
@@ -40,9 +40,13 @@ export function LanguageSwitcher({ currentLocale, onLanguageChange }: LanguageSw
       // Set the NEXT_LOCALE cookie for server-side locale detection
       document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
 
-      // Notify parent to persist to user profile
+      // Wait for parent to persist to user profile before reloading
       if (onLanguageChange) {
-        onLanguageChange(newLocale);
+        try {
+          await onLanguageChange(newLocale);
+        } catch {
+          // Still reload even if save fails — cookie is already set
+        }
       }
 
       // Reload to apply the new locale

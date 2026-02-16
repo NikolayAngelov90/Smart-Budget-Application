@@ -13,6 +13,7 @@ import { EmptyInsightsState } from './EmptyInsightsState';
 import { RefreshInsightsButton } from './RefreshInsightsButton';
 import { InsightsPagination } from './InsightsPagination';
 import { trackInsightsPageViewed, trackInsightDismissed } from '@/lib/services/analyticsService';
+import { setAppBadge } from '@/lib/utils/appBadge';
 import type { Insight } from '@/types/database.types';
 
 // API response type
@@ -96,6 +97,13 @@ export function InsightsPageContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - track once on mount, not on filter changes
+
+  // Update app badge with undismissed insights count (AC-10.7.8)
+  useEffect(() => {
+    if (!filters.dismissed && totalInsights > 0) {
+      setAppBadge(totalInsights);
+    }
+  }, [totalInsights, filters.dismissed]);
 
   // Handle filter changes (reset to page 1 when filters change)
   const handleFilterChange = (newFilters: Partial<typeof filters>) => {

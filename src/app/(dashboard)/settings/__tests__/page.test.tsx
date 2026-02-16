@@ -44,6 +44,19 @@ const mockGetUserProfile = settingsService.getUserProfile as jest.MockedFunction
 // Mock fetch
 global.fetch = jest.fn();
 
+// Helper to create a mock Response with headers
+function mockResponse(data: unknown, ok = true, status = 200) {
+  return {
+    ok,
+    status,
+    headers: {
+      get: (name: string) =>
+        name.toLowerCase() === 'content-type' ? 'application/json' : null,
+    },
+    json: async () => data,
+  };
+}
+
 // Mock useRouter and usePathname
 const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
@@ -120,15 +133,9 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     // Mock user profile API call for settings page to render
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/api/user/profile')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: mockUserProfile }),
-        });
+        return Promise.resolve(mockResponse({ data: mockUserProfile }));
       }
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({ data: [] }),
-      });
+      return Promise.resolve(mockResponse({ data: [] }));
     });
 
     mockGetUserProfile.mockResolvedValue(mockUserProfile);
@@ -194,21 +201,12 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     // Override fetch mock to handle both profile and transactions
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/api/user/profile')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: mockUserProfile }),
-        });
+        return Promise.resolve(mockResponse({ data: mockUserProfile }));
       }
       if (url.includes('/api/transactions')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: mockTransactions }),
-        });
+        return Promise.resolve(mockResponse({ data: mockTransactions }));
       }
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({ data: [] }),
-      });
+      return Promise.resolve(mockResponse({ data: [] }));
     });
 
     customRender(<SettingsPage />);
@@ -305,11 +303,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
       () =>
         new Promise((resolve) =>
           setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({ data: [] }),
-              }),
+            () => resolve(mockResponse({ data: [] })),
             100
           )
         )
@@ -343,22 +337,12 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     (global.fetch as jest.Mock).mockReset();
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/api/user/profile')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: mockUserProfile }),
-        });
+        return Promise.resolve(mockResponse({ data: mockUserProfile }));
       }
       if (url.includes('/api/transactions')) {
-        return Promise.resolve({
-          ok: false,
-          status: 500,
-          json: async () => ({ error: 'Internal server error' }),
-        });
+        return Promise.resolve(mockResponse({ error: 'Internal server error' }, false, 500));
       }
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({ data: [] }),
-      });
+      return Promise.resolve(mockResponse({ data: [] }));
     });
 
     customRender(<SettingsPage />);
@@ -401,21 +385,12 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     // Override fetch mock
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/api/user/profile')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: mockUserProfile }),
-        });
+        return Promise.resolve(mockResponse({ data: mockUserProfile }));
       }
       if (url.includes('/api/transactions')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: mockTransactions }),
-        });
+        return Promise.resolve(mockResponse({ data: mockTransactions }));
       }
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({ data: [] }),
-      });
+      return Promise.resolve(mockResponse({ data: [] }));
     });
 
     // Mock PDF generation to fail
@@ -446,21 +421,12 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     // Override fetch mock to return empty transactions
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/api/user/profile')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: mockUserProfile }),
-        });
+        return Promise.resolve(mockResponse({ data: mockUserProfile }));
       }
       if (url.includes('/api/transactions')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: [] }),
-        });
+        return Promise.resolve(mockResponse({ data: [] }));
       }
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({ data: [] }),
-      });
+      return Promise.resolve(mockResponse({ data: [] }));
     });
 
     customRender(<SettingsPage />);
@@ -534,21 +500,12 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     // Override fetch mock
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/api/user/profile')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: mockUserProfile }),
-        });
+        return Promise.resolve(mockResponse({ data: mockUserProfile }));
       }
       if (url.includes('/api/transactions')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ data: mockTransactions }),
-        });
+        return Promise.resolve(mockResponse({ data: mockTransactions }));
       }
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({ data: [] }),
-      });
+      return Promise.resolve(mockResponse({ data: [] }));
     });
 
     customRender(<SettingsPage />);
@@ -619,9 +576,14 @@ describe('Settings Page - PDF Export Integration Tests', () => {
       },
     ];
 
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ data: mockTransactions }),
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/user/profile')) {
+        return Promise.resolve(mockResponse({ data: mockUserProfile }));
+      }
+      if (url.includes('/api/transactions')) {
+        return Promise.resolve(mockResponse({ data: mockTransactions }));
+      }
+      return Promise.resolve(mockResponse({ data: [] }));
     });
 
     customRender(<SettingsPage />);

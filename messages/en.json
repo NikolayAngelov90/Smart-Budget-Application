@@ -366,5 +366,10 @@
     "logout": "Logout",
     "logoutError": "Error logging out",
     "userMenu": "User Menu"
+  },
+  "pwa": {
+    "installTitle": "Install Smart Budget",
+    "installDescription": "Add to your home screen for the best experience",
+    "install": "Install"
   }
 }

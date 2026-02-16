@@ -7,6 +7,9 @@
 const CACHE_SIZE_LIMIT = 50 * 1024 * 1024; // 50MB in bytes
 const CACHE_KEY_PREFIX = 'smart-budget-swr-cache';
 const CACHE_METADATA_KEY = 'smart-budget-cache-metadata';
+// Increment to invalidate stale cache when data shapes change
+const CACHE_VERSION = 4;
+const CACHE_VERSION_KEY = 'smart-budget-cache-version';
 
 interface CacheMetadata {
   cacheTimestamp: number;
@@ -94,17 +97,19 @@ export function clearSWRCache(): void {
   }
 
   try {
-    const metadata = getCacheMetadata();
-
-    // Remove all cached items
-    metadata.keys.forEach((key) => {
-      localStorage.removeItem(`${CACHE_KEY_PREFIX}-${key}`);
-    });
+    // Scan ALL localStorage keys and remove any with our prefix.
+    // This catches orphaned entries even if metadata was lost/corrupted.
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(CACHE_KEY_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
 
     // Remove metadata
     localStorage.removeItem(CACHE_METADATA_KEY);
-
-    console.log('SWR cache cleared successfully');
   } catch (error) {
     console.error('Failed to clear SWR cache:', error);
   }
@@ -123,6 +128,17 @@ export function localStorageProvider(): Map<string, any> {
   // Check if we're in a browser environment
   if (typeof window === 'undefined') {
     return map;
+  }
+
+  // Invalidate stale cache when version changes (e.g., data shape updates)
+  try {
+    const storedVersion = localStorage.getItem(CACHE_VERSION_KEY);
+    if (storedVersion !== String(CACHE_VERSION)) {
+      clearSWRCache();
+      localStorage.setItem(CACHE_VERSION_KEY, String(CACHE_VERSION));
+    }
+  } catch {
+    // Ignore — fresh start
   }
 
   try {

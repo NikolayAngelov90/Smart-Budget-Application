@@ -12,7 +12,7 @@
  * Rate limiting: max 1 API request per hour per base currency
  */
 
-import { getRedisClient, isRedisConfigured } from '@/lib/redis/client';
+import { getRedisClient, isRedisConfigured, markRedisConnectionFailed } from '@/lib/redis/client';
 import { Redis as UpstashRedis } from '@upstash/redis';
 import type {
   ExchangeRateData,
@@ -138,8 +138,8 @@ async function setRateLimit(baseCurrency: string): Promise<void> {
     await client.set(key, new Date().toISOString(), {
       ex: RATE_LIMIT_SECONDS,
     });
-  } catch (error) {
-    console.error('[ExchangeRate] Failed to set rate limit:', error);
+  } catch {
+    markRedisConnectionFailed();
   }
 }
 
@@ -159,8 +159,8 @@ async function getCachedRates(
       if (cached) {
         return cached;
       }
-    } catch (error) {
-      console.error('[ExchangeRate] Redis read failed:', error);
+    } catch {
+      markRedisConnectionFailed();
     }
   }
 
@@ -191,8 +191,8 @@ async function setCachedRates(
       await client.set(key, JSON.stringify(data), {
         ex: CACHE_TTL_SECONDS,
       });
-    } catch (error) {
-      console.error('[ExchangeRate] Redis write failed:', error);
+    } catch {
+      markRedisConnectionFailed();
     }
   }
 }

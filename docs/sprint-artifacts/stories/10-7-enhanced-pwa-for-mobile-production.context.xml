@@ -1,0 +1,45 @@
+<story-context story="10-7" title="Enhanced PWA for Mobile Production">
+
+  <prerequisites>
+    <story id="8-5" status="done" title="Offline Data Caching for Viewing (Phase 1)">
+      next-pwa plugin configured, service worker generated, runtime caching strategies
+    </story>
+    <story id="9-5" status="done" title="Add Export and PWA Analytics">
+      PWA analytics tracking for installs and offline usage
+    </story>
+    <story id="10-1" status="done" title="i18n Framework Setup">
+      next-intl configured, locale-aware layout
+    </story>
+  </prerequisites>
+
+  <key-files>
+    <file path="public/manifest.json" role="Web App Manifest">
+      PWA manifest with name, icons, display, shortcuts — needs lang, scope, id, icon separation
+    </file>
+    <file path="src/app/layout.tsx" role="Root layout with PWA metadata">
+      Metadata export with manifest link, theme color, apple web app config, viewport
+    </file>
+    <file path="next.config.ts" role="Next.js config with PWA plugin">
+      next-pwa plugin with 11 runtime caching strategies — needs fallbacks config
+    </file>
+    <file path="src/components/layout/AppLayout.tsx" role="App shell layout">
+      Main layout wrapper — integration point for install prompt component
+    </file>
+    <file path="public/icon-192x192.png" role="App icon 192px">Existing PNG app icon</file>
+    <file path="public/icon-512x512.png" role="App icon 512px">Existing PNG app icon</file>
+  </key-files>
+
+  <patterns>
+    <pattern name="Client Component">Use 'use client' directive for browser-API-dependent components</pattern>
+    <pattern name="Chakra UI">UI components from @chakra-ui/react with responsive props</pattern>
+    <pattern name="localStorage">Persist client state in localStorage (sidebar collapse, visit count)</pattern>
+    <pattern name="i18n">useTranslations(namespace) from next-intl</pattern>
+  </patterns>
+
+  <new-files>
+    <file path="public/offline.html">Standalone offline fallback page with app branding</file>
+    <file path="src/components/pwa/PWAInstallPrompt.tsx">Smart install banner with visit counting</file>
+    <file path="src/lib/utils/appBadge.ts">Badge API utility for insights count</file>
+  </new-files>
+
+</story-context>

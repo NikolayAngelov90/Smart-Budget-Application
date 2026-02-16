@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#3182CE">
+  <title>Smart Budget - Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #ebf4ff 0%, #c3dafe 100%);
+      color: #2d3748;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 16px);
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+      padding: 40px 24px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    }
+    .icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: #718096;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .retry-btn {
+      display: inline-block;
+      padding: 12px 32px;
+      background: #3182CE;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .retry-btn:hover { background: #2b6cb0; }
+    .retry-btn:active { background: #2c5282; }
+    .hint {
+      margin-top: 24px;
+      font-size: 13px;
+      color: #a0aec0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon" role="img" aria-label="No connection">&#x1F4F5;</div>
+    <h1>You're Offline</h1>
+    <p class="subtitle">
+      It looks like you've lost your internet connection.
+      Check your connection and try again.
+    </p>
+    <button class="retry-btn" onclick="window.location.reload()">
+      Try Again
+    </button>
+    <p class="hint">
+      Previously viewed data may still be available once you reconnect.
+    </p>
+  </div>
+</body>
+</html>

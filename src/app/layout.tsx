@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { Providers } from './providers';
@@ -6,14 +6,21 @@ import './globals.css';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#3182CE',
+};
+
 export const metadata: Metadata = {
   title: 'Smart Budget Application',
   description: 'AI-powered personal finance tracker with smart insights',
   manifest: '/manifest.json',
-  themeColor: '#3182CE',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'Smart Budget',
   },
   formatDetection: {
@@ -22,11 +29,6 @@ export const metadata: Metadata = {
   icons: {
     icon: '/icon-192x192.png',
     apple: '/icon-192x192.png',
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
   },
 };
 

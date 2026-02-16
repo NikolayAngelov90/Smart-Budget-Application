@@ -23,16 +23,10 @@ import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import type { User } from '@supabase/supabase-js';
-import useSWR from 'swr';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface HeaderProps {
   onMenuClick?: () => void;
-}
-
-interface UserProfile {
-  display_name: string | null;
-  profile_picture_url: string | null;
-  email: string;
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
@@ -42,15 +36,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
 
-  // Fetch user profile data
-  const { data: profile } = useSWR<{ data: UserProfile }>(
-    user ? '/api/user/profile' : null,
-    async (url: string) => {
-      const response = await fetch(url);
-      if (!response.ok) return null;
-      return response.json();
-    }
-  );
+  // Shared profile hook — same fetcher as settings page
+  const { data: profile } = useUserProfile(!!user);
 
   useEffect(() => {
     const getUser = async () => {
@@ -133,14 +120,14 @@ export function Header({ onMenuClick }: HeaderProps) {
                 leftIcon={
                   <Avatar
                     size="sm"
-                    name={profile?.data?.display_name || user.email || 'User'}
-                    src={profile?.data?.profile_picture_url || undefined}
+                    name={profile?.display_name || user.email || 'User'}
+                    src={profile?.profile_picture_url || undefined}
                     bg="whiteAlpha.300"
                   />
                 }
               >
                 <Text display={{ base: 'none', sm: 'block' }} fontSize="sm">
-                  {profile?.data?.display_name || user.email?.split('@')[0] || 'User'}
+                  {profile?.display_name || user.email?.split('@')[0] || 'User'}
                 </Text>
               </MenuButton>
               <MenuList color="gray.800">

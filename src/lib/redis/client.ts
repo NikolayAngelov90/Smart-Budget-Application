@@ -23,6 +23,7 @@ export type RedisClient = UpstashRedis | IORedis;
 
 let redisClient: RedisClient | null = null;
 let redisProvider: RedisProvider = 'none';
+let redisConnectionFailed = false;
 
 /**
  * Initialize Redis client based on environment configuration
@@ -93,10 +94,22 @@ export function getRedisProvider(): RedisProvider {
  * Check if Redis is properly configured and available
  */
 export function isRedisConfigured(): boolean {
+  if (redisConnectionFailed) return false;
   if (!redisClient) {
     initializeRedis();
   }
   return redisClient !== null && redisProvider !== 'none';
+}
+
+/**
+ * Mark Redis as failed so subsequent calls skip it silently.
+ * Called by services after catching a Redis connection error.
+ */
+export function markRedisConnectionFailed(): void {
+  if (!redisConnectionFailed) {
+    console.warn('[Redis] Connection failed — falling back to in-memory for this process lifecycle');
+    redisConnectionFailed = true;
+  }
 }
 
 /**
@@ -133,4 +146,5 @@ export const redis = getRedisClient() as UpstashRedis; // Type assertion for exi
 export function __resetRedisForTesting(): void {
   redisClient = null;
   redisProvider = 'none';
+  redisConnectionFailed = false;
 }
