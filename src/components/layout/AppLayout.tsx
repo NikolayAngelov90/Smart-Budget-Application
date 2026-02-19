@@ -7,6 +7,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import FloatingActionButton from '@/components/common/FloatingActionButton';
+import { BottomNav } from './BottomNav';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 import { OfflineBanner } from '@/components/shared/OfflineBanner';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
@@ -94,7 +95,15 @@ export function AppLayout({ children }: AppLayoutProps) {
             />
           )}
         </Box>
-        <Box flex={1} p={{ base: 4, md: 6 }} overflowY="auto" overflowX="hidden" w="full">
+        <Box
+          flex={1}
+          p={{ base: 4, md: 6 }}
+          pb={{ base: '80px', md: 6 }}
+          overflowY="auto"
+          overflowX="hidden"
+          w="full"
+          data-scroll-container="true"
+        >
           {children}
         </Box>
       </Flex>
@@ -102,8 +111,13 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Mobile Navigation Drawer */}
       <MobileNav isOpen={isMobileNavOpen} onClose={onMobileNavClose} />
 
-      {/* Floating Action Button - Always visible on all pages */}
-      <FloatingActionButton onClick={handleOpenModal} />
+      {/* Bottom Navigation Bar - Mobile only (AC-10.8.1, AC-10.8.2) */}
+      <BottomNav onAddClick={handleOpenModal} />
+
+      {/* Floating Action Button - Tablet/Desktop only (AC-10.8.2: hidden on mobile where BottomNav Add tab takes over) */}
+      <Box display={{ base: 'none', md: 'block' }}>
+        <FloatingActionButton onClick={handleOpenModal} />
+      </Box>
 
       {/* Transaction Entry Modal */}
       <TransactionEntryModal

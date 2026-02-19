@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <story-id>10-8</story-id>
+  <story-title>Mobile-Optimized Touch UI &amp; Navigation</story-title>
+  <story-file>docs/sprint-artifacts/stories/10-8-mobile-optimized-touch-ui.md</story-file>
+  <status>ready-for-dev</status>
+
+  <!-- ============================================================
+       TECH STACK
+  ============================================================ -->
+  <tech-stack>
+    <framework>Next.js 15+ (App Router, TypeScript)</framework>
+    <ui-library>Chakra UI 2.8+ (Box, Flex, Drawer, Modal, IconButton, useBreakpointValue, useDisclosure)</ui-library>
+    <data-fetching>SWR 2.3+ with localStorageProvider</data-fetching>
+    <forms>React Hook Form 7 + Zod 4</forms>
+    <animation>framer-motion 10</animation>
+    <testing>Jest 30 + React Testing Library 16 + jest-environment-jsdom</testing>
+  </tech-stack>
+
+  <!-- ============================================================
+       ACCEPTANCE CRITERIA SUMMARY
+  ============================================================ -->
+  <acceptance-criteria>
+    <ac id="10.8.1">Bottom nav bar visible on mobile (&lt;768px) with 5 tabs: Dashboard, Transactions, Add, Insights, Settings. Hidden on tablet/desktop.</ac>
+    <ac id="10.8.2">Center "Add" tab is elevated; tapping it opens transaction entry modal (replaces FAB on mobile).</ac>
+    <ac id="10.8.3">Swipe-left on transaction list item reveals Delete action; swipe-right reveals Edit action. Both require confirmation.</ac>
+    <ac id="10.8.4">Pull-to-refresh on transaction list and dashboard triggers SWR revalidation with spinner.</ac>
+    <ac id="10.8.5">All interactive touch targets are minimum 48×48px on mobile.</ac>
+    <ac id="10.8.6">Haptic feedback via navigator.vibrate(50) on successful transaction save; no-op if unsupported.</ac>
+    <ac id="10.8.7">Amount input uses inputMode="decimal"; date inputs use type="date". (Already implemented in TransactionEntryModal)</ac>
+    <ac id="10.8.8">Transaction entry modal uses bottom sheet (Chakra Drawer placement="bottom") on mobile; centered Modal on desktop.</ac>
+    <ac id="10.8.9">If transaction count &gt;100, implement windowed rendering for 60fps scroll.</ac>
+    <ac id="10.8.10">Responsive breakpoints consistent: mobile &lt;768px, tablet 768–1024px, desktop &gt;1024px.</ac>
+    <ac id="10.8.11">Unit/component tests for: BottomNav, Add tab modal trigger, touch targets, haptic utility, inputMode.</ac>
+  </acceptance-criteria>
+
+  <!-- ============================================================
+       EXISTING CODE ARTIFACTS
+  ============================================================ -->
+  <code-artifacts>
+
+    <artifact id="AppLayout">
+      <path>src/components/layout/AppLayout.tsx</path>
+      <role>Root layout shell for all dashboard pages. Contains Header, Sidebar, MobileNav (Drawer), FloatingActionButton, TransactionEntryModal, PWAInstallPrompt.</role>
+      <key-details>
+        - handleOpenModal / handleCloseModal / handleSuccess (mutates SWR dashboard keys)
+        - FAB: &lt;FloatingActionButton onClick={handleOpenModal} /&gt; — currently always visible, must be hidden on mobile (&lt;768px)
+        - MobileNav: &lt;MobileNav isOpen={isMobileNavOpen} onClose={onMobileNavClose} /&gt; — hamburger drawer from left; remains for tablet
+        - Main content Box: p={{ base: 4, md: 6 }}, overflowY="auto"
+        - Must add: &lt;BottomNav onAddClick={handleOpenModal} /&gt; and bottom padding pb={{ base: '72px', md: 0 }} on main content
+      </key-details>
+    </artifact>
+
+    <artifact id="FloatingActionButton">
+      <path>src/components/common/FloatingActionButton.tsx</path>
+      <role>Fixed bottom-right FAB, zIndex=1000, 60×60px. Uses useOnlineStatus for disable state.</role>
+      <key-details>
+        - position="fixed", bottom={{ base: '20px', md: '32px' }}, right={{ base: '20px', md: '32px' }}
+        - Must add: display={{ base: 'none', md: 'flex' }} to hide on mobile where BottomNav Add tab takes over
+      </key-details>
+    </artifact>
+
+    <artifact id="MobileNav">
+      <path>src/components/layout/MobileNav.tsx</path>
+      <role>Hamburger drawer navigation sliding from left. Used on tablet (768–1024px). Remains unchanged.</role>
+      <key-details>
+        - navItems: Dashboard(/dashboard, ViewIcon), Transactions(/transactions, EditIcon), Categories(/categories, AtSignIcon), Insights(/insights, InfoIcon), Settings(/settings, SettingsIcon)
+        - usePathname() for active state; isActive uses trustBlue.500
+        - BottomNav should mirror these nav items (minus Categories; Story spec says: Dashboard, Transactions, Add, Insights, Settings)
+      </key-details>
+    </artifact>
+
+    <artifact id="TransactionEntryModal">
+      <path>src/components/transactions/TransactionEntryModal.tsx</path>
+      <role>Transaction create/edit modal. Currently uses Chakra Modal with size={{ base: 'full', md: 'xl' }}.</role>
+      <key-details>
+        - Props: isOpen, onClose, onSuccess?, mode ('create'|'edit'), transaction?
+        - Already has: inputMode="decimal" on amount input (AC-10.8.7 partial), type="date" on date input
+        - onSuccess callback fires after successful save — add triggerHaptic(50) here (AC-10.8.6)
+        - MODIFY: detect mobile with useBreakpointValue({ base: true, md: false }); on mobile use Chakra Drawer placement="bottom"; on desktop keep existing Modal
+        - Props contract must NOT change
+      </key-details>
+    </artifact>
+
+    <artifact id="appBadge-utility">
+      <path>src/lib/utils/appBadge.ts</path>
+      <role>Pattern/template for new haptic.ts utility (same guard pattern for browser API).</role>
+      <key-details>
+        - isBadgeSupported(): checks typeof navigator and API presence
+        - New haptic.ts should follow same pattern: typeof navigator !== 'undefined' and 'vibrate' in navigator
+      </key-details>
+    </artifact>
+
+  </code-artifacts>
+
+  <!-- ============================================================
+       NEW FILES TO CREATE
+  ============================================================ -->
+  <new-files>
+    <file>
+      <path>src/components/layout/BottomNav.tsx</path>
+      <description>5-tab bottom navigation bar. Fixed at viewport bottom, full-width, display={{ base: 'flex', md: 'none' }}, zIndex=100. Center "Add" tab is elevated (circle button, bg="trustBlue.500", mt="-16px"). Uses usePathname() for active state. All tabs min 48×48px. Calls onAddClick prop for Add tab. Includes paddingBottom="env(safe-area-inset-bottom)" for iOS home indicator.</description>
+    </file>
+    <file>
+      <path>src/lib/utils/haptic.ts</path>
+      <description>triggerHaptic(pattern?) wrapping navigator.vibrate with guard for unsupported browsers.</description>
+    </file>
+    <file>
+      <path>src/hooks/usePullToRefresh.ts</path>
+      <description>Custom hook tracking touch events. Fires callback when pull distance &gt;80px from top of scroll container. Only activates at scrollTop===0. Uses overscroll-behavior-y: contain.</description>
+    </file>
+  </new-files>
+
+  <!-- ============================================================
+       DEPENDENCIES
+  ============================================================ -->
+  <dependencies>
+    <installed>
+      <dep>@chakra-ui/react 2.8+ — Drawer (placement="bottom"), Modal, useBreakpointValue, IconButton, Box, Flex</dep>
+      <dep>@chakra-ui/icons 2.2+ — ViewIcon, EditIcon, AtSignIcon, InfoIcon, SettingsIcon, AddIcon</dep>
+      <dep>framer-motion 10 — available but not needed for swipe (use raw CSS transforms)</dep>
+      <dep>next — usePathname from next/navigation</dep>
+      <dep>swr 2.3+ — mutate for pull-to-refresh revalidation</dep>
+    </installed>
+    <not-installed>
+      <dep>@tanstack/react-virtual — NOT in package.json. Only install if transaction count check reveals &gt;100 items commonly (AC-10.8.9 says check first). Can implement simple manual windowing as alternative.</dep>
+    </not-installed>
+  </dependencies>
+
+  <!-- ============================================================
+       IMPLEMENTATION NOTES
+  ============================================================ -->
+  <implementation-notes>
+
+    <note id="bottom-nav-design">
+      BottomNav layout: HStack full-width, fixed bottom, bg="white", borderTop="1px solid", borderColor="gray.200", height="56px", zIndex=100, px=2, safeAreaBottom.
+      Tab items: VStack icon+label, minH="48px", minW="48px", flex=1, as Link.
+      Add tab: Box positioned relative; IconButton with borderRadius="full", w="48px", h="48px", bg="trustBlue.500", color="white", mt="-24px", boxShadow="md". NOT a link, calls onAddClick.
+      Active color: trustBlue.500; inactive: gray.500.
+    </note>
+
+    <note id="bottom-sheet-implementation">
+      In TransactionEntryModal:
+      const isMobile = useBreakpointValue({ base: true, md: false }) ?? false;
+      If isMobile: render Chakra Drawer (isOpen, onClose, placement="bottom", size="full").
+        Add drag handle at top: Box w="40px" h="4px" bg="gray.300" borderRadius="full" mx="auto" mt={2} mb={2}.
+      If !isMobile: render existing Modal (unchanged).
+      Import Drawer, DrawerOverlay, DrawerContent, DrawerBody, DrawerHeader, DrawerCloseButton from @chakra-ui/react.
+    </note>
+
+    <note id="swipe-gesture-implementation">
+      On transaction list row component: add touch event handlers using useRef for gesture state (no re-renders during swipe).
+      State refs: touchStartX, touchStartY, currentTranslateX, isSwiping.
+      onTouchStart: record startX, startY.
+      onTouchMove: compute deltaX, deltaY. If |deltaY| &gt; |deltaX|: cancel (normal scroll). Else apply translateX CSS transform.
+      onTouchEnd: if |translateX| &gt; 60px: reveal action. Else snap back.
+      CSS: transform: translateX({x}px), transition applied only on snap-back.
+      Revealed panel: absolute positioned behind row, revealed by transform.
+      Delete (swipe left): red bg, trash icon. Edit (swipe right): blue bg, edit icon.
+      Desktop: no touch handlers added (mouse events don't trigger touch events).
+    </note>
+
+    <note id="pull-to-refresh-implementation">
+      usePullToRefresh(ref, callback):
+      - Attach to scroll container element via ref
+      - onTouchStart: record startY if scrollTop === 0
+      - onTouchMove: if pulling down and scrollTop === 0, prevent default, update indicator position
+      - onTouchEnd: if pullDistance &gt; 80px, call callback, show spinner
+      - Add overscroll-behavior-y: "contain" to scroll container style
+      - Returns: isPulling boolean, pullDistance number
+    </note>
+
+    <note id="haptic-utility">
+      src/lib/utils/haptic.ts:
+      export function triggerHaptic(pattern: number | number[] = 50): void {
+        if (typeof navigator !== 'undefined' &amp;&amp; 'vibrate' in navigator) {
+          navigator.vibrate(pattern);
+        }
+      }
+    </note>
+
+    <note id="virtualization">
+      For AC-10.8.9: First check transaction count. If typical page shows 20-50 items (with pagination), virtualization may not be needed.
+      The transactions page already has PaginationControls — if pagination limits to 20-50 per page, 100-item threshold is not reached and virtualization can be skipped.
+      If virtualization IS needed: @tanstack/react-virtual with estimateSize of 72px per row.
+    </note>
+
+    <note id="breakpoint-audit">
+      Standard breakpoints: base (mobile &lt;768px), md (tablet 768px+), lg (desktop 1024px+).
+      Chakra default breakpoints: sm=480px, md=768px, lg=992px, xl=1280px.
+      BottomNav hides at md (768px+). Sidebar shows at md (768px+). FAB hides at base (shows at md+).
+    </note>
+
+    <note id="test-patterns">
+      Test file locations: src/components/layout/__tests__/BottomNav.test.tsx, src/lib/utils/__tests__/haptic.test.ts, src/hooks/__tests__/usePullToRefresh.test.ts.
+      Mock usePathname: jest.mock('next/navigation', () => ({ usePathname: jest.fn(() => '/dashboard') })).
+      Mock navigator.vibrate: Object.defineProperty(navigator, 'vibrate', { value: jest.fn(), writable: true }).
+    </note>
+
+  </implementation-notes>
+
+</story-context>

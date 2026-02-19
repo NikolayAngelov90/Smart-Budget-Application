@@ -41,6 +41,12 @@ import {
   ModalBody,
   ModalFooter,
   ModalCloseButton,
+  Drawer,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerBody,
+  DrawerHeader,
+  DrawerCloseButton,
   Button,
   FormControl,
   FormLabel,
@@ -50,6 +56,7 @@ import {
   VStack,
   HStack,
   useToast,
+  useBreakpointValue,
   Box,
   Text,
   Spinner,
@@ -61,6 +68,7 @@ import { CategoryMenu } from '@/components/categories/CategoryMenu';
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { getEnabledCurrencies } from '@/lib/config/currencies';
+import { triggerHaptic } from '@/lib/utils/haptic';
 
 // Transaction type
 type TransactionType = 'expense' | 'income';
@@ -139,6 +147,8 @@ export default function TransactionEntryModal({
   const toast = useToast();
   const t = useTranslations('transactions');
   const tCommon = useTranslations('common');
+  // AC-10.8.8: Use bottom sheet Drawer on mobile, centered Modal on desktop
+  const isMobile = useBreakpointValue({ base: true, md: false }) ?? false;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [recentCategories, setRecentCategories] = useState<Category[]>([]);
@@ -359,6 +369,9 @@ export default function TransactionEntryModal({
         setExchangeRate(null);
       }
 
+      // AC-10.8.6: Haptic feedback on successful transaction save
+      triggerHaptic(50);
+
       // Call success callback (e.g., to refresh transaction list)
       if (onSuccess) {
         onSuccess();
@@ -380,11 +393,227 @@ export default function TransactionEntryModal({
     }
   };
 
+  const formContent = (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <VStack spacing={5} align="stretch">
+        {/* Amount Field */}
+        <FormControl isInvalid={!!errors.amount} isRequired>
+          <FormLabel htmlFor="amount">{t('amount')}</FormLabel>
+          <Input
+            id="amount"
+            type="text"
+            inputMode="decimal"
+            pattern="^\d+(\.\d{1,2})?$"
+            placeholder="0.00"
+            size="lg"
+            fontSize="2xl"
+            fontWeight="semibold"
+            textAlign="right"
+            autoComplete="off"
+            autoCorrect="off"
+            autoFocus
+            {...register('amount')}
+            onBlur={handleAmountBlur}
+            _focus={{
+              borderColor: '#2b6cb0',
+              boxShadow: '0 0 0 1px #2b6cb0',
+            }}
+          />
+          {errors.amount && (
+            <FormErrorMessage>{errors.amount.message}</FormErrorMessage>
+          )}
+        </FormControl>
+
+        {/* Story 10-6: Currency Selector (AC-10.6.3) */}
+        {enabledCurrencies.length > 1 && (
+          <FormControl>
+            <FormLabel>{t('currency')}</FormLabel>
+            <HStack spacing={2}>
+              {enabledCurrencies.map((curr) => (
+                <Button
+                  key={curr.code}
+                  flex={1}
+                  size="sm"
+                  variant={selectedCurrency === curr.code ? 'solid' : 'outline'}
+                  colorScheme={selectedCurrency === curr.code ? 'blue' : 'gray'}
+                  onClick={() => {
+                    setSelectedCurrency(curr.code);
+                    setValue('currency', curr.code);
+                  }}
+                  minH="36px"
+                >
+                  {curr.symbol} {curr.code}
+                </Button>
+              ))}
+            </HStack>
+            {exchangeRate && selectedCurrency !== preferredCurrency && (
+              <Text fontSize="xs" color="blue.600" mt={1}>
+                1 {selectedCurrency} = {exchangeRate.toFixed(4)} {preferredCurrency}
+              </Text>
+            )}
+          </FormControl>
+        )}
+
+        {/* Transaction Type Toggle */}
+        <FormControl>
+          <FormLabel htmlFor="type">{t('type')}</FormLabel>
+          <HStack spacing={2}>
+            <Button
+              flex={1}
+              variant={transactionType === 'expense' ? 'solid' : 'outline'}
+              colorScheme={transactionType === 'expense' ? 'red' : 'gray'}
+              onClick={() => setValue('type', 'expense', { shouldValidate: true })}
+              minH="48px"
+            >
+              {t('expense')}
+            </Button>
+            <Button
+              flex={1}
+              variant={transactionType === 'income' ? 'solid' : 'outline'}
+              colorScheme={transactionType === 'income' ? 'green' : 'gray'}
+              onClick={() => setValue('type', 'income', { shouldValidate: true })}
+              minH="48px"
+            >
+              {t('income')}
+            </Button>
+          </HStack>
+        </FormControl>
+
+        {/* Category Dropdown */}
+        <FormControl isInvalid={!!errors.category_id} isRequired>
+          <FormLabel htmlFor="category_id">{t('category')}</FormLabel>
+          {isLoadingCategories ? (
+            <Box display="flex" alignItems="center" justifyContent="center" py={4}>
+              <Spinner size="md" color="#2b6cb0" />
+              <Text ml={3}>{tCommon('loading')}</Text>
+            </Box>
+          ) : (
+            <CategoryMenu
+              categories={categories}
+              value={watch('category_id')}
+              onChange={(categoryId) => setValue('category_id', categoryId, { shouldValidate: true })}
+              placeholder={t('selectCategory')}
+              isInvalid={!!errors.category_id}
+              size="lg"
+              recentCategories={recentCategories}
+            />
+          )}
+          {errors.category_id && (
+            <FormErrorMessage>{errors.category_id.message}</FormErrorMessage>
+          )}
+        </FormControl>
+
+        {/* Date Picker with Quick Options */}
+        <FormControl isInvalid={!!errors.date} isRequired>
+          <FormLabel htmlFor="date">{t('date')}</FormLabel>
+          <HStack spacing={2} mb={2}>
+            <Button size="sm" variant="outline" onClick={() => setQuickDate(0)} minH="36px">
+              {t('today')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setQuickDate(1)} minH="36px">
+              {t('yesterday')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setQuickDate(2)} minH="36px">
+              {t('twoDaysAgo')}
+            </Button>
+          </HStack>
+          <Input
+            id="date"
+            type="date"
+            size="lg"
+            max={format(new Date(), 'yyyy-MM-dd')}
+            {...register('date')}
+            _focus={{
+              borderColor: '#2b6cb0',
+              boxShadow: '0 0 0 1px #2b6cb0',
+            }}
+          />
+          {errors.date && <FormErrorMessage>{errors.date.message}</FormErrorMessage>}
+        </FormControl>
+
+        {/* Notes Field (Optional) */}
+        <FormControl isInvalid={!!errors.notes}>
+          <FormLabel htmlFor="notes">{t('notes')} ({tCommon('optional')})</FormLabel>
+          <Textarea
+            id="notes"
+            placeholder={t('notesPlaceholder')}
+            size="md"
+            rows={2}
+            maxLength={100}
+            {...register('notes')}
+            _focus={{
+              borderColor: '#2b6cb0',
+              boxShadow: '0 0 0 1px #2b6cb0',
+            }}
+          />
+          {errors.notes && <FormErrorMessage>{errors.notes.message}</FormErrorMessage>}
+          <Text fontSize="xs" color="gray.500" mt={1}>
+            {t('maxCharacters', { max: 100 })}
+          </Text>
+        </FormControl>
+      </VStack>
+
+      {/* Action buttons rendered inline for both Modal and Drawer */}
+      <Box mt={6} display="flex" justifyContent="flex-end" gap={3} pb={isMobile ? 4 : 0}>
+        <Button
+          variant="ghost"
+          onClick={onClose}
+          isDisabled={isSubmitting}
+          minH="48px"
+        >
+          {tCommon('cancel')}
+        </Button>
+        <Tooltip
+          label={!isOnline ? t('availableWhenOnline') : ''}
+          placement="top"
+          hasArrow
+        >
+          <Button
+            type="submit"
+            bg="#2b6cb0"
+            color="white"
+            _hover={{ bg: isOnline ? '#2c5282' : '#2b6cb0' }}
+            _active={{ bg: isOnline ? '#2c5282' : '#2b6cb0' }}
+            isLoading={isSubmitting}
+            isDisabled={!isValid || isSubmitting || !isOnline}
+            loadingText="Saving..."
+            minH="48px"
+            opacity={!isOnline ? 0.4 : 1}
+          >
+            {mode === 'edit' ? tCommon('save') : t('add')}
+          </Button>
+        </Tooltip>
+      </Box>
+    </form>
+  );
+
+  // AC-10.8.8: Bottom sheet Drawer on mobile, centered Modal on desktop
+  if (isMobile) {
+    return (
+      <Drawer isOpen={isOpen} onClose={onClose} placement="bottom" size="full">
+        <DrawerOverlay />
+        <DrawerContent borderTopRadius="xl" maxH="95vh">
+          {/* Drag handle indicator */}
+          <Box pt={3} pb={1} display="flex" justifyContent="center">
+            <Box w="40px" h="4px" bg="gray.300" borderRadius="full" />
+          </Box>
+          <DrawerHeader borderBottomWidth="1px" py={3}>
+            {mode === 'edit' ? t('editTransaction') : t('addTransaction')}
+            <DrawerCloseButton />
+          </DrawerHeader>
+          <DrawerBody overflowY="auto" pb="env(safe-area-inset-bottom)">
+            {formContent}
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      size={{ base: 'full', md: 'xl' }}
+      size="xl"
       isCentered
       closeOnOverlayClick={false}
       initialFocusRef={undefined}
@@ -393,198 +622,8 @@ export default function TransactionEntryModal({
       <ModalContent>
         <ModalHeader>{mode === 'edit' ? t('editTransaction') : t('addTransaction')}</ModalHeader>
         <ModalCloseButton />
-
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <ModalBody>
-            <VStack spacing={5} align="stretch">
-              {/* Amount Field */}
-              <FormControl isInvalid={!!errors.amount} isRequired>
-                <FormLabel htmlFor="amount">{t('amount')}</FormLabel>
-                <Input
-                  id="amount"
-                  type="text"
-                  inputMode="decimal"
-                  pattern="^\d+(\.\d{1,2})?$"
-                  placeholder="0.00"
-                  size="lg"
-                  fontSize="2xl"
-                  fontWeight="semibold"
-                  textAlign="right"
-                  autoFocus
-                  {...register('amount')}
-                  onBlur={handleAmountBlur}
-                  _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
-                  }}
-                />
-                {errors.amount && (
-                  <FormErrorMessage>{errors.amount.message}</FormErrorMessage>
-                )}
-              </FormControl>
-
-              {/* Story 10-6: Currency Selector (AC-10.6.3) */}
-              {enabledCurrencies.length > 1 && (
-                <FormControl>
-                  <FormLabel>{t('currency')}</FormLabel>
-                  <HStack spacing={2}>
-                    {enabledCurrencies.map((curr) => (
-                      <Button
-                        key={curr.code}
-                        flex={1}
-                        size="sm"
-                        variant={selectedCurrency === curr.code ? 'solid' : 'outline'}
-                        colorScheme={selectedCurrency === curr.code ? 'blue' : 'gray'}
-                        onClick={() => {
-                          setSelectedCurrency(curr.code);
-                          setValue('currency', curr.code);
-                        }}
-                        minH="36px"
-                      >
-                        {curr.symbol} {curr.code}
-                      </Button>
-                    ))}
-                  </HStack>
-                  {exchangeRate && selectedCurrency !== preferredCurrency && (
-                    <Text fontSize="xs" color="blue.600" mt={1}>
-                      1 {selectedCurrency} = {exchangeRate.toFixed(4)} {preferredCurrency}
-                    </Text>
-                  )}
-                </FormControl>
-              )}
-
-              {/* Transaction Type Toggle */}
-              <FormControl>
-                <FormLabel htmlFor="type">{t('type')}</FormLabel>
-                <HStack spacing={2}>
-                  <Button
-                    flex={1}
-                    variant={transactionType === 'expense' ? 'solid' : 'outline'}
-                    colorScheme={transactionType === 'expense' ? 'red' : 'gray'}
-                    onClick={() => setValue('type', 'expense', { shouldValidate: true })}
-                    minH="44px"
-                  >
-                    {t('expense')}
-                  </Button>
-                  <Button
-                    flex={1}
-                    variant={transactionType === 'income' ? 'solid' : 'outline'}
-                    colorScheme={transactionType === 'income' ? 'green' : 'gray'}
-                    onClick={() => setValue('type', 'income', { shouldValidate: true })}
-                    minH="44px"
-                  >
-                    {t('income')}
-                  </Button>
-                </HStack>
-              </FormControl>
-
-              {/* Category Dropdown */}
-              <FormControl isInvalid={!!errors.category_id} isRequired>
-                <FormLabel htmlFor="category_id">{t('category')}</FormLabel>
-                {isLoadingCategories ? (
-                  <Box display="flex" alignItems="center" justifyContent="center" py={4}>
-                    <Spinner size="md" color="#2b6cb0" />
-                    <Text ml={3}>{tCommon('loading')}</Text>
-                  </Box>
-                ) : (
-                  <CategoryMenu
-                    categories={categories}
-                    value={watch('category_id')}
-                    onChange={(categoryId) => setValue('category_id', categoryId, { shouldValidate: true })}
-                    placeholder={t('selectCategory')}
-                    isInvalid={!!errors.category_id}
-                    size="lg"
-                    recentCategories={recentCategories}
-                  />
-                )}
-                {errors.category_id && (
-                  <FormErrorMessage>{errors.category_id.message}</FormErrorMessage>
-                )}
-              </FormControl>
-
-              {/* Date Picker with Quick Options */}
-              <FormControl isInvalid={!!errors.date} isRequired>
-                <FormLabel htmlFor="date">{t('date')}</FormLabel>
-                <HStack spacing={2} mb={2}>
-                  <Button size="sm" variant="outline" onClick={() => setQuickDate(0)}>
-                    {t('today')}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setQuickDate(1)}>
-                    {t('yesterday')}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setQuickDate(2)}>
-                    {t('twoDaysAgo')}
-                  </Button>
-                </HStack>
-                <Input
-                  id="date"
-                  type="date"
-                  size="lg"
-                  max={format(new Date(), 'yyyy-MM-dd')}
-                  {...register('date')}
-                  _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
-                  }}
-                />
-                {errors.date && <FormErrorMessage>{errors.date.message}</FormErrorMessage>}
-              </FormControl>
-
-              {/* Notes Field (Optional) */}
-              <FormControl isInvalid={!!errors.notes}>
-                <FormLabel htmlFor="notes">{t('notes')} ({tCommon('optional')})</FormLabel>
-                <Textarea
-                  id="notes"
-                  placeholder={t('notesPlaceholder')}
-                  size="md"
-                  rows={2}
-                  maxLength={100}
-                  {...register('notes')}
-                  _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
-                  }}
-                />
-                {errors.notes && <FormErrorMessage>{errors.notes.message}</FormErrorMessage>}
-                <Text fontSize="xs" color="gray.500" mt={1}>
-                  {t('maxCharacters', { max: 100 })}
-                </Text>
-              </FormControl>
-            </VStack>
-          </ModalBody>
-
-          <ModalFooter>
-            <Button
-              variant="ghost"
-              mr={3}
-              onClick={onClose}
-              isDisabled={isSubmitting}
-              minH="44px"
-            >
-              {tCommon('cancel')}
-            </Button>
-            <Tooltip
-              label={!isOnline ? t('availableWhenOnline') : ''}
-              placement="top"
-              hasArrow
-            >
-              <Button
-                type="submit"
-                bg="#2b6cb0"
-                color="white"
-                _hover={{ bg: isOnline ? '#2c5282' : '#2b6cb0' }}
-                _active={{ bg: isOnline ? '#2c5282' : '#2b6cb0' }}
-                isLoading={isSubmitting}
-                isDisabled={!isValid || isSubmitting || !isOnline}
-                loadingText="Saving..."
-                minH="44px"
-                opacity={!isOnline ? 0.4 : 1}
-              >
-                {mode === 'edit' ? tCommon('save') : t('add')}
-              </Button>
-            </Tooltip>
-          </ModalFooter>
-        </form>
+        <ModalBody>{formContent}</ModalBody>
+        <ModalFooter />
       </ModalContent>
     </Modal>
   );

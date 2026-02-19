@@ -136,7 +136,7 @@ development_status:
   10-5-exchange-rate-integration: done
   10-6-transaction-multi-currency-support: done
   10-7-enhanced-pwa-for-mobile-production: done
-  10-8-mobile-optimized-touch-ui: backlog
+  10-8-mobile-optimized-touch-ui: done
   10-9-write-integration-tests: backlog
   10-10-cicd-pipeline-integration: backlog
   epic-10-retrospective: optional

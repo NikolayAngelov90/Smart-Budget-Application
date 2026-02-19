@@ -13,17 +13,30 @@
  * This page will be populated with charts and metrics in subsequent stories.
  */
 
-import { useEffect } from 'react';
-import { Box, Heading, Text, VStack, Grid } from '@chakra-ui/react';
+import { useEffect, useCallback } from 'react';
+import { Box, Heading, Text, VStack, Grid, Flex, Spinner } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
+import { mutate } from 'swr';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { AIBudgetCoach } from '@/components/dashboard/AIBudgetCoach';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { CategorySpendingChart } from '@/components/dashboard/CategorySpendingChart';
 import { SpendingTrendsChart } from '@/components/dashboard/SpendingTrendsChart';
 import { MonthOverMonth } from '@/components/dashboard/MonthOverMonth';
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
+
+  // AC-10.8.4: Pull-to-refresh — revalidate all dashboard SWR keys
+  const { containerRef: dashboardRef, isRefreshing } = usePullToRefresh(
+    useCallback(async () => {
+      await Promise.all([
+        mutate('/api/dashboard/stats', undefined, { revalidate: true }),
+        mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),
+        mutate('/api/dashboard/trends', undefined, { revalidate: true }),
+      ]);
+    }, [])
+  );
 
   // Performance monitoring: Mark dashboard render start
   useEffect(() => {
@@ -71,7 +84,13 @@ export default function DashboardPage() {
   });
 
   return (
-    <Box maxW="1200px" mx="auto" w="full">
+    <Box ref={dashboardRef} maxW="1200px" mx="auto" w="full">
+      {/* AC-10.8.4: Pull-to-refresh indicator */}
+      {isRefreshing && (
+        <Flex justify="center" py={3}>
+          <Spinner size="sm" color="trustBlue.500" />
+        </Flex>
+      )}
       <VStack align="start" spacing={{ base: 4, md: 6 }} mb={{ base: 6, md: 8 }}>
         <Heading
           as="h1"

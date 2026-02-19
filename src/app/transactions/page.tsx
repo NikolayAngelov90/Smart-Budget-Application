@@ -37,6 +37,7 @@ import {
   IconButton,
   Flex,
   SimpleGrid,
+  Spinner,
   useDisclosure,
   AlertDialog,
   AlertDialogBody,
@@ -60,6 +61,8 @@ import TransactionEntryModal from '@/components/transactions/TransactionEntryMod
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
 import { FilterBreadcrumbs } from '@/components/transactions/FilterBreadcrumbs';
 import { PaginationControls, DEFAULT_PAGE_SIZE, LOCAL_STORAGE_KEY } from '@/components/transactions/PaginationControls';
+import { SwipeableRow } from '@/components/transactions/SwipeableRow';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { createClient } from '@/lib/supabase/client';
 import { exportTransactionsToCSV } from '@/lib/services/exportService'; // Story 8.1
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -244,6 +247,13 @@ function TransactionsContent() {
   const categories: Category[] = Array.isArray(categoriesResponse)
     ? categoriesResponse
     : categoriesResponse?.data || [];
+
+  // AC-10.8.4: Pull-to-refresh
+  const { containerRef: pullToRefreshRef, isRefreshing } = usePullToRefresh(
+    useCallback(async () => {
+      await mutate();
+    }, [mutate])
+  );
 
   // Real-time sync via Supabase Realtime subscriptions (Tasks 2-3)
   useEffect(() => {
@@ -845,7 +855,15 @@ function TransactionsContent() {
         {/* Filter Breadcrumbs (Story 7.3) */}
         <FilterBreadcrumbs />
 
-        {/* Transaction List */}
+        {/* AC-10.8.4: Pull-to-refresh indicator */}
+        {isRefreshing && (
+          <Flex justify="center" py={3}>
+            <Spinner size="sm" color="trustBlue.500" />
+          </Flex>
+        )}
+
+        {/* Transaction List — ref attached for pull-to-refresh hook */}
+        <Box ref={pullToRefreshRef}>
         {transactionsLoading && renderSkeletons()}
 
         {!transactionsLoading && transactionsError && (
@@ -881,100 +899,109 @@ function TransactionsContent() {
                 );
 
                 return (
-                  <Card
+                  // AC-10.8.3: Swipeable row — swipe left=Delete, swipe right=Edit
+                  <SwipeableRow
                     key={transaction.id}
-                    _hover={{ shadow: 'md' }}
-                    transition="all 0.2s"
+                    onDelete={() => handleDelete(transaction)}
+                    onEdit={() => handleEdit(transaction)}
                   >
-                    <CardBody>
-                      <Flex
-                        direction={{ base: 'column', md: 'row' }}
-                        justify="space-between"
-                        align={{ base: 'flex-start', md: 'center' }}
-                        gap={{ base: 3, md: 4 }}
-                      >
-                        {/* Left: Date, Category, Notes */}
-                        <VStack align="flex-start" spacing={1} flex={1}>
-                          <HStack spacing={3}>
-                            <Text fontSize="sm" fontWeight="semibold" color="gray.700">
-                              {formatTransactionDate(transaction.date, dateFormat)}
-                            </Text>
-                            <Badge
-                              colorScheme={
-                                transaction.type === 'income' ? 'green' : 'red'
-                              }
-                              fontSize="xs"
-                            >
-                              {transaction.type}
-                            </Badge>
+                    <Card
+                      _hover={{ shadow: 'md' }}
+                      transition="all 0.2s"
+                      borderRadius="md"
+                    >
+                      <CardBody>
+                        <Flex
+                          direction={{ base: 'column', md: 'row' }}
+                          justify="space-between"
+                          align={{ base: 'flex-start', md: 'center' }}
+                          gap={{ base: 3, md: 4 }}
+                        >
+                          {/* Left: Date, Category, Notes */}
+                          <VStack align="flex-start" spacing={1} flex={1}>
+                            <HStack spacing={3}>
+                              <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+                                {formatTransactionDate(transaction.date, dateFormat)}
+                              </Text>
+                              <Badge
+                                colorScheme={
+                                  transaction.type === 'income' ? 'green' : 'red'
+                                }
+                                fontSize="xs"
+                              >
+                                {transaction.type}
+                              </Badge>
+                            </HStack>
+
+                            <CategoryBadge
+                              category={transaction.category}
+                              variant="dot"
+                              size="md"
+                            />
+
+                            {transaction.notes && (
+                              <Text fontSize="sm" color="gray.600">
+                                {transaction.notes}
+                              </Text>
+                            )}
+                          </VStack>
+
+                          {/* Middle: Action Buttons (desktop only — mobile uses swipe) */}
+                          <HStack spacing={2} display={{ base: 'none', md: 'flex' }}>
+                            <IconButton
+                              aria-label={t('editTransactionAriaLabel')}
+                              icon={<EditIcon />}
+                              size="sm"
+                              variant="ghost"
+                              colorScheme="blue"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(transaction);
+                              }}
+                              _hover={{ bg: 'blue.50' }}
+                            />
+                            <IconButton
+                              aria-label={t('deleteTransactionAriaLabel')}
+                              icon={<DeleteIcon />}
+                              size="sm"
+                              variant="ghost"
+                              colorScheme="red"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(transaction);
+                              }}
+                              _hover={{ bg: 'red.50' }}
+                            />
                           </HStack>
 
-                          <CategoryBadge
-                            category={transaction.category}
-                            variant="dot"
-                            size="md"
-                          />
-
-                          {transaction.notes && (
-                            <Text fontSize="sm" color="gray.600">
-                              {transaction.notes}
+                          {/* Right: Amount */}
+                          <VStack align="flex-end" spacing={0}>
+                            <Text
+                              fontSize={{ base: 'xl', md: '2xl' }}
+                              fontWeight="bold"
+                              color={color}
+                              whiteSpace="nowrap"
+                            >
+                              {formatted}
                             </Text>
-                          )}
-                        </VStack>
-
-                        {/* Middle: Action Buttons */}
-                        <HStack spacing={2}>
-                          <IconButton
-                            aria-label={t('editTransactionAriaLabel')}
-                            icon={<EditIcon />}
-                            size="sm"
-                            variant="ghost"
-                            colorScheme="blue"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(transaction);
-                            }}
-                            _hover={{ bg: 'blue.50' }}
-                          />
-                          <IconButton
-                            aria-label={t('deleteTransactionAriaLabel')}
-                            icon={<DeleteIcon />}
-                            size="sm"
-                            variant="ghost"
-                            colorScheme="red"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(transaction);
-                            }}
-                            _hover={{ bg: 'red.50' }}
-                          />
-                        </HStack>
-
-                        {/* Right: Amount */}
-                        <VStack align="flex-end" spacing={0}>
-                          <Text
-                            fontSize={{ base: 'xl', md: '2xl' }}
-                            fontWeight="bold"
-                            color={color}
-                            whiteSpace="nowrap"
-                          >
-                            {formatted}
-                          </Text>
-                          {convertedText && (
-                            <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
-                              {convertedText}
-                            </Text>
-                          )}
-                        </VStack>
-                      </Flex>
-                    </CardBody>
-                  </Card>
+                            {convertedText && (
+                              <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
+                                {convertedText}
+                              </Text>
+                            )}
+                          </VStack>
+                        </Flex>
+                      </CardBody>
+                    </Card>
+                  </SwipeableRow>
                 );
               })}
             </VStack>
           )}
 
         {/* Story 9-7: Pagination Controls */}
+        </Box>{/* end pull-to-refresh wrapper */}
+
         {!transactionsLoading && !transactionsError && transactionsResponse && (
           <PaginationControls
             currentPage={currentPage}
