@@ -385,10 +385,10 @@ function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) {
     >
       <HStack spacing={3} justify="space-between">
         {/* Category Badge with colored background */}
-        <HStack spacing={3} flex={1}>
+        <HStack spacing={2} flex={1} minW={0} flexWrap="wrap">
           <CategoryBadge category={category} variant="badge" size="md" />
 
-          <HStack spacing={2}>
+          <HStack spacing={1} flexWrap="wrap">
             <Badge
               colorScheme={category.type === 'income' ? 'green' : 'red'}
               fontSize="xs"
