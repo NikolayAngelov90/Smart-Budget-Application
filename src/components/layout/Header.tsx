@@ -108,8 +108,11 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Right side: Sync Status + User info + Logout */}
         {user && (
           <HStack spacing={4}>
-            {/* Sync Status Indicator - Story 8.4 AC-8.4.1, AC-8.4.6 */}
-            <SyncStatusIndicator compact />
+            {/* Sync Status Indicator - Story 8.4 AC-8.4.1, AC-8.4.6
+                Hidden on mobile (base) to keep header compact alongside BottomNav */}
+            <Box display={{ base: 'none', sm: 'flex' }}>
+              <SyncStatusIndicator compact />
+            </Box>
             <Menu>
               <MenuButton
                 as={Button}

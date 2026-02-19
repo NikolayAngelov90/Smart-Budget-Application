@@ -86,7 +86,7 @@ export async function GET(): Promise<NextResponse> {
 
     // Auto-register current session if we have a token
     if (sessionToken) {
-      // Check if this session already exists
+      // Check if this session already exists (exact token match)
       const { data: existing } = await supabase
         .from('user_sessions')
         .select('id')
@@ -94,21 +94,45 @@ export async function GET(): Promise<NextResponse> {
         .maybeSingle();
 
       if (!existing) {
-        // Register the current session
+        // Token not found — JWT may have rotated. Collect device info first.
         const headersList = await headers();
         const userAgent = headersList.get('user-agent') || '';
         const forwardedFor = headersList.get('x-forwarded-for');
         const ipAddress = forwardedFor?.split(',')[0]?.trim() || null;
+        const deviceName = generateDeviceName(userAgent);
+        const deviceType = detectDeviceType(userAgent);
+        const browser = detectBrowser(userAgent);
 
-        await supabase.from('user_sessions').insert({
-          user_id: user.id,
-          session_token: sessionToken,
-          device_name: generateDeviceName(userAgent),
-          device_type: detectDeviceType(userAgent),
-          browser: detectBrowser(userAgent),
-          ip_address: ipAddress,
-          last_active: new Date().toISOString(),
-        });
+        // Look for an existing session from the same device/browser combination.
+        // This handles the case where the JWT access token rotated (hourly refresh)
+        // but the user is still on the same device — we update rather than insert.
+        const { data: existingByDevice } = await supabase
+          .from('user_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('device_name', deviceName)
+          .eq('browser', browser)
+          .eq('device_type', deviceType)
+          .maybeSingle();
+
+        if (existingByDevice) {
+          // Same device, token rotated — update the existing session record
+          await supabase
+            .from('user_sessions')
+            .update({ session_token: sessionToken, last_active: new Date().toISOString() })
+            .eq('id', existingByDevice.id);
+        } else {
+          // Genuinely new device/browser — insert new session
+          await supabase.from('user_sessions').insert({
+            user_id: user.id,
+            session_token: sessionToken,
+            device_name: deviceName,
+            device_type: deviceType,
+            browser: browser,
+            ip_address: ipAddress,
+            last_active: new Date().toISOString(),
+          });
+        }
       } else {
         // Update last_active for the current session
         await supabase

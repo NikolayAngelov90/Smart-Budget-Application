@@ -83,7 +83,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <Flex direction="column" minH="100vh">
+    <Flex direction="column" h="100vh" overflow="hidden">
       <Header onMenuClick={onMobileNavOpen} />
       <OfflineBanner />
       <Flex flex={1} overflow="hidden">

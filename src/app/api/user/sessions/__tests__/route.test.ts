@@ -55,7 +55,8 @@ describe('GET /api/user/sessions', () => {
       return { select: mockSelect };
     });
     mockSelect.mockReturnValue({ eq: mockEq });
-    mockEq.mockReturnValue({ order: mockOrder, maybeSingle: mockMaybeSingle });
+    // eq is chainable: supports .eq().eq().maybeSingle() for device fingerprint lookup
+    mockEq.mockReturnValue({ eq: mockEq, order: mockOrder, maybeSingle: mockMaybeSingle });
     mockOrder.mockResolvedValue({ data: [], error: null });
     mockInsert.mockResolvedValue({ error: null });
     mockUpdate.mockReturnValue({ eq: mockUpdateEq });
@@ -139,7 +140,9 @@ describe('GET /api/user/sessions', () => {
     mockGetSession.mockResolvedValueOnce({
       data: { session: { access_token: 'token-abc' } },
     });
-    // No existing session found
+    // 1st maybeSingle: exact token lookup → not found
+    mockMaybeSingle.mockResolvedValueOnce({ data: null });
+    // 2nd maybeSingle: device fingerprint lookup → not found (new device)
     mockMaybeSingle.mockResolvedValueOnce({ data: null });
     // Fetch returns the newly inserted session
     mockOrder.mockResolvedValueOnce({
