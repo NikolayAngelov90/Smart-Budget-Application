@@ -609,8 +609,12 @@ export default function SettingsPage() {
                     onClick={handleExportPDF}
                     isLoading={isExportingPDF}
                     loadingText={t('generatingPdf')}
-                    flex="1"
-                    minW="200px"
+                    flex={{ base: 'none', sm: '1' }}
+                    w={{ base: 'full', sm: 'auto' }}
+                    minW={{ base: 0, sm: '200px' }}
+                    whiteSpace="normal"
+                    h="auto"
+                    py={2}
                   >
                     {t('exportMonthlyReport')}
                   </Button>
@@ -621,8 +625,12 @@ export default function SettingsPage() {
                     onClick={handleExportCSV}
                     isLoading={isExportingCSV}
                     loadingText={t('generatingCsv')}
-                    flex="1"
-                    minW="200px"
+                    flex={{ base: 'none', sm: '1' }}
+                    w={{ base: 'full', sm: 'auto' }}
+                    minW={{ base: 0, sm: '200px' }}
+                    whiteSpace="normal"
+                    h="auto"
+                    py={2}
                   >
                     {t('exportAllTransactions')}
                   </Button>

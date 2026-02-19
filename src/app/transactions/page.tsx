@@ -680,7 +680,13 @@ function TransactionsContent() {
         </Box>
 
         {/* Page Header */}
-        <Flex justify="space-between" align="center" mb={6}>
+        <Flex
+          justify="space-between"
+          align={{ base: 'flex-start', sm: 'center' }}
+          direction={{ base: 'column', sm: 'row' }}
+          gap={{ base: 3, sm: 0 }}
+          mb={6}
+        >
           <Heading as="h1" size="xl" color="gray.800">
             {t('title')}
           </Heading>
