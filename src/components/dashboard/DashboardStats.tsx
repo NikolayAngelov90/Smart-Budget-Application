@@ -18,10 +18,10 @@ import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency, formatCurrencyWithSign } from '@/lib/utils/currency';
 
 export function DashboardStats() {
-  const { data, error, isLoading, mutate } = useDashboardStats();
   const { preferences } = useUserPreferences();
   const t = useTranslations('dashboard');
   const currencyCode = preferences?.currency_format;
+  const { data, error, isLoading, mutate } = useDashboardStats(undefined, currencyCode);
 
   // Subscribe to real-time transaction changes via centralized manager
   useRealtimeSubscription((event) => {

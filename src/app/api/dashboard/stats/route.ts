@@ -34,6 +34,13 @@ interface AggregateResult {
   expenses: number;
 }
 
+interface TransactionRow {
+  amount: number;
+  type: 'income' | 'expense';
+  currency?: string | null;
+  exchange_rate?: number | null;
+}
+
 /**
  * GET handler for dashboard stats
  * Aggregates income/expense data for current and previous month
@@ -52,9 +59,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get month parameter (default to current month)
+    // Get query parameters
     const { searchParams } = new URL(request.url);
     const monthParam = searchParams.get('month');
+    // Preferred currency for cross-currency conversion (default EUR)
+    const preferredCurrency = (searchParams.get('currency') || 'EUR').toUpperCase();
 
     // Calculate current month date range
     const currentDate = monthParam ? new Date(`${monthParam}-01`) : new Date();
@@ -90,7 +99,7 @@ export async function GET(request: NextRequest) {
     // Query current month aggregation
     const { data: currentData, error: currentError } = await supabase
       .from('transactions')
-      .select('amount, type')
+      .select('amount, type, currency, exchange_rate')
       .eq('user_id', user.id)
       .gte('date', currentMonthStart.toISOString())
       .lte('date', currentMonthEnd.toISOString());
@@ -106,7 +115,7 @@ export async function GET(request: NextRequest) {
     // Query previous month aggregation
     const { data: previousData, error: previousError } = await supabase
       .from('transactions')
-      .select('amount, type')
+      .select('amount, type, currency, exchange_rate')
       .eq('user_id', user.id)
       .gte('date', previousMonthStart.toISOString())
       .lte('date', previousMonthEnd.toISOString());
@@ -119,9 +128,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Aggregate current month data
-    const currentAggregates = aggregateTransactions(currentData || []);
-    const previousAggregates = aggregateTransactions(previousData || []);
+    // Aggregate current month data (convert to preferred currency using stored exchange rates)
+    const currentAggregates = aggregateTransactions(currentData || [], preferredCurrency);
+    const previousAggregates = aggregateTransactions(previousData || [], preferredCurrency);
 
     // Calculate trends
     const incomeTrend = calculateTrend(
@@ -163,19 +172,31 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Aggregates transaction data by type
- * @param transactions - Array of transactions with amount and type
- * @returns Aggregated income and expenses
+ * Aggregates transaction data by type, converting to preferred currency when needed.
+ * Uses the stored exchange_rate (amount * rate = amount in preferred currency).
+ * @param transactions - Array of transactions with amount, type, currency, exchange_rate
+ * @param preferredCurrency - User's display currency code (e.g. 'EUR')
+ * @returns Aggregated income and expenses in preferred currency
  */
 function aggregateTransactions(
-  transactions: Array<{ amount: number; type: 'income' | 'expense' }>
+  transactions: TransactionRow[],
+  preferredCurrency: string
 ): AggregateResult {
   return transactions.reduce(
     (acc, transaction) => {
+      let amount = transaction.amount;
+      // Convert to preferred currency if transaction was entered in a different currency
+      if (
+        transaction.currency &&
+        transaction.currency !== preferredCurrency &&
+        transaction.exchange_rate
+      ) {
+        amount = amount * transaction.exchange_rate;
+      }
       if (transaction.type === 'income') {
-        acc.income += transaction.amount;
+        acc.income += amount;
       } else if (transaction.type === 'expense') {
-        acc.expenses += transaction.amount;
+        acc.expenses += amount;
       }
       return acc;
     },

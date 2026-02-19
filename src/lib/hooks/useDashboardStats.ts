@@ -38,10 +38,15 @@ export interface UseDashboardStatsResult {
 /**
  * Custom hook for fetching dashboard stats with SWR
  * @param month - Optional month in YYYY-MM format (defaults to current month)
+ * @param currency - Optional preferred currency code for cross-currency conversion (e.g. 'EUR')
  * @returns Dashboard stats data, error, loading state, and mutate function
  */
-export function useDashboardStats(month?: string): UseDashboardStatsResult {
-  const url = month ? `/api/dashboard/stats?month=${month}` : '/api/dashboard/stats';
+export function useDashboardStats(month?: string, currency?: string): UseDashboardStatsResult {
+  const params = new URLSearchParams();
+  if (month) params.set('month', month);
+  if (currency) params.set('currency', currency);
+  const query = params.toString();
+  const url = query ? `/api/dashboard/stats?${query}` : '/api/dashboard/stats';
 
   const { data, error, isLoading, mutate } = useSWR<DashboardStatsResponse>(
     url,

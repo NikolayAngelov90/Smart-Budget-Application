@@ -85,7 +85,7 @@ export function CategoryMenu({
   const hasRecentCategories = recentCategories.length > 0;
 
   return (
-    <Menu>
+    <Menu matchWidth>
       <MenuButton
         as={Button}
         rightIcon={<ChevronDownIcon />}
@@ -112,7 +112,7 @@ export function CategoryMenu({
         )}
       </MenuButton>
 
-      <MenuList maxH="400px" overflowY="auto" zIndex={10}>
+      <MenuList maxH="300px" overflowY="auto" overscrollBehavior="contain" zIndex={10}>
         {/* Recently-Used Categories Section */}
         {hasRecentCategories && (
           <>
