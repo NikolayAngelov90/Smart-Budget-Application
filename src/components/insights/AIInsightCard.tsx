@@ -25,9 +25,11 @@ import {
   ChevronUpIcon,
 } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
-import type { Insight } from '@/types/database.types';
+import type { Insight, InsightMetadata } from '@/types/database.types';
 import { InsightErrorBoundary } from './InsightErrorBoundary';
 import { trackInsightViewed } from '@/lib/services/analyticsService';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { formatCurrency } from '@/lib/utils/currency';
 
 interface AIInsightCardProps {
   insight: Insight;
@@ -95,6 +97,83 @@ export function AIInsightCard({
   const isMobile = useBreakpointValue({ base: true, md: false });
   const hasTrackedView = useRef(false);
   const t = useTranslations('insights');
+  const { preferences } = useUserPreferences();
+  const currencyCode = preferences?.currency_format;
+
+  const getLocalizedText = (): { title: string; description: string } => {
+    const meta = insight.metadata as InsightMetadata | null;
+    const categoryName = meta?.category_name ?? '';
+    const fmt = (amount?: number) => formatCurrency(amount ?? 0, undefined, currencyCode);
+
+    switch (insight.type) {
+      case 'spending_increase': {
+        if (meta?.percent_change != null && meta?.current_amount != null && meta?.previous_amount != null) {
+          return {
+            title: t('spending_increase_title', {
+              categoryName,
+              percent: Math.round(meta.percent_change),
+            }),
+            description: t('spending_increase_desc', {
+              categoryName,
+              percent: Math.round(meta.percent_change),
+              currentAmount: fmt(meta.current_amount),
+              previousAmount: fmt(meta.previous_amount),
+            }),
+          };
+        }
+        break;
+      }
+      case 'budget_recommendation': {
+        if (meta?.recommended_budget != null && meta?.three_month_average != null) {
+          return {
+            title: t('budget_recommendation_title', {
+              budget: fmt(meta.recommended_budget),
+              categoryName,
+            }),
+            description: t('budget_recommendation_desc', {
+              average: fmt(meta.three_month_average),
+              budget: fmt(meta.recommended_budget),
+              categoryName,
+            }),
+          };
+        }
+        break;
+      }
+      case 'unusual_expense': {
+        if (meta?.transaction_amount != null && meta?.category_average != null) {
+          return {
+            title: t('unusual_expense_title', {
+              categoryName,
+              amount: fmt(meta.transaction_amount),
+            }),
+            description: t('unusual_expense_desc', {
+              categoryName,
+              amount: fmt(meta.transaction_amount),
+              typical: fmt(meta.category_average),
+            }),
+          };
+        }
+        break;
+      }
+      case 'positive_reinforcement': {
+        if (meta?.percent_under_budget != null && meta?.savings_amount != null) {
+          return {
+            title: t('positive_reinforcement_title', { categoryName }),
+            description: t('positive_reinforcement_desc', {
+              categoryName,
+              percent: Math.round(meta.percent_under_budget),
+              savings: fmt(meta.savings_amount),
+            }),
+          };
+        }
+        break;
+      }
+    }
+    // Fallback to stored values if metadata is missing
+    return { title: insight.title ?? '', description: insight.description ?? '' };
+  };
+
+  const { title: localizedTitle, description: localizedDescription } = getLocalizedText();
 
   const colorScheme = getColorScheme(insight.type);
   const icon = getIcon(insight.type);
@@ -203,7 +282,7 @@ export function AIInsightCard({
             color="gray.800"
             lineHeight="shorter"
           >
-            {insight.title}
+            {localizedTitle}
           </Text>
 
           {/* Description */}
@@ -212,7 +291,7 @@ export function AIInsightCard({
             color="gray.600"
             lineHeight="base"
           >
-            {insight.description}
+            {localizedDescription}
           </Text>
 
           {/* See Details Button (only if expandable) */}

@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { calculateTrend } from '@/lib/utils/currency';
+import { getExchangeRates } from '@/lib/services/exchangeRateService';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -128,9 +129,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Aggregate current month data (convert to preferred currency using stored exchange rates)
-    const currentAggregates = aggregateTransactions(currentData || [], preferredCurrency);
-    const previousAggregates = aggregateTransactions(previousData || [], preferredCurrency);
+    // Find unique currencies that need live rate lookup (no stored exchange_rate)
+    const currenciesNeedingRates = new Set<string>();
+    for (const tx of [...(currentData || []), ...(previousData || [])]) {
+      if (tx.currency && tx.currency !== preferredCurrency && !tx.exchange_rate) {
+        currenciesNeedingRates.add(tx.currency);
+      }
+    }
+
+    // Fetch live rates for those currencies (cached via Redis, max 1 API call/hour)
+    const liveRateMap: Record<string, number> = {};
+    for (const fromCurrency of currenciesNeedingRates) {
+      try {
+        const rateData = await getExchangeRates(fromCurrency);
+        const rate = rateData.rates[preferredCurrency];
+        if (rate != null) {
+          liveRateMap[fromCurrency] = rate;
+        }
+      } catch (e) {
+        console.warn(`[DashboardStats] Could not fetch live rate for ${fromCurrency}→${preferredCurrency}:`, e);
+      }
+    }
+
+    // Aggregate current month data (convert to preferred currency using stored or live exchange rates)
+    const currentAggregates = aggregateTransactions(currentData || [], preferredCurrency, liveRateMap);
+    const previousAggregates = aggregateTransactions(previousData || [], preferredCurrency, liveRateMap);
 
     // Calculate trends
     const incomeTrend = calculateTrend(
@@ -180,18 +203,21 @@ export async function GET(request: NextRequest) {
  */
 function aggregateTransactions(
   transactions: TransactionRow[],
-  preferredCurrency: string
+  preferredCurrency: string,
+  liveRates: Record<string, number> = {}
 ): AggregateResult {
   return transactions.reduce(
     (acc, transaction) => {
       let amount = transaction.amount;
       // Convert to preferred currency if transaction was entered in a different currency
-      if (
-        transaction.currency &&
-        transaction.currency !== preferredCurrency &&
-        transaction.exchange_rate
-      ) {
-        amount = amount * transaction.exchange_rate;
+      if (transaction.currency && transaction.currency !== preferredCurrency) {
+        if (transaction.exchange_rate) {
+          // Use stored exchange rate (most accurate — rate at time of entry)
+          amount = amount * transaction.exchange_rate;
+        } else if (liveRates[transaction.currency] != null) {
+          // Fallback to live rate (for transactions entered before currency preference was set)
+          amount = amount * liveRates[transaction.currency]!;
+        }
       }
       if (transaction.type === 'income') {
         acc.income += amount;

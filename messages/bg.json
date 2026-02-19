@@ -28,6 +28,7 @@
     "categories": "Категории",
     "insights": "Прегледи",
     "settings": "Настройки",
+    "add": "Добави",
     "expandSidebar": "Разгъни странично меню",
     "collapseSidebar": "Свий странично меню"
   },
@@ -232,7 +233,15 @@
     "hideDetailsLabel": "Скрий подробности",
     "previousPage": "Предишна страница",
     "nextPage": "Следваща страница",
-    "pageOfTotal": "Страница {current} от {total}"
+    "pageOfTotal": "Страница {current} от {total}",
+    "spending_increase_title": "Разходите за {categoryName} нараснаха с {percent}%",
+    "spending_increase_desc": "Разходите ви за {categoryName} нараснаха с {percent}% спрямо миналия месец ({currentAmount} срещу {previousAmount} предходния месец). Прегледайте последните разходи, за да проверите дали това съответства на целите ви.",
+    "budget_recommendation_title": "Обмислете бюджет от {budget} за {categoryName}",
+    "budget_recommendation_desc": "Въз основа на 3-месечната ви средна стойност от {average}, обмислете бюджет от {budget} за {categoryName}. Това ви дава удобен 10% буфер, като поддържате разходите ви разумни.",
+    "unusual_expense_title": "Необичаен разход за {categoryName}: {amount}",
+    "unusual_expense_desc": "Забелязахме необичаен разход за {categoryName} от {amount} — значително по-висок от типичния ви {typical}. Може би искате да прегледате тази транзакция, за да се уверите, че всичко е наред.",
+    "positive_reinforcement_title": "Браво за {categoryName}!",
+    "positive_reinforcement_desc": "{categoryName}: тази месец сте с {percent}% под бюджета, спестявайки {savings}. Продължавайте в същия дух!"
   },
   "settings": {
     "title": "Настройки",

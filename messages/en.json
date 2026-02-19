@@ -28,6 +28,7 @@
     "categories": "Categories",
     "insights": "Insights",
     "settings": "Settings",
+    "add": "Add",
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar"
   },
@@ -232,7 +233,15 @@
     "hideDetailsLabel": "Hide details",
     "previousPage": "Previous page",
     "nextPage": "Next page",
-    "pageOfTotal": "Page {current} of {total}"
+    "pageOfTotal": "Page {current} of {total}",
+    "spending_increase_title": "{categoryName} spending increased {percent}%",
+    "spending_increase_desc": "Your {categoryName} spending increased by {percent}% this month ({currentAmount} vs {previousAmount} last month). Consider reviewing recent expenses to see if this aligns with your goals.",
+    "budget_recommendation_title": "Consider a {budget} budget for {categoryName}",
+    "budget_recommendation_desc": "Based on your 3-month average of {average}, consider setting a {budget} budget for {categoryName}. This gives you a comfortable 10% buffer while keeping spending mindful.",
+    "unusual_expense_title": "Unusual {categoryName} expense: {amount}",
+    "unusual_expense_desc": "We noticed an unusual {categoryName} expense of {amount} - much higher than your typical {typical}. You might want to review this transaction to make sure everything looks right.",
+    "positive_reinforcement_title": "Great job on {categoryName}!",
+    "positive_reinforcement_desc": "{categoryName}: you're {percent}% under budget this month, saving {savings}. Keep up the excellent work!"
   },
   "settings": {
     "title": "Settings",

@@ -13,20 +13,23 @@ import { Box, Flex, VStack, Text, IconButton } from '@chakra-ui/react';
 import { ViewIcon, EditIcon, AddIcon, InfoIcon, SettingsIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import type { ComponentType } from 'react';
 
+type NavKey = 'dashboard' | 'transactions' | 'insights' | 'settings';
+
 interface NavTab {
-  name: string;
+  key: NavKey;
   href: string;
   icon: ComponentType;
 }
 
 const NAV_TABS: NavTab[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: ViewIcon },
-  { name: 'Transactions', href: '/transactions', icon: EditIcon },
+  { key: 'dashboard', href: '/dashboard', icon: ViewIcon },
+  { key: 'transactions', href: '/transactions', icon: EditIcon },
   // "Add" center tab is rendered separately
-  { name: 'Insights', href: '/insights', icon: InfoIcon },
-  { name: 'Settings', href: '/settings', icon: SettingsIcon },
+  { key: 'insights', href: '/insights', icon: InfoIcon },
+  { key: 'settings', href: '/settings', icon: SettingsIcon },
 ];
 
 interface BottomNavProps {
@@ -36,6 +39,7 @@ interface BottomNavProps {
 
 export function BottomNav({ onAddClick }: BottomNavProps) {
   const pathname = usePathname();
+  const t = useTranslations('navigation');
 
   return (
     <Box
@@ -78,12 +82,12 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
               color={isActive ? 'trustBlue.500' : 'gray.500'}
               _hover={{ color: 'trustBlue.400' }}
               aria-current={isActive ? 'page' : undefined}
-              aria-label={tab.name}
+              aria-label={t(tab.key)}
             >
               <VStack spacing={0.5}>
                 <Box as={tab.icon} boxSize={5} />
                 <Text fontSize="10px" fontWeight={isActive ? 'semibold' : 'normal'} lineHeight={1}>
-                  {tab.name}
+                  {t(tab.key)}
                 </Text>
               </VStack>
             </Box>
@@ -117,7 +121,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
             transition="all 0.15s ease"
           />
           <Text fontSize="10px" color="trustBlue.500" fontWeight="semibold" mt="2px" lineHeight={1}>
-            Add
+            {t('add')}
           </Text>
         </Flex>
 
@@ -139,12 +143,12 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
               color={isActive ? 'trustBlue.500' : 'gray.500'}
               _hover={{ color: 'trustBlue.400' }}
               aria-current={isActive ? 'page' : undefined}
-              aria-label={tab.name}
+              aria-label={t(tab.key)}
             >
               <VStack spacing={0.5}>
                 <Box as={tab.icon} boxSize={5} />
                 <Text fontSize="10px" fontWeight={isActive ? 'semibold' : 'normal'} lineHeight={1}>
-                  {tab.name}
+                  {t(tab.key)}
                 </Text>
               </VStack>
             </Box>
