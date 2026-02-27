@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <story-id>10-9</story-id>
+  <story-title>Write Integration Tests Using Test Utilities</story-title>
+  <epic>Epic 10: Internationalization, Multi-Currency &amp; Mobile Production</epic>
+  <type>infrastructure</type>
+  <priority>CRITICAL</priority>
+
+  <key-files>
+    <file role="test-utilities-entrypoint">src/lib/test-utils/index.ts</file>
+    <file role="render-with-providers">src/lib/test-utils/testUtils.tsx</file>
+    <file role="supabase-mock">src/lib/test-utils/mockSupabase.ts</file>
+    <file role="existing-api-test-pattern">src/app/api/transactions/__tests__/route.test.ts</file>
+    <file role="transactions-api">src/app/api/transactions/route.ts</file>
+    <file role="transactions-id-api">src/app/api/transactions/[id]/route.ts</file>
+    <file role="categories-api">src/app/api/categories/route.ts</file>
+    <file role="categories-id-api">src/app/api/categories/[id]/route.ts</file>
+    <file role="dashboard-stats-api">src/app/api/dashboard/stats/route.ts</file>
+    <file role="insights-api">src/app/api/insights/route.ts</file>
+    <file role="insights-dismiss-api">src/app/api/insights/[id]/dismiss/route.ts</file>
+    <file role="insights-undismiss-api">src/app/api/insights/[id]/undismiss/route.ts</file>
+    <file role="onboarding-api">src/app/api/auth/onboarding/route.ts</file>
+    <file role="exchange-rate-service">src/lib/services/exchangeRateService.ts</file>
+    <file role="jest-config">jest.config.js</file>
+    <file role="jest-setup">jest.setup.js</file>
+  </key-files>
+
+  <api-route-inventory>
+    <route method="GET" path="/api/transactions" notes="pagination, all=true, filters: type, category, startDate, endDate, search" />
+    <route method="POST" path="/api/transactions" notes="create transaction with body validation" />
+    <route method="PUT" path="/api/transactions/[id]" notes="update transaction, ownership check" />
+    <route method="DELETE" path="/api/transactions/[id]" notes="delete transaction, ownership check" />
+    <route method="GET" path="/api/categories" notes="list with usage stats + recent subset; filter by type" />
+    <route method="POST" path="/api/categories" notes="create custom; 409 on duplicate; validates name/color/type" />
+    <route method="PUT" path="/api/categories/[id]" notes="edit name/color; 403 on predefined; 409 on duplicate name" />
+    <route method="DELETE" path="/api/categories/[id]" notes="orphan transactions; 403 on predefined" />
+    <route method="GET" path="/api/dashboard/stats" notes="income/expenses aggregation; month param; currency param; multi-currency conversion" />
+    <route method="GET" path="/api/insights" notes="filter: type, dismissed, search, orderBy, limit, offset" />
+    <route method="POST" path="/api/insights/[id]/dismiss" notes="set is_dismissed=true" />
+    <route method="POST" path="/api/insights/[id]/undismiss" notes="set is_dismissed=false" />
+    <route method="POST" path="/api/auth/onboarding" notes="seed default categories for new user" />
+  </api-route-inventory>
+
+  <test-patterns>
+    <pattern name="api-route-test-boilerplate">
+      <description>Standard boilerplate for API route integration tests</description>
+      <code><![CDATA[
+/**
+ * @jest-environment node
+ */
+jest.mock('next/server', () => ({
+  NextResponse: {
+    json: jest.fn((data, init) => ({
+      json: async () => data,
+      status: init?.status || 200,
+      headers: new Headers(),
+    })),
+  },
+}));
+
+import { GET, POST } from '@/app/api/some/route';
+import { createClient } from '@/lib/supabase/server';
+
+jest.mock('@/lib/supabase/server');
+const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+
+function createMockRequest(url: string, options?: RequestInit): any {
+  return { url, method: options?.method || 'GET', headers: new Headers(), ...options };
+}
+      ]]></code>
+    </pattern>
+
+    <pattern name="chainable-mock-query">
+      <description>Creates a chainable Supabase query mock that is also awaitable</description>
+      <code><![CDATA[
+let resolvedValue = { data: [], error: null, count: 0 };
+const mockQuery = {
+  from: jest.fn().mockReturnThis(),
+  select: jest.fn().mockReturnThis(),
+  insert: jest.fn().mockReturnThis(),
+  update: jest.fn().mockReturnThis(),
+  delete: jest.fn().mockReturnThis(),
+  eq: jest.fn().mockReturnThis(),
+  neq: jest.fn().mockReturnThis(),
+  gte: jest.fn().mockReturnThis(),
+  lte: jest.fn().mockReturnThis(),
+  or: jest.fn().mockReturnThis(),
+  order: jest.fn().mockReturnThis(),
+  range: jest.fn().mockReturnThis(),
+  limit: jest.fn().mockReturnThis(),
+  single: jest.fn().mockResolvedValue({ data: null, error: null }),
+  maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+  then: jest.fn((resolve) => Promise.resolve(resolvedValue).then(resolve)),
+  mockResolvedValue: (value: any) => { resolvedValue = value; return mockQuery; },
+};
+      ]]></code>
+    </pattern>
+
+    <pattern name="mock-supabase-client">
+      <description>Standard mock Supabase client with auth</description>
+      <code><![CDATA[
+const mockSupabase = {
+  auth: {
+    getUser: jest.fn().mockResolvedValue({
+      data: { user: { id: 'user-123' } },
+      error: null,
+    }),
+  },
+  from: jest.fn(() => mockQuery),
+};
+mockCreateClient.mockResolvedValue(mockSupabase as any);
+      ]]></code>
+    </pattern>
+  </test-patterns>
+
+  <dependencies>
+    <dependency name="@/lib/supabase/server" mock="jest.mock('@/lib/supabase/server')" />
+    <dependency name="@/lib/services/exchangeRateService" mock="jest.mock('@/lib/services/exchangeRateService')" notes="required for dashboard stats to avoid live API calls" />
+    <dependency name="@/lib/services/insightService" mock="jest.mock('@/lib/services/insightService', () => ({ checkAndTriggerForTransactionCount: jest.fn() }))" notes="called by transactions POST route" />
+    <dependency name="next/server" mock="jest.mock('next/server', ...)" notes="MUST come before all imports" />
+  </dependencies>
+
+  <acceptance-criteria-mapping>
+    <ac id="AC-10.9.1" file="src/app/api/auth/__tests__/onboarding.integration.test.ts" tests="POST seeds categories; 401 when unauthenticated" />
+    <ac id="AC-10.9.2" file="src/app/api/transactions/__tests__/crud.integration.test.ts" tests="GET list+filters; POST create; PUT update; DELETE; ownership" />
+    <ac id="AC-10.9.3" file="src/app/api/categories/__tests__/categories.integration.test.ts" tests="GET with usage; POST create+409; PUT edit+403; DELETE+orphan+403" />
+    <ac id="AC-10.9.4" file="src/app/api/dashboard/__tests__/stats.integration.test.ts" tests="sums; balance; trend; month param; currency conversion (stored+live)" />
+    <ac id="AC-10.9.5" file="src/app/api/insights/__tests__/insights.integration.test.ts" tests="GET filters; dismiss; undismiss" />
+    <ac id="AC-10.9.6" file="src/app/api/transactions/__tests__/route.test.ts" tests="already covers all=true export pattern" />
+    <ac id="AC-10.9.11" file="docs/testing/integration-test-guide.md" tests="documentation" />
+  </acceptance-criteria-mapping>
+
+  <existing-coverage>
+    <covered-by file="src/app/api/transactions/__tests__/route.test.ts">
+      GET /api/transactions: all=true bypasses pagination, RLS enforcement, sort order, filters combined with all=true, 401 unauthorized, 500 DB error, empty result
+    </covered-by>
+    <covered-by file="src/app/api/transactions/__tests__/all-param.test.ts">
+      Additional all=true parameter edge cases
+    </covered-by>
+  </existing-coverage>
+</story-context>
