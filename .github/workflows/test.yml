@@ -65,6 +65,21 @@ jobs:
           echo "✅ Coverage ($COVERAGE%) meets minimum 5% threshold"
           echo "📈 Target coverage: 30% (current: $COVERAGE%)"
 
+      - name: Check required environment variables
+        run: node scripts/check-env-vars.js
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GITHUB_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.GH_CLIENT_SECRET }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+        continue-on-error: true
+
       - name: Install Playwright browsers
         run: npx playwright install chromium
 
@@ -179,6 +194,36 @@ jobs:
               body: comment
             });
 
+      - name: Deploy Vercel preview and post URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { execSync } = require('child_process');
+            try {
+              execSync('npm install --global vercel@latest', { stdio: 'inherit' });
+              execSync('vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}', { stdio: 'inherit' });
+              execSync('vercel build --token=${{ secrets.VERCEL_TOKEN }}', { stdio: 'inherit' });
+              const previewUrl = execSync(
+                'vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}',
+                { encoding: 'utf8' }
+              ).trim();
+
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🚀 Vercel Preview Deployment\n\nPreview URL: ${previewUrl}\n\nThis preview will be updated on each push to this PR.`
+              });
+            } catch (err) {
+              console.log('Preview deployment skipped (Vercel secrets may not be configured):', err.message);
+            }
+
   deploy:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
@@ -188,6 +233,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run pre-deployment checks
+        run: node scripts/pre-deployment-check.js
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest

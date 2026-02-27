@@ -58,6 +58,19 @@ This story qualifies as infrastructure because:
 - [Infrastructure Policy](../../process/infrastructure-policy.md)
 - [Retrospective Action Items](../../process/retrospective-action-item-tracking.md)
 
+## Pre-Review Checklist
+
+Before moving this story to `review` status, verify:
+
+- [ ] All acceptance criteria implemented and verified
+- [ ] `npx tsc --noEmit` — zero TypeScript errors
+- [ ] `npm run lint` — zero ESLint warnings or errors
+- [ ] `npm test` — all tests passing, zero regressions
+- [ ] No new non-null assertions (`!`) introduced in source files
+- [ ] No `console.log` left in production code
+- [ ] All new/modified files added to the Dev Agent Record File List
+- [ ] Story status updated to `done` in sprint-status.yaml
+
 ## Dev Agent Record
 
 ### Context Reference

@@ -171,9 +171,16 @@ The script is designed for CI pipelines. The existing `.github/workflows/test.ym
 
 | Workflow | Trigger | Checks |
 |----------|---------|--------|
-| `test.yml` | PR, push to main | Type check, lint, tests, build, benchmarks, deploy |
-| `lighthouse.yml` | PR | Performance, accessibility, best practices |
+| `test.yml` | PR, push to main | Env-check, type check, lint, tests, build, benchmarks, pre-deployment-check, deploy, Vercel preview URL |
+| `lighthouse.yml` | PR | Performance (≥90), accessibility (≥90), best practices (≥90) |
 | `coverage.yml` | Daily / manual | Test coverage report |
+
+### Pipeline Steps Added in Story 10-10
+
+- **Env-check step** (`test` job): Runs `scripts/check-env-vars.js` with all required production secrets before the build step. Uses `continue-on-error: true` to avoid blocking forks without secrets configured.
+- **Pre-deployment check** (`deploy` job): Runs `scripts/pre-deployment-check.js` after installing dependencies and before the Vercel deploy steps. Validates type-check, lint, tests, and build in the deploy environment.
+- **Vercel preview URL** (`test` job, PR only): Deploys a preview build to Vercel and posts the preview URL as a PR comment using `actions/github-script`.
+- **CI badge**: `README.md` now shows the live CI status badge linked to the `test.yml` workflow on `main`.
 
 ---
 

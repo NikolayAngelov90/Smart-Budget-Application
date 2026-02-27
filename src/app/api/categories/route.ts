@@ -126,8 +126,8 @@ export async function GET(request: NextRequest) {
             usage_count: 1,
           });
         } else {
-          const stats = usageMap.get(categoryId)!;
-          stats.usage_count += 1;
+          const stats = usageMap.get(categoryId);
+          if (stats) stats.usage_count += 1;
         }
       });
     }
@@ -148,8 +148,8 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => {
         // Sort by most recent usage
         return (
-          new Date(b.last_used_at!).getTime() -
-          new Date(a.last_used_at!).getTime()
+          new Date(b.last_used_at ?? '').getTime() -
+          new Date(a.last_used_at ?? '').getTime()
         );
       })
       .slice(0, 5); // Limit to 5 most recent

@@ -64,7 +64,7 @@ export async function DELETE(request: NextRequest) {
     // Verify password using Supabase Auth
     // AC-8.3.8: Password re-entry required
     const { error: passwordError } = await supabase.auth.signInWithPassword({
-      email: user.email!,
+      email: user.email ?? '',
       password: payload.confirmation_password,
     });
 

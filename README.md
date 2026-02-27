@@ -1,5 +1,6 @@
 # Smart Budget Application
 
+[![CI](https://github.com/NikolayAngelov90/Smart-Budget-Application/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/NikolayAngelov90/Smart-Budget-Application/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/NikolayAngelov90/Smart-Budget-Application/branch/main/graph/badge.svg)](https://codecov.io/gh/NikolayAngelov90/Smart-Budget-Application)
 
 Smart Budget is a personal finance management tool designed to provide financial visibility through quick transaction tracking, intelligent categorization, visual spending insights, and AI-powered budget optimization recommendations.

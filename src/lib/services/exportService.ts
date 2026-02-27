@@ -97,7 +97,7 @@ export async function exportTransactionsToCSV(
         const txCurrency = tx.currency || currencyCode || 'EUR';
         const hasConversion = tx.exchange_rate && txCurrency !== (currencyCode || 'EUR');
         const convertedAmount = hasConversion
-          ? tx.amount * tx.exchange_rate!
+          ? tx.amount * (tx.exchange_rate ?? 1)
           : tx.amount;
 
         return {
@@ -117,7 +117,7 @@ export async function exportTransactionsToCSV(
           Currency: txCurrency,
 
           // Story 10-6: Exchange rate (empty if same currency)
-          'Exchange Rate': hasConversion ? tx.exchange_rate!.toFixed(4) : '',
+          'Exchange Rate': hasConversion ? (tx.exchange_rate ?? 0).toFixed(4) : '',
 
           // Story 10-6: Converted amount in preferred currency
           'Converted Amount': hasConversion

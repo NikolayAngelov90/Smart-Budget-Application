@@ -138,7 +138,7 @@ development_status:
   10-7-enhanced-pwa-for-mobile-production: done
   10-8-mobile-optimized-touch-ui: done
   10-9-write-integration-tests: done
-  10-10-cicd-pipeline-integration: backlog
+  10-10-cicd-pipeline-integration: done
   epic-10-retrospective: optional
 
 # INFRASTRUCTURE TRACKING

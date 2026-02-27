@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <story-id>10-10</story-id>
+  <story-title>CI/CD Pipeline Integration &amp; Code Quality Hardening</story-title>
+  <story-type>Infrastructure</story-type>
+  <epic>10</epic>
+  <status>in-progress</status>
+
+  <!-- ============================================================
+       ACCEPTANCE CRITERIA SUMMARY
+       ============================================================ -->
+  <acceptance-criteria>
+    <ac id="AC-10.10.1">Integrate check-env-vars.js into CI test job before build step</ac>
+    <ac id="AC-10.10.2">Integrate pre-deployment-check.js into CI deploy job before Vercel steps</ac>
+    <ac id="AC-10.10.3">CI runs lint, type-check, unit tests, integration tests, build on every PR</ac>
+    <ac id="AC-10.10.4">CI fails if any check fails (blocking merge)</ac>
+    <ac id="AC-10.10.5">Replace ~15 non-null assertion (!) shortcuts with proper null handling</ac>
+    <ac id="AC-10.10.6">Lighthouse CI with 90+ performance / 90+ accessibility (already in lighthouse.yml)</ac>
+    <ac id="AC-10.10.7">Pre-review checklist added to story templates</ac>
+    <ac id="AC-10.10.8">GitHub Actions CI status badge in README.md</ac>
+    <ac id="AC-10.10.9">Vercel preview URL posted as PR comment</ac>
+    <ac id="AC-10.10.10">All tests passing, zero TypeScript errors, zero lint warnings</ac>
+    <ac id="AC-10.10.11">docs/deployment-checklist.md updated with CI pipeline documentation</ac>
+  </acceptance-criteria>
+
+  <!-- ============================================================
+       EXISTING CI/CD INFRASTRUCTURE
+       ============================================================ -->
+  <existing-workflows>
+    <workflow path=".github/workflows/test.yml">
+      <description>Main CI workflow: lint, type-check, tests, build, benchmarks, deploy to Vercel on push to main</description>
+      <jobs>
+        <job name="test">Steps: checkout, setup-node, npm ci, type-check, lint, tests+coverage, Codecov upload, coverage threshold check, Playwright install, build, start server, benchmarks, PR benchmark comment</job>
+        <job name="deploy">Steps: checkout, install Vercel CLI, vercel pull, vercel build --prod, vercel deploy --prebuilt --prod. Runs only on push to main.</job>
+      </jobs>
+      <gaps>
+        <gap ac="AC-10.10.1">check-env-vars.js not run in CI</gap>
+        <gap ac="AC-10.10.2">pre-deployment-check.js not run in CI</gap>
+        <gap ac="AC-10.10.9">No Vercel preview URL comment on PRs</gap>
+      </gaps>
+    </workflow>
+    <workflow path=".github/workflows/lighthouse.yml">
+      <description>Lighthouse CI on PRs — scores 90+ performance, 90+ accessibility, 90+ best-practices (AC-10.10.6 satisfied)</description>
+    </workflow>
+    <workflow path=".github/workflows/coverage.yml">
+      <description>Daily coverage report upload to Codecov</description>
+    </workflow>
+  </existing-workflows>
+
+  <!-- ============================================================
+       SCRIPTS TO INTEGRATE
+       ============================================================ -->
+  <scripts>
+    <script path="scripts/check-env-vars.js">
+      <description>Validates that required environment variables are set. Exits with code 1 if any are missing.</description>
+      <required-vars>NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, CRON_SECRET, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, NEXT_PUBLIC_APP_URL</required-vars>
+      <ci-integration>Add as step in test job: `run: node scripts/check-env-vars.js` with env vars from repository secrets</ci-integration>
+    </script>
+    <script path="scripts/pre-deployment-check.js">
+      <description>Runs type-check, lint, tests, and build validation. Returns exit code 1 on failure.</description>
+      <ci-integration>Add as step in deploy job before vercel commands: `run: node scripts/pre-deployment-check.js`</ci-integration>
+    </script>
+  </scripts>
+
+  <!-- ============================================================
+       NON-NULL ASSERTIONS TO FIX (AC-10.10.5)
+       ============================================================ -->
+  <non-null-assertions>
+    <file path="src/app/api/categories/route.ts">
+      <assertion line="129">usageMap.get(categoryId)! — safe because checked with has() but use non-null-safe pattern</assertion>
+      <assertion line="151">new Date(b.last_used_at!).getTime() — filtered to non-null above but use ?? ''</assertion>
+      <assertion line="152">new Date(a.last_used_at!).getTime() — same as above</assertion>
+      <fix>line 129: usageMap.get(categoryId) with explicit check; lines 151-152: use `last_used_at ?? ''`</fix>
+    </file>
+    <file path="src/app/api/insights/analytics/route.ts">
+      <assertion line="165">b.last_viewed_at! and a.last_viewed_at! — in sort after filter(i => i.last_viewed_at)</assertion>
+      <assertion line="170">b.dismissed_at! and a.dismissed_at! — in sort after filter(i => i.dismissed_at)</assertion>
+      <assertion line="177-178">b.last_metadata_expanded_at! and a.last_metadata_expanded_at! — in sort after filter</assertion>
+      <fix>Use non-null-safe: `new Date(b.last_viewed_at ?? '').getTime()` etc.</fix>
+    </file>
+    <file path="src/app/api/user/account/route.ts">
+      <assertion line="67">user.email! in signInWithPassword — use user.email ?? ''</assertion>
+    </file>
+    <file path="src/lib/services/exportService.ts">
+      <assertion line="100">tx.exchange_rate! in multiplication — use tx.exchange_rate ?? 1</assertion>
+      <assertion line="120">tx.exchange_rate!.toFixed(4) — use (tx.exchange_rate ?? 0).toFixed(4)</assertion>
+    </file>
+    <file path="src/lib/supabase/client.ts">
+      <assertion line="26">process.env.NEXT_PUBLIC_SUPABASE_URL! — add runtime guard with throw</assertion>
+      <assertion line="27">process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! — add runtime guard with throw</assertion>
+    </file>
+    <file path="src/lib/supabase/server.ts">
+      <assertion line="50">process.env.NEXT_PUBLIC_SUPABASE_URL! — add runtime guard</assertion>
+      <assertion line="51">process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! — add runtime guard</assertion>
+    </file>
+    <file path="src/middleware.ts">
+      <assertion line="37">process.env.NEXT_PUBLIC_SUPABASE_URL! — add runtime guard</assertion>
+      <assertion line="38">process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! — add runtime guard</assertion>
+    </file>
+    <file path="src/app/api/dashboard/stats/route.ts">
+      <assertion line="219">liveRates[transaction.currency]! — already guarded by != null check above; remove the !</assertion>
+    </file>
+  </non-null-assertions>
+
+  <!-- ============================================================
+       DOCUMENTATION TO UPDATE
+       ============================================================ -->
+  <documentation>
+    <doc path="README.md">
+      <change>Add GitHub Actions CI badge after the existing Codecov badge. Badge URL pattern: https://github.com/{owner}/{repo}/actions/workflows/test.yml/badge.svg</change>
+      <current-badges>[![codecov](https://codecov.io/gh/NikolayAngelov90/Smart-Budget-Application/branch/main/graph/badge.svg)]</current-badges>
+    </doc>
+    <doc path="docs/templates/infrastructure-story-template.md">
+      <change>Add pre-review checklist section before Dev Agent Record section (epic8-medium-2 action item)</change>
+    </doc>
+    <doc path="docs/deployment-checklist.md">
+      <change>Update CI/CD Workflows table to include env-check and pre-deployment-check steps; add note that preview URL is posted on PRs</change>
+    </doc>
+  </documentation>
+
+  <!-- ============================================================
+       RELATED FILES
+       ============================================================ -->
+  <related-files>
+    <file>src/app/api/categories/route.ts</file>
+    <file>src/app/api/insights/analytics/route.ts</file>
+    <file>src/app/api/user/account/route.ts</file>
+    <file>src/lib/services/exportService.ts</file>
+    <file>src/lib/supabase/client.ts</file>
+    <file>src/lib/supabase/server.ts</file>
+    <file>src/middleware.ts</file>
+    <file>src/app/api/dashboard/stats/route.ts</file>
+    <file>.github/workflows/test.yml</file>
+    <file>scripts/check-env-vars.js</file>
+    <file>scripts/pre-deployment-check.js</file>
+    <file>README.md</file>
+    <file>docs/templates/infrastructure-story-template.md</file>
+    <file>docs/deployment-checklist.md</file>
+  </related-files>
+</story-context>

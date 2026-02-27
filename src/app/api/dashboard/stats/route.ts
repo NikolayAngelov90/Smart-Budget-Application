@@ -216,7 +216,7 @@ function aggregateTransactions(
           amount = amount * transaction.exchange_rate;
         } else if (liveRates[transaction.currency] != null) {
           // Fallback to live rate (for transactions entered before currency preference was set)
-          amount = amount * liveRates[transaction.currency]!;
+          amount = amount * (liveRates[transaction.currency] ?? 1);
         }
       }
       if (transaction.type === 'income') {

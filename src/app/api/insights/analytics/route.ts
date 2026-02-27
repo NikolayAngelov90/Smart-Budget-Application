@@ -162,21 +162,21 @@ export async function GET() {
     // Find most recent engagement timestamps
     const lastViewedAt = insights
       .filter((i) => i.last_viewed_at)
-      .sort((a, b) => new Date(b.last_viewed_at!).getTime() - new Date(a.last_viewed_at!).getTime())
-      [0]?.last_viewed_at || null;
+      .sort((a, b) => new Date(b.last_viewed_at ?? '').getTime() - new Date(a.last_viewed_at ?? '').getTime())
+      [0]?.last_viewed_at ?? null;
 
     const lastDismissedAt = insights
       .filter((i) => i.dismissed_at)
-      .sort((a, b) => new Date(b.dismissed_at!).getTime() - new Date(a.dismissed_at!).getTime())
-      [0]?.dismissed_at || null;
+      .sort((a, b) => new Date(b.dismissed_at ?? '').getTime() - new Date(a.dismissed_at ?? '').getTime())
+      [0]?.dismissed_at ?? null;
 
     const lastMetadataExpandedAt = insights
       .filter((i) => i.last_metadata_expanded_at)
       .sort(
         (a, b) =>
-          new Date(b.last_metadata_expanded_at!).getTime() -
-          new Date(a.last_metadata_expanded_at!).getTime()
-      )[0]?.last_metadata_expanded_at || null;
+          new Date(b.last_metadata_expanded_at ?? '').getTime() -
+          new Date(a.last_metadata_expanded_at ?? '').getTime()
+      )[0]?.last_metadata_expanded_at ?? null;
 
     // Build analytics response
     const analytics: InsightAnalytics = {
