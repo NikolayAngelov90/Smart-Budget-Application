@@ -139,7 +139,7 @@ development_status:
   10-8-mobile-optimized-touch-ui: done
   10-9-write-integration-tests: done
   10-10-cicd-pipeline-integration: done
-  epic-10-retrospective: optional
+  epic-10-retrospective: completed
 
 # INFRASTRUCTURE TRACKING
 # =======================
