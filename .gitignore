@@ -16,6 +16,10 @@ node_modules/
 # Personal IDE AI Configuration
 .claude/
 .gemini/
+.github/copilot/
+
+# BMAD Method Output (artifacts are project-specific, not framework)
+_bmad-output/
 
 # IDE & Editor
 .vscode/
