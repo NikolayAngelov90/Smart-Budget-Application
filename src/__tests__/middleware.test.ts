@@ -11,7 +11,7 @@
 
 /** @jest-environment node */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
 // Mock @supabase/ssr
 const mockGetUser = jest.fn();
