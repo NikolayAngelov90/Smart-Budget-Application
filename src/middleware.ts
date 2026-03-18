@@ -23,8 +23,8 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Validates authentication state and enforces route access rules
  */
 export async function middleware(request: NextRequest) {
-  // Skip auth for benchmark mode (CI performance testing only)
-  if (process.env.BENCHMARK_MODE === 'true') {
+  // Skip auth for benchmark mode (CI performance testing only, never in production)
+  if (process.env.BENCHMARK_MODE === 'true' && process.env.NODE_ENV !== 'production') {
     return NextResponse.next({ request });
   }
 
@@ -65,11 +65,11 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired - required for server-side auth
-  // This validates the JWT token and refreshes it if needed
+  // Validate the JWT by calling getUser() - this makes a server call to Supabase
+  // Unlike getSession(), getUser() guarantees the token is valid and not tampered with
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const url = request.nextUrl.clone();
   const isProtectedRoute =
@@ -77,17 +77,16 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = url.pathname === '/login' || url.pathname === '/signup';
 
   // Rule 1: Redirect unauthenticated users from protected routes to login
-  if (!session && isProtectedRoute) {
+  if (!user && isProtectedRoute) {
     url.pathname = '/login';
     // Preserve the original URL to redirect back after login
     url.searchParams.set('redirect', request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
 
-  // Rule 2: Redirect authenticated users from auth pages to home
-  // TODO: Change to /dashboard when dashboard is implemented in Epic 5
-  if (session && isAuthRoute) {
-    url.pathname = '/';
+  // Rule 2: Redirect authenticated users from auth pages to dashboard
+  if (user && isAuthRoute) {
+    url.pathname = '/dashboard';
     url.searchParams.delete('redirect'); // Clear any redirect params
     return NextResponse.redirect(url);
   }

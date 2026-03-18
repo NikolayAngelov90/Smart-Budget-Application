@@ -165,8 +165,7 @@ export function localStorageProvider(): Map<string, any> {
 
   // Override Map.set to persist to localStorage
   const originalSet = map.set.bind(map);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  map.set = (key: string, value: any) => {
+  map.set = (key: string, value: unknown) => {
     // If not in browser environment, just use in-memory map
     if (typeof window === 'undefined') {
       return originalSet(key, value);

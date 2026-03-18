@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserProfile, updateUserProfile } from '@/lib/services/settingsService';
 import type { UpdateUserProfilePayload } from '@/types/user.types';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * GET /api/user/profile
@@ -47,7 +48,7 @@ export async function GET() {
 
     return NextResponse.json({ data: profile });
   } catch (error) {
-    console.error('GET /api/user/profile error:', error);
+    logger.error('Profile', 'GET /api/user/profile error:', error);
     return NextResponse.json(
       {
         error: {
@@ -111,7 +112,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ data: updatedProfile });
   } catch (error) {
-    console.error('PUT /api/user/profile error:', error);
+    logger.error('Profile', 'PUT /api/user/profile error:', error);
     return NextResponse.json(
       {
         error: {

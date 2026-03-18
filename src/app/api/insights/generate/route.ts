@@ -13,7 +13,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateInsights } from '@/lib/services/insightService';
-import { checkRateLimit, recordRateLimitAction } from '@/lib/services/rateLimitService';
+import { checkRateLimit } from '@/lib/services/rateLimitService';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * POST handler for insight generation
@@ -51,8 +52,9 @@ export async function POST(request: NextRequest) {
       const rateLimitCheck = await checkRateLimit(user.id);
 
       if (rateLimitCheck.exceeded) {
-        console.log(
-          `[Rate Limit] User ${user.id} exceeded rate limit. ${rateLimitCheck.remainingSeconds}s remaining`
+        logger.info(
+          'Insights',
+          `User ${user.id} exceeded rate limit. ${rateLimitCheck.remainingSeconds}s remaining`
         );
 
         return NextResponse.json(
@@ -65,8 +67,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Record this action for rate limiting
-      await recordRateLimitAction(user.id);
+      // Note: checkRateLimit() already consumes a token via ratelimiter.limit()
+      // when using Upstash. No separate recordRateLimitAction() call needed.
     }
 
     // Generate insights
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error generating insights:', error);
+    logger.error('Insights', 'Error generating insights:', error);
 
     return NextResponse.json(
       {

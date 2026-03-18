@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { deleteUserAccount } from '@/lib/services/settingsService';
 import type { DeleteAccountPayload, DeleteAccountResponse } from '@/types/user.types';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * DELETE /api/user/account
@@ -104,7 +105,7 @@ export async function DELETE(request: NextRequest) {
       .order('date', { ascending: false });
 
     if (transactionsError) {
-      console.error('Error fetching transactions for export:', transactionsError);
+      logger.error('Account', 'Error fetching transactions for export:', transactionsError);
       return NextResponse.json(
         {
           error: {
@@ -147,7 +148,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ data: response });
   } catch (error) {
-    console.error('DELETE /api/user/account error:', error);
+    logger.error('Account', 'DELETE /api/user/account error:', error);
     return NextResponse.json(
       {
         error: {

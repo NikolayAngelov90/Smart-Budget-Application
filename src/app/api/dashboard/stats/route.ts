@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { calculateTrend } from '@/lib/utils/currency';
 import { getExchangeRates } from '@/lib/services/exchangeRateService';
+import { logger } from '@/lib/utils/logger';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
       .lte('date', currentMonthEnd.toISOString());
 
     if (currentError) {
-      console.error('Error fetching current month stats:', currentError);
+      logger.error('Dashboard', 'Error fetching current month stats:', currentError);
       return NextResponse.json(
         { error: 'Failed to fetch current month stats' },
         { status: 500 }
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest) {
       .lte('date', previousMonthEnd.toISOString());
 
     if (previousError) {
-      console.error('Error fetching previous month stats:', previousError);
+      logger.error('Dashboard', 'Error fetching previous month stats:', previousError);
       return NextResponse.json(
         { error: 'Failed to fetch previous month stats' },
         { status: 500 }
@@ -147,7 +148,7 @@ export async function GET(request: NextRequest) {
           liveRateMap[fromCurrency] = rate;
         }
       } catch (e) {
-        console.warn(`[DashboardStats] Could not fetch live rate for ${fromCurrency}→${preferredCurrency}:`, e);
+        logger.warn('Dashboard', `Could not fetch live rate for ${fromCurrency}->${preferredCurrency}:`, e);
       }
     }
 
@@ -186,7 +187,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Unexpected error in dashboard stats API:', error);
+    logger.error('Dashboard', 'Unexpected error in dashboard stats API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

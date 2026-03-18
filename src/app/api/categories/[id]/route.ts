@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { logger } from '@/lib/utils/logger';
 
 // Validation schema for update
 const updateCategorySchema = z.object({
@@ -119,7 +120,7 @@ export async function PUT(
       .single();
 
     if (updateError) {
-      console.error('Error updating category:', updateError);
+      logger.error('Categories', 'Error updating category:', updateError);
       return NextResponse.json(
         { error: 'Failed to update category' },
         { status: 500 }
@@ -128,7 +129,7 @@ export async function PUT(
 
     return NextResponse.json({ data: updatedCategory }, { status: 200 });
   } catch (error) {
-    console.error('Unexpected error in PUT /api/categories/:id:', error);
+    logger.error('Categories', 'Unexpected error in PUT /api/categories/:id:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -182,7 +183,7 @@ export async function DELETE(
       .eq('category_id', id);
 
     if (countError) {
-      console.error('Error counting transactions:', countError);
+      logger.error('Categories', 'Error counting transactions:', countError);
       return NextResponse.json(
         { error: 'Failed to check transaction usage' },
         { status: 500 }
@@ -193,11 +194,11 @@ export async function DELETE(
     if (transactionCount && transactionCount > 0) {
       const { error: updateError } = await supabase
         .from('transactions')
-        .update({ category_id: null as unknown as string })
+        .update({ category_id: null } as Record<string, unknown>)
         .eq('category_id', id);
 
       if (updateError) {
-        console.error('Error orphaning transactions:', updateError);
+        logger.error('Categories', 'Error orphaning transactions:', updateError);
         return NextResponse.json(
           { error: 'Failed to update transactions' },
           { status: 500 }
@@ -213,7 +214,7 @@ export async function DELETE(
       .eq('user_id', user.id);
 
     if (deleteError) {
-      console.error('Error deleting category:', deleteError);
+      logger.error('Categories', 'Error deleting category:', deleteError);
       return NextResponse.json(
         { error: 'Failed to delete category' },
         { status: 500 }
@@ -228,7 +229,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/categories/:id:', error);
+    logger.error('Categories', 'Unexpected error in DELETE /api/categories/:id:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

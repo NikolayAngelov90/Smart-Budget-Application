@@ -13,7 +13,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sanitizeSearchQuery } from '@/lib/utils/sanitize';
 import type { InsightType } from '@/types/database.types';
+import { logger } from '@/lib/utils/logger';
 
 // Valid insight types
 const VALID_INSIGHT_TYPES: InsightType[] = [
@@ -22,6 +24,9 @@ const VALID_INSIGHT_TYPES: InsightType[] = [
   'unusual_expense',
   'positive_reinforcement',
 ];
+
+// Allowed columns for orderBy to prevent arbitrary column access
+const ALLOWED_ORDER_COLUMNS = ['priority', 'created_at', 'title', 'type'] as const;
 
 // Type guard to validate InsightType
 function isValidInsightType(type: string): type is InsightType {
@@ -88,9 +93,12 @@ export async function GET(request: NextRequest) {
       query = query.eq('type', typeParam);
     }
 
-    // Search in title and description
+    // Search in title and description (sanitized to prevent filter injection)
     if (searchQuery) {
-      query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      const sanitized = sanitizeSearchQuery(searchQuery);
+      if (sanitized) {
+        query = query.or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`);
+      }
     }
 
     // Order by (default: priority DESC, created_at DESC)
@@ -98,6 +106,15 @@ export async function GET(request: NextRequest) {
       // Parse orderBy parameter (e.g., "priority" or "created_at DESC")
       const orderParts = orderByParam.split(' ');
       const column = orderParts[0] ?? 'created_at';
+
+      // Validate column against whitelist to prevent arbitrary column access
+      if (!ALLOWED_ORDER_COLUMNS.includes(column as typeof ALLOWED_ORDER_COLUMNS[number])) {
+        return NextResponse.json(
+          { success: false, error: `Invalid orderBy column. Allowed: ${ALLOWED_ORDER_COLUMNS.join(', ')}` },
+          { status: 400 }
+        );
+      }
+
       const ascending = orderParts[1]?.toUpperCase() !== 'DESC';
       query = query.order(column, { ascending });
 
@@ -118,7 +135,7 @@ export async function GET(request: NextRequest) {
     const { data: insights, error, count } = await query;
 
     if (error) {
-      console.error('Database error:', error);
+      logger.error('Insights', 'Database error:', error);
       return NextResponse.json(
         { success: false, error: 'Failed to fetch insights' },
         { status: 500 }
@@ -134,7 +151,7 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error fetching insights:', error);
+    logger.error('Insights', 'Error fetching insights:', error);
 
     return NextResponse.json(
       {

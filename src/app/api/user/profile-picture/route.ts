@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { updateUserProfile } from '@/lib/services/settingsService';
 import { deleteProfilePicture, isValidSupabaseStorageUrl } from '@/lib/services/uploadService';
 import type { UserProfile } from '@/types/user.types';
+import { logger } from '@/lib/utils/logger';
 
 interface UpdateProfilePictureRequest {
   profile_picture_url: string;
@@ -110,7 +111,7 @@ export async function POST(
     if (oldPictureUrl && oldPictureUrl !== profile_picture_url) {
       // Fire and forget - don't await or block on deletion
       deleteProfilePicture(oldPictureUrl).catch((error) => {
-        console.error('Failed to delete old profile picture:', error);
+        logger.error('Profile', 'Failed to delete old profile picture:', error);
       });
     }
 
@@ -121,7 +122,7 @@ export async function POST(
       { status: 200 }
     );
   } catch (error) {
-    console.error('Profile picture update error:', error);
+    logger.error('Profile', 'Profile picture update error:', error);
 
     return NextResponse.json(
       {

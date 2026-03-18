@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Valid engagement event types
@@ -105,7 +106,7 @@ export async function POST(
         .eq('user_id', user.id);
 
       if (updateError) {
-        console.error('[Analytics] Error tracking view:', updateError);
+        logger.error('Analytics', 'Error tracking view:', updateError);
         return NextResponse.json(
           { success: false, error: 'Failed to track event' },
           { status: 500 }
@@ -134,7 +135,7 @@ export async function POST(
         .eq('user_id', user.id);
 
       if (updateError) {
-        console.error('[Analytics] Error tracking metadata expansion:', updateError);
+        logger.error('Analytics', 'Error tracking metadata expansion:', updateError);
         return NextResponse.json(
           { success: false, error: 'Failed to track event' },
           { status: 500 }
@@ -157,7 +158,7 @@ export async function POST(
       { status: 400 }
     );
   } catch (error) {
-    console.error('[Analytics] Error tracking engagement:', error);
+    logger.error('Analytics', 'Error tracking engagement:', error);
 
     return NextResponse.json(
       {

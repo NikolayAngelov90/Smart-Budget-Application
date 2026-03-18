@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/utils/logger';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
       .lte('date', monthEnd.toISOString());
 
     if (transactionsError) {
-      console.error('Error fetching transactions:', transactionsError);
+      logger.error('Dashboard', 'Error fetching transactions:', transactionsError);
       return NextResponse.json(
         { error: 'Failed to fetch spending data' },
         { status: 500 }
@@ -141,7 +142,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Unexpected error in spending-by-category API:', error);
+    logger.error('Dashboard', 'Unexpected error in spending-by-category API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

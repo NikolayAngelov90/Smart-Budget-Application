@@ -10,8 +10,17 @@
 
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { createHash } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import type { DeviceSession } from '@/types/session.types';
+import { logger } from '@/lib/utils/logger';
+
+/**
+ * Hash a session token with SHA-256 to avoid storing raw JWTs in the database
+ */
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
 
 /**
  * Detect device type from user agent string
@@ -80,17 +89,18 @@ export async function GET(): Promise<NextResponse> {
       );
     }
 
-    // Get current auth session token
+    // Get current auth session token and hash it for secure DB storage
     const { data: { session: authSession } } = await supabase.auth.getSession();
     const sessionToken = authSession?.access_token;
+    const hashedToken = sessionToken ? hashToken(sessionToken) : null;
 
     // Auto-register current session if we have a token
-    if (sessionToken) {
-      // Check if this session already exists (exact token match)
+    if (hashedToken) {
+      // Check if this session already exists (hashed token match)
       const { data: existing } = await supabase
         .from('user_sessions')
         .select('id')
-        .eq('session_token', sessionToken)
+        .eq('session_token', hashedToken)
         .maybeSingle();
 
       if (!existing) {
@@ -99,7 +109,7 @@ export async function GET(): Promise<NextResponse> {
         const userAgent = headersList.get('user-agent') || '';
         const forwardedFor = headersList.get('x-forwarded-for');
         const ipAddress = forwardedFor?.split(',')[0]?.trim() || null;
-        const deviceName = generateDeviceName(userAgent);
+        const deviceName = generateDeviceName(userAgent).slice(0, 100);
         const deviceType = detectDeviceType(userAgent);
         const browser = detectBrowser(userAgent);
 
@@ -119,13 +129,13 @@ export async function GET(): Promise<NextResponse> {
           // Same device, token rotated — update the existing session record
           await supabase
             .from('user_sessions')
-            .update({ session_token: sessionToken, last_active: new Date().toISOString() })
+            .update({ session_token: hashedToken, last_active: new Date().toISOString() })
             .eq('id', existingByDevice.id);
         } else {
           // Genuinely new device/browser — insert new session
           await supabase.from('user_sessions').insert({
             user_id: user.id,
-            session_token: sessionToken,
+            session_token: hashedToken,
             device_name: deviceName,
             device_type: deviceType,
             browser: browser,
@@ -138,7 +148,7 @@ export async function GET(): Promise<NextResponse> {
         await supabase
           .from('user_sessions')
           .update({ last_active: new Date().toISOString() })
-          .eq('session_token', sessionToken);
+          .eq('session_token', hashedToken);
       }
     }
 
@@ -150,7 +160,7 @@ export async function GET(): Promise<NextResponse> {
       .order('last_active', { ascending: false });
 
     if (fetchError) {
-      console.error('[Sessions API] Error fetching sessions:', fetchError);
+      logger.error('Sessions', 'Error fetching sessions:', fetchError);
       return NextResponse.json(
         { error: 'Failed to fetch sessions' },
         { status: 500 }
@@ -159,10 +169,10 @@ export async function GET(): Promise<NextResponse> {
 
     return NextResponse.json({
       data: sessions as DeviceSession[],
-      current_session_token: sessionToken || null,
+      current_session_token: hashedToken || null,
     });
   } catch (error) {
-    console.error('[Sessions API] Unexpected error:', error);
+    logger.error('Sessions', 'Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

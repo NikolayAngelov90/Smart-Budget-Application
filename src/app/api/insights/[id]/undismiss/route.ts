@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/utils/logger';
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -62,7 +63,7 @@ export async function PUT(
         );
       }
 
-      console.error('Database error:', error);
+      logger.error('Insights', 'Database error:', error);
       return NextResponse.json(
         { success: false, error: 'Failed to restore insight' },
         { status: 500 }
@@ -78,7 +79,7 @@ export async function PUT(
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error restoring insight:', error);
+    logger.error('Insights', 'Error restoring insight:', error);
 
     return NextResponse.json(
       {

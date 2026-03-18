@@ -218,10 +218,10 @@ export function SpendingTrendsChart({
         <LineChart
           data={chartData}
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onClick={(data: any) => {
-            if (data && data.activePayload && data.activePayload.length > 0) {
-              handleLineClick(data.activePayload[0].payload);
+          onClick={(data) => {
+            if (data && data.activeTooltipIndex != null) {
+              const point = chartData[data.activeTooltipIndex as number];
+              if (point) handleLineClick(point);
             }
           }}
           role="button"

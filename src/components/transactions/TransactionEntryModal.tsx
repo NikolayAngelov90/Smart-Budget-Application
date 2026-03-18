@@ -257,33 +257,43 @@ export default function TransactionEntryModal({
   }, [isOpen, mode, transaction, reset, preferredCurrency]);
 
   // Story 10-6 AC-10.6.5: Auto-fetch exchange rate when currency changes
+  // Uses AbortController to cancel stale requests when currency changes rapidly
   useEffect(() => {
     if (selectedCurrency === preferredCurrency) {
       setExchangeRate(null);
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
     async function fetchRate() {
       try {
         const response = await fetch(
-          `/api/exchange-rates?base=${selectedCurrency}`
+          `/api/exchange-rates?base=${selectedCurrency}`,
+          { signal: controller.signal }
         );
-        if (!response.ok || cancelled) return;
+        if (!response.ok) {
+          throw new Error('Failed to fetch exchange rate');
+        }
         const data = await response.json();
-        if (cancelled) return;
         const rate = data.rates?.[preferredCurrency];
         if (rate) {
           setExchangeRate(rate);
         }
-      } catch {
-        // Silently fail - exchange rate is optional
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        toast({
+          title: t('exchangeRateUnavailable') || 'Exchange rate unavailable',
+          description: t('exchangeRateError') || 'Could not fetch exchange rate. You can still save the transaction.',
+          status: 'warning',
+          duration: 4000,
+          isClosable: true,
+        });
       }
     }
 
     fetchRate();
-    return () => { cancelled = true; };
-  }, [selectedCurrency, preferredCurrency]);
+    return () => { controller.abort(); };
+  }, [selectedCurrency, preferredCurrency, toast, t]);
 
   // Quick date setter functions
   const setQuickDate = (daysAgo: number) => {
@@ -415,8 +425,8 @@ export default function TransactionEntryModal({
             {...register('amount')}
             onBlur={handleAmountBlur}
             _focus={{
-              borderColor: '#2b6cb0',
-              boxShadow: '0 0 0 1px #2b6cb0',
+              borderColor: 'blue.600',
+              boxShadow: '0 0 0 1px blue.600',
             }}
           />
           {errors.amount && (
@@ -484,7 +494,7 @@ export default function TransactionEntryModal({
           <FormLabel htmlFor="category_id">{t('category')}</FormLabel>
           {isLoadingCategories ? (
             <Box display="flex" alignItems="center" justifyContent="center" py={4}>
-              <Spinner size="md" color="#2b6cb0" />
+              <Spinner size="md" color="blue.600" />
               <Text ml={3}>{tCommon('loading')}</Text>
             </Box>
           ) : (
@@ -524,8 +534,8 @@ export default function TransactionEntryModal({
             max={format(new Date(), 'yyyy-MM-dd')}
             {...register('date')}
             _focus={{
-              borderColor: '#2b6cb0',
-              boxShadow: '0 0 0 1px #2b6cb0',
+              borderColor: 'blue.600',
+              boxShadow: '0 0 0 1px blue.600',
             }}
           />
           {errors.date && <FormErrorMessage>{errors.date.message}</FormErrorMessage>}
@@ -542,8 +552,8 @@ export default function TransactionEntryModal({
             maxLength={100}
             {...register('notes')}
             _focus={{
-              borderColor: '#2b6cb0',
-              boxShadow: '0 0 0 1px #2b6cb0',
+              borderColor: 'blue.600',
+              boxShadow: '0 0 0 1px blue.600',
             }}
           />
           {errors.notes && <FormErrorMessage>{errors.notes.message}</FormErrorMessage>}
@@ -570,10 +580,10 @@ export default function TransactionEntryModal({
         >
           <Button
             type="submit"
-            bg="#2b6cb0"
+            bg="blue.600"
             color="white"
-            _hover={{ bg: isOnline ? '#2c5282' : '#2b6cb0' }}
-            _active={{ bg: isOnline ? '#2c5282' : '#2b6cb0' }}
+            _hover={{ bg: isOnline ? 'blue.700' : 'blue.600' }}
+            _active={{ bg: isOnline ? 'blue.700' : 'blue.600' }}
             isLoading={isSubmitting}
             isDisabled={!isValid || isSubmitting || !isOnline}
             loadingText="Saving..."

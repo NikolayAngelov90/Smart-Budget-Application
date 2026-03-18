@@ -37,6 +37,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * GET /api/categories
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (categoriesError) {
-      console.error('Error fetching categories:', categoriesError);
+      logger.error('Categories', 'Error fetching categories:', categoriesError);
       return NextResponse.json(
         { error: 'Failed to fetch categories' },
         { status: 500 }
@@ -165,7 +166,7 @@ export async function GET(request: NextRequest) {
       count: categoriesWithUsage.length,
     });
   } catch (error) {
-    console.error('Unexpected error in GET /api/categories:', error);
+    logger.error('Categories', 'Unexpected error in GET /api/categories:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -244,7 +245,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (checkError) {
-      console.error('Error checking duplicate category:', checkError);
+      logger.error('Categories', 'Error checking duplicate category:', checkError);
       return NextResponse.json(
         { error: 'Failed to validate category' },
         { status: 500 }
@@ -272,7 +273,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('Error creating category:', insertError);
+      logger.error('Categories', 'Error creating category:', insertError);
 
       // Check if it's a unique constraint violation (fallback in case pre-check missed it)
       if (insertError.code === '23505') {
@@ -293,7 +294,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Unexpected error in POST /api/categories:', error);
+    logger.error('Categories', 'Unexpected error in POST /api/categories:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

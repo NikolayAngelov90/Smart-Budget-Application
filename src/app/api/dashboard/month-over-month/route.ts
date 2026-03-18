@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { logger } from '@/lib/utils/logger';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
       .lte('date', currentEnd.toISOString());
 
     if (currentError) {
-      console.error('Error fetching current month transactions:', currentError);
+      logger.error('Dashboard', 'Error fetching current month transactions:', currentError);
       return NextResponse.json(
         { error: 'Failed to fetch current month data' },
         { status: 500 }
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
       .lte('date', previousEnd.toISOString());
 
     if (previousError) {
-      console.error('Error fetching previous month transactions:', previousError);
+      logger.error('Dashboard', 'Error fetching previous month transactions:', previousError);
       return NextResponse.json(
         { error: 'Failed to fetch previous month data' },
         { status: 500 }
@@ -136,7 +137,7 @@ export async function GET(request: NextRequest) {
       .in('id', Array.from(categoryIds));
 
     if (categoriesError) {
-      console.error('Error fetching categories:', categoriesError);
+      logger.error('Dashboard', 'Error fetching categories:', categoriesError);
       return NextResponse.json(
         { error: 'Failed to fetch categories' },
         { status: 500 }
@@ -198,7 +199,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Unexpected error in month-over-month API:', error);
+    logger.error('Dashboard', 'Unexpected error in month-over-month API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

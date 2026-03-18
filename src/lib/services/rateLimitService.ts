@@ -17,8 +17,11 @@ import { Redis as UpstashRedis } from '@upstash/redis';
 import { getRedisClient, getRedisProvider, isRedisConfigured } from '@/lib/redis/client';
 
 /**
- * Fallback in-memory cache for local development
- * Only used when Redis is not configured
+ * Fallback in-memory cache for local development.
+ *
+ * WARNING: This fallback provides NO effective rate limiting in serverless
+ * environments (e.g., Vercel) because each function invocation may run in a
+ * different instance with its own memory. Only useful for local development.
  */
 const fallbackCache = new Map<
   string,

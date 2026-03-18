@@ -30,6 +30,12 @@ import type { Session, User } from '@supabase/supabase-js';
  */
 export async function getSession(): Promise<Session | null> {
   const supabase = await createClient();
+  // Use getUser() to validate the JWT server-side (getSession() only reads from cookies)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  // Return the session after user validation confirms it's legitimate
   const {
     data: { session },
   } = await supabase.auth.getSession();

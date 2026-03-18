@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -27,10 +27,15 @@ const WARNING_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 export function useInactivityLogout() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [showWarning, setShowWarning] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(WARNING_DURATION_MS / 1000); // seconds
+
+  // Use ref to track showWarning so event handlers always read the latest value
+  // without needing to re-register listeners on every state change
+  const showWarningRef = useRef(showWarning);
+  showWarningRef.current = showWarning;
 
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -121,12 +126,12 @@ export function useInactivityLogout() {
     }
   }, [resetTimers]);
 
-  // Handle user activity
+  // Handle user activity - uses ref to avoid re-registering listeners on state change
   const handleActivity = useCallback(() => {
-    if (!showWarning) {
+    if (!showWarningRef.current) {
       resetTimers();
     }
-  }, [showWarning, resetTimers]);
+  }, [resetTimers]);
 
   // Setup activity listeners and broadcast channel
   useEffect(() => {

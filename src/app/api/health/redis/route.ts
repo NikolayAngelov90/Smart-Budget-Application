@@ -11,6 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { getRedisProvider, isRedisConfigured, pingRedis } from '@/lib/redis/client';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * GET handler for Redis health check
@@ -89,7 +90,7 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
-    console.error('[Health Check] Redis health check error:', error);
+    logger.error('Health', 'Redis health check error:', error);
 
     return NextResponse.json(
       {

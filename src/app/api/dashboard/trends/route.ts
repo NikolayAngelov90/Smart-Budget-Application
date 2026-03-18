@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { format } from 'date-fns';
+import { logger } from '@/lib/utils/logger';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -68,11 +69,10 @@ export async function GET(request: NextRequest) {
     startDate.setDate(1);
     startDate.setHours(0, 0, 0, 0);
 
-    // Query transactions with server-side aggregation using SQL function
-    // We need to use Supabase RPC or raw query for DATE_TRUNC
-    // Since Supabase client doesn't directly support DATE_TRUNC in select,
-    // we'll fetch all transactions and aggregate client-side for now
-    // (In production, you'd use a database function or RPC call)
+    // Fetch transactions for date range and aggregate in JS.
+    // Only 3 columns are selected, filtered by user + date range (max 24 months).
+    // For a Supabase RPC with DATE_TRUNC, a database function would be needed.
+    // Current approach is acceptable for per-user budget-app scale.
 
     const { data: transactions, error: transactionsError } = await supabase
       .from('transactions')
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       .order('date', { ascending: true });
 
     if (transactionsError) {
-      console.error('Error fetching transactions:', transactionsError);
+      logger.error('Dashboard', 'Error fetching transactions:', transactionsError);
       return NextResponse.json(
         { error: 'Failed to fetch trends data' },
         { status: 500 }
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Unexpected error in trends API:', error);
+    logger.error('Dashboard', 'Unexpected error in trends API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

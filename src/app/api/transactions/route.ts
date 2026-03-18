@@ -43,6 +43,9 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { checkAndTriggerForTransactionCount } from '@/lib/services/insightService';
+import { sanitizeSearchQuery } from '@/lib/utils/sanitize';
+import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '@/lib/utils/constants';
+import { logger } from '@/lib/utils/logger';
 
 // Type definitions
 interface CreateTransactionRequest {
@@ -147,10 +150,13 @@ export async function GET(request: NextRequest) {
     // Note: For category name search, we'll filter client-side after fetching
     // because Supabase doesn't support searching in joined table columns directly
     if (searchQuery) {
-      // Search in notes field (case-insensitive)
-      query = query.or(
-        `notes.ilike.%${searchQuery}%,amount.eq.${parseFloat(searchQuery) || -1}`
-      );
+      const sanitized = sanitizeSearchQuery(searchQuery);
+      if (sanitized) {
+        // Search in notes field (case-insensitive) and by exact amount
+        const numericAmount = parseFloat(searchQuery);
+        const amountFilter = !isNaN(numericAmount) ? `,amount.eq.${numericAmount}` : '';
+        query = query.or(`notes.ilike.%${sanitized}%${amountFilter}`);
+      }
     }
 
     // Order by date descending (newest first), then by created_at for consistent ordering
@@ -165,7 +171,7 @@ export async function GET(request: NextRequest) {
     const { data: transactions, error: fetchError, count } = await query;
 
     if (fetchError) {
-      console.error('Error fetching transactions:', fetchError);
+      logger.error('Transactions', 'Error fetching transactions:', fetchError);
       return NextResponse.json(
         { error: 'Failed to fetch transactions' },
         { status: 500 }
@@ -193,7 +199,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Unexpected error in GET /api/transactions:', error);
+    logger.error('Transactions', 'Unexpected error in GET /api/transactions:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -302,10 +308,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Story 10-6: Validate currency if provided
-    const validCurrencies = ['EUR', 'USD', 'GBP'];
-    const currency = body.currency && validCurrencies.includes(body.currency)
+    const currency = body.currency && (SUPPORTED_CURRENCIES as readonly string[]).includes(body.currency)
       ? body.currency
-      : 'EUR';
+      : DEFAULT_CURRENCY;
 
     // Create transaction
     const { data: transaction, error: insertError } = await supabase
@@ -337,7 +342,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('Error creating transaction:', insertError);
+      logger.error('Transactions', 'Error creating transaction:', insertError);
       return NextResponse.json(
         { error: 'Failed to create transaction' },
         { status: 500 }
@@ -348,12 +353,12 @@ export async function POST(request: NextRequest) {
     // Story 6.5: AC1 - Automatic Generation after 10+ transactions
     // This is non-blocking - we don't wait for it to complete
     checkAndTriggerForTransactionCount(user.id).catch((error) => {
-      console.error('[Transaction] Failed to check insight trigger:', error);
+      logger.error('Transactions', 'Failed to check insight trigger:', error);
     });
 
     return NextResponse.json({ data: transaction }, { status: 201 });
   } catch (error) {
-    console.error('Unexpected error in POST /api/transactions:', error);
+    logger.error('Transactions', 'Unexpected error in POST /api/transactions:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

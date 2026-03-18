@@ -18,6 +18,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { logger } from '@/lib/utils/logger';
 
 // Type definitions
 interface UpdateTransactionRequest {
@@ -202,7 +203,7 @@ export async function PUT(
       .single();
 
     if (updateError || !transaction) {
-      console.error('Error updating transaction:', updateError);
+      logger.error('Transactions', 'Error updating transaction:', updateError);
 
       // Check if transaction doesn't exist or doesn't belong to user
       const { data: checkExists } = await supabase
@@ -226,7 +227,7 @@ export async function PUT(
 
     return NextResponse.json({ data: transaction }, { status: 200 });
   } catch (error) {
-    console.error('Unexpected error in PUT /api/transactions/[id]:', error);
+    logger.error('Transactions', 'Unexpected error in PUT /api/transactions/[id]:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -301,7 +302,7 @@ export async function DELETE(
       .eq('user_id', user.id);
 
     if (deleteError) {
-      console.error('Error deleting transaction:', deleteError);
+      logger.error('Transactions', 'Error deleting transaction:', deleteError);
       return NextResponse.json(
         { error: 'Failed to delete transaction' },
         { status: 500 }
@@ -316,7 +317,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/transactions/[id]:', error);
+    logger.error('Transactions', 'Unexpected error in DELETE /api/transactions/[id]:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

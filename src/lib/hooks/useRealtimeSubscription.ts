@@ -8,11 +8,14 @@
  * Automatically handles subscription lifecycle (subscribe on mount, unsubscribe on unmount).
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { realtimeManager, type RealtimeListener } from '@/lib/realtime/subscriptionManager';
 
 /**
- * Hook for subscribing to transaction changes via centralized manager
+ * Hook for subscribing to transaction changes via centralized manager.
+ * Uses a stable ref wrapper so the subscription is only set up once on mount
+ * and torn down on unmount, avoiding churn when callers pass inline callbacks.
+ *
  * @param callback - Function to call when a transaction change event occurs
  *
  * @example
@@ -24,13 +27,19 @@ import { realtimeManager, type RealtimeListener } from '@/lib/realtime/subscript
  * ```
  */
 export function useRealtimeSubscription(callback: RealtimeListener): void {
-  useEffect(() => {
-    // Subscribe to manager events
-    realtimeManager.addListener(callback);
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
 
-    // Cleanup: Unsubscribe on unmount
-    return () => {
-      realtimeManager.removeListener(callback);
+  useEffect(() => {
+    // Stable wrapper that always calls the latest callback
+    const stableListener: RealtimeListener = (event) => {
+      callbackRef.current(event);
     };
-  }, [callback]);
+
+    realtimeManager.addListener(stableListener);
+
+    return () => {
+      realtimeManager.removeListener(stableListener);
+    };
+  }, []);
 }

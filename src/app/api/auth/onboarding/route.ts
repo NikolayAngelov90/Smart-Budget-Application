@@ -28,6 +28,7 @@ import { createClient } from '@/lib/supabase/server';
 import { seedDefaultCategories } from '@/lib/services/seedCategoriesService';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * POST /api/auth/onboarding
@@ -49,7 +50,7 @@ export async function POST() {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      console.error('Onboarding auth error:', authError);
+      logger.error('Onboarding', 'Auth error:', authError);
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -61,7 +62,7 @@ export async function POST() {
     const validation = userIdSchema.safeParse(user.id);
 
     if (!validation.success) {
-      console.error('Invalid userId format:', user.id);
+      logger.error('Onboarding', 'Invalid userId format:', user.id);
       return NextResponse.json(
         { error: 'Invalid user ID format' },
         { status: 400 }
@@ -79,7 +80,7 @@ export async function POST() {
     });
   } catch (error) {
     // Log error with context for debugging
-    console.error('Onboarding error:', {
+    logger.error('Onboarding', 'Error:', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
     });

@@ -7,7 +7,7 @@
  * RLS policies ensure users can only access their own data
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import type { UserProfile, UpdateUserProfilePayload, UserPreferences } from '@/types/user.types';
 
 /**
@@ -225,8 +225,9 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
       throw new Error(`Failed to delete user profile: ${profileError.message}`);
     }
 
-    // Delete auth user (cascades to transactions, categories, insights)
-    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    // Delete auth user using service role client (admin operations require elevated privileges)
+    const adminClient = createServiceRoleClient();
+    const { error: authError } = await adminClient.auth.admin.deleteUser(userId);
 
     if (authError) {
       console.error('Error deleting auth user:', authError);

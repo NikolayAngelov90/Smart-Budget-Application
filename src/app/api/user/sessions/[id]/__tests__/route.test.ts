@@ -3,6 +3,7 @@
  * Story 9-6: Complete Device Session Management (AC-9.6.9)
  */
 
+import { createHash } from 'crypto';
 import { NextRequest } from 'next/server';
 import { PUT, DELETE } from '@/app/api/user/sessions/[id]/route';
 
@@ -196,10 +197,11 @@ describe('DELETE /api/user/sessions/:id', () => {
   });
 
   it('returns 400 when trying to revoke current session (AC-9.6.7)', async () => {
+    const hashedToken = createHash('sha256').update('current-access-token').digest('hex');
     const currentSession = {
       id: 'session-1',
       user_id: 'user-123',
-      session_token: 'current-access-token',
+      session_token: hashedToken,
     };
 
     mockGetUser.mockResolvedValueOnce({

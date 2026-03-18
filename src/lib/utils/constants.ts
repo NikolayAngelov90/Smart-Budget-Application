@@ -38,3 +38,19 @@ export const DEFAULT_CATEGORIES = [
   { name: 'Investment', color: '#9f7aea', type: 'income' as const },
   { name: 'Gift', color: '#f56565', type: 'income' as const },
 ] as const;
+
+/**
+ * Supported currencies for multi-currency transactions
+ * Story 10-6: Transaction Multi-Currency Support
+ * Story 11.3: Extracted from hardcoded values for consistency
+ *
+ * ISO 4217 currency codes supported by the application.
+ * Used for validation in API routes and display in UI components.
+ */
+export const SUPPORTED_CURRENCIES = ['EUR', 'USD', 'GBP'] as const;
+export type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number];
+
+/**
+ * Default currency used when no currency is specified
+ */
+export const DEFAULT_CURRENCY: SupportedCurrency = 'EUR';

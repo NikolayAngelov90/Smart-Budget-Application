@@ -11,8 +11,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import type { DeviceSession, UpdateDeviceNamePayload } from '@/types/session.types';
+import { logger } from '@/lib/utils/logger';
+
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -80,7 +86,7 @@ export async function PUT(
       .single();
 
     if (updateError) {
-      console.error('[Sessions API] Error updating session:', updateError);
+      logger.error('Sessions', 'Error updating session:', updateError);
       return NextResponse.json(
         { error: 'Failed to update device name' },
         { status: 500 }
@@ -98,7 +104,7 @@ export async function PUT(
       data: session as DeviceSession,
     });
   } catch (error) {
-    console.error('[Sessions API] Unexpected error:', error);
+    logger.error('Sessions', 'Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -151,8 +157,8 @@ export async function DELETE(
     }
 
     // AC-9.6.7: Check if trying to revoke current session
-    // Compare session tokens to prevent self-lockout
-    if (authSession && sessionToDelete.session_token === authSession.access_token) {
+    // Compare hashed tokens to prevent self-lockout (tokens are stored hashed in DB)
+    if (authSession && sessionToDelete.session_token === hashToken(authSession.access_token)) {
       return NextResponse.json(
         { error: 'Cannot revoke your current session' },
         { status: 400 }
@@ -167,7 +173,7 @@ export async function DELETE(
       .eq('user_id', user.id);
 
     if (deleteError) {
-      console.error('[Sessions API] Error deleting session:', deleteError);
+      logger.error('Sessions', 'Error deleting session:', deleteError);
       return NextResponse.json(
         { error: 'Failed to revoke session' },
         { status: 500 }
@@ -179,7 +185,7 @@ export async function DELETE(
       message: 'Session revoked successfully',
     });
   } catch (error) {
-    console.error('[Sessions API] Unexpected error:', error);
+    logger.error('Sessions', 'Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

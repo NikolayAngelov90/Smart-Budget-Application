@@ -13,7 +13,13 @@ import { createClient } from '@/lib/supabase/server';
 import type { UserProfile, UpdateUserProfilePayload } from '@/types/user.types';
 
 // Mock Supabase client
-jest.mock('@/lib/supabase/server');
+const mockAdminDeleteUser = jest.fn();
+jest.mock('@/lib/supabase/server', () => ({
+  createClient: jest.fn(),
+  createServiceRoleClient: jest.fn(() => ({
+    auth: { admin: { deleteUser: mockAdminDeleteUser } },
+  })),
+}));
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
@@ -476,7 +482,7 @@ describe('settingsService', () => {
       mockDelete.mockReturnValue({ eq: mockEq });
 
       // Mock auth.admin.deleteUser
-      mockSupabase.auth.admin.deleteUser.mockResolvedValue({
+      mockAdminDeleteUser.mockResolvedValue({
         error: null,
       });
 
@@ -486,7 +492,7 @@ describe('settingsService', () => {
       expect(mockSupabase.from).toHaveBeenCalledWith('user_profiles');
       expect(mockDelete).toHaveBeenCalled();
       expect(mockEq).toHaveBeenCalledWith('id', mockUserId);
-      expect(mockSupabase.auth.admin.deleteUser).toHaveBeenCalledWith(mockUserId);
+      expect(mockAdminDeleteUser).toHaveBeenCalledWith(mockUserId);
     });
 
     test('throws error when deletion fails', async () => {
@@ -519,7 +525,7 @@ describe('settingsService', () => {
       mockDelete.mockReturnValue({ eq: mockEq });
 
       // Mock auth.admin.deleteUser
-      mockSupabase.auth.admin.deleteUser.mockResolvedValue({
+      mockAdminDeleteUser.mockResolvedValue({
         error: null,
       });
 
@@ -528,7 +534,7 @@ describe('settingsService', () => {
       // Verify user_profiles delete was called
       // Database CASCADE will handle auth.users deletion
       expect(mockDelete).toHaveBeenCalled();
-      expect(mockSupabase.auth.admin.deleteUser).toHaveBeenCalledWith(mockUserId);
+      expect(mockAdminDeleteUser).toHaveBeenCalledWith(mockUserId);
     });
   });
 });

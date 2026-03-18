@@ -189,7 +189,7 @@ describe('GET /api/health/redis', () => {
       expect(data.error).toBe('Unexpected error');
       expect(data.timestamp).toBeDefined();
       expect(console.error).toHaveBeenCalledWith(
-        '[Health Check] Redis health check error:',
+        '[ERROR] [Health] Redis health check error:',
         expect.any(Error)
       );
     });

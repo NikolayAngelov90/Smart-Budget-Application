@@ -11,6 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/utils/logger';
 
 interface InsightAnalytics {
   totalInsights: number;
@@ -65,7 +66,7 @@ export async function GET() {
       .eq('user_id', user.id);
 
     if (fetchError) {
-      console.error('[Analytics] Error fetching insights:', fetchError);
+      logger.error('Analytics', 'Error fetching insights:', fetchError);
       return NextResponse.json(
         { success: false, error: 'Failed to fetch analytics' },
         { status: 500 }
@@ -155,7 +156,7 @@ export async function GET() {
     const insightsByType = Object.values(typeGroups).map((group) => ({
       type: group.type,
       count: group.count,
-      avgViews: group.totalViews / group.count,
+      avgViews: group.count > 0 ? group.totalViews / group.count : 0,
       dismissedCount: group.dismissedCount,
     }));
 
@@ -205,7 +206,7 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
-    console.error('[Analytics] Error generating analytics:', error);
+    logger.error('Analytics', 'Error generating analytics:', error);
 
     return NextResponse.json(
       {

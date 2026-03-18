@@ -71,10 +71,10 @@ export function InactivityWarningModal({
 
         <ModalFooter justifyContent="center">
           <Button
-            bg="#2b6cb0"
+            bg="blue.600"
             color="white"
-            _hover={{ bg: '#2c5282' }}
-            _active={{ bg: '#2c5282' }}
+            _hover={{ bg: 'blue.700' }}
+            _active={{ bg: 'blue.700' }}
             size="lg"
             minH="44px"
             px={8}

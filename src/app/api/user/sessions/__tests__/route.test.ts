@@ -3,6 +3,7 @@
  * Story 9-6: Complete Device Session Management (AC-9.6.9)
  */
 
+import { createHash } from 'crypto';
 import { GET } from '@/app/api/user/sessions/route';
 
 // Mock next/headers
@@ -153,12 +154,13 @@ describe('GET /api/user/sessions', () => {
     const response = await GET();
     const data = await response.json();
 
+    const hashedToken = createHash('sha256').update('token-abc').digest('hex');
     expect(response.status).toBe(200);
-    expect(data.current_session_token).toBe('token-abc');
+    expect(data.current_session_token).toBe(hashedToken);
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: 'user-123',
-        session_token: 'token-abc',
+        session_token: hashedToken,
         device_type: 'desktop',
         browser: 'Chrome',
       })

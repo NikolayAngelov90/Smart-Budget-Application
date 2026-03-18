@@ -133,8 +133,8 @@ export async function generateInsights(
     return [];
   }
 
-  // TODO: Fetch existing budgets when budget table is implemented
-  // For now, use undefined budget (rules will handle gracefully)
+  // Budget table is not part of the current MVP scope.
+  // Rules handle the absence of budgets gracefully by skipping budget-based insights.
   const budgetMap = new Map<string, number>();
 
   // Generate insights for each category

@@ -141,6 +141,15 @@ development_status:
   10-10-cicd-pipeline-integration: done
   epic-10-retrospective: completed
 
+  # Epic 11: Security & Code Quality Hardening (Adversarial Review Findings)
+  epic-11: contexted
+  11-1-critical-security-fixes: done
+  11-2-security-headers-input-sanitization: done
+  11-3-code-quality-type-safety: done
+  11-4-performance-infrastructure-fixes: done
+  11-5-cicd-test-coverage-hardening: done
+  epic-11-retrospective: completed
+
 # INFRASTRUCTURE TRACKING
 # =======================
 # Tracks infrastructure vs feature story allocation per epic.
@@ -208,3 +217,16 @@ infrastructure_tracking:
     infrastructure_percentage: 20
     status: on_target
     notes: "Feature-focused epic with i18n, multi-currency, mobile. 20% infrastructure per policy."
+
+  epic-11:
+    total_stories: 5
+    infrastructure_stories:
+      - 11-1-critical-security-fixes
+      - 11-2-security-headers-input-sanitization
+      - 11-3-code-quality-type-safety
+      - 11-4-performance-infrastructure-fixes
+      - 11-5-cicd-test-coverage-hardening
+    feature_stories: []
+    infrastructure_percentage: 100
+    status: above_target
+    notes: "Full infrastructure epic - addresses 31 adversarial review findings across security, quality, performance, and CI/CD"

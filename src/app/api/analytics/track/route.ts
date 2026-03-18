@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { TrackEventPayload, TrackEventResponse, DeviceType } from '@/types/analytics.types';
 import type { Json } from '@/types/database.types';
+import { logger } from '@/lib/utils/logger';
 
 // Valid event names for validation
 const VALID_EVENT_NAMES = [
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TrackEven
       .single();
 
     if (insertError) {
-      console.error('[Analytics] Error inserting event:', insertError);
+      logger.error('Analytics', 'Error inserting event:', insertError);
       return NextResponse.json(
         { success: false, error: 'Failed to store event' },
         { status: 500 }
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TrackEven
       { status: 201 }
     );
   } catch (error) {
-    console.error('[Analytics] Error tracking event:', error);
+    logger.error('Analytics', 'Error tracking event:', error);
     return NextResponse.json(
       {
         success: false,

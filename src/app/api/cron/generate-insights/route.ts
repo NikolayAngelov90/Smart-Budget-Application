@@ -13,8 +13,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { generateInsights } from '@/lib/services/insightService';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * GET handler for scheduled cron job
@@ -37,12 +39,19 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // 1. Verify cron secret token for security
+    // 1. Verify cron secret token using timing-safe comparison
     const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    const token = authHeader?.replace('Bearer ', '') ?? '';
+    const cronSecret = process.env.CRON_SECRET ?? '';
 
-    if (token !== process.env.CRON_SECRET) {
-      console.error('[Cron] Unauthorized access attempt');
+    // Use timing-safe comparison to prevent timing attacks
+    const isAuthorized = token.length > 0 &&
+      cronSecret.length > 0 &&
+      token.length === cronSecret.length &&
+      timingSafeEqual(Buffer.from(token), Buffer.from(cronSecret));
+
+    if (!isAuthorized) {
+      logger.error('Cron', 'Unauthorized access attempt');
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -54,7 +63,7 @@ export async function GET(request: NextRequest) {
     const isFirstOfMonth = today.getUTCDate() === 1;
 
     if (!isFirstOfMonth) {
-      console.log(`[Cron] Skipped - Not start of month (Day: ${today.getUTCDate()})`);
+      logger.info('Cron', `Skipped - Not start of month (Day: ${today.getUTCDate()})`);
       return NextResponse.json(
         {
           success: true,
@@ -67,29 +76,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('[Cron] Starting monthly insight generation for all users');
+    logger.info('Cron', 'Starting monthly insight generation for all users');
 
-    // 3. Query all active users (users who have transactions) from Supabase
+    // 3. Query distinct active user IDs efficiently from user_profiles
     const supabase = await createClient();
     const { data: users, error: usersError } = await supabase
-      .from('transactions')
-      .select('user_id')
-      .limit(10000); // Get all transactions to find unique users
+      .from('user_profiles')
+      .select('id')
+      .limit(1000);
 
-    // Extract unique user IDs
-    const uniqueUserIds = users
-      ? Array.from(new Set(users.map(t => t.user_id))).slice(0, 1000)
-      : [];
-
-    const usersToProcess = uniqueUserIds.map(id => ({ id }));
+    const usersToProcess = users || [];
 
     if (usersError) {
-      console.error('[Cron] Error querying users:', usersError);
+      logger.error('Cron', 'Error querying users:', usersError);
       throw usersError;
     }
 
     if (!usersToProcess || usersToProcess.length === 0) {
-      console.log('[Cron] No users found to process');
+      logger.info('Cron', 'No users found to process');
       return NextResponse.json(
         {
           success: true,
@@ -117,9 +121,9 @@ export async function GET(request: NextRequest) {
           const insights = await generateInsights(user.id, false);
           usersProcessed++;
           totalInsightsGenerated += insights.length;
-          console.log(`[Cron] User ${user.id}: ${insights.length} insights generated`);
+          logger.info('Cron', `User ${user.id}: ${insights.length} insights generated`);
         } catch (error) {
-          console.error(`[Cron] Error for user ${user.id}:`, error);
+          logger.error('Cron', `Error for user ${user.id}:`, error);
           errors.push({
             userId: user.id,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -131,8 +135,9 @@ export async function GET(request: NextRequest) {
     }
 
     const elapsedTime = Date.now() - startTime;
-    console.log(
-      `[Cron] Completed: ${usersProcessed}/${usersToProcess.length} users, ${totalInsightsGenerated} insights, ${errors.length} errors, ${elapsedTime}ms`
+    logger.info(
+      'Cron',
+      `Completed: ${usersProcessed}/${usersToProcess.length} users, ${totalInsightsGenerated} insights, ${errors.length} errors, ${elapsedTime}ms`
     );
 
     // 5. Return success response with metrics
@@ -151,7 +156,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     const elapsedTime = Date.now() - startTime;
-    console.error('[Cron] Fatal error:', error);
+    logger.error('Cron', 'Fatal error:', error);
 
     return NextResponse.json(
       {
