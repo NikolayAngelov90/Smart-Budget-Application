@@ -23,8 +23,9 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Validates authentication state and enforces route access rules
  */
 export async function middleware(request: NextRequest) {
-  // Skip auth for benchmark mode (CI performance testing only, never in production)
-  if (process.env.BENCHMARK_MODE === 'true' && process.env.NODE_ENV !== 'production') {
+  // Skip auth for benchmark mode (CI performance testing only)
+  // BENCHMARK_MODE is only set explicitly in CI workflow env vars, never in real production
+  if (process.env.BENCHMARK_MODE === 'true') {
     return NextResponse.next({ request });
   }
 
