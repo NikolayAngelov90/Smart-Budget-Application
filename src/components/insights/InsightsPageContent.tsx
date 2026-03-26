@@ -12,6 +12,7 @@ import { InsightsList } from './InsightsList';
 import { EmptyInsightsState } from './EmptyInsightsState';
 import { RefreshInsightsButton } from './RefreshInsightsButton';
 import { InsightsPagination } from './InsightsPagination';
+import { SubscriptionGraveyard } from '@/components/subscriptions/SubscriptionGraveyard';
 import { trackInsightsPageViewed, trackInsightDismissed } from '@/lib/services/analyticsService';
 import { setAppBadge } from '@/lib/utils/appBadge';
 import type { Insight } from '@/types/database.types';
@@ -303,6 +304,9 @@ export function InsightsPageContent() {
             </Box>
           </HStack>
         </Box>
+
+        {/* Subscription Graveyard - progressive disclosure gated */}
+        <SubscriptionGraveyard />
 
         {/* Filters */}
         <InsightsFilters

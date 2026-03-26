@@ -31,6 +31,10 @@ export type InsightType =
   | 'unusual_expense'
   | 'positive_reinforcement';
 
+export type SubscriptionStatus = 'active' | 'unused' | 'dismissed' | 'kept';
+
+export type SubscriptionFrequency = 'weekly' | 'monthly' | 'quarterly' | 'annual';
+
 // ============================================================================
 // DATABASE INTERFACE
 // ============================================================================
@@ -296,6 +300,52 @@ export interface Database {
           }
         ];
       };
+      detected_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          merchant_pattern: string;
+          estimated_amount: number;
+          currency: string;
+          frequency: SubscriptionFrequency;
+          last_seen_at: string;
+          status: SubscriptionStatus;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          merchant_pattern: string;
+          estimated_amount: number;
+          currency?: string;
+          frequency: SubscriptionFrequency;
+          last_seen_at: string;
+          status?: SubscriptionStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          merchant_pattern?: string;
+          estimated_amount?: number;
+          currency?: string;
+          frequency?: SubscriptionFrequency;
+          last_seen_at?: string;
+          status?: SubscriptionStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'detected_subscriptions_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       user_sessions: {
         Row: {
           id: string;
@@ -354,6 +404,8 @@ export interface Database {
     Enums: {
       transaction_type: TransactionType;
       insight_type: InsightType;
+      subscription_status: SubscriptionStatus;
+      subscription_frequency: SubscriptionFrequency;
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -385,6 +437,10 @@ export type UserFeatureStateUpdate = Database['public']['Tables']['user_feature_
 export type UserSession = Database['public']['Tables']['user_sessions']['Row'];
 export type UserSessionInsert = Database['public']['Tables']['user_sessions']['Insert'];
 export type UserSessionUpdate = Database['public']['Tables']['user_sessions']['Update'];
+
+export type DetectedSubscription = Database['public']['Tables']['detected_subscriptions']['Row'];
+export type DetectedSubscriptionInsert = Database['public']['Tables']['detected_subscriptions']['Insert'];
+export type DetectedSubscriptionUpdate = Database['public']['Tables']['detected_subscriptions']['Update'];
 
 // Transaction with category details (for joined queries)
 export type TransactionWithCategory = Transaction & {

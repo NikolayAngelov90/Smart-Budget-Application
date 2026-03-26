@@ -389,5 +389,25 @@
     "installTitle": "Инсталирай Smart Budget",
     "installDescription": "Добавете към началния екран за най-добро изживяване",
     "install": "Инсталирай"
+  },
+  "subscriptions": {
+    "title": "Гробище на абонаменти",
+    "subtitle": "Повтарящи се плащания, открити от вашата история на транзакции",
+    "emptyState": "Все още не са открити повтарящи се плащания",
+    "statusActive": "Активен",
+    "statusUnused": "Потенциално неизползван",
+    "statusKept": "Запазен",
+    "statusDismissed": "Отхвърлен",
+    "frequencyWeekly": "Седмично",
+    "frequencyMonthly": "Месечно",
+    "frequencyQuarterly": "Тримесечно",
+    "frequencyAnnual": "Годишно",
+    "lastCharge": "Последно плащане",
+    "dismiss": "Отхвърли",
+    "keep": "Запази",
+    "actionDismissed": "Абонаментът е отхвърлен",
+    "actionKept": "Абонаментът е маркиран като запазен",
+    "actionError": "Неуспешна актуализация на абонамента",
+    "loading": "Зареждане на абонаменти..."
   }
 }
