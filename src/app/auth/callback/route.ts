@@ -64,6 +64,23 @@ export async function GET(request: NextRequest) {
           // Don't block login for seeding failure - categories can be added later
         }
       }
+
+      // Story 11.1: Pre-fill display_name from OAuth metadata if available
+      const oauthDisplayName =
+        data.user.user_metadata?.full_name ||
+        data.user.user_metadata?.name ||
+        null;
+
+      if (oauthDisplayName) {
+        try {
+          await supabase
+            .from('user_profiles')
+            .update({ display_name: oauthDisplayName })
+            .eq('id', userId);
+        } catch (nameError) {
+          console.error('Failed to pre-fill display name:', nameError);
+        }
+      }
     }
 
     // Success! Redirect to dashboard (root route)

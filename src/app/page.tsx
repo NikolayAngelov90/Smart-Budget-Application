@@ -4,6 +4,7 @@
  * Home Page
  * Story 2.5: Session Management and Auto-Logout
  * Story 2.6: First-Time User Onboarding
+ * Story 11.1: Streamlined Onboarding Flow (Phase 2)
  *
  * Main landing page that serves both authenticated and unauthenticated users.
  * Implements inactivity detection, auto-logout, and first-time user onboarding.
@@ -92,43 +93,103 @@ export default function Home() {
     }
   }, [toast]);
 
-  // Handle onboarding completion
-  const handleOnboardingComplete = async () => {
+  // Story 11.1: Handle onboarding completion with profile data
+  const handleOnboardingComplete = async (data: { displayName?: string; currencyFormat: string }) => {
     setShowOnboarding(false);
 
-    // Update user metadata
+    // Save display name, currency, and onboarding_completed to user profile (dual storage consistency)
+    try {
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          display_name: data.displayName || undefined,
+          preferences: { currency_format: data.currencyFormat, onboarding_completed: true },
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to save profile preferences');
+      }
+    } catch (err) {
+      console.error('Failed to save profile preferences:', err);
+    }
+
+    // Update user metadata to mark onboarding as complete
     const { error } = await supabase.auth.updateUser({
       data: { onboarding_completed: true },
     });
 
     if (error) {
       console.error('Failed to update onboarding status:', error);
-    } else {
-      toast({
-        title: 'Welcome aboard!',
-        description: 'You\'re all set to start tracking your finances.',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-
-      // Story 5.1: Redirect to dashboard after onboarding
-      router.push('/dashboard');
     }
+
+    // Story 11.1 AC#6: Initialize progressive disclosure state (ADR-022)
+    await initializeFeatureState();
+
+    toast({
+      title: 'Welcome aboard!',
+      description: 'You\'re all set to start tracking your finances.',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+
+    router.push('/dashboard');
   };
 
   // Handle onboarding skip
   const handleOnboardingSkip = async () => {
     setShowOnboarding(false);
 
-    // Still mark as completed even if skipped
+    // Still mark as completed even if skipped (dual storage: auth metadata + DB preferences)
     await supabase.auth.updateUser({
       data: { onboarding_completed: true },
     });
 
-    // Story 5.1: Redirect to dashboard after skipping onboarding
+    try {
+      await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferences: { onboarding_completed: true } }),
+      });
+    } catch {
+      // Non-blocking — auth metadata is the primary check
+    }
+
+    // Story 11.1 AC#6: Initialize progressive disclosure state even on skip
+    await initializeFeatureState();
+
+    // Redirect to dashboard after skipping onboarding
     router.push('/dashboard');
   };
+
+  // Story 11.1 AC#6: Create user_feature_state record for progressive disclosure
+  const initializeFeatureState = async () => {
+    if (!user) return;
+    try {
+      const { error: featureStateError } = await supabase
+        .from('user_feature_state')
+        .upsert({
+          user_id: user.id,
+          transactions_count: 0,
+          days_active: 0,
+          features_unlocked: [],
+        }, { onConflict: 'user_id' });
+
+      if (featureStateError) {
+        console.error('Failed to initialize feature state:', featureStateError);
+      }
+    } catch (err) {
+      console.error('Failed to initialize feature state:', err);
+    }
+  };
+
+  // Extract default display name from OAuth metadata
+  const defaultDisplayName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    '';
 
   // Show onboarding modal if user is authenticated but hasn't completed onboarding
   if (!loading && user && showOnboarding) {
@@ -137,12 +198,12 @@ export default function Home() {
         isOpen={showOnboarding}
         onComplete={handleOnboardingComplete}
         onSkip={handleOnboardingSkip}
+        defaultDisplayName={defaultDisplayName}
       />
     );
   }
 
-  // Story 5.1: Authenticated users with completed onboarding are redirected to dashboard
-  // This view should not be shown for authenticated users
+  // Authenticated users with completed onboarding are redirected to dashboard
   if (!loading && user) {
     return null; // Redirecting to dashboard
   }

@@ -13,7 +13,7 @@
  * This page will be populated with charts and metrics in subsequent stories.
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { Box, Heading, Text, VStack, Grid, Flex, Spinner } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { mutate } from 'swr';
@@ -23,9 +23,19 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { CategorySpendingChart } from '@/components/dashboard/CategorySpendingChart';
 import { SpendingTrendsChart } from '@/components/dashboard/SpendingTrendsChart';
 import { MonthOverMonth } from '@/components/dashboard/MonthOverMonth';
+import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
+import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
+  const { preferences } = useUserPreferences();
+  const { data: stats } = useDashboardStats(undefined, preferences?.currency_format);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+
+  // Story 11.1: Show FirstTransactionPrompt when user has no transactions
+  const hasNoTransactions = stats && stats.income.current === 0 && stats.expenses.current === 0 && stats.balance === 0;
 
   // AC-10.8.4: Pull-to-refresh — revalidate all dashboard SWR keys
   const { containerRef: dashboardRef, isRefreshing } = usePullToRefresh(
@@ -104,6 +114,13 @@ export default function DashboardPage() {
         </Text>
       </VStack>
 
+      {/* Story 11.1: First Transaction Prompt — shown when user has 0 transactions */}
+      {hasNoTransactions && (
+        <Box mb={{ base: 6, md: 8 }}>
+          <FirstTransactionPrompt onAddTransaction={() => setIsTransactionModalOpen(true)} />
+        </Box>
+      )}
+
       {/* Financial Summary Cards - Story 5.2 */}
       <Box mb={{ base: 6, md: 8 }}>
         <DashboardStats />
@@ -149,6 +166,20 @@ export default function DashboardPage() {
       <Box mb={{ base: 6, md: 8 }}>
         <MonthOverMonth />
       </Box>
+
+      {/* Story 11.1: Transaction Entry Modal triggered from FirstTransactionPrompt */}
+      <TransactionEntryModal
+        isOpen={isTransactionModalOpen}
+        onClose={() => setIsTransactionModalOpen(false)}
+        onSuccess={async () => {
+          setIsTransactionModalOpen(false);
+          await Promise.all([
+            mutate('/api/dashboard/stats', undefined, { revalidate: true }),
+            mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),
+            mutate('/api/dashboard/trends', undefined, { revalidate: true }),
+          ]);
+        }}
+      />
     </Box>
   );
 }

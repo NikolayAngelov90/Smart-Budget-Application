@@ -43,7 +43,10 @@
     "vsLastMonth": "vs last month",
     "noData": "No data available",
     "failedToLoad": "Failed to load dashboard stats",
-    "failedToLoadDescription": "Unable to fetch financial data. Please try refreshing the page."
+    "failedToLoadDescription": "Unable to fetch financial data. Please try refreshing the page.",
+    "firstTransactionTitle": "Add Your First Transaction",
+    "firstTransactionDescription": "Start tracking your finances by adding your first income or expense.",
+    "firstTransactionCta": "Add Transaction"
   },
   "transactions": {
     "title": "Transactions",
@@ -304,6 +307,12 @@
   },
   "onboarding": {
     "welcome": "Welcome to Smart Budget!",
+    "personalizeDescription": "Personalize your experience — or skip and start right away",
+    "displayNameLabel": "Your name",
+    "displayNamePlaceholder": "What should we call you?",
+    "currencyLabel": "Preferred currency",
+    "getStarted": "Get Started",
+    "saving": "Saving...",
     "welcomeDescription": "Let's get you started with a quick tour",
     "step1Title": "Track Your Spending in Under 30 Seconds",
     "step1Description": "Quickly log every expense and income with our intuitive transaction entry. Just tap, enter the amount, pick a category, and you're done. It's that simple!",

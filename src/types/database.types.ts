@@ -262,6 +262,40 @@ export interface Database {
           }
         ];
       };
+      user_feature_state: {
+        Row: {
+          user_id: string;
+          transactions_count: number;
+          days_active: number;
+          features_unlocked: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          transactions_count?: number;
+          days_active?: number;
+          features_unlocked?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          transactions_count?: number;
+          days_active?: number;
+          features_unlocked?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_feature_state_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       user_sessions: {
         Row: {
           id: string;
@@ -343,6 +377,10 @@ export type TransactionUpdate = Database['public']['Tables']['transactions']['Up
 export type Insight = Database['public']['Tables']['insights']['Row'];
 export type InsightInsert = Database['public']['Tables']['insights']['Insert'];
 export type InsightUpdate = Database['public']['Tables']['insights']['Update'];
+
+export type UserFeatureState = Database['public']['Tables']['user_feature_state']['Row'];
+export type UserFeatureStateInsert = Database['public']['Tables']['user_feature_state']['Insert'];
+export type UserFeatureStateUpdate = Database['public']['Tables']['user_feature_state']['Update'];
 
 export type UserSession = Database['public']['Tables']['user_sessions']['Row'];
 export type UserSessionInsert = Database['public']['Tables']['user_sessions']['Insert'];

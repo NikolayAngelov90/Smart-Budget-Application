@@ -1,14 +1,19 @@
 /**
  * Onboarding Modal Component
- * Story 2.6: First-Time User Onboarding
+ * Story 11.1: Streamlined Onboarding Flow (Phase 2 Redesign)
  *
- * Multi-step onboarding flow for new users explaining key features:
- * - Step 1: Transaction entry
- * - Step 2: Dashboard and charts
- * - Step 3: AI insights
+ * Single-step personalization for new users:
+ * - Display name (pre-filled from OAuth if available)
+ * - Optional currency preference (default: EUR)
+ * - Skip or complete in under 30 seconds
  */
 
+'use client';
+
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import {
   Modal,
   ModalOverlay,
@@ -19,161 +24,152 @@ import {
   Button,
   Text,
   VStack,
-  HStack,
-  Box,
-  Icon,
-  Progress,
+  FormControl,
+  FormLabel,
+  FormErrorMessage,
+  Input,
+  Select,
   Heading,
 } from '@chakra-ui/react';
-import { AddIcon, ViewIcon, StarIcon } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
+import { getEnabledCurrencies, DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '@/lib/config/currencies';
+
+const supportedCodes = SUPPORTED_CURRENCIES.map((c) => c.code) as [string, ...string[]];
+
+const onboardingSchema = z.object({
+  displayName: z.string().max(100, 'Name must be 100 characters or less').optional().or(z.literal('')),
+  currencyFormat: z.enum(supportedCodes),
+});
+
+type OnboardingFormData = z.infer<typeof onboardingSchema>;
 
 interface OnboardingModalProps {
   isOpen: boolean;
-  onComplete: () => void;
+  onComplete: (data: { displayName?: string; currencyFormat: string }) => void;
   onSkip: () => void;
+  defaultDisplayName?: string;
 }
-
-interface OnboardingStep {
-  titleKey: string;
-  descriptionKey: string;
-  icon: typeof AddIcon;
-  iconColor: string;
-  iconBg: string;
-}
-
-const ONBOARDING_STEPS: OnboardingStep[] = [
-  {
-    titleKey: 'step1Title',
-    descriptionKey: 'step1Description',
-    icon: AddIcon,
-    iconColor: 'white',
-    iconBg: '#2b6cb0',
-  },
-  {
-    titleKey: 'step2Title',
-    descriptionKey: 'step2Description',
-    icon: ViewIcon,
-    iconColor: 'white',
-    iconBg: '#38a169',
-  },
-  {
-    titleKey: 'step3Title',
-    descriptionKey: 'step3Description',
-    icon: StarIcon,
-    iconColor: 'white',
-    iconBg: '#d69e2e',
-  },
-];
 
 export function OnboardingModal({
   isOpen,
   onComplete,
   onSkip,
+  defaultDisplayName = '',
 }: OnboardingModalProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const t = useTranslations('onboarding');
   const tCommon = useTranslations('common');
+  const enabledCurrencies = getEnabledCurrencies();
 
-  const isLastStep = currentStep === ONBOARDING_STEPS.length - 1;
-  const currentStepData = ONBOARDING_STEPS[currentStep];
-  if (!currentStepData) return null;
-  const progress = ((currentStep + 1) / ONBOARDING_STEPS.length) * 100;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<OnboardingFormData>({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: {
+      displayName: defaultDisplayName,
+      currencyFormat: DEFAULT_CURRENCY,
+    },
+  });
 
-  const handleNext = () => {
-    if (isLastStep) {
-      onComplete();
-    } else {
-      setCurrentStep((prev) => prev + 1);
+  const onSubmit = async (data: OnboardingFormData) => {
+    setIsSubmitting(true);
+    try {
+      onComplete({
+        displayName: data.displayName || undefined,
+        currencyFormat: data.currencyFormat,
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-
-  const handleSkip = () => {
-    onSkip();
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleSkip}
+      onClose={onSkip}
       isCentered
       closeOnOverlayClick={false}
-      size={{ base: 'full', md: 'xl' }}
+      size={{ base: 'full', md: 'md' }}
     >
       <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(4px)" />
       <ModalContent mx={{ base: 0, md: 4 }} my={{ base: 0, md: 4 }}>
-        <ModalHeader pt={8} pb={4}>
-          <VStack spacing={4} align="stretch">
+        <ModalHeader pt={8} pb={2}>
+          <VStack spacing={2} align="stretch">
             <Heading as="h2" size="lg" textAlign="center" color="gray.800">
               {t('welcome')}
             </Heading>
             <Text fontSize="sm" color="gray.600" textAlign="center">
-              {t('welcomeDescription')}
+              {t('personalizeDescription')}
             </Text>
-            <Progress
-              value={progress}
-              size="sm"
-              colorScheme="blue"
-              borderRadius="full"
-            />
           </VStack>
         </ModalHeader>
 
-        <ModalBody py={8}>
-          <VStack spacing={8} align="center">
-            {/* Icon */}
-            <Box
-              bg={currentStepData.iconBg}
-              borderRadius="full"
-              p={8}
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Icon
-                as={currentStepData.icon}
-                boxSize={16}
-                color={currentStepData.iconColor}
-              />
-            </Box>
-
-            {/* Content */}
-            <VStack spacing={4} textAlign="center" maxW="md">
-              <Heading as="h3" size="md" color="gray.800">
-                {t(currentStepData.titleKey)}
-              </Heading>
-              <Text color="gray.700" fontSize="md" lineHeight="tall">
-                {t(currentStepData.descriptionKey)}
-              </Text>
-            </VStack>
-
-            {/* Step Indicator */}
-            <HStack spacing={2}>
-              {ONBOARDING_STEPS.map((_, index) => (
-                <Box
-                  key={index}
-                  w={3}
-                  h={3}
-                  borderRadius="full"
-                  bg={index === currentStep ? '#2b6cb0' : 'gray.300'}
-                  transition="all 0.3s"
+        <ModalBody py={6}>
+          <form id="onboarding-form" onSubmit={handleSubmit(onSubmit)}>
+            <VStack spacing={5} align="stretch">
+              <FormControl isInvalid={!!errors.displayName}>
+                <FormLabel htmlFor="displayName" fontSize="sm" fontWeight="medium">
+                  {t('displayNameLabel')}
+                </FormLabel>
+                <Input
+                  id="displayName"
+                  placeholder={t('displayNamePlaceholder')}
+                  size="lg"
+                  {...register('displayName')}
+                  aria-label={t('displayNameLabel')}
+                  autoComplete="name"
+                  autoFocus
+                  _focus={{
+                    borderColor: '#2b6cb0',
+                    boxShadow: '0 0 0 1px #2b6cb0',
+                  }}
                 />
-              ))}
-            </HStack>
-          </VStack>
+                {errors.displayName && (
+                  <FormErrorMessage>{errors.displayName.message}</FormErrorMessage>
+                )}
+              </FormControl>
+
+              <FormControl>
+                <FormLabel htmlFor="currencyFormat" fontSize="sm" fontWeight="medium">
+                  {t('currencyLabel')}
+                </FormLabel>
+                <Select
+                  id="currencyFormat"
+                  size="lg"
+                  {...register('currencyFormat')}
+                  aria-label={t('currencyLabel')}
+                  _focus={{
+                    borderColor: '#2b6cb0',
+                    boxShadow: '0 0 0 1px #2b6cb0',
+                  }}
+                >
+                  {enabledCurrencies.map((currency) => (
+                    <option key={currency.code} value={currency.code}>
+                      {currency.symbol} {currency.name} ({currency.code})
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
+            </VStack>
+          </form>
         </ModalBody>
 
         <ModalFooter justifyContent="space-between" pb={8}>
           <Button
             variant="ghost"
-            onClick={handleSkip}
+            onClick={onSkip}
             color="gray.600"
             _hover={{ bg: 'gray.100' }}
+            aria-label={tCommon('skip')}
           >
             {tCommon('skip')}
           </Button>
 
           <Button
+            type="submit"
+            form="onboarding-form"
             bg="#2b6cb0"
             color="white"
             _hover={{ bg: '#2c5282' }}
@@ -181,10 +177,11 @@ export function OnboardingModal({
             size="lg"
             minH="44px"
             px={8}
-            onClick={handleNext}
-            rightIcon={isLastStep ? <StarIcon /> : undefined}
+            isLoading={isSubmitting}
+            loadingText={t('saving')}
+            aria-label={t('getStarted')}
           >
-            {isLastStep ? t('letsGetStarted') : tCommon('next')}
+            {t('getStarted')}
           </Button>
         </ModalFooter>
       </ModalContent>
