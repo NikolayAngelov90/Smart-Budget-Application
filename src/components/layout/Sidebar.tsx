@@ -1,7 +1,7 @@
 'use client';
 
 import { Box, VStack, Link as ChakraLink, Icon, HStack, Text, IconButton, Tooltip } from '@chakra-ui/react';
-import { ViewIcon, EditIcon, AtSignIcon, InfoIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { ViewIcon, EditIcon, AtSignIcon, InfoIcon, SettingsIcon, StarIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -10,6 +10,7 @@ const navItemKeys = [
   { key: 'dashboard' as const, href: '/dashboard', icon: ViewIcon },
   { key: 'transactions' as const, href: '/transactions', icon: EditIcon },
   { key: 'categories' as const, href: '/categories', icon: AtSignIcon },
+  { key: 'goals' as const, href: '/goals', icon: StarIcon },
   { key: 'insights' as const, href: '/insights', icon: InfoIcon },
   { key: 'settings' as const, href: '/settings', icon: SettingsIcon },
 ];

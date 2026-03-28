@@ -507,6 +507,66 @@ export interface ProjectionsResponse {
 }
 
 // Insight metadata type (extend as needed)
+// ============================================================================
+// GOAL TYPES (Story 11.5)
+// ============================================================================
+
+/** A savings goal row from the goals table */
+export interface Goal {
+  id: string;
+  user_id: string;
+  name: string;
+  /** Target savings amount (> 0) */
+  target_amount: number;
+  /** Accumulated saved amount from contributions (>= 0) */
+  current_amount: number;
+  /** Optional target date in YYYY-MM-DD format, or null */
+  deadline: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A single contribution to a savings goal */
+export interface GoalContribution {
+  id: string;
+  goal_id: string;
+  user_id: string;
+  /** Contribution amount (> 0) */
+  amount: number;
+  /** Optional note describing the contribution */
+  note: string | null;
+  created_at: string;
+}
+
+/** Input for creating a new goal */
+export interface CreateGoalInput {
+  name: string;
+  target_amount: number;
+  /** Optional deadline (YYYY-MM-DD), null = no deadline */
+  deadline?: string | null;
+}
+
+/** Input for updating an existing goal */
+export interface UpdateGoalInput {
+  name?: string;
+  target_amount?: number;
+  /** Pass null to remove deadline */
+  deadline?: string | null;
+}
+
+/** Input for adding a contribution to a goal */
+export interface AddContributionInput {
+  /** Amount to add (> 0) */
+  amount: number;
+  /** Optional note */
+  note?: string | null;
+}
+
+/** API response shape from GET /api/goals */
+export interface GoalsListResponse {
+  goals: Goal[];
+}
+
 export interface InsightMetadata {
   category_id?: string;
   category_name?: string;
