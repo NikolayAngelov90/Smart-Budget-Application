@@ -399,6 +399,11 @@
     "viewAsGrid": "View as grid",
     "noSpending": "No spending",
     "loading": "Loading heatmap...",
+    "transaction": "transaction",
+    "transactions": "transactions",
+    "tableDate": "Date",
+    "tableAmount": "Amount",
+    "tableTransactions": "Transactions",
     "weekdays": {
       "mon": "Mon",
       "tue": "Tue",

@@ -40,7 +40,7 @@ export function SpendingHeatmap() {
   const t = useTranslations('heatmap');
   const router = useRouter();
   const { preferences } = useUserPreferences();
-  const currency = preferences?.currency_format ?? 'EUR';
+  const currency = preferences?.currency_format ?? '';
 
   const { data, hasEnoughData, isLoading } = useSpendingHeatmap(selectedYear, selectedMonth);
 

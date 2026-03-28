@@ -5,7 +5,7 @@
  * Task 9.3: Unit tests for HeatmapGrid component
  */
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { HeatmapGrid, buildCalendarCells, HEATMAP_COLORS } from '@/components/ai/HeatmapGrid';
 import type { DailySpendingEntry } from '@/types/database.types';
@@ -23,6 +23,11 @@ jest.mock('next-intl', () => ({
       'weekdays.sun': 'Sun',
       noSpending: 'No spending',
       title: 'Spending Heatmap',
+      transaction: 'transaction',
+      transactions: 'transactions',
+      tableDate: 'Date',
+      tableAmount: 'Amount',
+      tableTransactions: 'Transactions',
     };
     return translations[key] ?? key;
   },
@@ -129,6 +134,15 @@ describe('HeatmapGrid (visual grid mode)', () => {
   it('renders a grid container with role="grid"', () => {
     renderWithChakra(<HeatmapGrid {...defaultProps} entries={[]} />);
     expect(screen.getByRole('grid')).toBeInTheDocument();
+  });
+
+  it('renders role="row" for each week row (AC #7: grid > row > gridcell hierarchy)', () => {
+    renderWithChakra(<HeatmapGrid {...defaultProps} entries={[]} />);
+    // Scope to the ARIA grid to exclude VisuallyHidden table's implicit rows
+    const grid = screen.getByRole('grid');
+    const rows = within(grid).getAllByRole('row');
+    // March 2026: 1 header row + 6 week rows = 7
+    expect(rows).toHaveLength(7);
   });
 
   it('renders aria-label "No spending" for days with no transactions', () => {

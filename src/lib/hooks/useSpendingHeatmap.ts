@@ -7,7 +7,7 @@
  * Uses SWR for caching and automatic revalidation.
  */
 
-import useSWR from 'swr';
+import useSWR, { type KeyedMutator } from 'swr';
 import type { DailySpendingEntry, HeatmapResponse } from '@/types/database.types';
 
 interface UseSpendingHeatmapResult {
@@ -17,7 +17,7 @@ interface UseSpendingHeatmapResult {
   hasEnoughData: boolean;
   isLoading: boolean;
   error: Error | undefined;
-  mutate: () => void;
+  mutate: KeyedMutator<HeatmapResponse>;
 }
 
 /**

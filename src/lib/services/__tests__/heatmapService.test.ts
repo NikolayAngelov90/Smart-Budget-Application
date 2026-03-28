@@ -36,17 +36,15 @@ function createOrderChainMock(resolveWith: any) {
 
 /**
  * Creates a chainable Supabase mock that resolves with the given result
- * after the second .eq() call (used by hasEnoughDataForHeatmap).
+ * after the terminal .limit() call (used by hasEnoughDataForHeatmap).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createEqTerminalChainMock(resolveWith: any) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: any = {};
   chain.select = jest.fn().mockReturnValue(chain);
-  // First .eq('user_id') returns chain; second .eq('type') is the terminal call
-  chain.eq = jest.fn()
-    .mockReturnValueOnce(chain)
-    .mockResolvedValueOnce(resolveWith);
+  chain.eq = jest.fn().mockReturnValue(chain);
+  chain.limit = jest.fn().mockResolvedValue(resolveWith);
   return chain;
 }
 

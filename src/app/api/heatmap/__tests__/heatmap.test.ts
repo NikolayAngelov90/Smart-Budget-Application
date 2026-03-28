@@ -152,6 +152,23 @@ describe('GET /api/heatmap', () => {
     );
   });
 
+  it('returns 400 for out-of-range year parameter', async () => {
+    const mockUser = { id: 'user-1', email: 'test@example.com' };
+    mockCreateClient.mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: mockUser }, error: null }),
+      },
+    } as unknown as Awaited<ReturnType<typeof createClient>>);
+
+    const invalidRequest = { url: 'http://localhost/api/heatmap?year=1800&month=3' };
+    await GET(invalidRequest);
+
+    expect(mockJsonResponse).toHaveBeenCalledWith(
+      expect.objectContaining({ error: { message: 'Invalid year or month parameter' } }),
+      expect.objectContaining({ status: 400 })
+    );
+  });
+
   it('defaults to current month when no params provided', async () => {
     const mockUser = { id: 'user-1', email: 'test@example.com' };
     mockCreateClient.mockResolvedValue({

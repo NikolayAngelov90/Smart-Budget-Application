@@ -399,6 +399,11 @@
     "viewAsGrid": "Преглед като мрежа",
     "noSpending": "Няма разходи",
     "loading": "Зареждане на термична карта...",
+    "transaction": "транзакция",
+    "transactions": "транзакции",
+    "tableDate": "Дата",
+    "tableAmount": "Сума",
+    "tableTransactions": "Транзакции",
     "weekdays": {
       "mon": "Пон",
       "tue": "Вт",

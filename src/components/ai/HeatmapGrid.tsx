@@ -69,6 +69,7 @@ export function buildCalendarCells(year: number, month: number): (number | null)
 
 /** Format amount using Intl.NumberFormat with the user's currency */
 function formatAmount(amount: number, currency: string): string {
+  if (!currency) return amount.toFixed(2);
   try {
     return new Intl.NumberFormat(undefined, {
       style: 'currency',
@@ -141,9 +142,9 @@ export function HeatmapGrid({
           </caption>
           <Thead>
             <Tr>
-              <Th>Date</Th>
-              <Th isNumeric>Amount</Th>
-              <Th isNumeric>Transactions</Th>
+              <Th>{t('tableDate')}</Th>
+              <Th isNumeric>{t('tableAmount')}</Th>
+              <Th isNumeric>{t('tableTransactions')}</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -175,13 +176,20 @@ export function HeatmapGrid({
       <VisuallyHidden>
         <table aria-label={`${monthLabel} spending data`}>
           <caption>{monthLabel}</caption>
+          <thead>
+            <tr>
+              <th>{t('tableDate')}</th>
+              <th>{t('tableAmount')}</th>
+              <th>{t('tableTransactions')}</th>
+            </tr>
+          </thead>
           <tbody>
             {entries.map((entry) => (
               <tr key={entry.date}>
                 <td>{entry.date}</td>
                 <td>{formatAmount(entry.total, currency)}</td>
                 <td>
-                  {entry.count} {entry.count === 1 ? 'transaction' : 'transactions'}
+                  {entry.count} {entry.count === 1 ? t('transaction') : t('transactions')}
                 </td>
               </tr>
             ))}
@@ -214,82 +222,94 @@ export function HeatmapGrid({
           ))}
         </Grid>
 
-        {/* Day cells */}
-        <Grid templateColumns="repeat(7, minmax(32px, 1fr))" gap={1}>
-          {cells.map((day, index) => {
-            // Empty placeholder cell
-            if (day === null) {
+        {/* Day cells — split into weekly rows for ARIA grid/row/gridcell hierarchy (AC #7) */}
+        {Array.from({ length: cells.length / 7 }, (_, weekIndex) => (
+          <Grid
+            key={`week-${weekIndex}`}
+            templateColumns="repeat(7, minmax(32px, 1fr))"
+            gap={1}
+            role="row"
+            aria-rowindex={weekIndex + 2}
+          >
+            {cells.slice(weekIndex * 7, weekIndex * 7 + 7).map((day, dayIndex) => {
+              const cellIndex = weekIndex * 7 + dayIndex;
+
+              // Empty placeholder cell
+              if (day === null) {
+                return (
+                  <Box
+                    key={`empty-${cellIndex}`}
+                    role="gridcell"
+                    aria-hidden="true"
+                    w={{ base: '32px', md: '40px' }}
+                    h={{ base: '32px', md: '40px' }}
+                  />
+                );
+              }
+
+              const dateStr = `${year}-${paddedMonth}-${String(day).padStart(2, '0')}`;
+              const entry = entryMap.get(dateStr);
+              const level = entry ? getIntensityLevel(entry.total, maxAmount) : 0;
+              const bgColor = HEATMAP_COLORS[level];
+
+              const dayLabel = new Intl.DateTimeFormat(undefined, {
+                month: 'long',
+                day: 'numeric',
+              }).format(new Date(year, month - 1, day));
+
+              const txWord = entry
+                ? entry.count === 1
+                  ? t('transaction')
+                  : t('transactions')
+                : '';
+
+              const ariaLabel = entry
+                ? `${dayLabel}: ${formatAmount(entry.total, currency)} spent, ${entry.count} ${txWord}`
+                : `${dayLabel}: ${t('noSpending')}`;
+
+              const tooltipContent = entry
+                ? `${formatAmount(entry.total, currency)}\n${entry.count} ${txWord}`
+                : t('noSpending');
+
+              const isClickable = Boolean(entry && onDayClick);
+
               return (
-                <Box
-                  key={`empty-${index}`}
-                  role="gridcell"
-                  aria-hidden="true"
-                  w={{ base: '32px', md: '40px' }}
-                  h={{ base: '32px', md: '40px' }}
-                />
+                <Tooltip key={dateStr} label={tooltipContent} placement="top" hasArrow>
+                  <Box
+                    role="gridcell"
+                    aria-label={ariaLabel}
+                    tabIndex={0}
+                    w={{ base: '32px', md: '40px' }}
+                    h={{ base: '32px', md: '40px' }}
+                    bg={bgColor}
+                    borderRadius="sm"
+                    border="1px solid"
+                    borderColor="gray.100"
+                    cursor={isClickable ? 'pointer' : 'default'}
+                    _hover={isClickable ? { opacity: 0.8, borderColor: 'trustBlue.300' } : {}}
+                    _focus={{
+                      outline: '2px solid',
+                      outlineColor: 'trustBlue.500',
+                      outlineOffset: '2px',
+                    }}
+                    onClick={() => {
+                      if (isClickable) onDayClick?.(dateStr);
+                    }}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ' ') && isClickable) {
+                        e.preventDefault();
+                        onDayClick?.(dateStr);
+                      }
+                    }}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  />
+                </Tooltip>
               );
-            }
-
-            const dateStr = `${year}-${paddedMonth}-${String(day).padStart(2, '0')}`;
-            const entry = entryMap.get(dateStr);
-            const level = entry ? getIntensityLevel(entry.total, maxAmount) : 0;
-            const bgColor = HEATMAP_COLORS[level];
-
-            const dayLabel = new Intl.DateTimeFormat(undefined, {
-              month: 'long',
-              day: 'numeric',
-            }).format(new Date(year, month - 1, day));
-
-            const ariaLabel = entry
-              ? `${dayLabel}: ${formatAmount(entry.total, currency)} spent, ${entry.count} ${
-                  entry.count === 1 ? 'transaction' : 'transactions'
-                }`
-              : `${dayLabel}: ${t('noSpending')}`;
-
-            const tooltipContent = entry
-              ? `${formatAmount(entry.total, currency)}\n${entry.count} ${
-                  entry.count === 1 ? 'transaction' : 'transactions'
-                }`
-              : t('noSpending');
-
-            const isClickable = Boolean(entry && onDayClick);
-
-            return (
-              <Tooltip key={dateStr} label={tooltipContent} placement="top" hasArrow>
-                <Box
-                  role="gridcell"
-                  aria-label={ariaLabel}
-                  tabIndex={0}
-                  w={{ base: '32px', md: '40px' }}
-                  h={{ base: '32px', md: '40px' }}
-                  bg={bgColor}
-                  borderRadius="sm"
-                  border="1px solid"
-                  borderColor="gray.100"
-                  cursor={isClickable ? 'pointer' : 'default'}
-                  _hover={isClickable ? { opacity: 0.8, borderColor: 'trustBlue.300' } : {}}
-                  _focus={{
-                    outline: '2px solid',
-                    outlineColor: 'trustBlue.500',
-                    outlineOffset: '2px',
-                  }}
-                  onClick={() => {
-                    if (isClickable) onDayClick!(dateStr);
-                  }}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && isClickable) {
-                      e.preventDefault();
-                      onDayClick!(dateStr);
-                    }
-                  }}
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                />
-              </Tooltip>
-            );
-          })}
-        </Grid>
+            })}
+          </Grid>
+        ))}
       </Box>
     </Box>
   );

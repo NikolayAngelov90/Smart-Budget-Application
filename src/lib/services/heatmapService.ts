@@ -80,7 +80,8 @@ export async function hasEnoughDataForHeatmap(
     .from('transactions')
     .select('date')
     .eq('user_id', userId)
-    .eq('type', 'expense');
+    .eq('type', 'expense')
+    .limit(200);
 
   if (error) throw error;
   if (!data) return false;
