@@ -23,6 +23,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { CategorySpendingChart } from '@/components/dashboard/CategorySpendingChart';
 import { SpendingTrendsChart } from '@/components/dashboard/SpendingTrendsChart';
 import { MonthOverMonth } from '@/components/dashboard/MonthOverMonth';
+import { SpendingHeatmap } from '@/components/ai/SpendingHeatmap';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -40,10 +41,13 @@ export default function DashboardPage() {
   // AC-10.8.4: Pull-to-refresh — revalidate all dashboard SWR keys
   const { containerRef: dashboardRef, isRefreshing } = usePullToRefresh(
     useCallback(async () => {
+      const now = new Date();
+      const heatmapKey = `/api/heatmap?year=${now.getFullYear()}&month=${now.getMonth() + 1}`;
       await Promise.all([
         mutate('/api/dashboard/stats', undefined, { revalidate: true }),
         mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),
         mutate('/api/dashboard/trends', undefined, { revalidate: true }),
+        mutate(heatmapKey, undefined, { revalidate: true }),
       ]);
     }, [])
   );
@@ -165,6 +169,11 @@ export default function DashboardPage() {
       {/* Month-over-Month Comparison - Story 5.5 */}
       <Box mb={{ base: 6, md: 8 }}>
         <MonthOverMonth />
+      </Box>
+
+      {/* Spending Heatmap - Story 11.3 (progressive disclosure: renders null if <7 days of data) */}
+      <Box mb={{ base: 6, md: 8 }}>
+        <SpendingHeatmap />
       </Box>
 
       {/* Story 11.1: Transaction Entry Modal triggered from FirstTransactionPrompt */}

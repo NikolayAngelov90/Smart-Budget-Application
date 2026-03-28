@@ -447,6 +447,33 @@ export type TransactionWithCategory = Transaction & {
   categories: Pick<Category, 'name' | 'color' | 'type'>;
 };
 
+// ============================================================================
+// HEATMAP TYPES (Story 11.3)
+// ============================================================================
+
+/** A single day's aggregated spending data for the heatmap */
+export interface DailySpendingEntry {
+  /** Date in YYYY-MM-DD format */
+  date: string;
+  /** Total expense amount for the day, rounded to 2 decimal places */
+  total: number;
+  /** Number of expense transactions on the day */
+  count: number;
+}
+
+/** API response shape from GET /api/heatmap */
+export interface HeatmapResponse {
+  data: DailySpendingEntry[];
+  year: number;
+  /** Month number (1-12) */
+  month: number;
+  /** True if user has 7+ distinct days with expense transactions */
+  hasEnoughData: boolean;
+}
+
+/** Heatmap color intensity level: 0 = no spending, 4 = highest spending */
+export type IntensityLevel = 0 | 1 | 2 | 3 | 4;
+
 // Insight metadata type (extend as needed)
 export interface InsightMetadata {
   category_id?: string;

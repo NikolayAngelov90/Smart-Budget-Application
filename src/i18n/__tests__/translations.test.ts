@@ -116,6 +116,7 @@ describe('Translation files', () => {
       'common.or',                  // Short words may coincide
       'common.and',
       'transactions.convertedAmount', // Format pattern: ({amount}) - language-agnostic
+      'heatmap.subtitle',             // Format pattern: {month} {year} - language-agnostic template
     ]);
 
     const untranslatedKeys = enKeys.filter((key) => {

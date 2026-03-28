@@ -390,6 +390,25 @@
     "installDescription": "Add to your home screen for the best experience",
     "install": "Install"
   },
+  "heatmap": {
+    "title": "Spending Heatmap",
+    "subtitle": "{month} {year}",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "viewAsTable": "View as table",
+    "viewAsGrid": "View as grid",
+    "noSpending": "No spending",
+    "loading": "Loading heatmap...",
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
   "subscriptions": {
     "title": "Subscription Graveyard",
     "subtitle": "Recurring charges detected from your transaction history",
