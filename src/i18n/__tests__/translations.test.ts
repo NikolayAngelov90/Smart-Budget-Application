@@ -117,6 +117,8 @@ describe('Translation files', () => {
       'common.and',
       'transactions.convertedAmount', // Format pattern: ({amount}) - language-agnostic
       'heatmap.subtitle',             // Format pattern: {month} {year} - language-agnostic template
+      'projections.trendUp',          // Format pattern: +{percentage}% - numeric, language-agnostic
+      'projections.trendDown',        // Format pattern: -{percentage}% - numeric, language-agnostic
     ]);
 
     const untranslatedKeys = enKeys.filter((key) => {

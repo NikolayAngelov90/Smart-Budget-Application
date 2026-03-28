@@ -474,6 +474,38 @@ export interface HeatmapResponse {
 /** Heatmap color intensity level: 0 = no spending, 4 = highest spending */
 export type IntensityLevel = 0 | 1 | 2 | 3 | 4;
 
+// ============================================================================
+// PROJECTIONS TYPES (Story 11.4)
+// ============================================================================
+
+/** A single category's annualized spending projection */
+export interface CategoryProjection {
+  category_id: string;
+  category_name: string;
+  category_color: string;
+  /** Average monthly spend over analysis window, rounded to 2dp */
+  monthly_avg: number;
+  /** monthly_avg × 12, rounded to 2dp */
+  annual_projection: number;
+  /** Total transactions in analysis period */
+  transaction_count: number;
+  /** True if category matches a detected active/unused subscription */
+  is_recurring: boolean;
+  /** 'new' = no prior period data */
+  trend: 'up' | 'down' | 'stable' | 'new';
+  /** % change vs prior period (null if 'new' or prior unavailable) */
+  trend_percentage: number | null;
+}
+
+/** API response shape from GET /api/dashboard/annualized-projections */
+export interface ProjectionsResponse {
+  projections: CategoryProjection[];
+  /** true when ≥1 complete past month of expense transactions */
+  hasEnoughData: boolean;
+  /** Number of complete months used (1-3) */
+  months_analyzed: number;
+}
+
 // Insight metadata type (extend as needed)
 export interface InsightMetadata {
   category_id?: string;

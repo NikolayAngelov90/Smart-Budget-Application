@@ -433,5 +433,17 @@
     "actionKept": "Абонаментът е маркиран като запазен",
     "actionError": "Неуспешна актуализация на абонамента",
     "loading": "Зареждане на абонаменти..."
+  },
+  "projections": {
+    "title": "Прогноза за разходите",
+    "subtitle": "Базирано на последните {count} месеца данни",
+    "monthlyAvg": "Средно/месец",
+    "annualProjection": "Годишно",
+    "transactions": "Транзакции",
+    "recurring": "Повтарящо се",
+    "totalLabel": "Обща годишна прогноза",
+    "trendStable": "Стабилно",
+    "trendUp": "+{percentage}%",
+    "trendDown": "-{percentage}%"
   }
 }

@@ -433,5 +433,17 @@
     "actionKept": "Subscription marked as kept",
     "actionError": "Failed to update subscription",
     "loading": "Loading subscriptions..."
+  },
+  "projections": {
+    "title": "Spending Forecast",
+    "subtitle": "Based on last {count} months of data",
+    "monthlyAvg": "Monthly avg",
+    "annualProjection": "Annual",
+    "transactions": "Transactions",
+    "recurring": "Recurring",
+    "totalLabel": "Total annual forecast",
+    "trendStable": "Stable",
+    "trendUp": "+{percentage}%",
+    "trendDown": "-{percentage}%"
   }
 }
