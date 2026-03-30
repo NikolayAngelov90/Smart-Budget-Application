@@ -18,6 +18,7 @@ import {
   updateGoal,
   deleteGoal,
   addContribution,
+  markMilestoneCelebrated,
 } from '../goalService';
 
 // ============================================================================
@@ -83,6 +84,7 @@ const sampleGoal = {
   target_amount: 1000,
   current_amount: 250,
   deadline: null,
+  milestones_celebrated: [],
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 };
@@ -352,5 +354,98 @@ describe('addContribution', () => {
     await expect(
       addContribution(supabase, 'user-1', 'goal-1', { amount: 50 })
     ).rejects.toThrow('Update failed');
+  });
+});
+
+// ============================================================================
+// markMilestoneCelebrated
+// ============================================================================
+
+describe('markMilestoneCelebrated', () => {
+  /**
+   * Builds a mock that:
+   *  - fromCall 1: SELECT .select().eq().eq().single() → fetchResult
+   *  - fromCall 2: UPDATE .update().eq().eq() → updateResult
+   *
+   * Returns { supabase, updateChain } so tests can assert on UPDATE payload
+   * and ownership filter (M2: security regression guard).
+   */
+  function buildMarkMilestoneMock(
+    fetchResult: { data: { milestones_celebrated: number[] } | null; error: { code?: string; message?: string } | null },
+    updateResult: { error: Error | null }
+  ) {
+    let fromCallCount = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateChain: any = {
+      update: jest.fn().mockReturnThis(),
+    };
+    updateChain.eq = jest.fn()
+      .mockReturnValueOnce(updateChain)
+      .mockResolvedValueOnce(updateResult);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase: any = {
+      from: jest.fn().mockImplementation(() => {
+        fromCallCount++;
+        if (fromCallCount === 1) {
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue(fetchResult),
+          };
+        }
+        return updateChain;
+      }),
+    };
+    return { supabase: supabase as Parameters<typeof markMilestoneCelebrated>[0], updateChain };
+  }
+
+  it('appends threshold and calls update with correct payload and ownership filter', async () => {
+    const { supabase, updateChain } = buildMarkMilestoneMock(
+      { data: { milestones_celebrated: [25] }, error: null },
+      { error: null }
+    );
+
+    await markMilestoneCelebrated(supabase, 'user-1', 'goal-1', 50);
+
+    expect(supabase.from).toHaveBeenCalledTimes(2);
+    // M2: verify correct merged array is written
+    expect(updateChain.update).toHaveBeenCalledWith({ milestones_celebrated: [25, 50] });
+    // M2: verify ownership filter present on UPDATE (prevents cross-user writes)
+    expect(updateChain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+  });
+
+  it('is a no-op when threshold already in milestones_celebrated', async () => {
+    const { supabase } = buildMarkMilestoneMock(
+      { data: { milestones_celebrated: [25, 50] }, error: null },
+      { error: null }
+    );
+
+    await markMilestoneCelebrated(supabase, 'user-1', 'goal-1', 50);
+    // Only SELECT called, no UPDATE
+    expect(supabase.from).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns silently on PGRST116 (goal deleted race condition)', async () => {
+    const { supabase } = buildMarkMilestoneMock(
+      { data: null, error: { code: 'PGRST116', message: 'Row not found' } },
+      { error: null }
+    );
+
+    await expect(
+      markMilestoneCelebrated(supabase, 'user-1', 'deleted-goal', 25)
+    ).resolves.toBeUndefined();
+    expect(supabase.from).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws on non-PGRST116 fetch error', async () => {
+    const { supabase } = buildMarkMilestoneMock(
+      { data: null, error: { message: 'DB connection lost' } },
+      { error: null }
+    );
+
+    await expect(
+      markMilestoneCelebrated(supabase, 'user-1', 'goal-1', 25)
+    ).rejects.toMatchObject({ message: 'DB connection lost' });
   });
 });

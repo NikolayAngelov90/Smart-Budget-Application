@@ -1,8 +1,8 @@
 /**
- * Goal Contribution API Route Integration Tests
- * Story 11.5: Savings Goals
+ * Celebrate API Route Integration Tests
+ * Story 11.6: Goal Milestone Celebrations
  *
- * Task 10.4: Integration tests for POST /api/goals/[id]/contribute
+ * POST /api/goals/[id]/celebrate
  */
 
 /**
@@ -23,7 +23,7 @@ jest.mock('@/lib/supabase/server', () => ({
 }));
 
 jest.mock('@/lib/services/goalService', () => ({
-  addContribution: jest.fn(),
+  markMilestoneCelebrated: jest.fn(),
 }));
 
 jest.mock('@/lib/utils/logger', () => ({
@@ -37,19 +37,20 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { addContribution } from '@/lib/services/goalService';
+import { markMilestoneCelebrated } from '@/lib/services/goalService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockAddContribution = addContribution as jest.MockedFunction<typeof addContribution>;
+const mockMarkMilestoneCelebrated = markMilestoneCelebrated as jest.MockedFunction<typeof markMilestoneCelebrated>;
 const mockJsonResponse = NextResponse.json as jest.MockedFunction<typeof NextResponse.json>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PostFn = (req: any, ctx: any) => Promise<unknown>;
-let POST: PostFn;
+type RouteFn = (req: any, ctx: any) => Promise<unknown>;
+
+let POST: RouteFn;
 
 beforeAll(async () => {
   const mod = await import('../route');
-  POST = mod.POST as unknown as PostFn;
+  POST = mod.POST as unknown as RouteFn;
 });
 
 // ============================================================================
@@ -86,103 +87,83 @@ function buildRequest(body: unknown) {
   return { json: jest.fn().mockResolvedValue(body) };
 }
 
-const updatedGoal = {
-  id: 'goal-1',
-  user_id: 'user-1',
-  name: 'Emergency Fund',
-  target_amount: 1000,
-  current_amount: 350,
-  deadline: null,
-  milestones_celebrated: [],
-  created_at: '2026-01-01T00:00:00Z',
-  updated_at: '2026-01-01T00:00:00Z',
-};
-
 // ============================================================================
-// POST /api/goals/[id]/contribute
+// POST /api/goals/[id]/celebrate
 // ============================================================================
 
-describe('POST /api/goals/[id]/contribute', () => {
+describe('POST /api/goals/[id]/celebrate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('returns 401 when unauthenticated', async () => {
     mockAuthUnauthorized();
-    await POST(buildRequest({ amount: 100 }), buildContext('goal-1'));
+    await POST(buildRequest({ threshold: 25 }), buildContext('goal-1'));
     expect(mockJsonResponse).toHaveBeenCalledWith(
       expect.objectContaining({ error: { message: 'Unauthorized' } }),
       expect.objectContaining({ status: 401 })
     );
   });
 
-  it('returns 400 when amount is zero', async () => {
+  it('returns 400 on invalid threshold (0)', async () => {
     mockAuthUser();
-    await POST(buildRequest({ amount: 0 }), buildContext('goal-1'));
+    await POST(buildRequest({ threshold: 0 }), buildContext('goal-1'));
     expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ error: { message: 'amount must be greater than 0' } }),
+      expect.objectContaining({ error: { message: 'threshold must be one of 25, 50, 75, 100' } }),
       expect.objectContaining({ status: 400 })
     );
   });
 
-  it('returns 400 when amount is negative', async () => {
+  it('returns 400 on invalid threshold (50.5)', async () => {
     mockAuthUser();
-    await POST(buildRequest({ amount: -50 }), buildContext('goal-1'));
+    await POST(buildRequest({ threshold: 50.5 }), buildContext('goal-1'));
     expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ error: { message: 'amount must be greater than 0' } }),
+      expect.objectContaining({ error: { message: 'threshold must be one of 25, 50, 75, 100' } }),
       expect.objectContaining({ status: 400 })
     );
   });
 
-  it('adds contribution and returns updated goal', async () => {
+  it('returns 400 on invalid threshold (101)', async () => {
     mockAuthUser();
-    mockAddContribution.mockResolvedValue(updatedGoal);
+    await POST(buildRequest({ threshold: 101 }), buildContext('goal-1'));
+    expect(mockJsonResponse).toHaveBeenCalledWith(
+      expect.objectContaining({ error: { message: 'threshold must be one of 25, 50, 75, 100' } }),
+      expect.objectContaining({ status: 400 })
+    );
+  });
 
-    await POST(buildRequest({ amount: 100, note: 'Monthly savings' }), buildContext('goal-1'));
+  it('returns 400 on invalid threshold (string)', async () => {
+    mockAuthUser();
+    await POST(buildRequest({ threshold: 'bad' }), buildContext('goal-1'));
+    expect(mockJsonResponse).toHaveBeenCalledWith(
+      expect.objectContaining({ error: { message: 'threshold must be one of 25, 50, 75, 100' } }),
+      expect.objectContaining({ status: 400 })
+    );
+  });
 
-    expect(mockAddContribution).toHaveBeenCalledWith(
+  it.each([25, 50, 75, 100])('returns { success: true } for valid threshold %i', async (threshold) => {
+    mockAuthUser();
+    mockMarkMilestoneCelebrated.mockResolvedValue(undefined);
+
+    await POST(buildRequest({ threshold }), buildContext('goal-1'));
+
+    expect(mockMarkMilestoneCelebrated).toHaveBeenCalledWith(
       expect.anything(),
       'user-1',
       'goal-1',
-      { amount: 100, note: 'Monthly savings' }
+      threshold
     );
-    expect(mockJsonResponse).toHaveBeenCalledWith(updatedGoal);
+    expect(mockJsonResponse).toHaveBeenCalledWith({ success: true });
   });
 
-  it('passes null note when note not provided', async () => {
+  it('returns 500 on service error', async () => {
     mockAuthUser();
-    mockAddContribution.mockResolvedValue(updatedGoal);
+    mockMarkMilestoneCelebrated.mockRejectedValue(new Error('DB error'));
 
-    await POST(buildRequest({ amount: 50 }), buildContext('goal-1'));
-
-    expect(mockAddContribution).toHaveBeenCalledWith(
-      expect.anything(),
-      'user-1',
-      'goal-1',
-      { amount: 50, note: null }
-    );
-  });
-
-  it('returns 404 when goal not found', async () => {
-    mockAuthUser();
-    mockAddContribution.mockRejectedValue(new Error('Goal not found'));
-
-    await POST(buildRequest({ amount: 100 }), buildContext('nonexistent'));
+    await POST(buildRequest({ threshold: 50 }), buildContext('goal-1'));
 
     expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ error: { message: 'Not found' } }),
-      expect.objectContaining({ status: 404 })
-    );
-  });
-
-  it('returns 500 on unexpected service error', async () => {
-    mockAuthUser();
-    mockAddContribution.mockRejectedValue(new Error('DB crash'));
-
-    await POST(buildRequest({ amount: 100 }), buildContext('goal-1'));
-
-    expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ error: { message: 'Failed to manage goals' } }),
+      expect.objectContaining({ error: { message: 'Failed to mark milestone' } }),
       expect.objectContaining({ status: 500 })
     );
   });

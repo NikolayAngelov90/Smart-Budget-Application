@@ -52,6 +52,7 @@ const sampleGoal: Goal = {
   target_amount: 1000,
   current_amount: 250,
   deadline: null,
+  milestones_celebrated: [],
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 };

@@ -474,6 +474,12 @@
     "createSuccess": "Целта е създадена",
     "updateSuccess": "Целта е обновена",
     "deleteSuccess": "Целта е изтрита",
-    "contributeSuccess": "Вноската е добавена"
+    "contributeSuccess": "Вноската е добавена",
+    "milestoneTitle": "Достигнато е ниво!",
+    "milestoneMessage": "{goalName} е финансирана {percentage}%!",
+    "milestoneAmount": "Спестили сте {amount} за тази цел",
+    "milestoneDismiss": "Продължавай!",
+    "milestoneBadge": "Достигнато ниво {percentage}%",
+    "milestoneComplete": "Целта е изпълнена! 🏆"
   }
 }

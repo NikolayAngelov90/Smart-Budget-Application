@@ -474,6 +474,12 @@
     "createSuccess": "Goal created",
     "updateSuccess": "Goal updated",
     "deleteSuccess": "Goal deleted",
-    "contributeSuccess": "Contribution added"
+    "contributeSuccess": "Contribution added",
+    "milestoneTitle": "Milestone Reached!",
+    "milestoneMessage": "{goalName} is {percentage}% funded!",
+    "milestoneAmount": "You've saved {amount} toward your goal",
+    "milestoneDismiss": "Keep Going!",
+    "milestoneBadge": "{percentage}% milestone reached",
+    "milestoneComplete": "Goal Complete! 🏆"
   }
 }

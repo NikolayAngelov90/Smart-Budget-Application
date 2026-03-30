@@ -193,3 +193,40 @@ export async function addContribution(
   if (!updated) throw new Error('Goal update returned no data');
   return updated;
 }
+
+/**
+ * Records a milestone threshold as celebrated for a goal.
+ * Idempotent: no-op if the threshold is already in milestones_celebrated.
+ * Silently returns on PGRST116 (goal deleted race condition).
+ * @throws on other DB errors
+ */
+export async function markMilestoneCelebrated(
+  supabase: SupabaseClient,
+  userId: string,
+  goalId: string,
+  threshold: number
+): Promise<void> {
+  const { data: current, error: fetchError } = await supabase
+    .from('goals')
+    .select('milestones_celebrated')
+    .eq('id', goalId)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError) {
+    if (fetchError.code === PGRST116) return; // Goal deleted race — silently ignore
+    throw fetchError;
+  }
+  if (!current) return;
+
+  const existing: number[] = current.milestones_celebrated ?? [];
+  if (existing.includes(threshold)) return; // Already marked — idempotent
+
+  const { error: updateError } = await supabase
+    .from('goals')
+    .update({ milestones_celebrated: [...existing, threshold] })
+    .eq('id', goalId)
+    .eq('user_id', userId);
+
+  if (updateError) throw updateError;
+}

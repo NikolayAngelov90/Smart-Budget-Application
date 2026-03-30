@@ -522,6 +522,8 @@ export interface Goal {
   current_amount: number;
   /** Optional target date in YYYY-MM-DD format, or null */
   deadline: string | null;
+  /** Milestone thresholds (25, 50, 75, 100) that have been celebrated. Prevents re-triggering. */
+  milestones_celebrated: number[];
   created_at: string;
   updated_at: string;
 }

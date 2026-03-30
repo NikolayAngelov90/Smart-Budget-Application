@@ -3,12 +3,14 @@
 /**
  * GoalCard Component
  * Story 11.5: Savings Goals
+ * Story 11.6: Goal Milestone Celebrations
  *
  * Card displaying a single savings goal with progress, actions (edit, delete,
- * contribute), and an accessible AlertDialog for delete confirmation.
+ * contribute), milestone detection, and an accessible AlertDialog for delete.
  */
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   AlertDialog,
   AlertDialogBody,
@@ -16,6 +18,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogOverlay,
+  Badge,
   Button,
   Card,
   CardBody,
@@ -33,6 +36,11 @@ import type { Goal } from '@/types/database.types';
 import { GoalProgress } from './GoalProgress';
 import { GoalForm } from './GoalForm';
 import { ContributionModal } from './ContributionModal';
+// M1: lazy-load per ADR-020 (gamification components must not inflate initial bundle)
+const MilestoneOverlay = dynamic(
+  () => import('./MilestoneOverlay').then(m => ({ default: m.MilestoneOverlay })),
+  { ssr: false },
+);
 
 interface GoalCardProps {
   goal: Goal;
@@ -63,7 +71,51 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
     onClose: onDeleteClose,
   } = useDisclosure();
 
+  const {
+    isOpen: isMilestoneOpen,
+    onOpen: onMilestoneOpen,
+    onClose: onMilestoneClose,
+  } = useDisclosure();
+
   const cancelDeleteRef = useRef<HTMLButtonElement>(null);
+  const prevPercentageRef = useRef<number | null>(null);
+  const justTriggeredRef = useRef<Set<number>>(new Set());
+
+  const [activeMilestone, setActiveMilestone] = useState<number | null>(null);
+
+  const currentPercentage =
+    goal.target_amount > 0
+      ? Math.min(100, Math.round((Number(goal.current_amount) / Number(goal.target_amount)) * 100))
+      : 0;
+
+  useEffect(() => {
+    const MILESTONES = [25, 50, 75, 100] as const;
+    const prevPct = prevPercentageRef.current;
+
+    if (prevPct !== null && prevPct !== currentPercentage) {
+      for (const threshold of MILESTONES) {
+        if (
+          currentPercentage >= threshold &&
+          prevPct < threshold &&
+          !goal.milestones_celebrated.includes(threshold) &&
+          !justTriggeredRef.current.has(threshold)
+        ) {
+          justTriggeredRef.current.add(threshold);
+          setActiveMilestone(threshold);
+          onMilestoneOpen();
+          // M3: persist to DB then revalidate; call onMutate on both success and failure
+          void fetch(`/api/goals/${goal.id}/celebrate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ threshold }),
+          }).then(() => onMutate()).catch(() => onMutate());
+          break; // Only one milestone at a time
+        }
+      }
+    }
+
+    prevPercentageRef.current = currentPercentage;
+  }, [currentPercentage, goal.milestones_celebrated, goal.id, onMilestoneOpen, onMutate]);
 
   async function handleDelete() {
     try {
@@ -89,6 +141,11 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
       onDeleteClose();
     }
   }
+
+  const highestMilestone =
+    goal.milestones_celebrated.length > 0
+      ? Math.max(...goal.milestones_celebrated)
+      : null;
 
   return (
     <>
@@ -124,6 +181,12 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
             targetAmount={Number(goal.target_amount)}
             currency={currency}
           />
+
+          {highestMilestone !== null && (
+            <Badge colorScheme="purple" mt={2} data-testid="milestone-badge">
+              {t('milestoneBadge', { percentage: highestMilestone })}
+            </Badge>
+          )}
 
           <Text fontSize="sm" color="gray.500" mt={2}>
             {goal.deadline
@@ -192,6 +255,16 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
+
+      {/* H1: always mounted so its aria-live region pre-exists in DOM before isOpen fires */}
+      <MilestoneOverlay
+        isOpen={isMilestoneOpen}
+        onClose={onMilestoneClose}
+        milestone={activeMilestone ?? 25}
+        goalName={goal.name}
+        currentAmount={Number(goal.current_amount)}
+        currency={currency}
+      />
     </>
   );
 }

@@ -11,6 +11,7 @@
  * - Skeleton loading during data fetch
  */
 
+import { useCallback } from 'react';
 import {
   Box,
   Button,
@@ -35,6 +36,9 @@ export default function GoalsPage() {
   const currency = preferences?.currency_format ?? '';
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // M4: stable identity prevents GoalCard's milestone useEffect from re-running on every parent render
+  const handleMutate = useCallback(() => void mutate(), [mutate]);
 
   function handleCreateSuccess() {
     onClose();
@@ -86,7 +90,7 @@ export default function GoalsPage() {
                 key={goal.id}
                 goal={goal}
                 currency={currency}
-                onMutate={() => void mutate()}
+                onMutate={handleMutate}
               />
             ))}
           </SimpleGrid>

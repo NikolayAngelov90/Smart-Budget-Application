@@ -1,12 +1,13 @@
 /**
  * GoalCard Component Tests
  * Story 11.5: Savings Goals
+ * Story 11.6: Goal Milestone Celebrations (milestone badge tests)
  *
  * Task 10.5: Unit tests for GoalCard component
  * - Renders goal name, progress, deadline
  * - Opens edit/contribute/delete modals
  * - Delete confirmation flow
- * - Handles delete API error
+ * - Milestone badge display
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -19,7 +20,7 @@ import type { Goal } from '@/types/database.types';
 // ============================================================================
 
 jest.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => {
+  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     const map: Record<string, string> = {
       editGoal: 'Edit Goal',
       deleteGoal: 'Delete Goal',
@@ -31,9 +32,10 @@ jest.mock('next-intl', () => ({
       deleteSuccess: 'Goal deleted',
       completed: 'Completed!',
       progress: '50% complete',
-      saved: 'Saved',
-      target: 'Target',
     };
+    if (key === 'milestoneBadge') {
+      return `${String(params?.percentage ?? '')}% milestone reached`;
+    }
     return map[key] ?? key;
   },
 }));
@@ -64,6 +66,13 @@ jest.mock('@/components/goals/ContributionModal', () => ({
     ) : null,
 }));
 
+jest.mock('@/components/goals/MilestoneOverlay', () => ({
+  MilestoneOverlay: ({ isOpen, milestone }: { isOpen: boolean; milestone: number }) =>
+    isOpen ? (
+      <div data-testid="milestone-overlay">{milestone}% overlay</div>
+    ) : null,
+}));
+
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -78,6 +87,7 @@ const sampleGoal: Goal = {
   target_amount: 1000,
   current_amount: 250,
   deadline: null,
+  milestones_celebrated: [],
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 };
@@ -176,5 +186,30 @@ describe('GoalCard', () => {
     await waitFor(() => {
       expect(screen.queryByText('Are you sure you want to delete this goal?')).not.toBeInTheDocument();
     });
+  });
+
+  it('does not show milestone badge when milestones_celebrated is empty', () => {
+    renderWithChakra(
+      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
+    );
+    expect(screen.queryByTestId('milestone-badge')).not.toBeInTheDocument();
+  });
+
+  it('shows milestone badge with correct text when milestones_celebrated has one entry', () => {
+    const goal = { ...sampleGoal, milestones_celebrated: [50] };
+    renderWithChakra(
+      <GoalCard goal={goal} currency="EUR" onMutate={onMutate} />
+    );
+    expect(screen.getByTestId('milestone-badge')).toBeInTheDocument();
+    expect(screen.getByText('50% milestone reached')).toBeInTheDocument();
+  });
+
+  it('shows highest milestone when multiple milestones celebrated', () => {
+    const goal = { ...sampleGoal, milestones_celebrated: [25, 50] };
+    renderWithChakra(
+      <GoalCard goal={goal} currency="EUR" onMutate={onMutate} />
+    );
+    expect(screen.getByText('50% milestone reached')).toBeInTheDocument();
+    expect(screen.queryByText('25% milestone reached')).not.toBeInTheDocument();
   });
 });
