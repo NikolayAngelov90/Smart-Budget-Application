@@ -188,7 +188,7 @@ async function setCachedRates(
     try {
       const client = getRedisClient() as UpstashRedis;
       const key = `${REDIS_KEY_PREFIX}:${baseCurrency}`;
-      await client.set(key, JSON.stringify(data), {
+      await client.set(key, data, {
         ex: CACHE_TTL_SECONDS,
       });
     } catch {
