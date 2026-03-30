@@ -64,8 +64,7 @@ export async function hasEnoughDataForProjections(
  * 1. Fetch transactions from last 3 complete calendar months (current period)
  * 2. Fetch transactions from prior 3 complete calendar months (previous period for trend)
  * 3. Aggregate by category; compute monthly avg, annual projection, trend
- * 4. Cross-reference detected_subscriptions to flag recurring categories
- * 5. Sort by annual_projection descending
+ * 4. Sort by annual_projection descending
  */
 export async function getAnnualizedProjections(
   supabase: SupabaseClient,
@@ -83,8 +82,8 @@ export async function getAnnualizedProjections(
   const prevPeriodEnd = new Date(currentYear, currentMonth - 3, 0); // last day of month before current period
   const prevPeriodStart = new Date(currentYear, currentMonth - 6, 1); // 6 months back
 
-  // Run both period queries and the subscriptions query in parallel
-  const [currentResult, prevResult, subscriptionsResult] = await Promise.all([
+  // Run both period queries in parallel
+  const [currentResult, prevResult] = await Promise.all([
     supabase
       .from('transactions')
       .select('amount, category_id, date, categories(id, name, color)')
@@ -102,25 +101,13 @@ export async function getAnnualizedProjections(
       .gte('date', fmt(prevPeriodStart))
       .lte('date', fmt(prevPeriodEnd))
       .order('date', { ascending: true }),
-
-    supabase
-      .from('detected_subscriptions')
-      .select('category_id')
-      .eq('user_id', userId)
-      .in('status', ['active', 'unused']),
   ]);
 
   if (currentResult.error) throw currentResult.error;
   if (prevResult.error) throw prevResult.error;
-  if (subscriptionsResult.error) throw subscriptionsResult.error;
 
   const currentTxns = currentResult.data ?? [];
   const prevTxns = prevResult.data ?? [];
-
-  // Build set of recurring category IDs
-  const recurringCategoryIds = new Set<string>(
-    (subscriptionsResult.data ?? []).map((s) => s.category_id).filter(Boolean)
-  );
 
   // Count distinct calendar months in current period data
   const distinctMonths = new Set(currentTxns.map((tx) => tx.date.substring(0, 7)));
@@ -187,7 +174,7 @@ export async function getAnnualizedProjections(
       monthly_avg,
       annual_projection,
       transaction_count: count,
-      is_recurring: recurringCategoryIds.has(catId),
+      is_recurring: false,
       trend,
       trend_percentage,
     });

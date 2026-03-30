@@ -97,7 +97,7 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
         if (
           currentPercentage >= threshold &&
           prevPct < threshold &&
-          !goal.milestones_celebrated.includes(threshold) &&
+          !(goal.milestones_celebrated ?? []).includes(threshold) &&
           !justTriggeredRef.current.has(threshold)
         ) {
           justTriggeredRef.current.add(threshold);
@@ -142,9 +142,10 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
     }
   }
 
+  const celebratedMilestones = goal.milestones_celebrated ?? [];
   const highestMilestone =
-    goal.milestones_celebrated.length > 0
-      ? Math.max(...goal.milestones_celebrated)
+    celebratedMilestones.length > 0
+      ? Math.max(...celebratedMilestones)
       : null;
 
   return (

@@ -48,19 +48,6 @@ function createLtLimitChainMock(resolveWith: any) {
   return chain;
 }
 
-/**
- * Creates a chainable Supabase mock that resolves after .in() (terminal).
- * Used for detected_subscriptions query.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createInTerminalChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {};
-  chain.select = jest.fn().mockReturnValue(chain);
-  chain.eq = jest.fn().mockReturnValue(chain);
-  chain.in = jest.fn().mockResolvedValue(resolveWith);
-  return chain;
-}
 
 // ============================================================================
 // hasEnoughDataForProjections
@@ -117,17 +104,13 @@ describe('getAnnualizedProjections', () => {
   function buildSupabaseMock(
     currentTxns: object[],
     prevTxns: object[],
-    subscriptions: object[]
   ) {
     const currChain = createOrderChainMock({ data: currentTxns, error: null });
     const prevChain = createOrderChainMock({ data: prevTxns, error: null });
-    const subsChain = createInTerminalChainMock({ data: subscriptions, error: null });
 
     let callCount = 0;
     const supabase = {
-      from: jest.fn().mockImplementation((table: string) => {
-        if (table === 'detected_subscriptions') return subsChain;
-        // First two calls are current and prev period transaction queries
+      from: jest.fn().mockImplementation(() => {
         callCount++;
         return callCount === 1 ? currChain : prevChain;
       }),
@@ -141,7 +124,7 @@ describe('getAnnualizedProjections', () => {
       { amount: 30, category_id: 'cat-1', date: '2026-01-20', categories: { id: 'cat-1', name: 'Food', color: '#ff0000' } },
       { amount: 100, category_id: 'cat-2', date: '2026-01-15', categories: { id: 'cat-2', name: 'Transport', color: '#00ff00' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, [], []);
+    const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     expect(result.hasEnoughData).toBe(true);
@@ -162,7 +145,7 @@ describe('getAnnualizedProjections', () => {
       { amount: 120, category_id: 'cat-1', date: '2025-12-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
       { amount: 60, category_id: 'cat-1', date: '2026-01-15', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, [], []);
+    const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     expect(result.months_analyzed).toBe(2);
@@ -180,7 +163,7 @@ describe('getAnnualizedProjections', () => {
       { amount: 33, category_id: 'cat-1', date: '2025-12-01', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
       { amount: 34, category_id: 'cat-1', date: '2026-01-01', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, [], []);
+    const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -193,7 +176,7 @@ describe('getAnnualizedProjections', () => {
     const currentTxns = [
       { amount: 100, category_id: 'cat-1', date: '2026-01-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, [], []);
+    const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -209,7 +192,7 @@ describe('getAnnualizedProjections', () => {
     const prevTxns = [
       { amount: 100, category_id: 'cat-1', date: '2025-10-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, prevTxns, []);
+    const supabase = buildSupabaseMock(currentTxns, prevTxns);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -225,7 +208,7 @@ describe('getAnnualizedProjections', () => {
     const prevTxns = [
       { amount: 100, category_id: 'cat-1', date: '2025-10-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, prevTxns, []);
+    const supabase = buildSupabaseMock(currentTxns, prevTxns);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -241,27 +224,25 @@ describe('getAnnualizedProjections', () => {
     const prevTxns = [
       { amount: 100, category_id: 'cat-1', date: '2025-10-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, prevTxns, []);
+    const supabase = buildSupabaseMock(currentTxns, prevTxns);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(result.projections[0]!.trend).toBe('stable');
   });
 
-  it('sets is_recurring true when category matches detected subscription', async () => {
+  it('sets is_recurring false for all categories (detected_subscriptions has no category_id column)', async () => {
     const currentTxns = [
       { amount: 15, category_id: 'cat-streaming', date: '2026-01-01', categories: { id: 'cat-streaming', name: 'Streaming', color: '#blue' } },
       { amount: 50, category_id: 'cat-food', date: '2026-01-05', categories: { id: 'cat-food', name: 'Food', color: '#green' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, [], [
-      { category_id: 'cat-streaming' },
-    ]);
+    const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     const streaming = result.projections.find((p) => p.category_id === 'cat-streaming');
     const food = result.projections.find((p) => p.category_id === 'cat-food');
 
-    expect(streaming?.is_recurring).toBe(true);
+    expect(streaming?.is_recurring).toBe(false);
     expect(food?.is_recurring).toBe(false);
   });
 
@@ -271,7 +252,7 @@ describe('getAnnualizedProjections', () => {
       { amount: 500, category_id: 'cat-big', date: '2026-01-02', categories: { id: 'cat-big', name: 'Big', color: '#bbb' } },
       { amount: 100, category_id: 'cat-mid', date: '2026-01-03', categories: { id: 'cat-mid', name: 'Mid', color: '#ccc' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, [], []);
+    const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -285,31 +266,26 @@ describe('getAnnualizedProjections', () => {
   it('throws on DB error for current period query', async () => {
     const dbError = new Error('Query failed');
     const chain = createOrderChainMock({ data: null, error: dbError });
-    const subsChain = createInTerminalChainMock({ data: [], error: null });
     const supabase = {
-      from: jest.fn().mockImplementation((table: string) => {
-        if (table === 'detected_subscriptions') return subsChain;
-        return chain;
-      }),
+      from: jest.fn().mockReturnValue(chain),
     } as unknown as Parameters<typeof getAnnualizedProjections>[0];
 
     await expect(getAnnualizedProjections(supabase, 'user-1')).rejects.toThrow('Query failed');
   });
 
-  it('throws on DB error for detected_subscriptions query', async () => {
-    const subsError = new Error('Subscriptions query failed');
+  it('throws on DB error for prev period query', async () => {
+    const dbError = new Error('Prev query failed');
     const currChain = createOrderChainMock({ data: [], error: null });
-    const subsChain = createInTerminalChainMock({ data: null, error: subsError });
+    const errChain = createOrderChainMock({ data: null, error: dbError });
     let callCount = 0;
     const supabase = {
-      from: jest.fn().mockImplementation((table: string) => {
-        if (table === 'detected_subscriptions') return subsChain;
+      from: jest.fn().mockImplementation(() => {
         callCount++;
-        return callCount === 1 ? currChain : createOrderChainMock({ data: [], error: null });
+        return callCount === 1 ? currChain : errChain;
       }),
     } as unknown as Parameters<typeof getAnnualizedProjections>[0];
 
-    await expect(getAnnualizedProjections(supabase, 'user-1')).rejects.toThrow('Subscriptions query failed');
+    await expect(getAnnualizedProjections(supabase, 'user-1')).rejects.toThrow('Prev query failed');
   });
 
   it('returns hasEnoughData true with correct months_analyzed', async () => {
@@ -318,7 +294,7 @@ describe('getAnnualizedProjections', () => {
       { amount: 60, category_id: 'cat-1', date: '2026-01-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
       { amount: 70, category_id: 'cat-1', date: '2026-02-15', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
     ];
-    const supabase = buildSupabaseMock(currentTxns, [], []);
+    const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
 
     expect(result.hasEnoughData).toBe(true);
