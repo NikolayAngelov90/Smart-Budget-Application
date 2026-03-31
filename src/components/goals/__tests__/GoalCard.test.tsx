@@ -67,10 +67,12 @@ jest.mock('@/components/goals/ContributionModal', () => ({
 }));
 
 jest.mock('@/components/goals/MilestoneOverlay', () => ({
-  MilestoneOverlay: ({ isOpen, milestone }: { isOpen: boolean; milestone: number }) =>
-    isOpen ? (
-      <div data-testid="milestone-overlay">{milestone}% overlay</div>
-    ) : null,
+  // Always mounted (never null) so aria-live pre-exists in DOM; shows content only when open
+  MilestoneOverlay: ({ isOpen, milestone }: { isOpen: boolean; milestone: number }) => (
+    <div data-testid="milestone-overlay-container" data-open={String(isOpen)}>
+      {isOpen && <span>{milestone}% overlay</span>}
+    </div>
+  ),
 }));
 
 // ============================================================================
@@ -211,5 +213,74 @@ describe('GoalCard', () => {
     );
     expect(screen.getByText('50% milestone reached')).toBeInTheDocument();
     expect(screen.queryByText('25% milestone reached')).not.toBeInTheDocument();
+  });
+
+  // L4: always-mounted guard
+  it('always mounts MilestoneOverlay (closed) so aria-live region pre-exists in DOM', () => {
+    renderWithChakra(
+      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
+    );
+    const container = screen.getByTestId('milestone-overlay-container');
+    expect(container).toBeInTheDocument();
+    expect(container).toHaveAttribute('data-open', 'false');
+  });
+
+  // M1: milestone trigger detection
+  it('opens milestone overlay and calls celebrate API when goal crosses 50% threshold', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    // Start at 40% with 25% already celebrated — next uncelebrated threshold is 50%
+    const goalBelow = { ...sampleGoal, current_amount: 400, target_amount: 1000, milestones_celebrated: [25] };
+    const goalAbove = { ...sampleGoal, current_amount: 550, target_amount: 1000, milestones_celebrated: [25] };
+
+    const { rerender } = renderWithChakra(
+      <GoalCard goal={goalBelow} currency="EUR" onMutate={onMutate} />
+    );
+
+    rerender(
+      <ChakraProvider>
+        <GoalCard goal={goalAbove} currency="EUR" onMutate={onMutate} />
+      </ChakraProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('50% overlay')).toBeInTheDocument();
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/goals/goal-1/celebrate',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ threshold: 50 }),
+      })
+    );
+  });
+
+  it('fires only the first uncelebrated threshold when multiple are crossed at once', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    // 20% → 80%: crosses 25, 50, 75 — only 25 (first in loop) fires
+    const goalBelow = { ...sampleGoal, current_amount: 200, target_amount: 1000, milestones_celebrated: [] };
+    const goalAbove = { ...sampleGoal, current_amount: 800, target_amount: 1000, milestones_celebrated: [] };
+
+    const { rerender } = renderWithChakra(
+      <GoalCard goal={goalBelow} currency="EUR" onMutate={onMutate} />
+    );
+
+    rerender(
+      <ChakraProvider>
+        <GoalCard goal={goalAbove} currency="EUR" onMutate={onMutate} />
+      </ChakraProvider>
+    );
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/goals/goal-1/celebrate',
+      expect.objectContaining({ body: JSON.stringify({ threshold: 25 }) })
+    );
+    expect(screen.getByText('25% overlay')).toBeInTheDocument();
   });
 });

@@ -448,4 +448,15 @@ describe('markMilestoneCelebrated', () => {
       markMilestoneCelebrated(supabase, 'user-1', 'goal-1', 25)
     ).rejects.toMatchObject({ message: 'DB connection lost' });
   });
+
+  it('throws when UPDATE call fails', async () => {
+    const { supabase } = buildMarkMilestoneMock(
+      { data: { milestones_celebrated: [25] }, error: null },
+      { error: { message: 'Write failed' } }
+    );
+
+    await expect(
+      markMilestoneCelebrated(supabase, 'user-1', 'goal-1', 50)
+    ).rejects.toMatchObject({ message: 'Write failed' });
+  });
 });

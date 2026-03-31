@@ -80,6 +80,10 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
   const cancelDeleteRef = useRef<HTMLButtonElement>(null);
   const prevPercentageRef = useRef<number | null>(null);
   const justTriggeredRef = useRef<Set<number>>(new Set());
+  // L3: use ref to read latest milestones_celebrated without it being a dep —
+  // avoids unnecessary effect re-runs on every SWR poll (array identity changes)
+  const celebratedRef = useRef<number[]>(goal.milestones_celebrated ?? []);
+  celebratedRef.current = goal.milestones_celebrated ?? [];
 
   const [activeMilestone, setActiveMilestone] = useState<number | null>(null);
 
@@ -97,7 +101,7 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
         if (
           currentPercentage >= threshold &&
           prevPct < threshold &&
-          !(goal.milestones_celebrated ?? []).includes(threshold) &&
+          !celebratedRef.current.includes(threshold) &&
           !justTriggeredRef.current.has(threshold)
         ) {
           justTriggeredRef.current.add(threshold);
@@ -115,7 +119,7 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
     }
 
     prevPercentageRef.current = currentPercentage;
-  }, [currentPercentage, goal.milestones_celebrated, goal.id, onMilestoneOpen, onMutate]);
+  }, [currentPercentage, goal.id, onMilestoneOpen, onMutate]);
 
   async function handleDelete() {
     try {

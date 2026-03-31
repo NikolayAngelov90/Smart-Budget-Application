@@ -135,7 +135,7 @@ export function MilestoneOverlay({
           </Box>
         )}
 
-        {/* Reduced motion: instant badge (L1: duration 0 — no animation) */}
+        {/* Reduced motion: instant emoji badge replaces confetti (duration 0 — no animation) */}
         {reducedMotion && (
           <Box display="flex" justifyContent="center" pt={4}>
             <motion.div
@@ -143,8 +143,8 @@ export function MilestoneOverlay({
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0 }}
             >
-              <Badge colorScheme="purple" fontSize="lg" px={3} py={1}>
-                {milestone}%
+              <Badge colorScheme="purple" fontSize="2xl" px={3} py={1}>
+                {emoji}
               </Badge>
             </motion.div>
           </Box>
