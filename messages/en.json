@@ -481,5 +481,14 @@
     "milestoneDismiss": "Keep Going!",
     "milestoneBadge": "{percentage}% milestone reached",
     "milestoneComplete": "Goal Complete! 🏆"
+  },
+  "digest": {
+    "title": "Weekly Digest",
+    "weekOf": "Week of {start} – {end}",
+    "totalSpending": "Total Spending",
+    "vsLastWeek": "{pct} vs last week",
+    "topCategories": "Top Categories",
+    "highlight": "This Week's Highlight",
+    "loading": "Loading weekly digest..."
   }
 }

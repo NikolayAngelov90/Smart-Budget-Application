@@ -481,5 +481,14 @@
     "milestoneDismiss": "Продължавай!",
     "milestoneBadge": "Достигнато ниво {percentage}%",
     "milestoneComplete": "Целта е изпълнена! 🏆"
+  },
+  "digest": {
+    "title": "Седмичен обзор",
+    "weekOf": "Седмица от {start} – {end}",
+    "totalSpending": "Общи разходи",
+    "vsLastWeek": "{pct} спрямо миналата седмица",
+    "topCategories": "Топ категории",
+    "highlight": "Акцент за седмицата",
+    "loading": "Зареждане на седмичния обзор..."
   }
 }

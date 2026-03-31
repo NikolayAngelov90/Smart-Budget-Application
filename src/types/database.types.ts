@@ -346,6 +346,55 @@ export interface Database {
           }
         ];
       };
+      weekly_digests: {
+        Row: {
+          id: string;
+          user_id: string;
+          week_start: string;
+          week_end: string;
+          total_spending: number;
+          previous_week_spending: number;
+          spending_change_pct: number;
+          top_categories: Json;
+          actionable_highlight: string;
+          currency: string;
+          generated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          week_start: string;
+          week_end: string;
+          total_spending: number;
+          previous_week_spending: number;
+          spending_change_pct: number;
+          top_categories?: Json;
+          actionable_highlight?: string;
+          currency?: string;
+          generated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          week_start?: string;
+          week_end?: string;
+          total_spending?: number;
+          previous_week_spending?: number;
+          spending_change_pct?: number;
+          top_categories?: Json;
+          actionable_highlight?: string;
+          currency?: string;
+          generated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'weekly_digests_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       user_sessions: {
         Row: {
           id: string;
@@ -594,4 +643,29 @@ export interface InsightMetadata {
   savings_amount?: number;
   percent_under_budget?: number;
   [key: string]: Json | undefined;
+}
+
+// ============================================================================
+// WEEKLY DIGEST — Story 11.7
+// ============================================================================
+
+export interface DigestTopCategory {
+  category_id: string;
+  name: string;
+  color: string;
+  total: number;
+}
+
+export interface WeeklyDigest {
+  id: string;
+  user_id: string;
+  week_start: string;             // ISO date 'YYYY-MM-DD' (Monday)
+  week_end: string;               // ISO date 'YYYY-MM-DD' (Sunday)
+  total_spending: number;
+  previous_week_spending: number;
+  spending_change_pct: number;    // negative = decrease, positive = increase
+  top_categories: DigestTopCategory[];
+  actionable_highlight: string;
+  currency: string;
+  generated_at: string;
 }

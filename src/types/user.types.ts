@@ -23,6 +23,9 @@ export interface UserPreferences {
 
   /** UI language preference (Story 10-1) */
   language: 'en' | 'bg';
+
+  /** Opt-in/out for weekly financial digest (Story 11.7, default: true) */
+  weekly_digest_enabled?: boolean;
 }
 
 /**

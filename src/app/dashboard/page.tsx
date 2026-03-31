@@ -25,6 +25,7 @@ import { SpendingTrendsChart } from '@/components/dashboard/SpendingTrendsChart'
 import { MonthOverMonth } from '@/components/dashboard/MonthOverMonth';
 import { SpendingHeatmap } from '@/components/ai/SpendingHeatmap';
 import { AnnualizedProjections } from '@/components/ai/AnnualizedProjections';
+import { WeeklyDigestCard } from '@/components/ai/WeeklyDigestCard';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -50,6 +51,7 @@ export default function DashboardPage() {
         mutate('/api/dashboard/trends', undefined, { revalidate: true }),
         mutate(heatmapKey, undefined, { revalidate: true }),
         mutate('/api/dashboard/annualized-projections', undefined, { revalidate: true }),
+        mutate('/api/user/digest', undefined, { revalidate: true }),
       ]);
     }, [])
   );
@@ -181,6 +183,11 @@ export default function DashboardPage() {
       {/* Annualized Spending Projections - Story 11.4 (progressive disclosure: renders null if <1 complete past month) */}
       <Box mb={{ base: 6, md: 8 }}>
         <AnnualizedProjections />
+      </Box>
+
+      {/* Weekly Digest - Story 11.7 (progressive disclosure: renders null if no digest yet) */}
+      <Box mb={{ base: 6, md: 8 }}>
+        <WeeklyDigestCard />
       </Box>
 
       {/* Story 11.1: Transaction Entry Modal triggered from FirstTransactionPrompt */}

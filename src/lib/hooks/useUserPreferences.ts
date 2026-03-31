@@ -20,6 +20,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   date_format: 'MM/DD/YYYY',
   onboarding_completed: false,
   language: 'en',
+  weekly_digest_enabled: true,
 };
 
 /**
