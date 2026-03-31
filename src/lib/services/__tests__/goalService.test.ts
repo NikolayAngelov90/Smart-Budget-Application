@@ -372,7 +372,7 @@ describe('markMilestoneCelebrated', () => {
    */
   function buildMarkMilestoneMock(
     fetchResult: { data: { milestones_celebrated: number[] } | null; error: { code?: string; message?: string } | null },
-    updateResult: { error: Error | null }
+    updateResult: { error: { message: string } | null }
   ) {
     let fromCallCount = 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
