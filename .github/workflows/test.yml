@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Run Tests
+    name: Run Tests (${{ matrix.node-version }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -79,13 +79,26 @@ jobs:
         run: npm audit --audit-level=critical
         continue-on-error: true
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
       - name: Install Playwright browsers
-        run: npx playwright install chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Playwright system deps (cached browsers)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Build production app for benchmarks
         run: npm run build
         env:
-          # Test credentials for build-time static generation
           NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
           NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -99,7 +112,6 @@ jobs:
           npm run start &
           npx wait-on http://localhost:3000 --timeout 60000
         env:
-          # Test credentials for runtime
           NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
           NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -113,7 +125,6 @@ jobs:
         run: npm run benchmark
         continue-on-error: true
         env:
-          # Test credentials for benchmarking
           NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
           NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -152,7 +163,6 @@ jobs:
             metrics.forEach(({ key, label, threshold }) => {
               const current = results[key];
 
-              // Skip if measurement was not available (-1)
               if (current === -1) {
                 tableRows += `| ${label} | Not measured | N/A | N/A | ⊘ |\n`;
                 return;
@@ -243,14 +253,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run pre-deployment checks
-        run: node scripts/pre-deployment-check.js
-
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Run pre-deployment checks
+        run: node scripts/pre-deployment-check.js
 
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}

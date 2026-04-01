@@ -23,8 +23,9 @@ const customJestConfig = {
   ],
   coverageReporters: [
     'text',           // Display coverage in terminal
-    'lcov',           // Generate lcov report for Codecov
-    'json-summary',   // Generate coverage-summary.json for GitHub Actions
+    'lcov',           // Generate lcov.info for Codecov
+    'json',           // Generate coverage-final.json for Codecov
+    'json-summary',   // Generate coverage-summary.json for threshold check
   ],
   // Story 9.1, 10-1: Transform ESM modules (upstash, next-intl, use-intl)
   transformIgnorePatterns: [

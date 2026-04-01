@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+coverage/
+scripts/
+benchmarks/
+supabase/
+*.config.js
+*.config.ts
+*.config.mjs
