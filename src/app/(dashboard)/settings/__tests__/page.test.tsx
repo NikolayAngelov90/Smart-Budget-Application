@@ -142,6 +142,86 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     mockExportMonthlyReportToPDF.mockResolvedValue();
   });
 
+  // AC-11.8.5: Weekly digest toggle tests
+  describe('Weekly Digest preference toggle', () => {
+    test('renders Weekly Digest toggle in Preferences section (default enabled)', async () => {
+      customRender(<SettingsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/weekly digest/i)).toBeInTheDocument();
+      });
+
+      const toggle = screen.getByLabelText(/weekly digest/i) as HTMLInputElement;
+      expect(toggle.checked).toBe(true);
+    });
+
+    test('renders toggle as unchecked when profile has weekly_digest_enabled: false', async () => {
+      const profileWithDigestDisabled = {
+        ...mockUserProfile,
+        preferences: {
+          ...mockUserProfile.preferences,
+          weekly_digest_enabled: false,
+        },
+      };
+
+      (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('/api/user/profile')) {
+          return Promise.resolve(mockResponse({ data: profileWithDigestDisabled }));
+        }
+        return Promise.resolve(mockResponse({ data: [] }));
+      });
+
+      customRender(<SettingsPage />);
+
+      await waitFor(() => {
+        const toggle = screen.getByLabelText(/weekly digest/i) as HTMLInputElement;
+        expect(toggle.checked).toBe(false);
+      });
+    });
+
+    test('toggling off calls PUT /api/user/profile with weekly_digest_enabled: false', async () => {
+      (global.fetch as jest.Mock).mockImplementation((url: string, options?: RequestInit) => {
+        if (url.includes('/api/user/profile') && options?.method === 'PUT') {
+          return Promise.resolve(mockResponse({ data: mockUserProfile }));
+        }
+        if (url.includes('/api/user/profile')) {
+          return Promise.resolve(mockResponse({ data: mockUserProfile }));
+        }
+        return Promise.resolve(mockResponse({ data: [] }));
+      });
+
+      customRender(<SettingsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/weekly digest/i)).toBeInTheDocument();
+      });
+
+      const toggle = screen.getByLabelText(/weekly digest/i) as HTMLInputElement;
+      fireEvent.click(toggle);
+
+      await waitFor(() => {
+        const putCalls = (global.fetch as jest.Mock).mock.calls.filter(
+          ([url, opts]: [string, RequestInit]) =>
+            url.includes('/api/user/profile') && opts?.method === 'PUT'
+        );
+        expect(putCalls.length).toBeGreaterThan(0);
+        const lastCall = putCalls[putCalls.length - 1];
+        const body = JSON.parse(lastCall[1].body as string);
+        expect(body.preferences.weekly_digest_enabled).toBe(false);
+      });
+    });
+
+    test('renders Weekly Digest helper text', async () => {
+      customRender(<SettingsPage />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/receive a weekly summary of your spending every monday/i)
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
   // AC-8.2.1: Test Export button labeled "Export Monthly Report (PDF)" exists
   test('renders Export Monthly Report (PDF) button', async () => {
     customRender(<SettingsPage />);

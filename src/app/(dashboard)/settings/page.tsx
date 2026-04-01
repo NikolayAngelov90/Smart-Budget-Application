@@ -28,7 +28,9 @@ import {
   Select,
   FormControl,
   FormLabel,
+  FormHelperText,
   Input,
+  Switch,
   useToast,
   Card,
   CardBody,
@@ -140,6 +142,7 @@ export default function SettingsPage() {
   const [dateFormat, setDateFormat] = useState<'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD'>(
     'MM/DD/YYYY'
   );
+  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const language: SupportedLocale =
     typeof document !== 'undefined'
@@ -155,6 +158,7 @@ export default function SettingsPage() {
       setDisplayName(profile.display_name || '');
       setCurrencyFormat(profile.preferences.currency_format);
       setDateFormat(profile.preferences.date_format);
+      setWeeklyDigestEnabled(profile.preferences.weekly_digest_enabled ?? true);
     }
   }, [profile]);
 
@@ -227,7 +231,7 @@ export default function SettingsPage() {
   };
 
   // AC-8.3.5, AC-8.3.6, AC-8.3.7: Update preferences
-  const handleUpdatePreferences = async (field: 'currency_format' | 'date_format', value: string) => {
+  const handleUpdatePreferences = async (field: 'currency_format' | 'date_format' | 'weekly_digest_enabled', value: string | boolean) => {
     if (!profile) return;
 
     try {
@@ -705,6 +709,26 @@ export default function SettingsPage() {
                     <option value="DD/MM/YYYY">DD/MM/YYYY (European)</option>
                     <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
                   </Select>
+                </FormControl>
+
+                {/* AC-11.8.5: Weekly Digest opt-in/out */}
+                <FormControl>
+                  <HStack mb={1}>
+                    <FormLabel htmlFor="weekly-digest-toggle" mb="0">
+                      {t('weeklyDigest')}
+                    </FormLabel>
+                    <Switch
+                      id="weekly-digest-toggle"
+                      isChecked={weeklyDigestEnabled}
+                      onChange={(e) => {
+                        setWeeklyDigestEnabled(e.target.checked);
+                        handleUpdatePreferences('weekly_digest_enabled', e.target.checked);
+                      }}
+                    />
+                  </HStack>
+                  <FormHelperText mt={0}>
+                    {t('weeklyDigestDescription')}
+                  </FormHelperText>
                 </FormControl>
 
                 {/* AC-10.1.4: Language Switcher */}

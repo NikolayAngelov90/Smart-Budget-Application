@@ -66,7 +66,7 @@ describe('ConfirmDeleteModal', () => {
       );
 
       expect(screen.getByText(/this action cannot be undone/i)).toBeInTheDocument();
-      expect(screen.getByText(/all your data including transactions, categories, and insights will be permanently deleted/i)).toBeInTheDocument();
+      expect(screen.getByText(/all your data including transactions, categories, goals, detected subscriptions, weekly digests, insights, and preferences will be permanently deleted/i)).toBeInTheDocument();
     });
 
     test('displays data export notification', () => {
@@ -82,6 +82,25 @@ describe('ConfirmDeleteModal', () => {
       expect(
         screen.getByText(/before proceeding, please make sure you have exported your data/i)
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('AC-11.8.6: Phase 2 data types listed in deletion warning', () => {
+    test('warning text includes goals, subscriptions, and weekly digests', () => {
+      customRender(
+        <ConfirmDeleteModal
+          isOpen={true}
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+          isDeleting={false}
+        />
+      );
+
+      const warningText = screen.getByText(/all your data including/i);
+      expect(warningText.textContent).toContain('goals');
+      expect(warningText.textContent).toContain('subscriptions');
+      expect(warningText.textContent).toContain('weekly digests');
+      expect(warningText.textContent).toContain('preferences');
     });
   });
 
