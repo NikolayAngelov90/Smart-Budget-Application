@@ -153,7 +153,10 @@ development_status:
   11-8-gdpr-account-deletion-digest-toggle: done
   epic-11-retrospective: completed
 
-  # Epic 12: AI Financial Intelligence
+  # Epic 12: AI Financial Intelligence (8 stories)
+  # Story order: 12.1 Disclaimers (legal, first), 12.2 Anomaly Detection, 12.3 Projections,
+  # 12.4 Smart Nudges (incl. push notifications), 12.5 Recovery Plans,
+  # 12.6 Seasonal Awareness, 12.7 Re-engagement, 12.8 Analytics Dashboard
   epic-12: backlog
   12-1-financial-advice-disclaimers: backlog
   12-2-spending-anomaly-trend-detection: backlog
@@ -162,6 +165,7 @@ development_status:
   12-5-30-day-budget-recovery-plans: backlog
   12-6-seasonal-cyclical-spending-awareness: backlog
   12-7-lapsed-user-re-engagement-analysis: backlog
+  12-8-engagement-analytics-dashboard: backlog
   epic-12-retrospective: optional
 
 # INFRASTRUCTURE TRACKING
