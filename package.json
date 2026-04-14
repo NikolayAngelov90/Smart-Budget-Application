@@ -51,6 +51,10 @@
     "swr": "^2.3.6",
     "zod": "^4.1.12"
   },
+  "overrides": {
+    "serialize-javascript": "7.0.5",
+    "tmp": "0.2.5"
+  },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.57.0",
