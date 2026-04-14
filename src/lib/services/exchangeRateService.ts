@@ -14,6 +14,8 @@
 
 import { getRedisClient, isRedisConfigured, markRedisConnectionFailed } from '@/lib/redis/client';
 import { Redis as UpstashRedis } from '@upstash/redis';
+import { toLocalISODate } from '@/lib/utils/date';
+import { logger } from '@/lib/utils/logger';
 import type {
   ExchangeRateData,
   ExchangeRateResponse,
@@ -70,8 +72,9 @@ export async function fetchRatesFromApi(
     });
 
     if (!response.ok) {
-      console.error(
-        `[ExchangeRate] API returned ${response.status}: ${response.statusText}`
+      logger.error(
+        'ExchangeRate',
+        `API returned ${response.status}: ${response.statusText}`
       );
       return null;
     }
@@ -80,7 +83,7 @@ export async function fetchRatesFromApi(
 
     // exchangerate-api.com returns: { base, date, rates: { USD: 1.08, ... } }
     if (!data.base || !data.rates) {
-      console.error('[ExchangeRate] Invalid API response format');
+      logger.error('ExchangeRate', 'Invalid API response format');
       return null;
     }
 
@@ -93,7 +96,7 @@ export async function fetchRatesFromApi(
 
     return rateData;
   } catch (error) {
-    console.error('[ExchangeRate] Failed to fetch rates:', error);
+    logger.error('ExchangeRate', 'Failed to fetch rates:', error);
     return null;
   }
 }
@@ -207,6 +210,7 @@ async function setCachedRates(
  * @returns Exchange rate response
  */
 export async function getExchangeRates(
+  // eslint-disable-next-line no-restricted-syntax
   baseCurrency = 'EUR'
 ): Promise<ExchangeRateResponse> {
   // 1. Check cache first
@@ -245,8 +249,9 @@ export async function getExchangeRates(
 
   // 4. API failed - fall back to cached data (AC-10.5.4)
   if (cached) {
-    console.warn(
-      '[ExchangeRate] API unavailable, using cached rates from',
+    logger.warn(
+      'ExchangeRate',
+      'API unavailable, using cached rates from',
       cached.fetchedAt
     );
     return {
@@ -259,11 +264,11 @@ export async function getExchangeRates(
   }
 
   // 5. No cache available - return hardcoded fallback rates
-  console.warn('[ExchangeRate] No cache available, using hardcoded fallback rates');
+  logger.warn('ExchangeRate', 'No cache available, using hardcoded fallback rates');
   return {
     base: baseCurrency,
     rates: getHardcodedFallbackRates(baseCurrency),
-    date: new Date().toISOString().split('T')[0]!,
+    date: toLocalISODate(new Date()),
     cached: true,
     lastFetched: new Date().toISOString(),
   };
@@ -282,6 +287,7 @@ function getHardcodedFallbackRates(
     GBP: 0.86,
   };
 
+  // eslint-disable-next-line no-restricted-syntax
   if (baseCurrency === 'EUR') {
     return eurRates;
   }
@@ -314,8 +320,9 @@ export async function getExchangeRate(
   const rate = rateData.rates[toCurrency];
 
   if (rate === undefined) {
-    console.error(
-      `[ExchangeRate] No rate found for ${fromCurrency} -> ${toCurrency}`
+    logger.error(
+      'ExchangeRate',
+      `No rate found for ${fromCurrency} -> ${toCurrency}`
     );
     return null;
   }
@@ -344,7 +351,7 @@ export async function convertCurrency(
       fromCurrency,
       toCurrency,
       rate: 1,
-      rateDate: new Date().toISOString().split('T')[0]!,
+      rateDate: toLocalISODate(new Date()),
     };
   }
 

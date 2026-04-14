@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/utils/logger';
 
 // Constants
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
@@ -162,7 +163,7 @@ export async function deleteProfilePicture(fileUrl: string): Promise<void> {
   const pathIndex = fileUrl.indexOf(bucketPath);
 
   if (pathIndex === -1) {
-    console.warn('Invalid profile picture URL format, skipping deletion');
+    logger.warn('UploadService', 'Invalid profile picture URL format, skipping deletion');
     return;
   }
 
@@ -175,7 +176,7 @@ export async function deleteProfilePicture(fileUrl: string): Promise<void> {
   const { error } = await supabase.storage.from(BUCKET_NAME).remove([filePath]);
 
   if (error) {
-    console.error('Failed to delete old profile picture:', error);
+    logger.error('UploadService', 'Failed to delete old profile picture:', error);
     // Don't throw error - this is a non-blocking operation
     // If deletion fails, old file remains in storage but won't be used
   }

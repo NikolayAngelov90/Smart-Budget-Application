@@ -9,6 +9,7 @@ import {
   clearSWRCache,
   isCacheOverLimit,
 } from '@/lib/swr/localStorageProvider';
+import { logger } from '@/lib/utils/logger';
 
 export interface OfflineState {
   isOnline: boolean;
@@ -29,7 +30,7 @@ export function getOfflineState(): OfflineState {
       return JSON.parse(state);
     }
   } catch (error) {
-    console.warn('Failed to parse offline state:', error);
+    logger.warn('OfflineService', 'Failed to parse offline state:', error);
   }
 
   // Default state
@@ -52,7 +53,7 @@ export function updateOfflineState(
     const newState = { ...currentState, ...partialState };
     localStorage.setItem(OFFLINE_STATE_KEY, JSON.stringify(newState));
   } catch (error) {
-    console.error('Failed to update offline state:', error);
+    logger.error('OfflineService', 'Failed to update offline state:', error);
   }
 }
 
@@ -76,9 +77,9 @@ export function clearOfflineCache(): void {
     // Clear offline state
     localStorage.removeItem(OFFLINE_STATE_KEY);
 
-    console.log('Offline cache cleared successfully');
+    logger.info('OfflineService', 'Offline cache cleared successfully');
   } catch (error) {
-    console.error('Failed to clear offline cache:', error);
+    logger.error('OfflineService', 'Failed to clear offline cache:', error);
   }
 }
 

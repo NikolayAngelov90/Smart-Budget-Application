@@ -11,6 +11,8 @@
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { endOfMonth, subMonths } from 'date-fns';
+import { toLocalISODate } from '@/lib/utils/date';
+import { logger } from '@/lib/utils/logger';
 import {
   detectSpendingIncrease,
   recommendBudgetLimit,
@@ -71,7 +73,7 @@ export async function generateInsights(
 ): Promise<Insight[]> {
   // Check cache unless forcing regeneration
   if (!forceRegenerate && isCacheValid(userId)) {
-    console.log(`[Insight Service] Using cached insights for user ${userId}`);
+    logger.info('Insight Service', `Using cached insights for user ${userId}`);
 
     // Return existing insights from database
     const supabase = await createClient();
@@ -84,9 +86,9 @@ export async function generateInsights(
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[Insight Service] Error fetching cached insights:', error);
+      logger.error('Insight Service', 'Error fetching cached insights:', error);
       // If cache fetch fails, fall through to regenerate
-      console.log('[Insight Service] Cache fetch failed, regenerating insights');
+      logger.info('Insight Service', 'Cache fetch failed, regenerating insights');
     } else {
       return data || [];
     }
@@ -103,12 +105,12 @@ export async function generateInsights(
     .select('*')
     .eq('user_id', userId)
     .eq('type', 'expense')
-    .gte('date', threeMonthsAgo.toISOString().split('T')[0])
-    .lte('date', endOfMonth(currentMonth).toISOString().split('T')[0])
+    .gte('date', toLocalISODate(threeMonthsAgo))
+    .lte('date', toLocalISODate(endOfMonth(currentMonth)))
     .order('date', { ascending: false });
 
   if (txError) {
-    console.error('[Insight Service] Error fetching transactions:', txError);
+    logger.error('Insight Service', 'Error fetching transactions:', txError);
     throw new Error(`Failed to fetch transactions: ${txError.message}`);
   }
 
@@ -119,13 +121,13 @@ export async function generateInsights(
     .eq('user_id', userId);
 
   if (catError) {
-    console.error('[Insight Service] Error fetching categories:', catError);
+    logger.error('Insight Service', 'Error fetching categories:', catError);
     throw new Error(`Failed to fetch categories: ${catError.message}`);
   }
 
   // If no transactions or categories, return empty array
   if (!transactions || transactions.length === 0 || !categories || categories.length === 0) {
-    console.log(`[Insight Service] No data to generate insights - Transactions: ${transactions?.length || 0}, Categories: ${categories?.length || 0}`);
+    logger.info('Insight Service', `No data to generate insights - Transactions: ${transactions?.length || 0}, Categories: ${categories?.length || 0}`);
 
     // Update cache even if no data
     updateCache(userId);
@@ -193,7 +195,7 @@ export async function generateInsights(
   // Sort by priority (5 = highest, 1 = lowest)
   allInsights.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
-  console.log(`[Insight Service] Generated ${allInsights.length} insights for user ${userId}`);
+  logger.info('Insight Service', `Generated ${allInsights.length} insights for user ${userId}`);
 
   // Use service role client for database mutations (bypasses RLS)
   const adminClient = createServiceRoleClient();
@@ -205,7 +207,7 @@ export async function generateInsights(
     .eq('user_id', userId);
 
   if (deleteError) {
-    console.error('[Insight Service] Error deleting old insights:', deleteError);
+    logger.error('Insight Service', 'Error deleting old insights:', deleteError);
     throw new Error(`Failed to delete old insights: ${deleteError.message}`);
   }
 
@@ -217,14 +219,14 @@ export async function generateInsights(
       .select();
 
     if (insertError) {
-      console.error('[Insight Service] Error inserting insights:', insertError);
+      logger.error('Insight Service', 'Error inserting insights:', insertError);
       throw new Error(`Failed to insert insights: ${insertError.message}`);
     }
 
     // Update cache
     updateCache(userId);
 
-    console.log(`[Insight Service] Successfully inserted ${insertedInsights?.length || 0} insights`);
+    logger.info('Insight Service', `Successfully inserted ${insertedInsights?.length || 0} insights`);
 
     return insertedInsights || [];
   }
@@ -288,15 +290,15 @@ export async function checkAndTriggerForTransactionCount(userId: string): Promis
     const shouldTrigger = await shouldTriggerGeneration(userId);
 
     if (shouldTrigger) {
-      console.log(`[Insight Trigger] User ${userId}: 10+ transactions detected, generating insights`);
+      logger.info('Insight Service', `User ${userId}: 10+ transactions detected, generating insights`);
 
       // Trigger insight generation (non-blocking)
       generateInsights(userId, false).catch((error) => {
-        console.error(`[Insight Trigger] Error generating insights for user ${userId}:`, error);
+        logger.error('Insight Service', `Error generating insights for user ${userId}:`, error);
       });
     }
   } catch (error) {
     // Log error but don't throw - this is a background operation
-    console.error(`[Insight Trigger] Error checking transaction count for user ${userId}:`, error);
+    logger.error('Insight Service', `Error checking transaction count for user ${userId}:`, error);
   }
 }

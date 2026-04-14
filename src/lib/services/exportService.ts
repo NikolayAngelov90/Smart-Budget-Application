@@ -10,6 +10,7 @@
 
 import Papa from 'papaparse';
 import { format } from 'date-fns';
+import { logger } from '@/lib/utils/logger';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { PDFReportData } from '@/types/export.types';
@@ -94,7 +95,9 @@ export async function exportTransactionsToCSV(
       // AC-8.1.4, 8.1.7, 8.1.8: Map chunk to CSV structure
       // AC-10.6.9: Include Currency, Exchange Rate, Converted Amount columns
       const chunkData = chunk.map((tx) => {
+        // eslint-disable-next-line no-restricted-syntax
         const txCurrency = tx.currency || currencyCode || 'EUR';
+        // eslint-disable-next-line no-restricted-syntax
         const hasConversion = tx.exchange_rate && txCurrency !== (currencyCode || 'EUR');
         const convertedAmount = hasConversion
           ? tx.amount * (tx.exchange_rate ?? 1)
@@ -171,7 +174,7 @@ export async function exportTransactionsToCSV(
       // Analytics failure should not break export
     });
   } catch (error) {
-    console.error('Error exporting transactions to CSV:', error);
+    logger.error('ExportService', 'Error exporting transactions to CSV:', error);
     throw new Error('Failed to export transactions. Please try again.');
   }
 }
@@ -380,7 +383,7 @@ export async function exportMonthlyReportToPDF(
       // Analytics failure should not break export
     });
   } catch (error) {
-    console.error('Error generating PDF report:', error);
+    logger.error('ExportService', 'Error generating PDF report:', error);
     throw new Error('Failed to generate PDF report. Please try again.');
   }
 }

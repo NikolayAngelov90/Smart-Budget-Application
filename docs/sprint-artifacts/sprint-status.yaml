@@ -148,7 +148,21 @@ development_status:
   11-3-code-quality-type-safety: done
   11-4-performance-infrastructure-fixes: done
   11-5-cicd-test-coverage-hardening: done
+  11-6-smart-financial-awareness-part1: done
+  11-7-weekly-financial-digest: done
+  11-8-gdpr-account-deletion-digest-toggle: done
   epic-11-retrospective: completed
+
+  # Epic 12: AI Financial Intelligence
+  epic-12: backlog
+  12-1-financial-advice-disclaimers: backlog
+  12-2-spending-anomaly-trend-detection: backlog
+  12-3-end-of-month-budget-projections: backlog
+  12-4-real-time-smart-nudges: backlog
+  12-5-30-day-budget-recovery-plans: backlog
+  12-6-seasonal-cyclical-spending-awareness: backlog
+  12-7-lapsed-user-re-engagement-analysis: backlog
+  epic-12-retrospective: optional
 
 # INFRASTRUCTURE TRACKING
 # =======================

@@ -101,6 +101,7 @@ export async function GET(request: NextRequest) {
           }
 
           // Pass the user's currency preference so digest amounts match their settings
+          // eslint-disable-next-line no-restricted-syntax
           const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : 'EUR';
           await generateDigestForUser(user.id, weekStart, currency);
           digestsGenerated++;

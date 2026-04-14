@@ -114,6 +114,7 @@ function aggregateByCategory(rows: TransactionRow[]): DigestTopCategory[] {
 export async function generateDigestForUser(
   userId: string,
   weekStart: Date,
+  // eslint-disable-next-line no-restricted-syntax
   currency = 'EUR'
 ): Promise<void> {
   const supabase = createServiceRoleClient();

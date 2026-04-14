@@ -16,6 +16,7 @@ import type {
   BufferedEvent,
   PWAPlatform,
 } from '@/types/analytics.types';
+import { logger } from '@/lib/utils/logger';
 
 // Session ID storage key
 const SESSION_STORAGE_KEY = 'analytics_session_id';
@@ -126,7 +127,7 @@ export function bufferEvent(event: BufferedEvent): void {
     events.push(event);
     localStorage.setItem(EVENT_BUFFER_KEY, JSON.stringify(events));
   } catch (error) {
-    console.warn('[Analytics] Failed to buffer event:', error);
+    logger.warn('Analytics', 'Failed to buffer event:', error);
   }
 }
 
@@ -160,7 +161,7 @@ export async function flushBufferedEvents(): Promise<void> {
 
     // Drop events that have exceeded max retries
     if (retryCount >= MAX_RETRY_COUNT) {
-      console.warn(`[Analytics] Dropping event '${event.event_name}' after ${retryCount} failed retries`);
+      logger.warn('Analytics', `Dropping event '${event.event_name}' after ${retryCount} failed retries`);
       continue;
     }
 
@@ -261,7 +262,7 @@ export async function trackEvent(
 
     if (!response.ok) {
       // Log but don't throw - analytics failures shouldn't break app
-      console.warn(`[Analytics] Failed to track event: ${response.status}`);
+      logger.warn('Analytics', `Failed to track event: ${response.status}`);
       return { success: false, error: `HTTP ${response.status}` };
     }
 
@@ -269,7 +270,7 @@ export async function trackEvent(
     return data as TrackEventResponse;
   } catch (error) {
     // Log but don't throw - analytics failures shouldn't break app
-    console.warn('[Analytics] Error tracking event:', error);
+    logger.warn('Analytics', 'Error tracking event:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

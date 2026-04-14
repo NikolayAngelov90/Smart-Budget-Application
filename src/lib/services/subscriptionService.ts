@@ -11,6 +11,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { differenceInDays, subMonths } from 'date-fns';
 import { logger } from '@/lib/utils/logger';
+import { toLocalISODate } from '@/lib/utils/date';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   DetectedSubscription,
@@ -151,7 +152,7 @@ export async function detectSubscriptions(
   userId: string
 ): Promise<DetectedSubscriptionInsert[]> {
   const supabase = createServiceRoleClient();
-  const sixMonthsAgo = subMonths(new Date(), 6).toISOString().split('T')[0];
+  const sixMonthsAgo = toLocalISODate(subMonths(new Date(), 6));
 
   // Query expense transactions for the last 6 months
   const { data: transactions, error } = await supabase
@@ -376,7 +377,7 @@ export async function updateSubscriptionStatus(
  */
 export async function hasEnoughHistory(userId: string): Promise<boolean> {
   const supabase = createServiceRoleClient();
-  const threeMonthsAgo = subMonths(new Date(), 3).toISOString().split('T')[0];
+  const threeMonthsAgo = toLocalISODate(subMonths(new Date(), 3));
 
   const { data, error } = await supabase
     .from('transactions')

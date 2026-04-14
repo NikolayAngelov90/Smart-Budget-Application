@@ -9,6 +9,7 @@
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import type { UserProfile, UpdateUserProfilePayload, UserPreferences } from '@/types/user.types';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Get user profile by ID
@@ -26,7 +27,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     const { data: authData, error: authError } = await supabase.auth.getUser();
 
     if (authError || !authData.user) {
-      console.error('Error fetching auth user:', authError);
+      logger.error('SettingsService', 'Error fetching auth user:', authError);
       throw new Error('Failed to fetch user authentication data');
     }
 
@@ -39,9 +40,10 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 
     // If profile doesn't exist, create it (for existing users before migration)
     if (profileError && profileError.code === 'PGRST116') {
-      console.log('Profile not found, creating default profile for user:', userId);
+      logger.info('SettingsService', `Profile not found, creating default profile for user: ${userId}`);
 
       const defaultPreferences = {
+        // eslint-disable-next-line no-restricted-syntax
         currency_format: 'EUR',
         date_format: 'MM/DD/YYYY',
         onboarding_completed: false,
@@ -58,7 +60,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
         .single();
 
       if (insertError) {
-        console.error('Error creating user profile:', insertError);
+        logger.error('SettingsService', 'Error creating user profile:', insertError);
         throw new Error(`Failed to create user profile: ${insertError.message}`);
       }
 
@@ -77,7 +79,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     }
 
     if (profileError) {
-      console.error('Error fetching user profile:', profileError);
+      logger.error('SettingsService', 'Error fetching user profile:', profileError);
       throw new Error(`Failed to fetch user profile: ${profileError.message}`);
     }
 
@@ -98,7 +100,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 
     return userProfile;
   } catch (error) {
-    console.error('getUserProfile error:', error);
+    logger.error('SettingsService', 'getUserProfile error:', error);
     throw error;
   }
 }
@@ -141,6 +143,7 @@ export async function updateUserProfile(
 
       const currentPreferences =
         (currentProfile?.preferences as unknown as UserPreferences) || {
+          // eslint-disable-next-line no-restricted-syntax
           currency_format: 'EUR',
           date_format: 'MM/DD/YYYY',
           onboarding_completed: false,
@@ -161,7 +164,7 @@ export async function updateUserProfile(
       .single();
 
     if (updateError) {
-      console.error('Error updating user profile:', updateError);
+      logger.error('SettingsService', 'Error updating user profile:', updateError);
       throw new Error(`Failed to update user profile: ${updateError.message}`);
     }
 
@@ -180,7 +183,7 @@ export async function updateUserProfile(
 
     return userProfile;
   } catch (error) {
-    console.error('updateUserProfile error:', error);
+    logger.error('SettingsService', 'updateUserProfile error:', error);
     throw error;
   }
 }
@@ -221,7 +224,7 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
       .eq('id', userId);
 
     if (profileError) {
-      console.error('Error deleting user profile:', profileError);
+      logger.error('SettingsService', 'Error deleting user profile:', profileError);
       throw new Error(`Failed to delete user profile: ${profileError.message}`);
     }
 
@@ -230,13 +233,13 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
     const { error: authError } = await adminClient.auth.admin.deleteUser(userId);
 
     if (authError) {
-      console.error('Error deleting auth user:', authError);
+      logger.error('SettingsService', 'Error deleting auth user:', authError);
       throw new Error(`Failed to delete user account: ${authError.message}`);
     }
 
     return true;
   } catch (error) {
-    console.error('deleteUserAccount error:', error);
+    logger.error('SettingsService', 'deleteUserAccount error:', error);
     throw error;
   }
 }

@@ -15,6 +15,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { DEFAULT_CATEGORIES } from '@/lib/utils/constants';
 import type { SeedResult, Category } from '@/types/category.types';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Seeds default categories for a new user
@@ -54,13 +55,13 @@ export async function seedDefaultCategories(
       .eq('user_id', userId);
 
     if (countError) {
-      console.error('Error checking existing categories:', countError);
+      logger.error('SeedCategoriesService', 'Error checking existing categories:', countError);
       throw new Error(`Failed to check existing categories: ${countError.message}`);
     }
 
     // If user already has categories, return early (idempotent)
     if (existingCount && existingCount > 0) {
-      console.log(`User ${userId} already has ${existingCount} categories - skipping seed`);
+      logger.info('SeedCategoriesService', `User ${userId} already has ${existingCount} categories - skipping seed`);
       return {
         success: true,
         count: 0,
@@ -84,11 +85,11 @@ export async function seedDefaultCategories(
       .select();
 
     if (insertError) {
-      console.error('Error inserting default categories:', insertError);
+      logger.error('SeedCategoriesService', 'Error inserting default categories:', insertError);
       throw new Error(`Failed to insert categories: ${insertError.message}`);
     }
 
-    console.log(`Successfully seeded ${insertedCategories.length} categories for user ${userId}`);
+    logger.info('SeedCategoriesService', `Successfully seeded ${insertedCategories.length} categories for user ${userId}`);
 
     return {
       success: true,
@@ -97,7 +98,7 @@ export async function seedDefaultCategories(
     };
   } catch (error) {
     // Log error with context for debugging
-    console.error('seedDefaultCategories error:', {
+    logger.error('SeedCategoriesService', 'seedDefaultCategories error:', {
       userId,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,

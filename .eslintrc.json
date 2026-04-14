@@ -3,5 +3,27 @@
   "rules": {
     "react/no-unescaped-entities": "off",
     "@next/next/no-page-custom-font": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/lib/services/**/*.ts",
+        "src/app/api/cron/**/*.ts"
+      ],
+      "excludedFiles": [
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.spec.ts"
+      ],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "Literal[value=/^(EUR|USD|GBP)$/]",
+            "message": "Hardcoded currency code detected. Accept currency_format as a parameter from user preferences (e.g. prefs.currency_format ?? 'EUR') instead of hardcoding."
+          }
+        ]
+      }
+    }
+  ]
 }

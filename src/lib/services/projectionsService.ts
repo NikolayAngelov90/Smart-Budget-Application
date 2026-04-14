@@ -14,18 +14,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CategoryProjection, ProjectionsResponse } from '@/types/database.types';
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-/** Format a Date to YYYY-MM-DD for Supabase DATE comparisons (local timezone, not UTC) */
-function fmt(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+import { toLocalISODate } from '@/lib/utils/date';
 
 // ============================================================================
 // PUBLIC API
@@ -42,7 +31,7 @@ export async function hasEnoughDataForProjections(
   userId: string
 ): Promise<boolean> {
   const now = new Date();
-  const currentMonthStart = fmt(new Date(now.getFullYear(), now.getMonth(), 1));
+  const currentMonthStart = toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1));
 
   const { data, error } = await supabase
     .from('transactions')
@@ -89,8 +78,8 @@ export async function getAnnualizedProjections(
       .select('amount, category_id, date, categories(id, name, color)')
       .eq('user_id', userId)
       .eq('type', 'expense')
-      .gte('date', fmt(currentPeriodStart))
-      .lte('date', fmt(currentPeriodEnd))
+      .gte('date', toLocalISODate(currentPeriodStart))
+      .lte('date', toLocalISODate(currentPeriodEnd))
       .order('date', { ascending: true }),
 
     supabase
@@ -98,8 +87,8 @@ export async function getAnnualizedProjections(
       .select('amount, category_id, date, categories(id, name, color)')
       .eq('user_id', userId)
       .eq('type', 'expense')
-      .gte('date', fmt(prevPeriodStart))
-      .lte('date', fmt(prevPeriodEnd))
+      .gte('date', toLocalISODate(prevPeriodStart))
+      .lte('date', toLocalISODate(prevPeriodEnd))
       .order('date', { ascending: true }),
   ]);
 

@@ -11,6 +11,7 @@ import {
   isValidSupabaseStorageUrl,
 } from '@/lib/services/uploadService';
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/utils/logger';
 
 // Mock Supabase client
 jest.mock('@/lib/supabase/client', () => ({
@@ -296,15 +297,16 @@ describe('uploadService', () => {
     });
 
     test('handles invalid URL format gracefully', async () => {
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const loggerWarnSpy = jest.spyOn(logger, 'warn').mockImplementation();
 
       await deleteProfilePicture('https://invalid-url.com/image.jpg');
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        'UploadService',
         'Invalid profile picture URL format, skipping deletion'
       );
 
-      consoleWarnSpy.mockRestore();
+      loggerWarnSpy.mockRestore();
     });
 
     test('logs error but does not throw when deletion fails', async () => {

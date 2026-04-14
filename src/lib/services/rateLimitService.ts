@@ -15,6 +15,7 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis as UpstashRedis } from '@upstash/redis';
 import { getRedisClient, getRedisProvider, isRedisConfigured } from '@/lib/redis/client';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Fallback in-memory cache for local development.
@@ -76,10 +77,10 @@ function getRateLimiter(): Ratelimit | null {
       prefix: 'rate_limit',
     });
 
-    console.log(`[Rate Limit] Initialized @upstash/ratelimit (${RATE_LIMIT} req/${RATE_LIMIT_WINDOW}s)`);
+    logger.info('Rate Limit', `Initialized @upstash/ratelimit (${RATE_LIMIT} req/${RATE_LIMIT_WINDOW}s)`);
     return ratelimiter;
   } catch (error) {
-    console.error('[Rate Limit] Failed to initialize @upstash/ratelimit:', error);
+    logger.error('Rate Limit', 'Failed to initialize @upstash/ratelimit:', error);
     return null;
   }
 }
@@ -106,8 +107,9 @@ export async function checkRateLimit(
       if (!result.success) {
         // Rate limit exceeded
         const remainingSeconds = Math.ceil((result.reset - Date.now()) / 1000);
-        console.log(
-          `[Rate Limit] User ${userId} exceeded limit (${result.remaining}/${result.limit} remaining, reset in ${remainingSeconds}s)`
+        logger.info(
+          'Rate Limit',
+          `User ${userId} exceeded limit (${result.remaining}/${result.limit} remaining, reset in ${remainingSeconds}s)`
         );
 
         return {
@@ -117,13 +119,11 @@ export async function checkRateLimit(
       }
 
       // Within rate limit
-      console.log(`[Rate Limit] User ${userId} within limit (${result.remaining}/${result.limit} remaining)`);
+      logger.info('Rate Limit', `User ${userId} within limit (${result.remaining}/${result.limit} remaining)`);
       return { exceeded: false, remainingSeconds: 0 };
     } catch (error) {
       fallbackActivationCount++;
-      console.warn(JSON.stringify({
-        level: 'warn',
-        service: 'rateLimitService',
+      logger.warn('Rate Limit', JSON.stringify({
         event: 'redis_fallback_activated',
         userId,
         fallbackActivationCount,
@@ -145,8 +145,9 @@ export async function checkRateLimit(
         const remainingMs = userLimit.resetTime - now;
         const remainingSeconds = Math.ceil(remainingMs / 1000);
 
-        console.warn(
-          `[Rate Limit] Using in-memory fallback - User ${userId} exceeded (${userLimit.count}/${RATE_LIMIT}, reset in ${remainingSeconds}s)`
+        logger.warn(
+          'Rate Limit',
+          `Using in-memory fallback - User ${userId} exceeded (${userLimit.count}/${RATE_LIMIT}, reset in ${remainingSeconds}s)`
         );
 
         return {
@@ -181,7 +182,7 @@ export async function recordRateLimitAction(
 
   if (rateLimiter) {
     // Already recorded by checkRateLimit -> ratelimiter.limit()
-    console.log(`[Rate Limit] Action already recorded for user ${userId} by @upstash/ratelimit`);
+    logger.info('Rate Limit', `Action already recorded for user ${userId} by @upstash/ratelimit`);
     return;
   }
 
@@ -209,7 +210,7 @@ export async function recordRateLimitAction(
     }
   }
 
-  console.warn(`[Rate Limit] Using in-memory fallback - Recorded action for user ${userId}`);
+  logger.warn('Rate Limit', `Using in-memory fallback - Recorded action for user ${userId}`);
 }
 
 /**
@@ -226,17 +227,17 @@ export async function clearRateLimit(userId: string): Promise<void> {
       const client = getRedisClient();
       if (client && getRedisProvider() === 'upstash') {
         await (client as UpstashRedis).del(`rate_limit:${userId}`);
-        console.log(`[Rate Limit] Cleared rate limit for user ${userId} in Upstash Redis`);
+        logger.info('Rate Limit', `Cleared rate limit for user ${userId} in Upstash Redis`);
         return;
       }
     } catch (error) {
-      console.error('[Rate Limit] Redis error:', error);
+      logger.error('Rate Limit', 'Redis error:', error);
     }
   }
 
   // Fallback: In-memory Map
   fallbackCache.delete(userId);
-  console.warn(`[Rate Limit] Cleared rate limit in fallback cache for user ${userId}`);
+  logger.warn('Rate Limit', `Cleared rate limit in fallback cache for user ${userId}`);
 }
 
 /**

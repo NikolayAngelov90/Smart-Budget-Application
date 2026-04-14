@@ -17,6 +17,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * GET handler for OAuth callback
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      console.error('OAuth callback error:', error.message);
+      logger.error('AuthCallback', 'OAuth callback error:', error.message);
       // Redirect to login with error message
       return NextResponse.redirect(
         `${origin}/login?error=auth_failed&message=${encodeURIComponent(error.message)}`
@@ -58,9 +59,9 @@ export async function GET(request: NextRequest) {
           await supabase.rpc('seed_user_categories', {
             target_user_id: userId,
           });
-          console.log('✅ Default categories seeded for new user:', userId);
+          logger.info('AuthCallback', `Default categories seeded for new user: ${userId}`);
         } catch (seedError) {
-          console.error('❌ Failed to seed categories:', seedError);
+          logger.error('AuthCallback', 'Failed to seed categories:', seedError);
           // Don't block login for seeding failure - categories can be added later
         }
       }
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
             .update({ display_name: oauthDisplayName })
             .eq('id', userId);
         } catch (nameError) {
-          console.error('Failed to pre-fill display name:', nameError);
+          logger.error('AuthCallback', 'Failed to pre-fill display name:', nameError);
         }
       }
     }
