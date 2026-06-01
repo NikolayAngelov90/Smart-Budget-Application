@@ -23,6 +23,8 @@ const VALID_INSIGHT_TYPES: InsightType[] = [
   'budget_recommendation',
   'unusual_expense',
   'positive_reinforcement',
+  'spending_anomaly',
+  'new_high_spend_category',
 ];
 
 // Allowed columns for orderBy to prevent arbitrary column access

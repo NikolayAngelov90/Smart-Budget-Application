@@ -19,6 +19,10 @@ import {
   flagUnusualExpense,
   generatePositiveReinforcement,
 } from '@/lib/ai/insightRules';
+import {
+  detectSpendingAnomalies,
+  detectNewHighSpendCategories,
+} from '@/lib/ai/patternDetection';
 import type { Insight, InsightInsert } from '@/types/database.types';
 
 /**
@@ -191,6 +195,21 @@ export async function generateInsights(
     if (unusualExpense) allInsights.push(unusualExpense);
     if (positiveReinforcement) allInsights.push(positiveReinforcement);
   }
+
+  // Pattern detection (cross-category analysis requiring 2+ months of data)
+  const anomalyInsights = detectSpendingAnomalies({
+    userId,
+    transactions: transactions ?? [],
+    categories: categories ?? [],
+    currentMonth,
+  });
+  const newHighSpendInsights = detectNewHighSpendCategories({
+    userId,
+    transactions: transactions ?? [],
+    categories: categories ?? [],
+    currentMonth,
+  });
+  allInsights.push(...anomalyInsights, ...newHighSpendInsights);
 
   // Sort by priority (5 = highest, 1 = lowest)
   allInsights.sort((a, b) => (b.priority || 0) - (a.priority || 0));

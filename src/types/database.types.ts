@@ -29,7 +29,9 @@ export type InsightType =
   | 'spending_increase'
   | 'budget_recommendation'
   | 'unusual_expense'
-  | 'positive_reinforcement';
+  | 'positive_reinforcement'
+  | 'spending_anomaly'
+  | 'new_high_spend_category';
 
 export type SubscriptionStatus = 'active' | 'unused' | 'dismissed' | 'kept';
 
@@ -642,6 +644,9 @@ export interface InsightMetadata {
   actual_spending?: number;
   savings_amount?: number;
   percent_under_budget?: number;
+  // Pattern detection fields (Story 12.1)
+  two_month_average?: number;
+  percent_above_baseline?: number;
   [key: string]: Json | undefined;
 }
 
