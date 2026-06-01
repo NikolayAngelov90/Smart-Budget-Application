@@ -437,6 +437,15 @@
     "actionError": "Неуспешна актуализация на абонамента",
     "loading": "Зареждане на абонаменти..."
   },
+  "budgetForecast": {
+    "title": "Прогноза за края на месеца",
+    "subtitle": "Ден {day} от {daysInMonth} — остават {daysRemaining} дни",
+    "spentSoFar": "Изразходвано",
+    "projectedEOM": "Прогноза",
+    "atRisk": "Риск",
+    "onTrack": "В рамките",
+    "noData": "Все още няма разходи за този месец"
+  },
   "projections": {
     "title": "Прогноза за разходите",
     "subtitle": "Базирано на последните {count} месеца данни",

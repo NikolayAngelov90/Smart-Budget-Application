@@ -437,6 +437,15 @@
     "actionError": "Failed to update subscription",
     "loading": "Loading subscriptions..."
   },
+  "budgetForecast": {
+    "title": "End-of-Month Forecast",
+    "subtitle": "Day {day} of {daysInMonth} — {daysRemaining} days remaining",
+    "spentSoFar": "Spent so far",
+    "projectedEOM": "Projected EOM",
+    "atRisk": "At risk",
+    "onTrack": "On track",
+    "noData": "No spending data for this month yet"
+  },
   "projections": {
     "title": "Spending Forecast",
     "subtitle": "Based on last {count} months of data",

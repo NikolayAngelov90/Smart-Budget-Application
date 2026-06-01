@@ -557,6 +557,38 @@ export interface ProjectionsResponse {
   months_analyzed: number;
 }
 
+// ============================================================================
+// FORECAST TYPES (Story 12.2)
+// ============================================================================
+
+/** End-of-month spending forecast for a single category */
+export interface CategoryForecast {
+  category_id: string;
+  category_name: string;
+  category_color: string;
+  /** Current month expense total to date */
+  spent_so_far: number;
+  /** Extrapolated end-of-month total based on daily rate */
+  projected_eom: number;
+  /** 3-month rolling average monthly spend (0 if no history) */
+  historical_avg: number;
+  /** true when projected_eom > historical_avg and historical_avg > 0 */
+  is_at_risk: boolean;
+  /** Days from 1st of month to today (inclusive) */
+  days_elapsed: number;
+  /** Total calendar days in current month */
+  days_in_month: number;
+}
+
+/** API response shape from GET /api/dashboard/budget-forecast */
+export interface ForecastResponse {
+  forecasts: CategoryForecast[];
+  /** false when user has no current-month expense transactions */
+  hasCurrentMonthData: boolean;
+  /** ISO date string of when the forecast was computed */
+  generated_at: string;
+}
+
 // Insight metadata type (extend as needed)
 // ============================================================================
 // GOAL TYPES (Story 11.5)

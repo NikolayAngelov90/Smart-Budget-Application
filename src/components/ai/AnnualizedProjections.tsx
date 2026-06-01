@@ -23,28 +23,8 @@ import {
 import { useTranslations } from 'next-intl';
 import { useAnnualizedProjections } from '@/lib/hooks/useAnnualizedProjections';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { formatAmount } from '@/lib/utils/formatAmount';
 import type { CategoryProjection } from '@/types/database.types';
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-/**
- * Formats a numeric amount using the user's currency (Intl.NumberFormat).
- * Empty-currency guard: falls back to fixed 2dp if currency is falsy.
- */
-function formatAmount(amount: number, currency: string): string {
-  if (!currency) return amount.toFixed(2);
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-}
 
 // ============================================================================
 // SUB-COMPONENTS
