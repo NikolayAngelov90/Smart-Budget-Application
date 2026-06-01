@@ -45,18 +45,6 @@ const fakeCat = {
   color: '#000', type: 'expense', is_predefined: false, created_at: '2026-01-01T00:00:00Z',
 };
 
-function makeChain(resolvedValue: unknown) {
-  const chain: Record<string, jest.Mock> = {};
-  const terminal = jest.fn().mockResolvedValue(resolvedValue);
-  ['select', 'eq', 'gte', 'lte', 'order'].forEach((m) => {
-    chain[m] = jest.fn().mockReturnValue(chain);
-  });
-  // make the last call in each chain resolve
-  chain['order'] = terminal;
-  chain['eq'] = jest.fn().mockImplementation(function(this: unknown) { return { ...chain, then: terminal.bind(this) }; });
-  return chain;
-}
-
 const txChain = {
   select: jest.fn().mockReturnThis(),
   eq: jest.fn().mockReturnThis(),
