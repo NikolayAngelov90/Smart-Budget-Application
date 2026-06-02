@@ -437,6 +437,23 @@
     "actionError": "Failed to update subscription",
     "loading": "Loading subscriptions..."
   },
+  "smartNudge": {
+    "approaching": "{categoryName} spending at {pct}%",
+    "exceeded": "{categoryName} spending exceeded your usual amount",
+    "goalImpact": "Keeping an eye on this may help with your {goalName} goal.",
+    "dismiss": "Dismiss"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "pushSubtitle": "Push notifications are sent to your device when you're not in the app.",
+    "spendingNudges": "Spending nudges",
+    "spendingNudgesDescription": "Notify when a category reaches 80% of usual spending",
+    "quietHoursStart": "Quiet hours start",
+    "quietHoursEnd": "Quiet hours end",
+    "enablePush": "Enable browser notifications",
+    "disablePush": "Disable browser notifications",
+    "pushNotSupported": "Push notifications are not supported on this browser"
+  },
   "budgetForecast": {
     "title": "End-of-Month Forecast",
     "subtitle": "Day {day} of {daysInMonth} — {daysRemaining} days remaining",

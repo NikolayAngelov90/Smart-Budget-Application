@@ -43,6 +43,9 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { checkAndTriggerForTransactionCount } from '@/lib/services/insightService';
+import { evaluateNudge } from '@/lib/ai/nudgeEngine';
+import { sendPushToUser, isWithinQuietHours } from '@/lib/services/pushService';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeSearchQuery } from '@/lib/utils/sanitize';
 import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '@/lib/utils/constants';
 import { logger } from '@/lib/utils/logger';
@@ -356,7 +359,28 @@ export async function POST(request: NextRequest) {
       logger.error('Transactions', 'Failed to check insight trigger:', error);
     });
 
-    return NextResponse.json({ data: transaction }, { status: 201 });
+    // Story 12.3: Evaluate nudge for expense transactions only
+    let nudgePayload = null;
+    if (body.type === 'expense') {
+      nudgePayload = await evaluateNudgeForTransaction(
+        supabase,
+        user.id,
+        body.category_id,
+        category.name
+      ).catch((err) => {
+        logger.error('Transactions', 'Nudge evaluation failed (non-fatal):', err);
+        return null;
+      });
+
+      // Async push dispatch if nudge fired — non-blocking
+      if (nudgePayload) {
+        dispatchNudgePush(user.id, nudgePayload, supabase).catch((err) => {
+          logger.error('Transactions', 'Push dispatch failed (non-fatal):', err);
+        });
+      }
+    }
+
+    return NextResponse.json({ data: transaction, nudge: nudgePayload }, { status: 201 });
   } catch (error) {
     logger.error('Transactions', 'Unexpected error in POST /api/transactions:', error);
     return NextResponse.json(
@@ -364,4 +388,116 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// ============================================================================
+// NUDGE HELPERS — Story 12.3
+// ============================================================================
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { NudgePayload } from '@/types/database.types';
+import { calculateMean } from '@/lib/ai/spendingAnalysis';
+
+/**
+ * Computes the nudge context for a single category after a new expense.
+ * Fetches current-month total + 3-month historical average from the DB.
+ */
+async function evaluateNudgeForTransaction(
+  supabase: SupabaseClient,
+  userId: string,
+  categoryId: string,
+  categoryName: string
+): Promise<NudgePayload | null> {
+  const now = new Date();
+  const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const d3m = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+  const threeMonthsAgo = `${d3m.getFullYear()}-${String(d3m.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const [currentResult, historicalResult, goalResult] = await Promise.all([
+    supabase
+      .from('transactions')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('category_id', categoryId)
+      .eq('type', 'expense')
+      .gte('date', currentMonthStart),
+
+    supabase
+      .from('transactions')
+      .select('amount, date')
+      .eq('user_id', userId)
+      .eq('category_id', categoryId)
+      .eq('type', 'expense')
+      .gte('date', threeMonthsAgo)
+      .lt('date', currentMonthStart),
+
+    supabase
+      .from('goals')
+      .select('name')
+      .eq('user_id', userId)
+      .not('deadline', 'is', null)
+      .order('deadline', { ascending: true })
+      .limit(1),
+  ]);
+
+  if (currentResult.error || historicalResult.error) return null;
+
+  // Current month total (the new transaction is already inserted)
+  const currentMonthTotal = (currentResult.data ?? []).reduce((sum, t) => sum + t.amount, 0);
+
+  // Historical avg: group by YYYY-MM then calculateMean across months
+  const monthMap = new Map<string, number>();
+  for (const tx of historicalResult.data ?? []) {
+    const key = tx.date.substring(0, 7);
+    monthMap.set(key, (monthMap.get(key) ?? 0) + tx.amount);
+  }
+  const historicalAvg = calculateMean(Array.from(monthMap.values()));
+
+  const affectedGoalName = goalResult.data?.[0]?.name ?? null;
+
+  return evaluateNudge({
+    userId,
+    categoryId,
+    categoryName,
+    currentMonthTotal,
+    historicalAvg,
+    affectedGoalName,
+  });
+}
+
+/**
+ * Dispatches a Web Push notification for a nudge, respecting user preferences
+ * and quiet hours. Non-blocking — caller must .catch() independently.
+ */
+async function dispatchNudgePush(
+  userId: string,
+  nudge: NudgePayload,
+  supabase: SupabaseClient
+): Promise<void> {
+  // Fetch user push preferences
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('preferences')
+    .eq('id', userId)
+    .single();
+
+  const prefs = (profile?.preferences ?? {}) as {
+    push_nudges_enabled?: boolean;
+    quiet_hours_start?: number;
+    quiet_hours_end?: number;
+  };
+
+  if (!prefs.push_nudges_enabled) return;
+
+  const quietStart = prefs.quiet_hours_start ?? 22;
+  const quietEnd = prefs.quiet_hours_end ?? 8;
+  if (isWithinQuietHours(quietStart, quietEnd)) return;
+
+  const adminClient = createServiceRoleClient();
+  await sendPushToUser(adminClient, userId, {
+    type: 'nudge',
+    title: nudge.title,
+    body: nudge.body,
+    data: { url: '/dashboard' },
+  });
 }

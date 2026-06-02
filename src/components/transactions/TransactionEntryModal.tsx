@@ -67,8 +67,11 @@ import { useTranslations } from 'next-intl';
 import { CategoryMenu } from '@/components/categories/CategoryMenu';
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { useSmartNudge } from '@/lib/hooks/useSmartNudge';
+import { SmartNudge } from '@/components/ai/SmartNudge';
 import { getEnabledCurrencies } from '@/lib/config/currencies';
 import { triggerHaptic } from '@/lib/utils/haptic';
+import type { NudgePayload } from '@/types/database.types';
 
 // Transaction type
 type TransactionType = 'expense' | 'income';
@@ -147,6 +150,7 @@ export default function TransactionEntryModal({
   const toast = useToast();
   const t = useTranslations('transactions');
   const tCommon = useTranslations('common');
+  const { nudge, showNudge, dismissNudge } = useSmartNudge();
   // AC-10.8.8: Use bottom sheet Drawer on mobile, centered Modal on desktop
   const isMobile = useBreakpointValue({ base: true, md: false }) ?? false;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -352,9 +356,16 @@ export default function TransactionEntryModal({
         });
       }
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Failed to ${mode === 'edit' ? 'update' : 'create'} transaction`);
+        throw new Error((responseData as { error?: string }).error || `Failed to ${mode === 'edit' ? 'update' : 'create'} transaction`);
+      }
+
+      // Story 12.3: Surface spending nudge if one fired (expense creates only)
+      const nudgePayload = (responseData as { nudge?: NudgePayload | null }).nudge;
+      if (nudgePayload && mode === 'create') {
+        showNudge(nudgePayload);
       }
 
       // Success!
@@ -387,8 +398,11 @@ export default function TransactionEntryModal({
         onSuccess();
       }
 
-      // Close modal
-      onClose();
+      // Keep modal open when a nudge fires so the user sees the coaching message;
+      // dismiss button closes it. Auto-close when no nudge.
+      if (!nudgePayload || mode !== 'create') {
+        onClose();
+      }
     } catch (error) {
       console.error(`Error ${mode === 'edit' ? 'updating' : 'creating'} transaction:`, error);
       toast({
@@ -406,6 +420,9 @@ export default function TransactionEntryModal({
   const formContent = (
     <form onSubmit={handleSubmit(onSubmit)}>
       <VStack spacing={5} align="stretch">
+        {/* Story 12.3: Spending nudge banner — shown when transaction triggers a threshold */}
+        <SmartNudge nudge={nudge} onDismiss={() => { dismissNudge(); onClose(); }} />
+
         {/* Amount Field */}
         <FormControl isInvalid={!!errors.amount} isRequired>
           <FormLabel htmlFor="amount">{t('amount')}</FormLabel>

@@ -60,6 +60,7 @@ export default withPWA({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
+  customWorkerDir: 'worker',
   fallbacks: {
     document: '/offline.html',
   },

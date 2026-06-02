@@ -21,6 +21,9 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   onboarding_completed: false,
   language: 'en',
   weekly_digest_enabled: true,
+  push_nudges_enabled: false,
+  quiet_hours_start: 22,
+  quiet_hours_end: 8,
 };
 
 /**

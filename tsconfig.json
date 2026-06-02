@@ -46,6 +46,7 @@
   ],
   "exclude": [
     "node_modules",
+    "worker",
     "__tests__/app/api/cron/generate-insights.test.ts"
   ]
 }

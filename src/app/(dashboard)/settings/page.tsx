@@ -57,6 +57,7 @@ import { ActiveDevicesSection } from '@/components/settings/ActiveDevicesSection
 import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
 import type { SupportedLocale } from '@/i18n/routing';
 import type { PDFReportData } from '@/types/export.types';
+import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
 import { SUPPORTED_CURRENCIES, getEnabledCurrencies } from '@/lib/config/currencies';
 import { formatExchangeRate } from '@/lib/utils/currency';
 import type { ExchangeRateResponse } from '@/types/exchangeRate.types';
@@ -231,7 +232,7 @@ export default function SettingsPage() {
   };
 
   // AC-8.3.5, AC-8.3.6, AC-8.3.7: Update preferences
-  const handleUpdatePreferences = async (field: 'currency_format' | 'date_format' | 'weekly_digest_enabled', value: string | boolean) => {
+  const handleUpdatePreferences = async (field: 'currency_format' | 'date_format' | 'weekly_digest_enabled' | 'push_nudges_enabled' | 'quiet_hours_start' | 'quiet_hours_end', value: string | boolean | number) => {
     if (!profile) return;
 
     try {
@@ -746,6 +747,14 @@ export default function SettingsPage() {
             </CardBody>
           </Card>
 
+          {/* Story 12.3: Push Notification Preferences */}
+          <NotificationsSection
+            pushNudgesEnabled={profile?.preferences?.push_nudges_enabled ?? false}
+            quietHoursStart={profile?.preferences?.quiet_hours_start ?? 22}
+            quietHoursEnd={profile?.preferences?.quiet_hours_end ?? 8}
+            onUpdatePreferences={handleUpdatePreferences}
+          />
+
           {/* Story 8.4: Data Sync Status Section - AC-8.4.2 */}
           <Card>
             <CardBody>
@@ -811,7 +820,6 @@ export default function SettingsPage() {
         </VStack>
       </Container>
 
-      {/* AC-8.3.8: Confirmation Modal */}
       <ConfirmDeleteModal
         isOpen={isOpen}
         onClose={onClose}
@@ -819,5 +827,109 @@ export default function SettingsPage() {
         isDeleting={isDeleting}
       />
     </AppLayout>
+  );
+}
+
+// ============================================================================
+// NOTIFICATIONS SECTION — Story 12.3
+// ============================================================================
+
+interface NotificationsSectionProps {
+  pushNudgesEnabled: boolean;
+  quietHoursStart: number;
+  quietHoursEnd: number;
+  onUpdatePreferences: (
+    field: 'push_nudges_enabled' | 'quiet_hours_start' | 'quiet_hours_end',
+    value: boolean | number
+  ) => void;
+}
+
+function NotificationsSection({
+  pushNudgesEnabled,
+  quietHoursStart,
+  quietHoursEnd,
+  onUpdatePreferences,
+}: NotificationsSectionProps) {
+  const t = useTranslations('notifications');
+  const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
+
+  return (
+    <Card>
+      <CardBody>
+        <VStack spacing={6} align="stretch">
+          <Heading as="h2" size="md" color="gray.700">
+            {t('title')}
+          </Heading>
+          <Text fontSize="sm" color="gray.500">
+            {t('pushSubtitle')}
+          </Text>
+
+          {!isSupported && (
+            <Text fontSize="sm" color="gray.500">{t('pushNotSupported')}</Text>
+          )}
+
+          {isSupported && (
+            <VStack spacing={4} align="stretch">
+              {/* Browser push subscription toggle */}
+              <HStack justify="space-between">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  colorScheme={isSubscribed ? 'red' : 'blue'}
+                  isLoading={isLoading}
+                  onClick={isSubscribed ? unsubscribe : subscribe}
+                >
+                  {isSubscribed ? t('disablePush') : t('enablePush')}
+                </Button>
+              </HStack>
+
+              <Divider />
+
+              {/* Spending nudges toggle */}
+              <FormControl>
+                <HStack justify="space-between">
+                  <FormLabel mb={0}>{t('spendingNudges')}</FormLabel>
+                  <Switch
+                    isChecked={pushNudgesEnabled}
+                    isDisabled={!isSubscribed}
+                    onChange={(e) => onUpdatePreferences('push_nudges_enabled', e.target.checked)}
+                  />
+                </HStack>
+                <FormHelperText>{t('spendingNudgesDescription')}</FormHelperText>
+              </FormControl>
+
+              {/* Quiet hours */}
+              <FormControl isDisabled={!isSubscribed || !pushNudgesEnabled}>
+                <FormLabel>{t('quietHoursStart')} (UTC)</FormLabel>
+                <Select
+                  value={quietHoursStart}
+                  onChange={(e) => onUpdatePreferences('quiet_hours_start', Number(e.target.value))}
+                  size="sm"
+                  maxW="120px"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl isDisabled={!isSubscribed || !pushNudgesEnabled}>
+                <FormLabel>{t('quietHoursEnd')} (UTC)</FormLabel>
+                <Select
+                  value={quietHoursEnd}
+                  onChange={(e) => onUpdatePreferences('quiet_hours_end', Number(e.target.value))}
+                  size="sm"
+                  maxW="120px"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                  ))}
+                </Select>
+              </FormControl>
+            </VStack>
+          )}
+        </VStack>
+      </CardBody>
+    </Card>
   );
 }

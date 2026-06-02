@@ -440,6 +440,40 @@ export interface Database {
           }
         ];
       };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'push_subscriptions_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -587,6 +621,37 @@ export interface ForecastResponse {
   hasCurrentMonthData: boolean;
   /** ISO date string of when the forecast was computed */
   generated_at: string;
+}
+
+// ============================================================================
+// NUDGE TYPES (Story 12.3)
+// ============================================================================
+
+export type NudgeSeverity = 'approaching' | 'exceeded';
+
+export interface NudgePayload {
+  categoryId: string;
+  categoryName: string;
+  severity: NudgeSeverity;
+  /** Current month total AFTER the triggering transaction */
+  currentMonthTotal: number;
+  /** 3-month historical average monthly spend for this category */
+  historicalAvg: number;
+  /** Percentage of historical avg (e.g., 85 means 85%) */
+  pctOfAvg: number;
+  /** Name of affected goal if one exists, otherwise null */
+  affectedGoalName: string | null;
+  title: string;
+  body: string;
+}
+
+export interface PushSubscriptionRecord {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  created_at: string;
 }
 
 // Insight metadata type (extend as needed)

@@ -26,6 +26,15 @@ export interface UserPreferences {
 
   /** Opt-in/out for weekly financial digest (Story 11.7, default: true) */
   weekly_digest_enabled?: boolean;
+
+  /** Opt-in for spending nudge push notifications (Story 12.3, default: false — opt-in only) */
+  push_nudges_enabled?: boolean;
+
+  /** Quiet hours start — hour in UTC 0-23 (default: 22). No push sent during quiet window. */
+  quiet_hours_start?: number;
+
+  /** Quiet hours end — hour in UTC 0-23 (default: 8). No push sent during quiet window. */
+  quiet_hours_end?: number;
 }
 
 /**
