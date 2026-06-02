@@ -59,6 +59,14 @@ dist/
 *.tsbuildinfo
 next-env.d.ts
 
+# PWA / next-pwa generated files (regenerated on every production build)
+public/sw.js
+public/workbox-*.js
+public/fallback-*.js
+
+# SWC compiler cache
+.swc/
+
 # Testing
 .coverage
 .nyc_output
