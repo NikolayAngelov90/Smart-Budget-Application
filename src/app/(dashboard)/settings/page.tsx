@@ -891,7 +891,6 @@ function NotificationsSection({
                   <FormLabel mb={0}>{t('spendingNudges')}</FormLabel>
                   <Switch
                     isChecked={pushNudgesEnabled}
-                    isDisabled={!isSubscribed}
                     onChange={(e) => onUpdatePreferences('push_nudges_enabled', e.target.checked)}
                   />
                 </HStack>
