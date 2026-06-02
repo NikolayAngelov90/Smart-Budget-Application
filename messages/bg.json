@@ -459,6 +459,17 @@
     "disablePush": "Деактивирай известия в браузъра",
     "pushNotSupported": "Push известията не се поддържат от браузъра"
   },
+  "reengagement": {
+    "title": "Добре дошли отново!",
+    "subtitle": "Минаха {days} дни от последния ви запис.",
+    "typicalSpend": "Обичайни месечни разходи",
+    "subscriptions": "{count} активни абонамента",
+    "subscriptionsTotal": "~{total}/мес",
+    "goalsHeading": "Вашите цели",
+    "recommendedAction": "Препоръчана следваща стъпка",
+    "dismiss": "Затвори",
+    "actionFailed": "Нещо се обърка. Моля, опитайте отново."
+  },
   "seasonal": {
     "title": "Сезонна прогноза за разходите",
     "subtitle": "Прогноза от {months} месеца история",

@@ -35,6 +35,9 @@ export interface UserPreferences {
 
   /** Quiet hours end — hour in UTC 0-23 (default: 8). No push sent during quiet window. */
   quiet_hours_end?: number;
+
+  /** ISO timestamp the user last dismissed the welcome-back summary (Story 12.6) */
+  reengagement_dismissed_at?: string;
 }
 
 /**

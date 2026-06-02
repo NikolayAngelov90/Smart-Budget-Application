@@ -756,6 +756,38 @@ export interface SeasonalAwarenessResponse {
 }
 
 // ============================================================================
+// RE-ENGAGEMENT TYPES (Story 12.6 / FR8)
+// ============================================================================
+
+export interface ReengagementGoalSummary {
+  id: string;
+  name: string;
+  current_amount: number;
+  target_amount: number;
+  pct: number; // 0-100, rounded
+}
+
+export interface ReengagementSummary {
+  /** Days since the user's last logging activity */
+  lapsed_days: number;
+  last_active_date: string; // YYYY-MM-DD
+  /** Baseline monthly spend from history, 2dp */
+  typical_monthly_spend: number;
+  active_subscription_count: number;
+  /** Active subscriptions normalized to a monthly total, 2dp */
+  active_subscription_monthly_total: number;
+  goals: ReengagementGoalSummary[];
+  /** Coaching-tone, rule-based next step */
+  recommended_action: string;
+}
+
+/** API response shape from GET /api/reengagement */
+export interface ReengagementResponse {
+  /** null when the user is active, brand-new, or has dismissed this lapse */
+  summary: ReengagementSummary | null;
+}
+
+// ============================================================================
 // NUDGE TYPES (Story 12.3)
 // ============================================================================
 

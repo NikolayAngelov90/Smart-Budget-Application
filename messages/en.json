@@ -459,6 +459,17 @@
     "disablePush": "Disable browser notifications",
     "pushNotSupported": "Push notifications are not supported on this browser"
   },
+  "reengagement": {
+    "title": "Welcome back!",
+    "subtitle": "It's been {days} days since your last entry.",
+    "typicalSpend": "Your typical monthly spend",
+    "subscriptions": "{count} active subscriptions",
+    "subscriptionsTotal": "~{total}/mo",
+    "goalsHeading": "Your goals",
+    "recommendedAction": "Suggested next step",
+    "dismiss": "Dismiss",
+    "actionFailed": "Something went wrong. Please try again."
+  },
   "seasonal": {
     "title": "Seasonal Spending Outlook",
     "subtitle": "Predicted from {months} months of history",

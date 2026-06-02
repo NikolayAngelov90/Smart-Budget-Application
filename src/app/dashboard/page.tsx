@@ -28,6 +28,7 @@ import { AnnualizedProjections } from '@/components/ai/AnnualizedProjections';
 import { BudgetForecast } from '@/components/ai/BudgetForecast';
 import { RecoveryPlan } from '@/components/ai/RecoveryPlan';
 import { SeasonalAwareness } from '@/components/ai/SeasonalAwareness';
+import { ReengagementSummary } from '@/components/ai/ReengagementSummary';
 import { WeeklyDigestCard } from '@/components/ai/WeeklyDigestCard';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
@@ -57,6 +58,7 @@ export default function DashboardPage() {
         mutate('/api/dashboard/budget-forecast', undefined, { revalidate: true }),
         mutate('/api/recovery-plan', undefined, { revalidate: true }),
         mutate('/api/dashboard/seasonal', undefined, { revalidate: true }),
+        mutate('/api/reengagement', undefined, { revalidate: true }),
         mutate('/api/user/digest', undefined, { revalidate: true }),
       ]);
     }, [])
@@ -127,6 +129,11 @@ export default function DashboardPage() {
           {t('subtitle')}
         </Text>
       </VStack>
+
+      {/* Welcome-back summary - Story 12.6 (progressive disclosure: returning lapsed users) */}
+      <Box mb={{ base: 6, md: 8 }}>
+        <ReengagementSummary />
+      </Box>
 
       {/* Story 11.1: First Transaction Prompt — shown when user has 0 transactions */}
       {hasNoTransactions && (
