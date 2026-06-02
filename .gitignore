@@ -20,6 +20,7 @@ node_modules/
 
 # BMAD Method Output (artifacts are project-specific, not framework)
 _bmad-output/
+docs/llms-full.txt
 
 # IDE & Editor
 .vscode/
@@ -113,3 +114,4 @@ supabase/.temp/
 # Build Output
 *.egg
 .mypy_cache/
+
