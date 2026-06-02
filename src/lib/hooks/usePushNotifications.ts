@@ -39,17 +39,24 @@ export function usePushNotifications(): UsePushNotificationsResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check current subscription status on mount
+  // Check current subscription status on mount.
+  // Use a 3-second timeout so isLoading always clears even in dev mode
+  // where the service worker is disabled and .ready never resolves.
   useEffect(() => {
     if (!isSupported) {
       setIsLoading(false);
       return;
     }
+    const timeout = setTimeout(() => setIsLoading(false), 3000);
     navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
       .then((sub) => setIsSubscribed(sub !== null))
       .catch(() => setIsSubscribed(false))
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        clearTimeout(timeout);
+        setIsLoading(false);
+      });
+    return () => clearTimeout(timeout);
   }, [isSupported]);
 
   const subscribe = useCallback(async () => {

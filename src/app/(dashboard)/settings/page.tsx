@@ -898,8 +898,8 @@ function NotificationsSection({
                 <FormHelperText>{t('spendingNudgesDescription')}</FormHelperText>
               </FormControl>
 
-              {/* Quiet hours */}
-              <FormControl isDisabled={!isSubscribed || !pushNudgesEnabled}>
+              {/* Quiet hours — always editable so users can configure before subscribing */}
+              <FormControl>
                 <FormLabel>{t('quietHoursStart')} (UTC)</FormLabel>
                 <Select
                   value={quietHoursStart}
@@ -913,7 +913,7 @@ function NotificationsSection({
                 </Select>
               </FormControl>
 
-              <FormControl isDisabled={!isSubscribed || !pushNudgesEnabled}>
+              <FormControl>
                 <FormLabel>{t('quietHoursEnd')} (UTC)</FormLabel>
                 <Select
                   value={quietHoursEnd}
