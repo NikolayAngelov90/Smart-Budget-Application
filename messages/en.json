@@ -459,6 +459,19 @@
     "disablePush": "Disable browser notifications",
     "pushNotSupported": "Push notifications are not supported on this browser"
   },
+  "recoveryPlan": {
+    "title": "30-Day Recovery Plan",
+    "subtitle": "Day {day} of 30 — {daysRemaining} days left",
+    "ctaTitle": "Spending ran high in a few categories",
+    "ctaBody": "Create a realistic 30-day plan to ease back to your usual pace.",
+    "createButton": "Create my recovery plan",
+    "monthlyTarget": "Target",
+    "spentSoFar": "Spent",
+    "onTrack": "On track",
+    "overTarget": "Over target",
+    "dismiss": "I'm done with this plan",
+    "actionFailed": "Something went wrong. Please try again."
+  },
   "budgetForecast": {
     "title": "End-of-Month Forecast",
     "subtitle": "Day {day} of {daysInMonth} — {daysRemaining} days remaining",

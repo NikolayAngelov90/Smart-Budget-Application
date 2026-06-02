@@ -26,6 +26,7 @@ import { MonthOverMonth } from '@/components/dashboard/MonthOverMonth';
 import { SpendingHeatmap } from '@/components/ai/SpendingHeatmap';
 import { AnnualizedProjections } from '@/components/ai/AnnualizedProjections';
 import { BudgetForecast } from '@/components/ai/BudgetForecast';
+import { RecoveryPlan } from '@/components/ai/RecoveryPlan';
 import { WeeklyDigestCard } from '@/components/ai/WeeklyDigestCard';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
@@ -53,6 +54,7 @@ export default function DashboardPage() {
         mutate(heatmapKey, undefined, { revalidate: true }),
         mutate('/api/dashboard/annualized-projections', undefined, { revalidate: true }),
         mutate('/api/dashboard/budget-forecast', undefined, { revalidate: true }),
+        mutate('/api/recovery-plan', undefined, { revalidate: true }),
         mutate('/api/user/digest', undefined, { revalidate: true }),
       ]);
     }, [])
@@ -190,6 +192,11 @@ export default function DashboardPage() {
       {/* End-of-Month Budget Forecast - Story 12.2 (progressive disclosure) */}
       <Box mb={{ base: 6, md: 8 }}>
         <BudgetForecast />
+      </Box>
+
+      {/* 30-Day Budget Recovery Plan - Story 12.4 (progressive disclosure) */}
+      <Box mb={{ base: 6, md: 8 }}>
+        <RecoveryPlan />
       </Box>
 
       {/* Weekly Digest - Story 11.7 (progressive disclosure: renders null if no digest yet) */}

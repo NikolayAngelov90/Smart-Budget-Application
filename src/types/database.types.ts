@@ -474,6 +474,46 @@ export interface Database {
           }
         ];
       };
+      recovery_plans: {
+        Row: {
+          id: string;
+          user_id: string;
+          start_date: string;
+          end_date: string;
+          status: RecoveryPlanStatus;
+          targets: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          start_date: string;
+          end_date: string;
+          status?: RecoveryPlanStatus;
+          targets: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          start_date?: string;
+          end_date?: string;
+          status?: RecoveryPlanStatus;
+          targets?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'recovery_plans_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -621,6 +661,67 @@ export interface ForecastResponse {
   hasCurrentMonthData: boolean;
   /** ISO date string of when the forecast was computed */
   generated_at: string;
+}
+
+// ============================================================================
+// RECOVERY PLAN TYPES (Story 12.4 / FR4)
+// ============================================================================
+
+export type RecoveryPlanStatus = 'active' | 'completed' | 'abandoned';
+
+/** A single category's recovery target within a 30-day plan */
+export interface RecoveryTarget {
+  category_id: string;
+  category_name: string;
+  category_color: string;
+  /** 3-month average monthly spend (the overspend threshold / budget proxy) */
+  historical_avg: number;
+  /** Leanest historical month — the realistic floor used as the target */
+  historical_min: number;
+  /** Monthly recovery target (= historical_min), rounded 2dp */
+  monthly_target: number;
+  /** monthly_target / (30/7), rounded 2dp */
+  weekly_target: number;
+  /** monthly_target / 30, rounded 2dp */
+  daily_target: number;
+  /** Spend in this category since plan start — filled at read time (0 at generation) */
+  current_spend: number;
+}
+
+/** A persisted 30-day recovery plan */
+export interface RecoveryPlan {
+  id: string;
+  user_id: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD (start + 30 days)
+  status: RecoveryPlanStatus;
+  targets: RecoveryTarget[];
+  created_at: string;
+  updated_at: string;
+}
+
+/** A recovery target augmented with computed progress */
+export type RecoveryTargetProgress = RecoveryTarget & {
+  /** current_spend <= pro-rated target for days elapsed */
+  on_track: boolean;
+  /** current_spend / monthly_target * 100, rounded */
+  pct_of_target: number;
+};
+
+/** An active plan plus computed progress for display */
+export interface RecoveryPlanProgress {
+  plan: RecoveryPlan;
+  days_elapsed: number;
+  days_remaining: number;
+  categories: RecoveryTargetProgress[];
+}
+
+/** API response shape from GET /api/recovery-plan */
+export interface RecoveryPlanResponse {
+  /** Active plan with progress, or null when none active */
+  plan: RecoveryPlanProgress | null;
+  /** true when the user has overspent categories and a plan can be generated */
+  canGenerate: boolean;
 }
 
 // ============================================================================
