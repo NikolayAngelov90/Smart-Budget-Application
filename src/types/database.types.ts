@@ -203,6 +203,7 @@ export interface Database {
           display_name: string | null;
           profile_picture_url: string | null;
           preferences: Json;
+          analytics_viewer: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -211,6 +212,7 @@ export interface Database {
           display_name?: string | null;
           profile_picture_url?: string | null;
           preferences?: Json;
+          analytics_viewer?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -219,6 +221,7 @@ export interface Database {
           display_name?: string | null;
           profile_picture_url?: string | null;
           preferences?: Json;
+          analytics_viewer?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -785,6 +788,50 @@ export interface ReengagementSummary {
 export interface ReengagementResponse {
   /** null when the user is active, brand-new, or has dismissed this lapse */
   summary: ReengagementSummary | null;
+}
+
+// ============================================================================
+// ENGAGEMENT ANALYTICS TYPES (Story 12.8)
+// ============================================================================
+
+export type AnalyticsRange = 7 | 30 | 90;
+
+export interface InsightEngagementPoint {
+  insight_type: string;
+  views: number;
+  dismissals: number;
+}
+
+export interface ExportUsage {
+  csv_count: number;
+  pdf_count: number;
+  csv_total_transactions: number;
+  pdf_total_pages: number;
+}
+
+export interface PwaInstallsByPlatform {
+  platform: string;
+  count: number;
+}
+
+export interface WauPoint {
+  week_start: string; // 'YYYY-MM-DD' (Monday)
+  active_users: number;
+}
+
+export interface AnalyticsDashboardData {
+  range_days: number;
+  insight_engagement: InsightEngagementPoint[];
+  export_usage: ExportUsage;
+  pwa_installs_by_platform: PwaInstallsByPlatform[];
+  pwa_installs_total: number;
+  wau_trend: WauPoint[];
+  total_events: number;
+  generated_at: string;
+}
+
+export interface AnalyticsDashboardResponse {
+  data: AnalyticsDashboardData;
 }
 
 // ============================================================================
