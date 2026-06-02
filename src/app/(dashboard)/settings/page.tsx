@@ -58,6 +58,7 @@ import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
 import type { SupportedLocale } from '@/i18n/routing';
 import type { PDFReportData } from '@/types/export.types';
 import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
+import { FinancialDisclaimer } from '@/components/ai/FinancialDisclaimer';
 import { SUPPORTED_CURRENCIES, getEnabledCurrencies } from '@/lib/config/currencies';
 import { formatExchangeRate } from '@/lib/utils/currency';
 import type { ExchangeRateResponse } from '@/types/exchangeRate.types';
@@ -83,6 +84,7 @@ export default function SettingsPage() {
   const { mutate } = useSWRConfig();
   const t = useTranslations('settings');
   const tCommon = useTranslations('common');
+  const tDisclaimer = useTranslations('disclaimer');
 
   // Hydration guard
   const [hasMounted, setHasMounted] = useState(false);
@@ -782,6 +784,18 @@ export default function SettingsPage() {
 
           {/* Story 9.6: Active Devices Section - AC-9.6.2 */}
           <ActiveDevicesSection />
+
+          {/* Story 12.7 / FR39: Persistent Financial Advice Disclaimer */}
+          <Card>
+            <CardBody>
+              <VStack spacing={4} align="stretch">
+                <Heading as="h2" size="md" color="gray.700">
+                  {tDisclaimer('settingsHeading')}
+                </Heading>
+                <FinancialDisclaimer variant="full" />
+              </VStack>
+            </CardBody>
+          </Card>
 
           {/* AC-8.3.4: Privacy & Security Section */}
           <Card>

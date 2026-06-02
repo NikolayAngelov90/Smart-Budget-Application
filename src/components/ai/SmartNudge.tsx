@@ -12,6 +12,7 @@
  */
 
 import { Alert, AlertDescription, AlertIcon, AlertTitle, Box, CloseButton, Flex } from '@chakra-ui/react';
+import { FinancialDisclaimer } from '@/components/ai/FinancialDisclaimer';
 import type { NudgePayload } from '@/types/database.types';
 
 interface SmartNudgeProps {
@@ -31,6 +32,10 @@ export function SmartNudge({ nudge, onDismiss }: SmartNudgeProps) {
         <Box flex="1">
           <AlertTitle>{nudge.title}</AlertTitle>
           <AlertDescription fontSize="sm">{nudge.body}</AlertDescription>
+          {/* FR39: Financial advice disclaimer on AI-generated nudge */}
+          <Box mt={2}>
+            <FinancialDisclaimer />
+          </Box>
         </Box>
         <Flex flexShrink={0} ml={2}>
           <CloseButton

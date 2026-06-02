@@ -437,6 +437,11 @@
     "actionError": "Failed to update subscription",
     "loading": "Loading subscriptions..."
   },
+  "disclaimer": {
+    "compact": "For educational purposes only — not licensed financial advice.",
+    "full": "Smart Budget's AI-generated insights, projections, nudges, and recovery plans are provided for educational and informational purposes only. They are not licensed financial advice, and Smart Budget assumes no fiduciary responsibility for decisions made based on them. No outcome is guaranteed. Consult a qualified financial professional before making important financial decisions.",
+    "settingsHeading": "About AI Insights"
+  },
   "smartNudge": {
     "approaching": "{categoryName} spending at {pct}%",
     "exceeded": "{categoryName} spending exceeded your usual amount",

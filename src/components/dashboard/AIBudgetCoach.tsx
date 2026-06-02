@@ -19,6 +19,7 @@ import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
 import { InfoIcon } from '@chakra-ui/icons';
 import { AIInsightCard } from '@/components/insights/AIInsightCard';
+import { FinancialDisclaimer } from '@/components/ai/FinancialDisclaimer';
 import type { Insight } from '@/types/database.types';
 
 interface InsightsResponse {
@@ -182,6 +183,11 @@ export function AIBudgetCoach() {
               </ChakraLink>
             </Flex>
           )}
+
+          {/* FR39: Financial advice disclaimer on AI-generated content */}
+          <Box mt={3}>
+            <FinancialDisclaimer />
+          </Box>
         </>
       )}
     </Box>

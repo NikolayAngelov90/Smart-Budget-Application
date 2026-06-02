@@ -13,6 +13,7 @@ import { EmptyInsightsState } from './EmptyInsightsState';
 import { RefreshInsightsButton } from './RefreshInsightsButton';
 import { InsightsPagination } from './InsightsPagination';
 import { SubscriptionGraveyard } from '@/components/subscriptions/SubscriptionGraveyard';
+import { FinancialDisclaimer } from '@/components/ai/FinancialDisclaimer';
 import { trackInsightsPageViewed, trackInsightDismissed } from '@/lib/services/analyticsService';
 import { setAppBadge } from '@/lib/utils/appBadge';
 import type { Insight } from '@/types/database.types';
@@ -294,9 +295,11 @@ export function InsightsPageContent() {
               <Heading as="h1" size={{ base: 'xl', md: '2xl' }} mb={2}>
                 {t('pageTitle')}
               </Heading>
-              <Text color="gray.600" fontSize={{ base: 'md', md: 'lg' }}>
+              <Text color="gray.600" fontSize={{ base: 'md', md: 'lg' }} mb={2}>
                 {t('pageSubtitle')}
               </Text>
+              {/* FR39: Financial advice disclaimer */}
+              <FinancialDisclaimer />
             </Box>
             {/* Refresh Button - positioned right on desktop, full-width on mobile */}
             <Box w={{ base: 'full', md: 'auto' }}>
