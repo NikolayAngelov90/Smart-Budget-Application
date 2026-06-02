@@ -725,6 +725,37 @@ export interface RecoveryPlanResponse {
 }
 
 // ============================================================================
+// SEASONAL AWARENESS TYPES (Story 12.5 / FR6)
+// ============================================================================
+
+/** A single upcoming month in the seasonal outlook timeline */
+export interface SeasonalMonth {
+  month: string; // 'YYYY-MM' upcoming month
+  month_label: string; // 'YYYY-MM' (UI localizes the display)
+  month_index: number; // 1-12 calendar month
+  /** Predicted spend from the same month-of-year in history (0 if none) */
+  predicted_amount: number;
+  /** predicted_amount >= baseline_monthly * 1.25 */
+  is_seasonal_high: boolean;
+  /** 'YYYY-MM' the prediction was drawn from, or null */
+  historical_basis: string | null;
+}
+
+/** API response shape from GET /api/dashboard/seasonal */
+export interface SeasonalAwarenessResponse {
+  /** Next 6 months of predicted spend */
+  timeline: SeasonalMonth[];
+  /** Average monthly expense across analyzed history, rounded 2dp */
+  baseline_monthly: number;
+  /** Distinct historical months analyzed */
+  months_analyzed: number;
+  /** true when >= 6 distinct months of history */
+  hasEnoughData: boolean;
+  /** ISO timestamp of when the analysis ran */
+  generated_at: string;
+}
+
+// ============================================================================
 // NUDGE TYPES (Story 12.3)
 // ============================================================================
 

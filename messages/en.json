@@ -459,6 +459,13 @@
     "disablePush": "Disable browser notifications",
     "pushNotSupported": "Push notifications are not supported on this browser"
   },
+  "seasonal": {
+    "title": "Seasonal Spending Outlook",
+    "subtitle": "Predicted from {months} months of history",
+    "seasonalHigh": "Seasonal high",
+    "predicted": "Predicted",
+    "noHistory": "No history for this month yet"
+  },
   "recoveryPlan": {
     "title": "30-Day Recovery Plan",
     "subtitle": "Day {day} of 30 — {daysRemaining} days left",
