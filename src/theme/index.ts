@@ -16,7 +16,8 @@ const theme = extendTheme({
   styles: {
     global: {
       body: {
-        bg: 'white',
+        // Soft off-white canvas so white cards/header gain depth (was flat white).
+        bg: 'canvas',
         color: 'gray.800',
       },
     },

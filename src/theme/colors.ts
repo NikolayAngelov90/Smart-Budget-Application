@@ -1,6 +1,10 @@
 // Trust Blue Color Palette
 // Primary brand color: #2b6cb0
 export const colors = {
+  // App canvas — a soft, cool off-white so white cards read with depth (vs. a flat
+  // all-white screen). Inspired by iOS systemGroupedBackground (#F2F2F7) and
+  // contemporary fintech UIs (Revolut/Monzo/Wise). Pairs with trustBlue + white cards.
+  canvas: '#F4F6FA',
   trustBlue: {
     50: '#e3f2fd',
     100: '#bbdefb',

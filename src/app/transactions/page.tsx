@@ -53,7 +53,7 @@ import {
   ModalBody,
   Progress,
 } from '@chakra-ui/react';
-import { CloseIcon, SearchIcon, EditIcon, DeleteIcon, ChevronLeftIcon, DownloadIcon } from '@chakra-ui/icons';
+import { CloseIcon, SearchIcon, EditIcon, DeleteIcon, ChevronLeftIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -120,6 +120,10 @@ function TransactionsContent() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [currencyFilter, setCurrencyFilter] = useState(''); // Story 10-6: currency filter
   const [filtersInitialized, setFiltersInitialized] = useState(false);
+
+  // Mobile: collapse the filter grid behind a toggle so the transaction list isn't
+  // pushed off-screen on small viewports (search stays visible).
+  const { isOpen: mobileFiltersOpen, onToggle: onToggleMobileFilters } = useDisclosure();
 
   // Edit modal state
   const { isOpen: isEditModalOpen, onOpen: onEditModalOpen, onClose: onEditModalClose } = useDisclosure();
@@ -338,6 +342,14 @@ function TransactionsContent() {
   // Check if any filters are active
   const hasActiveFilters =
     startDate || endDate || categoryFilter || typeFilter !== 'all' || currencyFilter || searchQuery;
+
+  // Count active filters inside the collapsible grid (search is always visible, so excluded)
+  const activeFilterCount =
+    (startDate ? 1 : 0) +
+    (endDate ? 1 : 0) +
+    (categoryFilter ? 1 : 0) +
+    (typeFilter !== 'all' ? 1 : 0) +
+    (currencyFilter ? 1 : 0);
 
   // Clear all filters
   const handleClearFilters = () => {
@@ -726,6 +738,32 @@ function TransactionsContent() {
         <Card mb={6}>
           <CardBody>
             <VStack spacing={4} align="stretch">
+              {/* Mobile filter toggle — keeps the list in view; hidden on desktop where the grid always shows */}
+              <Flex display={{ base: 'flex', md: 'none' }} justify="space-between" align="center">
+                <Button
+                  onClick={onToggleMobileFilters}
+                  variant="outline"
+                  size="sm"
+                  colorScheme="blue"
+                  rightIcon={mobileFiltersOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                  aria-expanded={mobileFiltersOpen}
+                >
+                  {t('filters')}
+                  {activeFilterCount > 0 && (
+                    <Badge ml={2} colorScheme="blue" borderRadius="full" px={2}>
+                      {activeFilterCount}
+                    </Badge>
+                  )}
+                </Button>
+                {hasActiveFilters && (
+                  <Button onClick={handleClearFilters} variant="ghost" size="sm" colorScheme="gray">
+                    {t('clearAllFilters')}
+                  </Button>
+                )}
+              </Flex>
+
+              {/* Filter grid — always shown on desktop, collapsible on mobile */}
+              <Box display={{ base: mobileFiltersOpen ? 'block' : 'none', md: 'block' }}>
               {/* Mobile: Vertical Stack, Desktop: Horizontal Grid */}
               <SimpleGrid columns={{ base: 1, md: 2, lg: 5 }} spacing={4}>
                 {/* Date Range Filters */}
@@ -811,8 +849,9 @@ function TransactionsContent() {
                   </Select>
                 </Box>
               </SimpleGrid>
+              </Box>
 
-              {/* Search Input */}
+              {/* Search Input — always visible */}
               <Box>
                 <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
                   {tCommon('search')}
@@ -841,9 +880,9 @@ function TransactionsContent() {
                 </HStack>
               </Box>
 
-              {/* Clear Filters Button */}
+              {/* Clear Filters Button — desktop only (mobile clear lives in the toggle row) */}
               {hasActiveFilters && (
-                <Flex justify="flex-end">
+                <Flex justify="flex-end" display={{ base: 'none', md: 'flex' }}>
                   <Button
                     onClick={handleClearFilters}
                     variant="outline"

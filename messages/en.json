@@ -108,6 +108,7 @@
     "searchPlaceholder": "Search by notes, category, or amount...",
     "clearSearch": "Clear search",
     "clearAllFilters": "Clear All Filters",
+    "filters": "Filters",
     "noTransactionsFiltered": "No transactions found. Try different filters.",
     "clickToAdd": "Click the + button to add a transaction",
     "failedToLoadRetry": "Failed to load transactions. Please try again.",

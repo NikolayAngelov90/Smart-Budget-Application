@@ -63,6 +63,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
       }}
       borderTopWidth="1px"
       borderTopColor="gray.200"
+      boxShadow="0 -2px 12px rgba(0,0,0,0.05)"
       // iOS safe areas: home indicator (bottom) + landscape notch (left/right)
       paddingBottom="env(safe-area-inset-bottom)"
       paddingLeft="env(safe-area-inset-left)"
