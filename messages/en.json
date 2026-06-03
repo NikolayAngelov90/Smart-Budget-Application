@@ -249,6 +249,9 @@
   },
   "settings": {
     "title": "Settings",
+    "manageHeading": "Manage",
+    "manageCategories": "Categories",
+    "manageGoals": "Savings Goals",
     "accountInformation": "Account Information",
     "displayName": "Display Name",
     "displayNamePlaceholder": "Enter your display name",
@@ -386,7 +389,8 @@
   "header": {
     "logout": "Logout",
     "logoutError": "Error logging out",
-    "userMenu": "User Menu"
+    "userMenu": "User Menu",
+    "accountSettings": "Account & settings"
   },
   "pwa": {
     "installTitle": "Install Smart Budget",

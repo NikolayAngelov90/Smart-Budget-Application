@@ -51,11 +51,15 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
       left={0}
       right={0}
       zIndex={100}
-      bg="white"
+      // Story UX-1: translucent blurred bar for a native iOS feel (solid fallback)
+      bg="rgba(255,255,255,0.82)"
+      sx={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
       borderTopWidth="1px"
       borderTopColor="gray.200"
-      // iOS home indicator safe area
+      // iOS safe areas: home indicator (bottom) + landscape notch (left/right)
       paddingBottom="env(safe-area-inset-bottom)"
+      paddingLeft="env(safe-area-inset-left)"
+      paddingRight="env(safe-area-inset-right)"
     >
       <Flex
         w="full"

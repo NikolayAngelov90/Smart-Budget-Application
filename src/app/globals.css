@@ -14,3 +14,10 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Story UX-1: Mobile shell — prevent the scroll region from rubber-banding the
+   whole page behind the fixed header/tab bar on iOS. */
+[data-scroll-container='true'] {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}

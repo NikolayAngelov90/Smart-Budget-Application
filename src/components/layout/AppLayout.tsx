@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, Flex, useDisclosure, useBreakpointValue } from '@chakra-ui/react';
+import { Box, Flex, useBreakpointValue } from '@chakra-ui/react';
 import { mutate } from 'swr';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
-import { MobileNav } from './MobileNav';
 import FloatingActionButton from '@/components/common/FloatingActionButton';
 import { BottomNav } from './BottomNav';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
@@ -20,7 +19,6 @@ const SIDEBAR_COLLAPSE_KEY = 'sidebar-collapsed';
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { isOpen: isMobileNavOpen, onOpen: onMobileNavOpen, onClose: onMobileNavClose } = useDisclosure();
 
   // Responsive default: collapsed on tablet (md), expanded on desktop (lg)
   const defaultCollapsed = useBreakpointValue({ base: false, md: true, lg: false }) ?? false;
@@ -83,8 +81,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <Flex direction="column" h="100vh" overflow="hidden">
-      <Header onMenuClick={onMobileNavOpen} />
+    <Flex direction="column" h="100dvh" overflow="hidden">
+      <Header />
       <OfflineBanner />
       <Flex flex={1} overflow="hidden">
         <Box display={{ base: 'none', md: 'block' }}>
@@ -108,10 +106,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </Box>
       </Flex>
 
-      {/* Mobile Navigation Drawer */}
-      <MobileNav isOpen={isMobileNavOpen} onClose={onMobileNavClose} />
-
-      {/* Bottom Navigation Bar - Mobile only (AC-10.8.1, AC-10.8.2) */}
+      {/* Bottom Navigation Bar - Mobile only; sole primary nav (Story UX-1) */}
       <BottomNav onAddClick={handleOpenModal} />
 
       {/* Floating Action Button - Tablet/Desktop only (AC-10.8.2: hidden on mobile where BottomNav Add tab takes over) */}

@@ -9,7 +9,7 @@ import { Analytics } from '@vercel/analytics/next';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  // Pinch-zoom intentionally allowed (WCAG 1.4.4 resize) — Story UX-1.
   viewportFit: 'cover',
   themeColor: '#3182CE',
 };

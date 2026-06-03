@@ -41,8 +41,11 @@ import {
   Spinner,
   Alert,
   AlertIcon,
+  Flex,
+  Icon,
 } from '@chakra-ui/react';
-import { DownloadIcon, DeleteIcon } from '@chakra-ui/icons';
+import NextLink from 'next/link';
+import { DownloadIcon, DeleteIcon, ChevronRightIcon, AtSignIcon, StarIcon } from '@chakra-ui/icons';
 import { format, subMonths } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import useSWR, { useSWRConfig } from 'swr';
@@ -506,6 +509,42 @@ export default function SettingsPage() {
           <Heading as="h1" size="xl" color="gray.800">
             {t('title')}
           </Heading>
+
+          {/* Story UX-1: Manage — secondary destinations reachable on mobile after hamburger removal */}
+          <Card>
+            <CardBody>
+              <VStack spacing={4} align="stretch">
+                <Heading as="h2" size="md" color="gray.700">
+                  {t('manageHeading')}
+                </Heading>
+                <VStack align="stretch" spacing={0}>
+                  {[
+                    { href: '/categories', label: t('manageCategories'), icon: AtSignIcon },
+                    { href: '/goals', label: t('manageGoals'), icon: StarIcon },
+                  ].map((item) => (
+                    <Flex
+                      key={item.href}
+                      as={NextLink}
+                      href={item.href}
+                      align="center"
+                      justify="space-between"
+                      py={3}
+                      px={2}
+                      minH="48px"
+                      borderRadius="md"
+                      _hover={{ bg: 'gray.50' }}
+                    >
+                      <HStack spacing={3}>
+                        <Icon as={item.icon} color="gray.600" boxSize={5} />
+                        <Text>{item.label}</Text>
+                      </HStack>
+                      <Icon as={ChevronRightIcon} color="gray.400" boxSize={5} />
+                    </Flex>
+                  ))}
+                </VStack>
+              </VStack>
+            </CardBody>
+          </Card>
 
           {/* AC-8.3.2: Account Information Section */}
           <Card>

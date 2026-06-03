@@ -9,32 +9,23 @@ import {
   HStack,
   IconButton,
   Avatar,
-  Text,
-  Button,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuDivider,
   useToast,
+  useDisclosure,
 } from '@chakra-ui/react';
-import { HamburgerIcon } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
+import { AccountSheet } from './AccountSheet';
 import type { User } from '@supabase/supabase-js';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
-interface HeaderProps {
-  onMenuClick?: () => void;
-}
-
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header() {
   const router = useRouter();
   const toast = useToast();
   const t = useTranslations('header');
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   // Shared profile hook — same fetcher as settings page
   const { data: profile } = useUserProfile(!!user);
@@ -75,77 +66,65 @@ export function Header({ onMenuClick }: HeaderProps) {
     }
   };
 
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
+
   return (
     <Box
       as="header"
       bg="trustBlue.500"
       color="white"
-      px={4}
-      py={3}
+      // Story UX-1: fill the Dynamic Island / status-bar region and push content below it.
+      pt={{ base: 'calc(0.75rem + env(safe-area-inset-top))', md: 3 }}
+      pb={3}
+      pl="calc(1rem + env(safe-area-inset-left))"
+      pr="calc(1rem + env(safe-area-inset-right))"
       boxShadow="sm"
       position="sticky"
       top={0}
       zIndex={10}
     >
       <Flex align="center" maxW="container.xl" mx="auto" justify="space-between">
-        {/* Left side: Hamburger menu (mobile) + Logo */}
-        <HStack spacing={3}>
-          <IconButton
-            aria-label="Open navigation menu"
-            icon={<HamburgerIcon />}
-            onClick={onMenuClick}
-            variant="ghost"
-            color="white"
-            display={{ base: 'flex', md: 'none' }}
-            _hover={{ bg: 'whiteAlpha.200' }}
-            _active={{ bg: 'whiteAlpha.300' }}
-          />
-          <Heading as="h1" size="md" fontWeight="bold">
-            Smart Budget
-          </Heading>
-        </HStack>
+        {/* Left side: app title (no hamburger — bottom tab bar is the sole mobile nav) */}
+        <Heading as="h1" size="md" fontWeight="bold">
+          Smart Budget
+        </Heading>
 
-        {/* Right side: Sync Status + User info + Logout */}
+        {/* Right side: Sync Status + account avatar → bottom-sheet */}
         {user && (
           <HStack spacing={4}>
-            {/* Sync Status Indicator - Story 8.4 AC-8.4.1, AC-8.4.6
-                Hidden on mobile (base) to keep header compact alongside BottomNav */}
             <Box display={{ base: 'none', sm: 'flex' }}>
               <SyncStatusIndicator compact />
             </Box>
-            <Menu>
-              <MenuButton
-                as={Button}
-                variant="ghost"
-                color="white"
-                _hover={{ bg: 'whiteAlpha.200' }}
-                _active={{ bg: 'whiteAlpha.300' }}
-                leftIcon={
-                  <Avatar
-                    size="sm"
-                    name={profile?.display_name || user.email || 'User'}
-                    src={profile?.profile_picture_url || undefined}
-                    bg="whiteAlpha.300"
-                  />
-                }
-              >
-                <Text display={{ base: 'none', sm: 'block' }} fontSize="sm">
-                  {profile?.display_name || user.email?.split('@')[0] || 'User'}
-                </Text>
-              </MenuButton>
-              <MenuList color="gray.800">
-                <MenuItem isDisabled>
-                  <Text fontSize="sm" fontWeight="medium">
-                    {user.email}
-                  </Text>
-                </MenuItem>
-                <MenuDivider />
-                <MenuItem onClick={handleLogout}>{t('logout')}</MenuItem>
-              </MenuList>
-            </Menu>
+            <IconButton
+              aria-label={t('userMenu')}
+              onClick={onOpen}
+              variant="ghost"
+              color="white"
+              _hover={{ bg: 'whiteAlpha.200' }}
+              _active={{ bg: 'whiteAlpha.300' }}
+              icon={
+                <Avatar
+                  size="sm"
+                  name={displayName}
+                  src={profile?.profile_picture_url || undefined}
+                  bg="whiteAlpha.300"
+                />
+              }
+            />
           </HStack>
         )}
       </Flex>
+
+      {user && (
+        <AccountSheet
+          isOpen={isOpen}
+          onClose={onClose}
+          email={user.email || ''}
+          displayName={displayName}
+          avatarUrl={profile?.profile_picture_url || undefined}
+          onLogout={handleLogout}
+        />
+      )}
     </Box>
   );
 }
