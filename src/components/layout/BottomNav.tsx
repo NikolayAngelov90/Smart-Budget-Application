@@ -64,8 +64,11 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
       borderTopWidth="1px"
       borderTopColor="gray.200"
       boxShadow="0 -2px 12px rgba(0,0,0,0.05)"
-      // iOS safe areas: home indicator (bottom) + landscape notch (left/right)
-      paddingBottom="env(safe-area-inset-bottom)"
+      // iOS safe areas. In standalone (Home Screen) mode the bottom inset is ~34px,
+      // which lifts the icons noticeably; reclaim most of it while keeping clearance
+      // above the home-indicator pill. Browser mode (inset 0) keeps a small 4px gap.
+      // (landscape notch left/right unchanged)
+      paddingBottom="max(calc(env(safe-area-inset-bottom) - 16px), 4px)"
       paddingLeft="env(safe-area-inset-left)"
       paddingRight="env(safe-area-inset-right)"
     >
