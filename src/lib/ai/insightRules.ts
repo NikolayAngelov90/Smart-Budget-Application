@@ -17,6 +17,7 @@ import {
   calculateMonthOverMonth,
   isOutlier,
 } from './spendingAnalysis';
+import { formatAmount } from '@/lib/utils/formatAmount';
 import type {
   Transaction,
   InsightInsert,
@@ -33,6 +34,8 @@ export interface RuleInput {
   categoryName: string;
   transactions: Transaction[];
   currentMonth?: Date;
+  /** ISO 4217 currency code from the user's preferences (used to format amounts). */
+  currency: string;
 }
 
 export interface BudgetRuleInput extends RuleInput {
@@ -54,7 +57,7 @@ export interface BudgetRuleInput extends RuleInput {
  *  Consider reviewing recent expenses to see if this aligns with your goals."
  */
 export function detectSpendingIncrease(input: RuleInput): InsightInsert | null {
-  const { userId, categoryId, categoryName, transactions, currentMonth = new Date() } = input;
+  const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currency } = input;
 
   // Filter transactions for current month
   const currentMonthStart = startOfMonth(currentMonth);
@@ -109,7 +112,7 @@ export function detectSpendingIncrease(input: RuleInput): InsightInsert | null {
     type: 'spending_increase',
     priority: 4, // High priority
     title: `${categoryName} spending increased ${Math.round(percentChange)}%`,
-    description: `Your ${categoryName} spending increased by ${Math.round(percentChange)}% this month ($${currentAmount.toFixed(0)} vs $${previousAmount.toFixed(0)} last month). Consider reviewing recent expenses to see if this aligns with your goals.`,
+    description: `Your ${categoryName} spending increased by ${Math.round(percentChange)}% this month (${formatAmount(currentAmount, currency)} vs ${formatAmount(previousAmount, currency)} last month). Consider reviewing recent expenses to see if this aligns with your goals.`,
     metadata,
     is_dismissed: false,
   };
@@ -130,7 +133,7 @@ export function detectSpendingIncrease(input: RuleInput): InsightInsert | null {
  *  This gives you a comfortable 10% buffer while keeping spending mindful."
  */
 export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | null {
-  const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currentBudget } = input;
+  const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currentBudget, currency } = input;
 
   // Need at least 3 months of data
   const threeMonthsAgo = subMonths(currentMonth, 3);
@@ -191,7 +194,7 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
     category_name: categoryName,
     three_month_average: Math.round(averageMonthly),
     recommended_budget: recommendedBudget,
-    calculation_explanation: `Based on 3-month average of $${Math.round(averageMonthly)} + 10% buffer`,
+    calculation_explanation: `Based on 3-month average of ${formatAmount(averageMonthly, currency)} + 10% buffer`,
     months_analyzed: monthsAnalyzed,
   };
 
@@ -199,8 +202,8 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
     user_id: userId,
     type: 'budget_recommendation',
     priority: 3, // Medium priority
-    title: `Consider a $${recommendedBudget} budget for ${categoryName}`,
-    description: `Based on your 3-month average of $${Math.round(averageMonthly)}, consider setting a $${recommendedBudget} budget for ${categoryName}. This gives you a comfortable 10% buffer while keeping spending mindful.`,
+    title: `Consider a ${formatAmount(recommendedBudget, currency)} budget for ${categoryName}`,
+    description: `Based on your 3-month average of ${formatAmount(averageMonthly, currency)}, consider setting a ${formatAmount(recommendedBudget, currency)} budget for ${categoryName}. This gives you a comfortable 10% buffer while keeping spending mindful.`,
     metadata,
     is_dismissed: false,
   };
@@ -221,7 +224,7 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
  *  You might want to review this transaction to make sure everything looks right."
  */
 export function flagUnusualExpense(input: RuleInput): InsightInsert | null {
-  const { userId, categoryId, categoryName, transactions } = input;
+  const { userId, categoryId, categoryName, transactions, currency } = input;
 
   // Need at least 10 transactions for meaningful statistics
   if (transactions.length < 10) {
@@ -262,8 +265,8 @@ export function flagUnusualExpense(input: RuleInput): InsightInsert | null {
     user_id: userId,
     type: 'unusual_expense',
     priority: 5, // Critical priority
-    title: `Unusual ${categoryName} expense: $${mostSignificantOutlier.amount.toFixed(0)}`,
-    description: `We noticed an unusual ${categoryName} expense of $${mostSignificantOutlier.amount.toFixed(0)} - much higher than your typical $${typicalAmount}. You might want to review this transaction to make sure everything looks right.`,
+    title: `Unusual ${categoryName} expense: ${formatAmount(mostSignificantOutlier.amount, currency)}`,
+    description: `We noticed an unusual ${categoryName} expense of ${formatAmount(mostSignificantOutlier.amount, currency)} - much higher than your typical ${formatAmount(typicalAmount, currency)}. You might want to review this transaction to make sure everything looks right.`,
     metadata,
     is_dismissed: false,
   };
@@ -284,7 +287,7 @@ export function flagUnusualExpense(input: RuleInput): InsightInsert | null {
  *  Keep up the excellent work!"
  */
 export function generatePositiveReinforcement(input: BudgetRuleInput): InsightInsert | null {
-  const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currentBudget } = input;
+  const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currentBudget, currency } = input;
 
   // Must have a budget set to compare against
   if (!currentBudget || currentBudget <= 0) {
@@ -334,7 +337,7 @@ export function generatePositiveReinforcement(input: BudgetRuleInput): InsightIn
     type: 'positive_reinforcement',
     priority: 2, // Low priority (positive message)
     title: `Great job on ${categoryName}!`,
-    description: `Great job on ${categoryName}! You're ${Math.round(percentUnder)}% under budget this month, saving $${Math.round(savings)}. Keep up the excellent work!`,
+    description: `Great job on ${categoryName}! You're ${Math.round(percentUnder)}% under budget this month, saving ${formatAmount(savings, currency)}. Keep up the excellent work!`,
     metadata,
     is_dismissed: false,
   };

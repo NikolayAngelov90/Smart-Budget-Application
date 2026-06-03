@@ -10,6 +10,7 @@ const BASE = {
   categoryId: 'cat-dining',
   categoryName: 'Dining',
   affectedGoalName: null,
+  currency: 'USD',
 };
 
 describe('evaluateNudge', () => {

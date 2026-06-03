@@ -11,6 +11,7 @@
 
 import { startOfMonth, endOfMonth, subMonths, format, parseISO } from 'date-fns';
 import { calculateMean } from './spendingAnalysis';
+import { formatAmount } from '@/lib/utils/formatAmount';
 import type { Category, InsightInsert, InsightMetadata, Transaction } from '@/types/database.types';
 
 // ============================================================================
@@ -22,6 +23,8 @@ export interface PatternDetectionInput {
   transactions: Transaction[];
   categories: Category[];
   currentMonth?: Date;
+  /** ISO 4217 currency code from the user's preferences (used to format amounts). */
+  currency: string;
 }
 
 // ============================================================================
@@ -62,7 +65,7 @@ function categoryTotalForMonth(
  *  Worth keeping an eye on how this month shapes up."
  */
 export function detectSpendingAnomalies(input: PatternDetectionInput): InsightInsert[] {
-  const { userId, transactions, categories, currentMonth = new Date() } = input;
+  const { userId, transactions, categories, currentMonth = new Date(), currency } = input;
 
   const m0Start = startOfMonth(currentMonth);
   const m0End = endOfMonth(currentMonth);
@@ -118,7 +121,7 @@ export function detectSpendingAnomalies(input: PatternDetectionInput): InsightIn
       type: 'spending_anomaly' as const,
       priority: 4,
       title: `${categoryName} spending is ${roundedPct}% above your recent average`,
-      description: `Your ${categoryName} spending ($${roundedCurrent}) is running ${roundedPct}% above your recent average ($${roundedBaseline}). Worth keeping an eye on how this month shapes up — no action needed yet!`,
+      description: `Your ${categoryName} spending (${formatAmount(roundedCurrent, currency)}) is running ${roundedPct}% above your recent average (${formatAmount(roundedBaseline, currency)}). Worth keeping an eye on how this month shapes up — no action needed yet!`,
       metadata,
       is_dismissed: false,
     } satisfies InsightInsert;
@@ -143,7 +146,7 @@ export function detectSpendingAnomalies(input: PatternDetectionInput): InsightIn
  *  so far. Worth keeping in mind if you have budget targets in mind."
  */
 export function detectNewHighSpendCategories(input: PatternDetectionInput): InsightInsert[] {
-  const { userId, transactions, categories, currentMonth = new Date() } = input;
+  const { userId, transactions, categories, currentMonth = new Date(), currency } = input;
 
   const m0Start = startOfMonth(currentMonth);
   const m0End = endOfMonth(currentMonth);
@@ -220,7 +223,7 @@ export function detectNewHighSpendCategories(input: PatternDetectionInput): Insi
       type: 'new_high_spend_category' as const,
       priority: 3,
       title: `${top.name} has jumped into your top spending categories`,
-      description: `${top.name} has jumped into your top spending categories this month — $${Math.round(top.total)} spent so far. Worth keeping in mind if you have budget targets in this area!`,
+      description: `${top.name} has jumped into your top spending categories this month — ${formatAmount(Math.round(top.total), currency)} spent so far. Worth keeping in mind if you have budget targets in this area!`,
       metadata,
       is_dismissed: false,
     } satisfies InsightInsert,

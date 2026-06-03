@@ -413,6 +413,15 @@ async function evaluateNudgeForTransaction(
   const d3m = new Date(now.getFullYear(), now.getMonth() - 3, 1);
   const threeMonthsAgo = `${d3m.getFullYear()}-${String(d3m.getMonth() + 1).padStart(2, '0')}-01`;
 
+  // Resolve the user's display currency so nudge messages format amounts correctly.
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('preferences')
+    .eq('id', userId)
+    .maybeSingle();
+  const prefs = (profile?.preferences ?? {}) as { currency_format?: unknown };
+  const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
+
   const [currentResult, historicalResult, goalResult] = await Promise.all([
     supabase
       .from('transactions')
@@ -462,6 +471,7 @@ async function evaluateNudgeForTransaction(
     currentMonthTotal,
     historicalAvg,
     affectedGoalName,
+    currency,
   });
 }
 

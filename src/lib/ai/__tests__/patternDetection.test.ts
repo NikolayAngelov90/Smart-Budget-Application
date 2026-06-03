@@ -65,6 +65,7 @@ describe('detectSpendingAnomalies', () => {
     it('returns [] when there are no transactions at all', () => {
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions: [],
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -79,6 +80,7 @@ describe('detectSpendingAnomalies', () => {
       ];
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -93,6 +95,7 @@ describe('detectSpendingAnomalies', () => {
       ];
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -109,6 +112,7 @@ describe('detectSpendingAnomalies', () => {
       ];
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -127,6 +131,7 @@ describe('detectSpendingAnomalies', () => {
       ];
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -145,6 +150,7 @@ describe('detectSpendingAnomalies', () => {
       ];
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -161,6 +167,7 @@ describe('detectSpendingAnomalies', () => {
       ];
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -176,6 +183,7 @@ describe('detectSpendingAnomalies', () => {
       ];
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -198,6 +206,7 @@ describe('detectSpendingAnomalies', () => {
       ];
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -220,6 +229,7 @@ describe('detectSpendingAnomalies', () => {
       }
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories,
         currentMonth: CURRENT_MONTH,
@@ -245,6 +255,7 @@ describe('detectSpendingAnomalies', () => {
       ];
       const result = detectSpendingAnomalies({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING, CAT_TRANSPORT, CAT_UTILITIES],
         currentMonth: CURRENT_MONTH,
@@ -265,6 +276,7 @@ describe('detectNewHighSpendCategories', () => {
     it('returns [] when there are no transactions', () => {
       const result = detectNewHighSpendCategories({
         userId: 'user-1',
+        currency: 'USD',
         transactions: [],
         categories: [CAT_DINING],
         currentMonth: CURRENT_MONTH,
@@ -282,6 +294,7 @@ describe('detectNewHighSpendCategories', () => {
       ];
       const result = detectNewHighSpendCategories({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_UTILITIES, CAT_DINING, CAT_TRANSPORT],
         currentMonth: CURRENT_MONTH,
@@ -300,6 +313,7 @@ describe('detectNewHighSpendCategories', () => {
       ];
       const result = detectNewHighSpendCategories({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING, CAT_TRANSPORT, CAT_UTILITIES],
         currentMonth: CURRENT_MONTH,
@@ -325,6 +339,7 @@ describe('detectNewHighSpendCategories', () => {
       ];
       const result = detectNewHighSpendCategories({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING, CAT_TRANSPORT, CAT_UTILITIES],
         currentMonth: CURRENT_MONTH,
@@ -354,6 +369,7 @@ describe('detectNewHighSpendCategories', () => {
       ];
       const result = detectNewHighSpendCategories({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING, CAT_ENTERTAINMENT, CAT_TRANSPORT, CAT_UTILITIES, CAT_SHOPPING, CAT_HEALTH],
         currentMonth: CURRENT_MONTH,
@@ -381,6 +397,7 @@ describe('detectNewHighSpendCategories', () => {
       ];
       const result = detectNewHighSpendCategories({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_ENTERTAINMENT, CAT_HEALTH, CAT_DINING, CAT_TRANSPORT],
         currentMonth: CURRENT_MONTH,
@@ -402,6 +419,7 @@ describe('detectNewHighSpendCategories', () => {
       ];
       const result = detectNewHighSpendCategories({
         userId: 'user-1',
+        currency: 'USD',
         transactions,
         categories: [CAT_DINING, CAT_ENTERTAINMENT, CAT_TRANSPORT],
         currentMonth: CURRENT_MONTH,

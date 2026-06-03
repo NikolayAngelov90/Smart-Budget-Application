@@ -13,6 +13,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { endOfMonth, subMonths } from 'date-fns';
 import { toLocalISODate } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
+import { DEFAULT_CURRENCY } from '@/lib/utils/constants';
 import {
   detectSpendingIncrease,
   recommendBudgetLimit,
@@ -139,6 +140,16 @@ export async function generateInsights(
     return [];
   }
 
+  // Resolve the user's display currency so all insight messages format amounts
+  // with the right symbol (never hardcode — see ESLint no-restricted-syntax guard).
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('preferences')
+    .eq('id', userId)
+    .maybeSingle();
+  const prefs = (profile?.preferences as Record<string, unknown> | null) ?? {};
+  const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
+
   // Budget table is not part of the current MVP scope.
   // Rules handle the absence of budgets gracefully by skipping budget-based insights.
   const budgetMap = new Map<string, number>();
@@ -162,6 +173,7 @@ export async function generateInsights(
       categoryName: category.name,
       transactions: categoryTransactions,
       currentMonth,
+      currency,
     });
 
     const budgetRecommendation = recommendBudgetLimit({
@@ -171,6 +183,7 @@ export async function generateInsights(
       transactions: categoryTransactions,
       currentMonth,
       currentBudget,
+      currency,
     });
 
     const unusualExpense = flagUnusualExpense({
@@ -178,6 +191,7 @@ export async function generateInsights(
       categoryId: category.id,
       categoryName: category.name,
       transactions: categoryTransactions,
+      currency,
     });
 
     const positiveReinforcement = generatePositiveReinforcement({
@@ -187,6 +201,7 @@ export async function generateInsights(
       transactions: categoryTransactions,
       currentMonth,
       currentBudget,
+      currency,
     });
 
     // Collect non-null insights
@@ -202,12 +217,14 @@ export async function generateInsights(
     transactions: transactions ?? [],
     categories: categories ?? [],
     currentMonth,
+    currency,
   });
   const newHighSpendInsights = detectNewHighSpendCategories({
     userId,
     transactions: transactions ?? [],
     categories: categories ?? [],
     currentMonth,
+    currency,
   });
   allInsights.push(...anomalyInsights, ...newHighSpendInsights);
 

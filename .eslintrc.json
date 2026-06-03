@@ -7,6 +7,7 @@
   "overrides": [
     {
       "files": [
+        "src/lib/ai/**/*.ts",
         "src/lib/services/**/*.ts",
         "src/app/api/cron/**/*.ts"
       ],
@@ -20,7 +21,15 @@
           "error",
           {
             "selector": "Literal[value=/^(EUR|USD|GBP)$/]",
-            "message": "Hardcoded currency code detected. Accept currency_format as a parameter from user preferences (e.g. prefs.currency_format ?? 'EUR') instead of hardcoding."
+            "message": "Hardcoded currency code detected. Accept currency_format as a parameter from user preferences (e.g. prefs.currency_format ?? DEFAULT_CURRENCY) instead of hardcoding."
+          },
+          {
+            "selector": "Literal[value=/[$€£]/]:not([regex])",
+            "message": "Hardcoded currency symbol in a string. User-facing amounts must be formatted with formatAmount(amount, currency) using the user's currency_format, never a literal $/€/£."
+          },
+          {
+            "selector": "TemplateElement[value.raw=/[$€£]/]",
+            "message": "Hardcoded currency symbol in a template literal. User-facing amounts must be formatted with formatAmount(amount, currency) using the user's currency_format, never a literal $/€/£."
           }
         ]
       }

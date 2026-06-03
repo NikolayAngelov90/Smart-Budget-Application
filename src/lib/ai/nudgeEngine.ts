@@ -12,6 +12,7 @@
  * No Supabase, no side effects — pure input → output.
  */
 
+import { formatAmount } from '@/lib/utils/formatAmount';
 import type { NudgePayload, NudgeSeverity } from '@/types/database.types';
 
 export interface NudgeEngineInput {
@@ -24,6 +25,8 @@ export interface NudgeEngineInput {
   historicalAvg: number;
   /** Name of the user's soonest active goal with a deadline, or null */
   affectedGoalName: string | null;
+  /** ISO 4217 currency code from the user's preferences (used to format amounts). */
+  currency: string;
 }
 
 /**
@@ -33,7 +36,7 @@ export interface NudgeEngineInput {
  * Returns null when no nudge is warranted.
  */
 export function evaluateNudge(input: NudgeEngineInput): NudgePayload | null {
-  const { categoryId, categoryName, currentMonthTotal, historicalAvg, affectedGoalName } = input;
+  const { categoryId, categoryName, currentMonthTotal, historicalAvg, affectedGoalName, currency } = input;
 
   // No baseline = no nudge (avoid false positives for new categories)
   if (historicalAvg === 0) return null;
@@ -47,11 +50,11 @@ export function evaluateNudge(input: NudgeEngineInput): NudgePayload | null {
   if (pctOfAvg >= 100) {
     severity = 'exceeded';
     title = `${categoryName} spending exceeded your usual amount`;
-    body = `You've spent $${currentMonthTotal.toFixed(0)} in ${categoryName} this month — your usual monthly average is $${historicalAvg.toFixed(0)}.`;
+    body = `You've spent ${formatAmount(currentMonthTotal, currency)} in ${categoryName} this month — your usual monthly average is ${formatAmount(historicalAvg, currency)}.`;
   } else if (pctOfAvg >= 80) {
     severity = 'approaching';
     title = `${categoryName} spending at ${pctOfAvg}%`;
-    body = `You've used ${pctOfAvg}% of your usual ${categoryName} budget for the month ($${currentMonthTotal.toFixed(0)} of ~$${historicalAvg.toFixed(0)}).`;
+    body = `You've used ${pctOfAvg}% of your usual ${categoryName} budget for the month (${formatAmount(currentMonthTotal, currency)} of ~${formatAmount(historicalAvg, currency)}).`;
   } else {
     return null;
   }

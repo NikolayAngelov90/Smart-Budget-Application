@@ -58,6 +58,16 @@ const catChain = {
   eq: jest.fn().mockResolvedValue({ data: [fakeCat], error: null }),
 };
 
+// user_profiles fetch for the user's display currency (Story 12.x currency fix)
+const profileChain = {
+  select: jest.fn().mockReturnThis(),
+  eq: jest.fn().mockReturnThis(),
+  maybeSingle: jest.fn().mockResolvedValue({
+    data: { preferences: { currency_format: 'USD' } },
+    error: null,
+  }),
+};
+
 const deleteChain = {
   delete: jest.fn().mockReturnThis(),
   eq: jest.fn().mockResolvedValue({ error: null }),
@@ -71,6 +81,7 @@ const insertChain = {
 const mockFrom = jest.fn().mockImplementation((table: string) => {
   if (table === 'transactions') return txChain;
   if (table === 'categories') return catChain;
+  if (table === 'user_profiles') return profileChain;
   // For delete (service role client)
   return { ...deleteChain, ...insertChain };
 });

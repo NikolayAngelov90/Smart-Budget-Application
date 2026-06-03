@@ -53,6 +53,7 @@ describe('detectSpendingIncrease', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -75,6 +76,7 @@ describe('detectSpendingIncrease', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -93,6 +95,7 @@ describe('detectSpendingIncrease', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -110,6 +113,7 @@ describe('detectSpendingIncrease', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -126,6 +130,7 @@ describe('detectSpendingIncrease', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -143,6 +148,7 @@ describe('detectSpendingIncrease', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -176,6 +182,7 @@ describe('recommendBudgetLimit', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -197,6 +204,7 @@ describe('recommendBudgetLimit', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -217,6 +225,7 @@ describe('recommendBudgetLimit', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -237,6 +246,7 @@ describe('recommendBudgetLimit', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
       currentBudget: 365, // Very close to recommended ~367
@@ -258,6 +268,7 @@ describe('recommendBudgetLimit', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
@@ -284,6 +295,7 @@ describe('flagUnusualExpense', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
     });
 
@@ -303,6 +315,7 @@ describe('flagUnusualExpense', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
     });
 
@@ -319,6 +332,7 @@ describe('flagUnusualExpense', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
     });
 
@@ -335,6 +349,7 @@ describe('flagUnusualExpense', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
     });
 
@@ -362,6 +377,7 @@ describe('generatePositiveReinforcement', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
       currentBudget: budget,
@@ -384,6 +400,7 @@ describe('generatePositiveReinforcement', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
       currentBudget: budget,
@@ -401,6 +418,7 @@ describe('generatePositiveReinforcement', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
       currentBudget: undefined,
@@ -418,6 +436,7 @@ describe('generatePositiveReinforcement', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
       currentBudget: 100,
@@ -435,6 +454,7 @@ describe('generatePositiveReinforcement', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
       currentBudget: 100,
@@ -474,6 +494,7 @@ describe('executeRulesForCategory', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
       currentBudget: 500,
@@ -502,6 +523,7 @@ describe('executeRulesForCategory', () => {
       userId,
       categoryId,
       categoryName,
+      currency: 'EUR',
       transactions,
       currentMonth,
     });
