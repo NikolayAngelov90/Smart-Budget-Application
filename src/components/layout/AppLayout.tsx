@@ -102,9 +102,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Box
           flex={1}
           p={{ base: 4, md: 6 }}
-          // Clear the fixed bottom tab bar (56px row) + its reduced safe-area pad,
-          // plus breathing room — so the last row is never hidden behind the nav.
-          pb={{ base: 'calc(56px + env(safe-area-inset-bottom))', md: 6 }}
+          // Clear the fixed bottom tab bar + iOS home-indicator area, plus breathing
+          // room — so the last row is never hidden behind the nav (standalone or browser).
+          pb={{ base: 'calc(80px + env(safe-area-inset-bottom))', md: 6 }}
           overflowY="auto"
           overflowX="hidden"
           w="full"
