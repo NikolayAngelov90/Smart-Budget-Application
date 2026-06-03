@@ -81,7 +81,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <Flex direction="column" h="100dvh" overflow="hidden">
+    <Flex
+      direction="column"
+      overflow="hidden"
+      // Story UX-1: 100dvh with a 100vh fallback for iOS < 15.4 (PRD targets iOS 14+),
+      // where the dvh unit is unsupported.
+      sx={{ height: '100vh', '@supports (height: 100dvh)': { height: '100dvh' } }}
+    >
       <Header />
       <OfflineBanner />
       <Flex flex={1} overflow="hidden">

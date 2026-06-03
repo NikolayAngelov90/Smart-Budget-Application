@@ -51,9 +51,16 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
       left={0}
       right={0}
       zIndex={100}
-      // Story UX-1: translucent blurred bar for a native iOS feel (solid fallback)
+      // Story UX-1: translucent blurred bar for a native iOS feel; solid-white
+      // fallback where backdrop-filter is unsupported (DESIGN.md).
       bg="rgba(255,255,255,0.82)"
-      sx={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+      sx={{
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        '@supports not ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)))': {
+          backgroundColor: 'white',
+        },
+      }}
       borderTopWidth="1px"
       borderTopColor="gray.200"
       // iOS safe areas: home indicator (bottom) + landscape notch (left/right)
