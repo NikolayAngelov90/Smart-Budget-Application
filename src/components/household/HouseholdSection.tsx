@@ -24,6 +24,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { useHousehold } from '@/lib/hooks/useHousehold';
+import { HouseholdInvites } from '@/components/household/HouseholdInvites';
 
 export function HouseholdSection() {
   const t = useTranslations('household');
@@ -77,19 +78,22 @@ export function HouseholdSection() {
               {t('loadError')}
             </Text>
           ) : household ? (
-            <HStack justify="space-between" align="center">
-              <VStack align="flex-start" spacing={0}>
-                <Text fontWeight="semibold" color="gray.800">
-                  {household.name}
-                </Text>
-                <Text fontSize="sm" color="gray.500">
-                  {t('memberSince')}
-                </Text>
-              </VStack>
-              <Badge colorScheme={household.role === 'admin' ? 'blue' : 'gray'} borderRadius="full" px={3} py={1}>
-                {household.role === 'admin' ? t('roleAdmin') : t('roleMember')}
-              </Badge>
-            </HStack>
+            <VStack align="stretch" spacing={4}>
+              <HStack justify="space-between" align="center">
+                <VStack align="flex-start" spacing={0}>
+                  <Text fontWeight="semibold" color="gray.800">
+                    {household.name}
+                  </Text>
+                  <Text fontSize="sm" color="gray.500">
+                    {t('memberSince')}
+                  </Text>
+                </VStack>
+                <Badge colorScheme={household.role === 'admin' ? 'blue' : 'gray'} borderRadius="full" px={3} py={1}>
+                  {household.role === 'admin' ? t('roleAdmin') : t('roleMember')}
+                </Badge>
+              </HStack>
+              {household.role === 'admin' && <HouseholdInvites />}
+            </VStack>
           ) : (
             <VStack align="stretch" spacing={3}>
               <Text fontSize="sm" color="gray.600">

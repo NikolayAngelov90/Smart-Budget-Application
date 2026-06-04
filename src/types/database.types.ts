@@ -39,6 +39,8 @@ export type SubscriptionFrequency = 'weekly' | 'monthly' | 'quarterly' | 'annual
 
 export type HouseholdRole = 'admin' | 'member'; // Story 13.1
 
+export type InvitationStatus = 'pending' | 'accepted' | 'revoked'; // Story 13.2
+
 // ============================================================================
 // DATABASE INTERFACE
 // ============================================================================
@@ -588,6 +590,53 @@ export interface Database {
           }
         ];
       };
+      // Story 13.2: Household invitations
+      household_invitations: {
+        Row: {
+          id: string;
+          household_id: string;
+          email: string;
+          token: string;
+          status: InvitationStatus;
+          invited_by: string | null;
+          expires_at: string;
+          accepted_by: string | null;
+          accepted_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          email: string;
+          token?: string;
+          status?: InvitationStatus;
+          invited_by?: string | null;
+          expires_at: string;
+          accepted_by?: string | null;
+          accepted_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          household_id?: string;
+          email?: string;
+          token?: string;
+          status?: InvitationStatus;
+          invited_by?: string | null;
+          expires_at?: string;
+          accepted_by?: string | null;
+          accepted_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'household_invitations_household_id_fkey';
+            columns: ['household_id'];
+            referencedRelation: 'households';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -606,6 +655,7 @@ export interface Database {
       subscription_status: SubscriptionStatus;
       subscription_frequency: SubscriptionFrequency;
       household_role: HouseholdRole;
+      invitation_status: InvitationStatus;
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -653,6 +703,17 @@ export type HouseholdMemberUpdate = Database['public']['Tables']['household_memb
 
 /** A household plus the requesting user's role within it. */
 export type HouseholdWithRole = Household & { role: HouseholdRole };
+
+// Story 13.2: Household invitations
+export type HouseholdInvitation = Database['public']['Tables']['household_invitations']['Row'];
+export type HouseholdInvitationInsert = Database['public']['Tables']['household_invitations']['Insert'];
+export type HouseholdInvitationUpdate = Database['public']['Tables']['household_invitations']['Update'];
+
+/** An invitation enriched for display: expiry computed, optional shareable accept link. */
+export type HouseholdInvitationWithState = HouseholdInvitation & {
+  isExpired: boolean;
+  acceptLink?: string;
+};
 
 // Transaction with category details (for joined queries)
 export type TransactionWithCategory = Transaction & {

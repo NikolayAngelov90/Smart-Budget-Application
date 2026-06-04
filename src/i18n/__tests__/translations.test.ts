@@ -119,6 +119,7 @@ describe('Translation files', () => {
       'heatmap.subtitle',             // Format pattern: {month} {year} - language-agnostic template
       'projections.trendUp',          // Format pattern: +{percentage}% - numeric, language-agnostic
       'projections.trendDown',        // Format pattern: -{percentage}% - numeric, language-agnostic
+      'invitations.emailPlaceholder', // Email example (name@email.com) - language-agnostic
     ]);
 
     const untranslatedKeys = enKeys.filter((key) => {

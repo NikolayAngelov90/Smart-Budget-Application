@@ -36,6 +36,24 @@
     "memberSince": "You're a member of this household",
     "loadError": "Couldn't load your household. Please refresh."
   },
+  "invitations": {
+    "heading": "Invite members",
+    "emailPlaceholder": "name@email.com",
+    "send": "Invite",
+    "sending": "Inviting...",
+    "invited": "Invitation created",
+    "inviteFailed": "Couldn't send the invitation. Please try again.",
+    "alreadyInvited": "There's already a pending invitation for this email.",
+    "pendingTitle": "Pending invitations",
+    "expires": "Expires in 48 hours",
+    "expired": "Expired",
+    "copyLink": "Copy invite link",
+    "linkCopied": "Invite link copied",
+    "copyFailed": "Couldn't copy the link",
+    "revoke": "Revoke invitation",
+    "revoked": "Invitation revoked",
+    "revokeFailed": "Couldn't revoke the invitation"
+  },
   "navigation": {
     "dashboard": "Dashboard",
     "transactions": "Transactions",
