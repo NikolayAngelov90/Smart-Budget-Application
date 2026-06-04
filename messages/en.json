@@ -54,6 +54,21 @@
     "revoked": "Invitation revoked",
     "revokeFailed": "Couldn't revoke the invitation"
   },
+  "join": {
+    "title": "Join household",
+    "invitePrompt": "You've been invited to join {household}.",
+    "aHousehold": "a household",
+    "accept": "Accept invitation",
+    "joining": "Joining...",
+    "joined": "You've joined the household",
+    "acceptFailed": "Couldn't accept the invitation. Please try again.",
+    "goToDashboard": "Go to dashboard",
+    "errorInvalid": "This invitation link is invalid.",
+    "errorUsed": "This invitation has already been used or was revoked.",
+    "errorExpired": "This invitation has expired.",
+    "errorEmailMismatch": "This invitation was sent to a different email address. Log in with that address to accept.",
+    "errorAlreadyMember": "You already belong to a household."
+  },
   "navigation": {
     "dashboard": "Dashboard",
     "transactions": "Transactions",

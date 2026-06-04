@@ -39,6 +39,20 @@ import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { FaGoogle, FaGithub } from 'react-icons/fa';
 import { createClient } from '@/lib/supabase/client';
 
+/**
+ * Safe post-login redirect target from the `redirect` query param (set by the
+ * middleware and by deep links like /join). Only internal paths are allowed
+ * (must start with a single '/') to prevent open-redirects; otherwise '/'.
+ */
+function getSafeRedirectTarget(): string {
+  if (typeof window === 'undefined') return '/';
+  const redirect = new URLSearchParams(window.location.search).get('redirect');
+  if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+    return redirect;
+  }
+  return '/';
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const toast = useToast();
@@ -107,7 +121,7 @@ export default function LoginPage() {
         return;
       }
 
-      // Success - redirect to dashboard
+      // Success - redirect to the requested path (e.g. a /join invite link) or home
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
@@ -116,7 +130,7 @@ export default function LoginPage() {
         isClosable: true,
       });
 
-      router.push('/');
+      router.push(getSafeRedirectTarget());
       router.refresh();
     } catch {
       toast({

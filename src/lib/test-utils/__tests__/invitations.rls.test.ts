@@ -109,4 +109,14 @@ rlsDescribe('Household invitations isolation (Story 13.2)', () => {
       .eq('email', 'sneaky@example.test');
     expect(data).toEqual([]);
   });
+
+  // Story 13.3 end-state: a member who joined can read their household (13-1 SELECT RLS)
+  // but still cannot read invitations (admin-only) — proves the post-accept isolation.
+  it('joined member (a2) CAN read their household but NOT its invitations', async () => {
+    const a2 = await signInAsTestUser(a2Email, PWD);
+    const householdView = await a2.from('households').select('id').eq('id', householdAId);
+    expect(householdView.data).toHaveLength(1);
+    const inviteView = await a2.from('household_invitations').select('id').eq('household_id', householdAId);
+    expect(inviteView.data).toEqual([]);
+  });
 });

@@ -12,7 +12,8 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
-import type { HouseholdInvitation, HouseholdInvitationWithState } from '@/types/database.types';
+import { sendPushToUser } from '@/lib/services/pushService';
+import type { Household, HouseholdInvitation, HouseholdInvitationWithState } from '@/types/database.types';
 
 /** Caller is not an admin of any household (or not in one). → 403 */
 export class NotHouseholdAdminError extends Error {
@@ -35,6 +36,46 @@ export class InvitationNotFoundError extends Error {
   constructor(message = 'Invitation not found') {
     super(message);
     this.name = 'InvitationNotFoundError';
+  }
+}
+
+/** Token does not match any invitation (Story 13.3 accept). → 404 */
+export class InvalidTokenError extends Error {
+  constructor(message = 'This invitation link is invalid') {
+    super(message);
+    this.name = 'InvalidTokenError';
+  }
+}
+
+/** Invitation is no longer pending (already accepted or revoked). → 409 */
+export class InvitationNotPendingError extends Error {
+  constructor(message = 'This invitation has already been used or was revoked') {
+    super(message);
+    this.name = 'InvitationNotPendingError';
+  }
+}
+
+/** Invitation has expired. → 410 */
+export class InvitationExpiredError extends Error {
+  constructor(message = 'This invitation has expired') {
+    super(message);
+    this.name = 'InvitationExpiredError';
+  }
+}
+
+/** Authenticated user's email does not match the invitation (email-bound, NFR12). → 403 */
+export class EmailMismatchError extends Error {
+  constructor(message = 'This invitation was sent to a different email address') {
+    super(message);
+    this.name = 'EmailMismatchError';
+  }
+}
+
+/** Caller already belongs to a household (one-household-per-user, MVP). → 409 */
+export class AlreadyInHouseholdError extends Error {
+  constructor(message = 'You already belong to a household') {
+    super(message);
+    this.name = 'AlreadyInHouseholdError';
   }
 }
 
@@ -173,4 +214,134 @@ export async function revokeInvitation(userId: string, invitationId: string): Pr
     logger.error('InvitationService', `Revoke failed for ${userId}: ${error.message}`);
     throw new Error('Failed to revoke invitation');
   }
+}
+
+// ============================================================================
+// Story 13.3: Accept / validate
+// ============================================================================
+
+type ServiceClient = ReturnType<typeof createServiceRoleClient>;
+
+export type InvitationInvalidReason = 'invalid' | 'not_pending' | 'expired' | 'email_mismatch' | 'already_in_household';
+
+export interface InvitationValidation {
+  valid: boolean;
+  reason?: InvitationInvalidReason;
+  householdName?: string;
+  invitedEmail?: string;
+  emailMatches?: boolean;
+}
+
+/** True if the user already belongs to any household (one-household-per-user MVP rule). */
+async function isUserInHousehold(admin: ServiceClient, userId: string): Promise<boolean> {
+  const { data } = await admin.from('household_members').select('id').eq('user_id', userId).maybeSingle();
+  return Boolean(data);
+}
+
+/**
+ * Read-only validation for the /join page — never mutates. Reports the precise
+ * reason an invitation can't be accepted so the UI can show a clear message.
+ */
+export async function validateInvitation(
+  userId: string,
+  userEmail: string,
+  token: string
+): Promise<InvitationValidation> {
+  const admin = createServiceRoleClient();
+  const { data: inv, error } = await admin
+    .from('household_invitations')
+    .select('*, households(name)')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (error) {
+    logger.error('InvitationService', `validate lookup failed: ${error.message}`);
+    throw new Error('Failed to validate invitation');
+  }
+  if (!inv) return { valid: false, reason: 'invalid' };
+
+  const household = (inv as { households?: { name?: string } | null }).households;
+  const householdName = household?.name;
+  const invitedEmail = inv.email;
+  const emailMatches = invitedEmail === userEmail.trim().toLowerCase();
+  const base = { householdName, invitedEmail, emailMatches };
+
+  if (inv.status !== 'pending') return { valid: false, reason: 'not_pending', ...base };
+  if (new Date(inv.expires_at).getTime() < Date.now()) return { valid: false, reason: 'expired', ...base };
+  if (!emailMatches) return { valid: false, reason: 'email_mismatch', ...base };
+  if (await isUserInHousehold(admin, userId)) return { valid: false, reason: 'already_in_household', ...base };
+
+  return { valid: true, ...base };
+}
+
+/**
+ * Accepts an invitation: adds the caller as a member and marks the invite accepted.
+ * All checks are server-side; the email-bound check uses the AUTHENTICATED user's email.
+ * @throws InvalidTokenError | InvitationNotPendingError | InvitationExpiredError
+ *         | EmailMismatchError | AlreadyInHouseholdError
+ */
+export async function acceptInvitation(userId: string, userEmail: string, token: string): Promise<Household> {
+  const admin = createServiceRoleClient();
+
+  const { data: inv, error } = await admin
+    .from('household_invitations')
+    .select('*')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (error) {
+    logger.error('InvitationService', `accept lookup failed: ${error.message}`);
+    throw new Error('Failed to load invitation');
+  }
+  if (!inv) throw new InvalidTokenError();
+  if (inv.status !== 'pending') throw new InvitationNotPendingError();
+  if (new Date(inv.expires_at).getTime() < Date.now()) throw new InvitationExpiredError();
+  if (inv.email !== userEmail.trim().toLowerCase()) throw new EmailMismatchError();
+  if (await isUserInHousehold(admin, userId)) throw new AlreadyInHouseholdError();
+
+  // Add membership first; only mark the invite accepted once membership exists.
+  const { error: memberError } = await admin
+    .from('household_members')
+    .insert({ household_id: inv.household_id, user_id: userId, role: 'member' });
+  if (memberError) {
+    if (memberError.code === PG_UNIQUE_VIOLATION) {
+      throw new AlreadyInHouseholdError();
+    }
+    logger.error('InvitationService', `Join membership insert failed for ${userId}: ${memberError.message}`);
+    throw new Error('Failed to join household');
+  }
+
+  const { error: flipError } = await admin
+    .from('household_invitations')
+    .update({ status: 'accepted', accepted_by: userId, accepted_at: new Date().toISOString() })
+    .eq('id', inv.id);
+  if (flipError) {
+    // Non-fatal: the membership exists; the invite just wasn't flipped. Log for follow-up.
+    logger.error('InvitationService', `Invite ${inv.id} flip-to-accepted failed (membership already created): ${flipError.message}`);
+  }
+
+  // Best-effort: notify the inviting admin. Never fail the join on push errors.
+  if (inv.invited_by) {
+    try {
+      await sendPushToUser(admin, inv.invited_by, {
+        type: 'household_event',
+        title: 'New household member',
+        body: `${userEmail} joined your household.`,
+        data: { url: '/settings' },
+      });
+    } catch (pushError) {
+      logger.error('InvitationService', 'Best-effort join notification failed:', pushError);
+    }
+  }
+
+  const { data: household, error: householdError } = await admin
+    .from('households')
+    .select('*')
+    .eq('id', inv.household_id)
+    .single();
+  if (householdError || !household) {
+    logger.error('InvitationService', `Joined household fetch failed: ${householdError?.message}`);
+    throw new Error('Joined, but failed to load the household');
+  }
+  return household as Household;
 }
