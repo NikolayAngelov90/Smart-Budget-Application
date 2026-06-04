@@ -81,7 +81,7 @@ A real client must carry a real user session so `auth.uid()` is populated. The r
 
 RLS tests live in `**/__tests__/**/*.rls.test.ts` and are **env-gated** — they `describe.skip` when `isRlsHarnessConfigured()` is false. So `npm test` on a laptop with no DB stays green; `npm run test:rls` (after `supabase start`) runs them for real. CI runs them in a job that boots the Supabase stack first.
 
-> **Jest env note:** use the default jsdom environment (Node 22 has global `fetch`). Do **not** add `@jest-environment node` — this project's `jest.setup.js` accesses `window`, which throws under the node env. The harness imports the raw `@supabase/supabase-js` client, so it is unaffected by `jest.setup.js`'s global mock of `@/lib/supabase/server`.
+> **Jest env note:** RLS suites **must** declare `@jest-environment node` **in the first docblock** of the file (Jest only reads the pragma from the first block comment). The node env exposes Node 22's global `fetch` that supabase-js needs for real network calls; **jsdom does not have `fetch`**. `jest.setup.js` is node-safe (its `window.matchMedia` mock is guarded with `typeof window !== 'undefined'`). The harness imports the raw `@supabase/supabase-js` client, so it is unaffected by `jest.setup.js`'s global mock of `@/lib/supabase/server`.
 
 `package.json` additions (when adopted):
 ```jsonc
