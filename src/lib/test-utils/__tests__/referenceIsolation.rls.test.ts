@@ -1,10 +1,12 @@
 /**
+ * @jest-environment node
+ *
  * REFERENCE RLS integration test (PREP-1).
  *
- * Runs in the default jsdom env (Node 22 provides global fetch; this project's
- * jest.setup.js accesses `window`, so `@jest-environment node` is avoided — see
- * project testing notes). The harness imports the raw supabase-js client, which
- * is unaffected by jest.setup.js's global mock of @/lib/supabase/server.
+ * Runs in the `node` environment so Node's global `fetch` is available for the real
+ * Supabase network calls (jsdom does not expose fetch). jest.setup.js is node-safe
+ * (its window access is guarded). The harness imports the raw supabase-js client,
+ * unaffected by jest.setup.js's global mock of @/lib/supabase/server.
  *
  * Proves the harness pattern on EXISTING tables (user-to-user `transactions`
  * isolation) so Epic 13 starts household RLS tests from a working example rather

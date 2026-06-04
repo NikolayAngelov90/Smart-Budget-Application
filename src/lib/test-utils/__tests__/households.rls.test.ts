@@ -1,5 +1,11 @@
 /**
+ * @jest-environment node
+ *
  * Household RLS isolation tests — Story 13.1 (PREP-1 harness).
+ *
+ * Runs in the `node` environment so Node's global `fetch` is available for the
+ * real Supabase network calls (jsdom does not expose fetch). The harness imports
+ * the raw supabase-js client, unaffected by jest.setup.js's mock of @/lib/supabase/server.
  *
  * Real-database tests (NFR10/NFR11): they assert what the DATABASE returns to each
  * authenticated user, never what a service computed. Env-gated via `rlsDescribe` —
