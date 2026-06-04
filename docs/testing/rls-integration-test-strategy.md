@@ -125,6 +125,6 @@ Every cell becomes at least one `it`. NFR11 ("impossible") means the "other-hous
 
 - [x] Strategy documented (this file) and the gap named.
 - [x] Reference harness helper committed and env-gated ([rlsClient.ts](../../src/lib/test-utils/rlsClient.ts)) + a reference `.rls.test.ts` proving the pattern on **existing** tables (user-to-user transaction isolation), so Epic 13 starts from a working example, not a blank page.
-- [ ] **(Epic 13 kickoff, not now)** `npm i -D supabase`, `supabase init`, add `test:rls` script, wire a CI job that boots the stack — done in the household-foundation story so the RLS lands tested from commit one.
+- [x] **Wired in Story 13.1:** `supabase/config.toml` committed (the `supabase init` output), `test:rls` script present, and a dedicated CI job (`.github/workflows/rls.yml`) boots the stack via `supabase/setup-cli`, applies migrations, exports the local `RLS_TEST_*` creds, and runs `npm run test:rls`. First real household isolation suite: `src/lib/test-utils/__tests__/households.rls.test.ts`.
 
-The first two are deliverable pre-Epic-13 (no household tables required — the reference test uses `transactions`/`categories`). The third belongs with Epic 13's first story because it needs the household migrations to exist.
+> **Local run requires Docker.** `supabase start` needs Docker Desktop/engine. Where Docker is unavailable (e.g. this dev sandbox), the `*.rls.test.ts` suites skip and `npm test` stays green; the CI `rls` job is where they execute for real. To run locally: `npx supabase start`, copy the printed API URL + anon + service_role keys into `RLS_TEST_SUPABASE_URL` / `RLS_TEST_SUPABASE_ANON_KEY` / `RLS_TEST_SUPABASE_SERVICE_KEY`, then `npm run test:rls`.

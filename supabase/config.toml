@@ -1,0 +1,38 @@
+# Supabase local config (Story 13.1 / PREP-1 RLS test harness).
+# Minimal config for `supabase start` to boot Postgres + Auth + PostgREST locally
+# and apply supabase/migrations/* so RLS integration tests run against real policies.
+# Regenerate/extend with `supabase init` if a newer CLI requires more fields.
+
+project_id = "smart-budget-application"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# Disable confirmations locally so admin-created test users can sign in immediately.
+enable_confirmations = false

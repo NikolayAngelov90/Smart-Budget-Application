@@ -37,6 +37,8 @@ export type SubscriptionStatus = 'active' | 'unused' | 'dismissed' | 'kept';
 
 export type SubscriptionFrequency = 'weekly' | 'monthly' | 'quarterly' | 'annual';
 
+export type HouseholdRole = 'admin' | 'member'; // Story 13.1
+
 // ============================================================================
 // DATABASE INTERFACE
 // ============================================================================
@@ -517,6 +519,75 @@ export interface Database {
           }
         ];
       };
+      // Story 13.1: Household Collaboration foundation
+      households: {
+        Row: {
+          id: string;
+          name: string;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'households_created_by_fkey';
+            columns: ['created_by'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      household_members: {
+        Row: {
+          id: string;
+          household_id: string;
+          user_id: string;
+          role: HouseholdRole;
+          joined_at: string;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          user_id: string;
+          role?: HouseholdRole;
+          joined_at?: string;
+        };
+        Update: {
+          id?: string;
+          household_id?: string;
+          user_id?: string;
+          role?: HouseholdRole;
+          joined_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'household_members_household_id_fkey';
+            columns: ['household_id'];
+            referencedRelation: 'households';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'household_members_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -534,6 +605,7 @@ export interface Database {
       insight_type: InsightType;
       subscription_status: SubscriptionStatus;
       subscription_frequency: SubscriptionFrequency;
+      household_role: HouseholdRole;
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -569,6 +641,18 @@ export type UserSessionUpdate = Database['public']['Tables']['user_sessions']['U
 export type DetectedSubscription = Database['public']['Tables']['detected_subscriptions']['Row'];
 export type DetectedSubscriptionInsert = Database['public']['Tables']['detected_subscriptions']['Insert'];
 export type DetectedSubscriptionUpdate = Database['public']['Tables']['detected_subscriptions']['Update'];
+
+// Story 13.1: Household Collaboration
+export type Household = Database['public']['Tables']['households']['Row'];
+export type HouseholdInsert = Database['public']['Tables']['households']['Insert'];
+export type HouseholdUpdate = Database['public']['Tables']['households']['Update'];
+
+export type HouseholdMember = Database['public']['Tables']['household_members']['Row'];
+export type HouseholdMemberInsert = Database['public']['Tables']['household_members']['Insert'];
+export type HouseholdMemberUpdate = Database['public']['Tables']['household_members']['Update'];
+
+/** A household plus the requesting user's role within it. */
+export type HouseholdWithRole = Household & { role: HouseholdRole };
 
 // Transaction with category details (for joined queries)
 export type TransactionWithCategory = Transaction & {

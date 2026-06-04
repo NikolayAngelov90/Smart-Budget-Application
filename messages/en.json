@@ -22,6 +22,20 @@
     "optional": "Optional",
     "unknownError": "Unknown error"
   },
+  "household": {
+    "heading": "Household",
+    "emptyPrompt": "You're not in a household yet. Create one to start sharing budgets with your partner or roommates.",
+    "namePlaceholder": "Household name",
+    "create": "Create household",
+    "creating": "Creating...",
+    "createdSuccess": "Household created",
+    "createFailed": "Couldn't create the household. Please try again.",
+    "alreadyMember": "You already belong to a household.",
+    "roleAdmin": "Admin",
+    "roleMember": "Member",
+    "memberSince": "You're a member of this household",
+    "loadError": "Couldn't load your household. Please refresh."
+  },
   "navigation": {
     "dashboard": "Dashboard",
     "transactions": "Transactions",

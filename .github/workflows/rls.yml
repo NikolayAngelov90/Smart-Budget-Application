@@ -1,0 +1,59 @@
+name: RLS Integration Tests
+
+# Real-database Row-Level-Security tests (Story 13.1 / Epic 12 retro PREP-1).
+# Boots a local Supabase stack, applies migrations, then runs the env-gated
+# *.rls.test.ts suites. Separate from the main Tests workflow so a Supabase/Docker
+# hiccup never blocks the unit/integration suite. Tests verify NFR10/NFR11
+# (household isolation per transparency level) against actual RLS policies.
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  rls:
+    name: RLS Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase (applies supabase/migrations/*)
+        run: supabase start
+
+      - name: Export local Supabase credentials
+        run: |
+          echo "RLS_TEST_SUPABASE_URL=$(supabase status -o env | grep API_URL | cut -d= -f2- | tr -d '\"')" >> "$GITHUB_ENV"
+          echo "RLS_TEST_SUPABASE_ANON_KEY=$(supabase status -o env | grep ANON_KEY | cut -d= -f2- | tr -d '\"')" >> "$GITHUB_ENV"
+          echo "RLS_TEST_SUPABASE_SERVICE_KEY=$(supabase status -o env | grep SERVICE_ROLE_KEY | cut -d= -f2- | tr -d '\"')" >> "$GITHUB_ENV"
+
+      - name: Verify RLS credentials are set (fail loud — never green-skip in CI)
+        run: |
+          if [ -z "$RLS_TEST_SUPABASE_URL" ] || [ -z "$RLS_TEST_SUPABASE_ANON_KEY" ] || [ -z "$RLS_TEST_SUPABASE_SERVICE_KEY" ]; then
+            echo "::error::RLS_TEST_* credentials are empty — the RLS suites would skip and falsely pass. Check 'supabase status -o env' output names."
+            exit 1
+          fi
+
+      - name: Run RLS integration tests
+        run: npm run test:rls
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
