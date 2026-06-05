@@ -41,6 +41,9 @@ export type HouseholdRole = 'admin' | 'member'; // Story 13.1
 
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked'; // Story 13.2
 
+export type VisibilityLevel = 'shared' | 'category_only' | 'private'; // Story 13.4
+export type HouseholdPreset = 'newlyweds' | 'roommates' | 'partners' | 'custom'; // Story 13.4
+
 // ============================================================================
 // DATABASE INTERFACE
 // ============================================================================
@@ -57,6 +60,7 @@ export interface Database {
           type: TransactionType;
           is_predefined: boolean;
           household_id: string | null; // Story 13.5 (shared category when set)
+          visibility_level: VisibilityLevel; // Story 13.4
           created_at: string;
         };
         Insert: {
@@ -67,6 +71,7 @@ export interface Database {
           type: TransactionType;
           is_predefined?: boolean;
           household_id?: string | null; // Story 13.5
+          visibility_level?: VisibilityLevel; // Story 13.4
           created_at?: string;
         };
         Update: {
@@ -77,6 +82,7 @@ export interface Database {
           type?: TransactionType;
           is_predefined?: boolean;
           household_id?: string | null; // Story 13.5
+          visibility_level?: VisibilityLevel; // Story 13.4
           created_at?: string;
         };
         Relationships: [
@@ -565,6 +571,7 @@ export interface Database {
           household_id: string;
           user_id: string;
           role: HouseholdRole;
+          preset: HouseholdPreset | null; // Story 13.4
           joined_at: string;
         };
         Insert: {
@@ -572,6 +579,7 @@ export interface Database {
           household_id: string;
           user_id: string;
           role?: HouseholdRole;
+          preset?: HouseholdPreset | null; // Story 13.4
           joined_at?: string;
         };
         Update: {
@@ -579,6 +587,7 @@ export interface Database {
           household_id?: string;
           user_id?: string;
           role?: HouseholdRole;
+          preset?: HouseholdPreset | null; // Story 13.4
           joined_at?: string;
         };
         Relationships: [
@@ -654,6 +663,18 @@ export interface Database {
         };
         Returns: void;
       };
+      // Story 13.4: aggregate totals for shared + category_only categories (private excluded)
+      household_category_totals: {
+        Args: {
+          p_household_id: string;
+        };
+        Returns: {
+          category_id: string;
+          category_name: string;
+          visibility_level: VisibilityLevel;
+          total: number;
+        }[];
+      };
     };
     Enums: {
       transaction_type: TransactionType;
@@ -662,6 +683,7 @@ export interface Database {
       subscription_frequency: SubscriptionFrequency;
       household_role: HouseholdRole;
       invitation_status: InvitationStatus;
+      visibility_level: VisibilityLevel;
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -720,6 +742,14 @@ export type HouseholdInvitationWithState = HouseholdInvitation & {
   isExpired: boolean;
   acceptLink?: string;
 };
+
+// Story 13.4: aggregate result from household_category_totals() (sums, never rows)
+export interface HouseholdCategoryTotal {
+  category_id: string;
+  category_name: string;
+  visibility_level: VisibilityLevel;
+  total: number;
+}
 
 // Transaction with category details (for joined queries)
 export type TransactionWithCategory = Transaction & {

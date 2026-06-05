@@ -40,6 +40,7 @@ import {
   Text,
   Grid,
   Checkbox,
+  Select,
   useToast,
 } from '@chakra-ui/react';
 import { useState } from 'react';
@@ -100,6 +101,7 @@ export function CategoryModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [shared, setShared] = useState(false); // Story 13.5: create as a shared household category
+  const [visibilityLevel, setVisibilityLevel] = useState<'shared' | 'category_only' | 'private'>('shared'); // Story 13.4
   const { household } = useHousehold();
   const toast = useToast();
   const t = useTranslations('categories');
@@ -131,6 +133,7 @@ export function CategoryModal({
       setValue('color', category.color);
       setValue('type', category.type);
       setSelectedColor(category.color);
+      setVisibilityLevel(category.visibility_level ?? 'shared');
     } else if (!editMode && isOpen) {
       // Reset to defaults when opening in create mode
       reset();
@@ -160,7 +163,9 @@ export function CategoryModal({
         body: JSON.stringify({
           name: data.name,
           color: data.color,
-          ...(editMode ? {} : { type: data.type, shared }), // Type + shared only in create mode
+          ...(editMode
+            ? (category?.household_id ? { visibility_level: visibilityLevel } : {}) // Story 13.4: visibility on shared categories
+            : { type: data.type, shared }), // Type + shared only in create mode
         }),
       });
 
@@ -292,6 +297,24 @@ export function CategoryModal({
                   </Checkbox>
                   <Text fontSize="xs" color="gray.500" mt={1}>
                     {t('sharedHint')}
+                  </Text>
+                </FormControl>
+              )}
+
+              {/* Story 13.4: per-category visibility (edit mode, shared categories) */}
+              {editMode && category?.household_id && (
+                <FormControl>
+                  <FormLabel>{t('visibilityLabel')}</FormLabel>
+                  <Select
+                    value={visibilityLevel}
+                    onChange={(e) => setVisibilityLevel(e.target.value as 'shared' | 'category_only' | 'private')}
+                  >
+                    <option value="shared">{t('visibilityShared')}</option>
+                    <option value="category_only">{t('visibilityCategoryOnly')}</option>
+                    <option value="private">{t('visibilityPrivate')}</option>
+                  </Select>
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    {t('visibilityHint')}
                   </Text>
                 </FormControl>
               )}

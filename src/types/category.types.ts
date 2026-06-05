@@ -26,6 +26,8 @@ export interface Category {
   color: string; // Hex format: #RRGGBB
   type: TransactionType;
   is_predefined: boolean;
+  household_id?: string | null; // Story 13.5: set => shared household category
+  visibility_level?: 'shared' | 'category_only' | 'private'; // Story 13.4
   created_at: string;
 }
 

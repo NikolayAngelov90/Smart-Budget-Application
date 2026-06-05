@@ -17,7 +17,7 @@ import type { Category, Transaction } from '@/types/database.types';
 const TODAY = new Date('2026-06-10');
 
 function makeCat(id: string, name: string): Category {
-  return { id, user_id: 'u1', name, color: '#aaa', type: 'expense', is_predefined: false, household_id: null, created_at: '2026-01-01T00:00:00Z' };
+  return { id, user_id: 'u1', name, color: '#aaa', type: 'expense', is_predefined: false, household_id: null, visibility_level: 'shared', created_at: '2026-01-01T00:00:00Z' };
 }
 
 function makeTx(id: string, categoryId: string, amount: number, date: string, type: 'expense' | 'income' = 'expense'): Transaction {

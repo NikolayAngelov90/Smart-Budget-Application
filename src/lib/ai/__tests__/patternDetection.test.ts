@@ -25,6 +25,7 @@ function makeCategory(id: string, name: string): Category {
     type: 'expense',
     is_predefined: false,
     household_id: null,
+    visibility_level: 'shared',
     created_at: '2026-01-01T00:00:00Z',
   };
 }

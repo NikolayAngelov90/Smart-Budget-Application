@@ -7,7 +7,7 @@ import { buildRecoveryPlanTargets } from '../recoveryPlanner';
 import type { Category, Transaction } from '@/types/database.types';
 
 function makeCat(id: string, name: string): Category {
-  return { id, user_id: 'u1', name, color: '#abc', type: 'expense', is_predefined: false, household_id: null, created_at: '2026-01-01T00:00:00Z' };
+  return { id, user_id: 'u1', name, color: '#abc', type: 'expense', is_predefined: false, household_id: null, visibility_level: 'shared', created_at: '2026-01-01T00:00:00Z' };
 }
 
 function makeTx(id: string, categoryId: string, amount: number, date: string, type: 'expense' | 'income' = 'expense'): Transaction {

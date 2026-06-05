@@ -10,6 +10,7 @@
 
 import { useState } from 'react';
 import {
+  Box,
   Card,
   CardBody,
   VStack,
@@ -20,11 +21,15 @@ import {
   Button,
   Badge,
   Skeleton,
+  Select,
+  Divider,
   useToast,
 } from '@chakra-ui/react';
+import { mutate as globalMutate } from 'swr';
 import { useTranslations } from 'next-intl';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { HouseholdInvites } from '@/components/household/HouseholdInvites';
+import type { HouseholdPreset } from '@/types/database.types';
 
 export function HouseholdSection() {
   const t = useTranslations('household');
@@ -32,6 +37,30 @@ export function HouseholdSection() {
   const { household, isLoading, error, mutate } = useHousehold();
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isApplyingPreset, setIsApplyingPreset] = useState(false);
+
+  const handlePreset = async (preset: HouseholdPreset) => {
+    setIsApplyingPreset(true);
+    try {
+      const response = await fetch('/api/households/preset', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preset }),
+      });
+      if (!response.ok) throw new Error(t('presetFailed'));
+      await globalMutate('/api/categories'); // visibility of the caller's shared categories changed
+      toast({ title: t('presetApplied'), status: 'success', duration: 3000, isClosable: true });
+    } catch (presetError) {
+      toast({
+        title: presetError instanceof Error ? presetError.message : t('presetFailed'),
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setIsApplyingPreset(false);
+    }
+  };
 
   const handleCreate = async () => {
     const trimmed = name.trim();
@@ -93,6 +122,29 @@ export function HouseholdSection() {
                 </Badge>
               </HStack>
               {household.role === 'admin' && <HouseholdInvites />}
+
+              {/* Story 13.4: transparency preset (applies defaults to your shared categories) */}
+              <Box>
+                <Divider my={2} />
+                <Heading as="h3" size="sm" color="gray.700" mb={1}>
+                  {t('presetHeading')}
+                </Heading>
+                <Text fontSize="sm" color="gray.600" mb={2}>
+                  {t('presetHint')}
+                </Text>
+                <Select
+                  placeholder={t('presetChoose')}
+                  isDisabled={isApplyingPreset}
+                  onChange={(e) => {
+                    if (e.target.value) handlePreset(e.target.value as HouseholdPreset);
+                  }}
+                  aria-label={t('presetHeading')}
+                >
+                  <option value="newlyweds">{t('presetNewlyweds')}</option>
+                  <option value="roommates">{t('presetRoommates')}</option>
+                  <option value="partners">{t('presetPartners')}</option>
+                </Select>
+              </Box>
             </VStack>
           ) : (
             <VStack align="stretch" spacing={3}>

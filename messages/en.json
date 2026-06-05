@@ -34,7 +34,15 @@
     "roleAdmin": "Admin",
     "roleMember": "Member",
     "memberSince": "You're a member of this household",
-    "loadError": "Couldn't load your household. Please refresh."
+    "loadError": "Couldn't load your household. Please refresh.",
+    "presetHeading": "Transparency preset",
+    "presetHint": "Sets a default visibility for your shared categories. You can fine-tune each one afterward.",
+    "presetChoose": "Choose a preset…",
+    "presetNewlyweds": "Newlyweds — share everything",
+    "presetRoommates": "Roommates — share bills, keep the rest private",
+    "presetPartners": "Partners — share totals only",
+    "presetApplied": "Preset applied to your shared categories",
+    "presetFailed": "Couldn't apply the preset. Please try again."
   },
   "invitations": {
     "heading": "Invite members",
@@ -191,6 +199,11 @@
     "sharedWithHousehold": "Shared with household",
     "sharedHint": "Everyone in your household can see and use this category.",
     "sharedBadge": "Shared",
+    "visibilityLabel": "Household visibility",
+    "visibilityShared": "Shared — members see every transaction",
+    "visibilityCategoryOnly": "Totals only — members see the total, not transactions",
+    "visibilityPrivate": "Private — only you can see this",
+    "visibilityHint": "Controls how much of this category your household can see.",
     "categoryName": "Category Name",
     "categoryNamePlaceholder": "Enter category name",
     "color": "Color",

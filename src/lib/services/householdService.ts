@@ -13,7 +13,13 @@
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
-import type { Household, HouseholdWithRole, HouseholdRole } from '@/types/database.types';
+import type {
+  Household,
+  HouseholdWithRole,
+  HouseholdRole,
+  HouseholdPreset,
+  VisibilityLevel,
+} from '@/types/database.types';
 
 /** Thrown when a user who already belongs to a household tries to create another. */
 export class HouseholdExistsError extends Error {
@@ -21,6 +27,35 @@ export class HouseholdExistsError extends Error {
     super(message);
     this.name = 'HouseholdExistsError';
   }
+}
+
+/** Thrown when a transparency action requires household membership the caller lacks. → 403 */
+export class NotHouseholdMemberError extends Error {
+  constructor(message = 'You must belong to a household') {
+    super(message);
+    this.name = 'NotHouseholdMemberError';
+  }
+}
+
+/**
+ * Story 13.4: name keywords that mark a category as a "bill" (rent/utilities) for the
+ * Roommates preset (shared by default; everything else private). Substring, case-insensitive.
+ */
+export const BILL_KEYWORDS = [
+  'rent', 'mortgage', 'utilities', 'electric', 'power', 'water', 'gas',
+  'internet', 'wifi', 'broadband', 'council tax', 'trash', 'garbage', 'sewage', 'heating',
+];
+
+function isBillCategory(name: string): boolean {
+  const n = name.toLowerCase();
+  return BILL_KEYWORDS.some((k) => n.includes(k));
+}
+
+function presetVisibility(preset: HouseholdPreset, categoryName: string): VisibilityLevel {
+  if (preset === 'newlyweds') return 'shared';
+  if (preset === 'partners') return 'category_only';
+  // roommates: bills shared, everything else private
+  return isBillCategory(categoryName) ? 'shared' : 'private';
 }
 
 const MAX_NAME_LENGTH = 100;
@@ -104,4 +139,65 @@ export async function getCurrentHousehold(userId: string): Promise<HouseholdWith
   // `households(*)` returns the joined row (object for a to-one relationship).
   const household = membership.households as unknown as Household;
   return { ...household, role: membership.role as HouseholdRole };
+}
+
+/**
+ * Story 13.4: saves the caller's transparency preset and applies its default
+ * visibility_level to the caller's OWN shared categories. Per-category overrides
+ * are only changed by re-applying a preset. Never touches other members' categories.
+ * @throws NotHouseholdMemberError if the caller has no household.
+ */
+export async function applyPreset(userId: string, preset: HouseholdPreset): Promise<HouseholdPreset> {
+  const admin = createServiceRoleClient();
+
+  const { data: membership, error: memberError } = await admin
+    .from('household_members')
+    .select('household_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (memberError) {
+    logger.error('HouseholdService', `applyPreset membership lookup failed: ${memberError.message}`);
+    throw new Error('Failed to load household membership');
+  }
+  if (!membership?.household_id) {
+    throw new NotHouseholdMemberError();
+  }
+  const householdId = membership.household_id;
+
+  // Save the chosen preset on the caller's membership row.
+  const { error: presetError } = await admin
+    .from('household_members')
+    .update({ preset })
+    .eq('user_id', userId);
+  if (presetError) {
+    logger.error('HouseholdService', `applyPreset save failed: ${presetError.message}`);
+    throw new Error('Failed to save preset');
+  }
+
+  // Apply default visibility to the caller's own shared categories ('custom' = no change).
+  if (preset !== 'custom') {
+    const { data: cats, error: catError } = await admin
+      .from('categories')
+      .select('id, name')
+      .eq('user_id', userId)
+      .eq('household_id', householdId);
+    if (catError) {
+      logger.error('HouseholdService', `applyPreset category fetch failed: ${catError.message}`);
+      throw new Error('Failed to apply preset to categories');
+    }
+    for (const cat of cats ?? []) {
+      const level = presetVisibility(preset, cat.name);
+      const { error: updateError } = await admin
+        .from('categories')
+        .update({ visibility_level: level })
+        .eq('id', cat.id);
+      if (updateError) {
+        // Don't leave the preset applied to only some categories silently.
+        logger.error('HouseholdService', `applyPreset update failed for ${cat.id}: ${updateError.message}`);
+        throw new Error('Failed to apply preset to categories');
+      }
+    }
+  }
+
+  return preset;
 }

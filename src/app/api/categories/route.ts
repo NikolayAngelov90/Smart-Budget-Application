@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
         type,
         is_predefined,
         household_id,
+        visibility_level,
         created_at
       `
       );

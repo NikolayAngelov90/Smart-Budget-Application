@@ -28,6 +28,8 @@ const updateCategorySchema = z.object({
     })
     .optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional(),
+  // Story 13.4: per-category transparency (owner-only — enforced below)
+  visibility_level: z.enum(['shared', 'category_only', 'private']).optional(),
 });
 
 /**
@@ -64,13 +66,13 @@ export async function PUT(
       );
     }
 
-    const { name, color } = validation.data;
+    const { name, color, visibility_level } = validation.data;
 
     // Story 13.5: RLS scopes visibility (own personal OR a shared category in the
     // caller's household). No explicit user_id filter so members can manage shared ones.
     const { data: existingCategory, error: fetchError } = await supabase
       .from('categories')
-      .select('id, name, is_predefined, type')
+      .select('id, name, is_predefined, type, user_id, household_id')
       .eq('id', id)
       .single();
 
@@ -82,6 +84,15 @@ export async function PUT(
     if (existingCategory.is_predefined) {
       return NextResponse.json(
         { error: 'Cannot modify predefined categories' },
+        { status: 403 }
+      );
+    }
+
+    // Story 13.4: visibility is the owner's privacy control — only the category creator
+    // may change it (members can rename/recolor shared categories, but not re-share them).
+    if (visibility_level !== undefined && existingCategory.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Only the category owner can change its visibility' },
         { status: 403 }
       );
     }
@@ -106,9 +117,10 @@ export async function PUT(
     }
 
     // Build update object (only include fields that are provided)
-    const updates: { name?: string; color?: string } = {};
+    const updates: { name?: string; color?: string; visibility_level?: 'shared' | 'category_only' | 'private' } = {};
     if (name !== undefined) updates.name = name;
     if (color !== undefined) updates.color = color;
+    if (visibility_level !== undefined) updates.visibility_level = visibility_level;
 
     // Update category
     const { data: updatedCategory, error: updateError } = await supabase
