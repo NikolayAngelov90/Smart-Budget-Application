@@ -285,12 +285,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify category exists and belongs to user
+    // Verify category is usable by the caller. RLS scopes to own personal categories
+    // OR shared categories in the caller's household (Story 13.5), so no user_id filter.
     const { data: category, error: categoryError } = await supabase
       .from('categories')
-      .select('id, name, color, type')
+      .select('id, name, color, type, household_id')
       .eq('id', body.category_id)
-      .eq('user_id', user.id)
       .single();
 
     if (categoryError || !category) {
@@ -327,6 +327,9 @@ export async function POST(request: NextRequest) {
         notes: body.notes || null,
         currency,
         exchange_rate: body.exchange_rate ?? null,
+        // Story 13.5: shared-category transactions inherit household_id (server-derived,
+        // never from the client) so household members can see them; null for personal.
+        household_id: category.household_id ?? null,
       })
       .select(
         `

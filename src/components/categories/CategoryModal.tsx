@@ -39,11 +39,13 @@ import {
   Box,
   Text,
   Grid,
+  Checkbox,
   useToast,
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Category } from '@/types/category.types';
+import { useHousehold } from '@/lib/hooks/useHousehold';
 
 // Validation schema (used for both create and edit)
 const createCategorySchema = z.object({
@@ -97,6 +99,8 @@ export function CategoryModal({
   const [selectedColor, setSelectedColor] = useState<string>(DEFAULT_COLOR);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [shared, setShared] = useState(false); // Story 13.5: create as a shared household category
+  const { household } = useHousehold();
   const toast = useToast();
   const t = useTranslations('categories');
   const tCommon = useTranslations('common');
@@ -131,6 +135,7 @@ export function CategoryModal({
       // Reset to defaults when opening in create mode
       reset();
       setSelectedColor(DEFAULT_COLOR);
+      setShared(false);
     }
   }, [editMode, category, isOpen, setValue, reset]);
 
@@ -155,7 +160,7 @@ export function CategoryModal({
         body: JSON.stringify({
           name: data.name,
           color: data.color,
-          ...(editMode ? {} : { type: data.type }), // Type only sent in create mode
+          ...(editMode ? {} : { type: data.type, shared }), // Type + shared only in create mode
         }),
       });
 
@@ -181,6 +186,7 @@ export function CategoryModal({
       // Reset form and close modal
       reset();
       setSelectedColor(DEFAULT_COLOR);
+      setShared(false);
       setApiError(null);
       onClose();
     } catch (error) {
@@ -201,6 +207,7 @@ export function CategoryModal({
   const handleClose = () => {
     reset();
     setSelectedColor(DEFAULT_COLOR);
+    setShared(false);
     setApiError(null);
     onClose();
   };
@@ -276,6 +283,18 @@ export function CategoryModal({
                 )}
                 <FormErrorMessage>{errors.type?.message}</FormErrorMessage>
               </FormControl>
+
+              {/* Story 13.5: Shared with household (create mode, members only) */}
+              {!editMode && household && (
+                <FormControl>
+                  <Checkbox isChecked={shared} onChange={(e) => setShared(e.target.checked)}>
+                    {t('sharedWithHousehold')}
+                  </Checkbox>
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    {t('sharedHint')}
+                  </Text>
+                </FormControl>
+              )}
 
               {/* Color Picker */}
               <FormControl isInvalid={!!errors.color}>

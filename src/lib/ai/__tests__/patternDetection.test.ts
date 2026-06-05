@@ -24,6 +24,7 @@ function makeCategory(id: string, name: string): Category {
     color: '#000000',
     type: 'expense',
     is_predefined: false,
+    household_id: null,
     created_at: '2026-01-01T00:00:00Z',
   };
 }
@@ -46,6 +47,7 @@ function makeTx(
     updated_at: `${date}T00:00:00Z`,
     currency: 'USD',
     exchange_rate: null,
+    household_id: null,
   };
 }
 

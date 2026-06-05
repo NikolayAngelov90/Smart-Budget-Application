@@ -66,12 +66,12 @@ export async function PUT(
 
     const { name, color } = validation.data;
 
-    // Check if category exists and belongs to user
+    // Story 13.5: RLS scopes visibility (own personal OR a shared category in the
+    // caller's household). No explicit user_id filter so members can manage shared ones.
     const { data: existingCategory, error: fetchError } = await supabase
       .from('categories')
       .select('id, name, is_predefined, type')
       .eq('id', id)
-      .eq('user_id', user.id)
       .single();
 
     if (fetchError || !existingCategory) {
@@ -115,7 +115,6 @@ export async function PUT(
       .from('categories')
       .update(updates)
       .eq('id', id)
-      .eq('user_id', user.id)
       .select()
       .single();
 
@@ -156,12 +155,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if category exists and belongs to user
+    // Story 13.5: RLS scopes visibility (own OR shared-in-household); members can delete shared.
     const { data: category, error: fetchError } = await supabase
       .from('categories')
       .select('id, name, is_predefined')
       .eq('id', id)
-      .eq('user_id', user.id)
       .single();
 
     if (fetchError || !category) {
@@ -206,12 +204,11 @@ export async function DELETE(
       }
     }
 
-    // Delete category
+    // Delete category (RLS enforces own personal OR shared-in-household)
     const { error: deleteError } = await supabase
       .from('categories')
       .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('id', id);
 
     if (deleteError) {
       logger.error('Categories', 'Error deleting category:', deleteError);

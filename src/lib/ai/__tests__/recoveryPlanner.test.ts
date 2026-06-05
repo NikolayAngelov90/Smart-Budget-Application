@@ -7,11 +7,11 @@ import { buildRecoveryPlanTargets } from '../recoveryPlanner';
 import type { Category, Transaction } from '@/types/database.types';
 
 function makeCat(id: string, name: string): Category {
-  return { id, user_id: 'u1', name, color: '#abc', type: 'expense', is_predefined: false, created_at: '2026-01-01T00:00:00Z' };
+  return { id, user_id: 'u1', name, color: '#abc', type: 'expense', is_predefined: false, household_id: null, created_at: '2026-01-01T00:00:00Z' };
 }
 
 function makeTx(id: string, categoryId: string, amount: number, date: string, type: 'expense' | 'income' = 'expense'): Transaction {
-  return { id, user_id: 'u1', category_id: categoryId, amount, date, type, notes: null, currency: 'USD', exchange_rate: null, created_at: `${date}T00:00:00Z`, updated_at: `${date}T00:00:00Z` };
+  return { id, user_id: 'u1', category_id: categoryId, amount, date, type, notes: null, currency: 'USD', exchange_rate: null, household_id: null, created_at: `${date}T00:00:00Z`, updated_at: `${date}T00:00:00Z` };
 }
 
 const CAT_DINING = makeCat('cat-d', 'Dining');

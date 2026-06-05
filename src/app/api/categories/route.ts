@@ -69,8 +69,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const typeFilter = searchParams.get('type') as 'income' | 'expense' | null;
 
-    // Query to get categories with recent usage stats
-    // Join with transactions to get last_used_at and usage_count
+    // Story 13.5: include the caller's household so shared categories are returned too.
+    const { data: membership } = await supabase
+      .from('household_members')
+      .select('household_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const householdId = membership?.household_id ?? null;
+
+    // Query categories. Personal (user_id) + shared (household_id) — RLS also enforces this.
     const query = supabase
       .from('categories')
       .select(
@@ -80,10 +87,16 @@ export async function GET(request: NextRequest) {
         color,
         type,
         is_predefined,
+        household_id,
         created_at
       `
-      )
-      .eq('user_id', user.id);
+      );
+
+    if (householdId) {
+      query.or(`user_id.eq.${user.id},household_id.eq.${householdId}`);
+    } else {
+      query.eq('user_id', user.id);
+    }
 
     // Apply type filter if specified
     if (typeFilter) {
@@ -186,6 +199,7 @@ const createCategorySchema = z.object({
     }),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color format'),
   type: z.enum(['income', 'expense']),
+  shared: z.boolean().optional(), // Story 13.5: create as a shared household category
 });
 
 /**
@@ -232,7 +246,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, color, type } = validation.data;
+    const { name, color, type, shared } = validation.data;
+
+    // Story 13.5: if creating a shared category, resolve + verify the caller's household.
+    let householdId: string | null = null;
+    if (shared) {
+      const { data: membership } = await supabase
+        .from('household_members')
+        .select('household_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!membership?.household_id) {
+        return NextResponse.json(
+          { error: 'You must belong to a household to create a shared category' },
+          { status: 403 }
+        );
+      }
+      householdId = membership.household_id;
+    }
 
     // Check for duplicate category name (for this user and type)
     // The UNIQUE constraint (user_id, name, type) will also catch this at DB level
@@ -268,6 +299,7 @@ export async function POST(request: NextRequest) {
         color,
         type,
         is_predefined: false,
+        household_id: householdId, // Story 13.5: null for personal, set for shared
       })
       .select()
       .single();

@@ -56,6 +56,7 @@ export interface Database {
           color: string;
           type: TransactionType;
           is_predefined: boolean;
+          household_id: string | null; // Story 13.5 (shared category when set)
           created_at: string;
         };
         Insert: {
@@ -65,6 +66,7 @@ export interface Database {
           color: string;
           type: TransactionType;
           is_predefined?: boolean;
+          household_id?: string | null; // Story 13.5
           created_at?: string;
         };
         Update: {
@@ -74,6 +76,7 @@ export interface Database {
           color?: string;
           type?: TransactionType;
           is_predefined?: boolean;
+          household_id?: string | null; // Story 13.5
           created_at?: string;
         };
         Relationships: [
@@ -96,6 +99,7 @@ export interface Database {
           notes: string | null;
           currency: string; // ISO 4217 currency code (Story 10-6)
           exchange_rate: number | null; // Rate at time of entry (Story 10-6)
+          household_id: string | null; // Story 13.5 (shared-category transaction when set)
           created_at: string;
           updated_at: string;
         };
@@ -109,6 +113,7 @@ export interface Database {
           notes?: string | null;
           currency?: string; // Defaults to 'EUR' (Story 10-6)
           exchange_rate?: number | null; // Story 10-6
+          household_id?: string | null; // Story 13.5
           created_at?: string;
           updated_at?: string;
         };
@@ -122,6 +127,7 @@ export interface Database {
           notes?: string | null;
           currency?: string; // Story 10-6
           exchange_rate?: number | null; // Story 10-6
+          household_id?: string | null; // Story 13.5
           created_at?: string;
           updated_at?: string;
         };
