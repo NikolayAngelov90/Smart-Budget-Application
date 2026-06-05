@@ -59,6 +59,7 @@ interface CreateTransactionRequest {
   notes?: string;
   currency?: string; // Story 10-6: ISO 4217 currency code
   exchange_rate?: number | null; // Story 10-6: rate at time of entry
+  allowance_id?: string | null; // Story 13.6: tag as private allowance spending
 }
 
 /**
@@ -118,6 +119,7 @@ export async function GET(request: NextRequest) {
         notes,
         currency,
         exchange_rate,
+        allowance_id,
         created_at,
         updated_at,
         category:categories(id, name, color, type)
@@ -315,6 +317,39 @@ export async function POST(request: NextRequest) {
       ? body.currency
       : DEFAULT_CURRENCY;
 
+    // Story 13.6: a transaction can be tagged to the caller's personal allowance (private).
+    // Such a transaction must NOT be in a shared category, and is forced personal
+    // (household_id NULL) so it stays owner-only and out of shared totals.
+    let allowanceId: string | null = null;
+    if (body.allowance_id) {
+      // An allowance tracks personal *spending* — only expenses can be tagged.
+      if (body.type !== 'expense') {
+        return NextResponse.json(
+          { error: 'Only expenses can be tagged to a personal allowance' },
+          { status: 400 }
+        );
+      }
+      if (category.household_id) {
+        return NextResponse.json(
+          { error: 'Allowance spending cannot be tagged to a shared category' },
+          { status: 400 }
+        );
+      }
+      // Verify the allowance belongs to the caller (owner-only RLS scopes this).
+      const { data: allowance } = await supabase
+        .from('personal_allowances')
+        .select('id')
+        .eq('id', body.allowance_id)
+        .maybeSingle();
+      if (!allowance) {
+        return NextResponse.json(
+          { error: 'Invalid allowance' },
+          { status: 400 }
+        );
+      }
+      allowanceId = allowance.id;
+    }
+
     // Create transaction
     const { data: transaction, error: insertError } = await supabase
       .from('transactions')
@@ -329,7 +364,10 @@ export async function POST(request: NextRequest) {
         exchange_rate: body.exchange_rate ?? null,
         // Story 13.5: shared-category transactions inherit household_id (server-derived,
         // never from the client) so household members can see them; null for personal.
-        household_id: category.household_id ?? null,
+        // Story 13.6: allowance spending is always personal (household_id NULL) so it
+        // remains owner-only and excluded from shared totals.
+        household_id: allowanceId ? null : (category.household_id ?? null),
+        allowance_id: allowanceId,
       })
       .select(
         `
@@ -340,6 +378,7 @@ export async function POST(request: NextRequest) {
         notes,
         currency,
         exchange_rate,
+        allowance_id,
         created_at,
         updated_at,
         category:categories(id, name, color, type)

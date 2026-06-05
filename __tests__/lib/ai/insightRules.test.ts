@@ -28,7 +28,7 @@ function createMockTransaction(
     date: format(date, 'yyyy-MM-dd'),
     notes: null,
     currency: 'EUR',
-    exchange_rate: null, household_id: null,
+    exchange_rate: null, household_id: null, allowance_id: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

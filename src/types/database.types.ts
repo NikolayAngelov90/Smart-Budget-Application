@@ -106,6 +106,7 @@ export interface Database {
           currency: string; // ISO 4217 currency code (Story 10-6)
           exchange_rate: number | null; // Rate at time of entry (Story 10-6)
           household_id: string | null; // Story 13.5 (shared-category transaction when set)
+          allowance_id: string | null; // Story 13.6 (private allowance spending when set)
           created_at: string;
           updated_at: string;
         };
@@ -120,6 +121,7 @@ export interface Database {
           currency?: string; // Defaults to 'EUR' (Story 10-6)
           exchange_rate?: number | null; // Story 10-6
           household_id?: string | null; // Story 13.5
+          allowance_id?: string | null; // Story 13.6
           created_at?: string;
           updated_at?: string;
         };
@@ -134,6 +136,7 @@ export interface Database {
           currency?: string; // Story 10-6
           exchange_rate?: number | null; // Story 10-6
           household_id?: string | null; // Story 13.5
+          allowance_id?: string | null; // Story 13.6
           created_at?: string;
           updated_at?: string;
         };
@@ -652,6 +655,50 @@ export interface Database {
           }
         ];
       };
+      // Story 13.6: Personal allowances (private budget within a household — owner-only RLS)
+      personal_allowances: {
+        Row: {
+          id: string;
+          user_id: string;
+          household_id: string;
+          monthly_amount: number;
+          currency: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          household_id: string;
+          monthly_amount?: number;
+          currency?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          household_id?: string;
+          monthly_amount?: number;
+          currency?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'personal_allowances_household_id_fkey';
+            columns: ['household_id'];
+            referencedRelation: 'households';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'personal_allowances_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -749,6 +796,20 @@ export interface HouseholdCategoryTotal {
   category_name: string;
   visibility_level: VisibilityLevel;
   total: number;
+}
+
+// Story 13.6: Personal allowance (private budget within a household)
+export type PersonalAllowance = Database['public']['Tables']['personal_allowances']['Row'];
+export type PersonalAllowanceInsert = Database['public']['Tables']['personal_allowances']['Insert'];
+export type PersonalAllowanceUpdate = Database['public']['Tables']['personal_allowances']['Update'];
+
+/** Allowance plus the current-period spend and remaining balance (owner-only view). */
+export interface AllowanceStatus {
+  allowance: PersonalAllowance | null;
+  /** Sum of the current month's expense transactions tagged to the allowance. */
+  spent: number;
+  /** monthly_amount - spent, or null when no allowance is configured. */
+  remaining: number | null;
 }
 
 // Transaction with category details (for joined queries)

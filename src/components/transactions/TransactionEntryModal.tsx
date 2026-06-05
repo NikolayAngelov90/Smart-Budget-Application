@@ -61,10 +61,12 @@ import {
   Text,
   Spinner,
   Tooltip,
+  Checkbox,
 } from '@chakra-ui/react';
 import { format, subDays } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import { CategoryMenu } from '@/components/categories/CategoryMenu';
+import { useAllowance } from '@/lib/hooks/useAllowance';
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { useSmartNudge } from '@/lib/hooks/useSmartNudge';
@@ -84,6 +86,7 @@ interface Category {
   type: TransactionType;
   last_used_at?: string | null;
   usage_count?: number;
+  household_id?: string | null; // Story 13.6: shared categories can't be tagged to an allowance
 }
 
 // Form validation schema
@@ -168,6 +171,10 @@ export default function TransactionEntryModal({
   const [selectedCurrency, setSelectedCurrency] = useState<string>(preferredCurrency);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
+  // Story 13.6: optional tagging to the private personal allowance (create + expense only).
+  const { status: allowanceStatus } = useAllowance();
+  const [useAllowanceTag, setUseAllowanceTag] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -186,6 +193,17 @@ export default function TransactionEntryModal({
 
   const transactionType = watch('type');
   const amountValue = watch('amount');
+  const selectedCategoryId = watch('category_id');
+
+  // Story 13.6: the allowance toggle is offered only for a NEW personal (non-shared) expense
+  // when the user has an allowance configured.
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+  const canTagAllowance =
+    mode === 'create' &&
+    transactionType === 'expense' &&
+    !!allowanceStatus?.allowance &&
+    !!selectedCategory &&
+    !selectedCategory.household_id;
 
   // Auto-format amount to 2 decimal places on blur
   const handleAmountBlur = () => {
@@ -257,6 +275,7 @@ export default function TransactionEntryModal({
       });
       setSelectedCurrency(preferredCurrency);
       setExchangeRate(null);
+      setUseAllowanceTag(false);
     }
   }, [isOpen, mode, transaction, reset, preferredCurrency]);
 
@@ -352,6 +371,8 @@ export default function TransactionEntryModal({
             notes: data.notes || undefined,
             currency: selectedCurrency,
             exchange_rate: exchangeRate,
+            // Story 13.6: tag as private allowance spending when the toggle is eligible + on.
+            allowance_id: canTagAllowance && useAllowanceTag ? allowanceStatus?.allowance?.id : undefined,
           }),
         });
       }
@@ -388,6 +409,7 @@ export default function TransactionEntryModal({
         });
         setSelectedCurrency(preferredCurrency);
         setExchangeRate(null);
+        setUseAllowanceTag(false);
       }
 
       // AC-10.8.6: Haptic feedback on successful transaction save
@@ -529,6 +551,22 @@ export default function TransactionEntryModal({
             <FormErrorMessage>{errors.category_id.message}</FormErrorMessage>
           )}
         </FormControl>
+
+        {/* Story 13.6: tag this expense to the private personal allowance */}
+        {canTagAllowance && (
+          <FormControl>
+            <Checkbox
+              isChecked={useAllowanceTag}
+              onChange={(e) => setUseAllowanceTag(e.target.checked)}
+              colorScheme="blue"
+            >
+              <Text fontSize="sm">{t('countTowardAllowance')}</Text>
+            </Checkbox>
+            <Text fontSize="xs" color="gray.500" mt={1} ml={6}>
+              {t('allowancePrivacyHint')}
+            </Text>
+          </FormControl>
+        )}
 
         {/* Date Picker with Quick Options */}
         <FormControl isInvalid={!!errors.date} isRequired>

@@ -44,6 +44,23 @@
     "presetApplied": "Preset applied to your shared categories",
     "presetFailed": "Couldn't apply the preset. Please try again."
   },
+  "allowance": {
+    "heading": "Personal allowance",
+    "privacyNote": "Only you can see this. Your allowance and its spending are private — never shown to other household members.",
+    "budgetLabel": "Monthly budget",
+    "spentLabel": "Spent",
+    "remainingLabel": "Remaining",
+    "amountLabel": "Monthly amount",
+    "currencyLabel": "Currency",
+    "edit": "Edit",
+    "setup": "Set up",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "Allowance saved",
+    "saveFailed": "Couldn't save your allowance. Please try again.",
+    "invalidAmount": "Enter a valid non-negative amount",
+    "none": "No allowance set yet. Set one up for private personal spending."
+  },
   "invitations": {
     "heading": "Invite members",
     "emailPlaceholder": "name@email.com",
@@ -116,6 +133,8 @@
     "date": "Date",
     "notes": "Notes",
     "selectCategory": "Select a category",
+    "countTowardAllowance": "Count toward my personal allowance",
+    "allowancePrivacyHint": "This expense stays private and won't appear in shared household totals.",
     "notesPlaceholder": "e.g., Grocery store, Coffee with Sarah",
     "today": "Today",
     "yesterday": "Yesterday",

@@ -49,6 +49,7 @@ function makeTx(
     currency: 'USD',
     exchange_rate: null,
     household_id: null,
+    allowance_id: null,
   };
 }
 

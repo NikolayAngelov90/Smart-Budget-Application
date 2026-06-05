@@ -29,6 +29,7 @@ import { mutate as globalMutate } from 'swr';
 import { useTranslations } from 'next-intl';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { HouseholdInvites } from '@/components/household/HouseholdInvites';
+import { AllowanceCard } from '@/components/household/AllowanceCard';
 import type { HouseholdPreset } from '@/types/database.types';
 
 export function HouseholdSection() {
@@ -145,6 +146,9 @@ export function HouseholdSection() {
                   <option value="partners">{t('presetPartners')}</option>
                 </Select>
               </Box>
+
+              {/* Story 13.6: private personal allowance (owner-only) */}
+              <AllowanceCard />
             </VStack>
           ) : (
             <VStack align="stretch" spacing={3}>
