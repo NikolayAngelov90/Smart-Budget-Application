@@ -61,6 +61,11 @@ export default withPWA({
   register: true,
   skipWaiting: true,
   customWorkerDir: 'worker',
+  // Next's App Router emits app-build-manifest.json under .next/ but does NOT serve it at
+  // /_next/app-build-manifest.json. If it's left in the precache manifest, the service
+  // worker's install fetches it, gets a 404, and install fails — so the worker never
+  // activates and push subscription hangs. Exclude it (plus other non-served manifests).
+  buildExcludes: [/app-build-manifest\.json$/, /middleware-manifest\.json$/],
   fallbacks: {
     document: '/offline.html',
   },
