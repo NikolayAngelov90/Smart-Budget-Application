@@ -34,6 +34,7 @@ export default function HouseholdDashboardPage() {
     pending.current = setTimeout(() => {
       globalMutate('/api/households/category-totals');
       globalMutate('/api/households/contributions');
+      globalMutate('/api/households/goals'); // a contribution also logs a transaction → keep goals fresh
     }, 150);
   }, []);
   useRealtimeSubscription(revalidate);

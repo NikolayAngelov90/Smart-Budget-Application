@@ -18,6 +18,9 @@ import type {
   UpdateGoalInput,
   AddContributionInput,
 } from '@/types/database.types';
+import { logSavingsContribution } from '@/lib/services/savingsTransactionService';
+import { DEFAULT_CURRENCY } from '@/lib/utils/constants';
+import { logger } from '@/lib/utils/logger';
 
 /** PostgREST "no rows found" error code */
 const PGRST116 = 'PGRST116';
@@ -150,22 +153,24 @@ export async function addContribution(
   goalId: string,
   input: AddContributionInput
 ): Promise<Goal> {
-  // Step 1: Insert contribution record
-  const { error: contribError } = await supabase
+  // Step 1: Insert contribution record (capture its id to link the Savings expense)
+  const { data: contribution, error: contribError } = await supabase
     .from('goal_contributions')
     .insert({
       goal_id: goalId,
       user_id: userId,
       amount: input.amount,
       note: input.note ?? null,
-    });
+    })
+    .select('id')
+    .single();
 
   if (contribError) throw contribError;
 
-  // Step 2: Fetch current goal amount
+  // Step 2: Fetch current goal amount + name (name used for the Savings expense note)
   const { data: current, error: fetchError } = await supabase
     .from('goals')
-    .select('current_amount')
+    .select('current_amount, name')
     .eq('id', goalId)
     .eq('user_id', userId)
     .single();
@@ -191,6 +196,31 @@ export async function addContribution(
 
   if (updateError) throw updateError;
   if (!updated) throw new Error('Goal update returned no data');
+
+  // Story 13.9 (revised decision): also log a "Savings" expense so the contribution shows
+  // as money leaving the budget. Best-effort — never fail the contribution on a logging
+  // hiccup (the contribution + current_amount already persisted).
+  if (contribution?.id) {
+    try {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('preferences')
+        .eq('id', userId)
+        .maybeSingle();
+      const prefs = (profile?.preferences ?? {}) as { currency_format?: unknown };
+      const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
+      await logSavingsContribution(supabase, {
+        userId,
+        amount: Number(input.amount),
+        goalName: (current as { name?: string }).name ?? 'goal',
+        goalContributionId: contribution.id,
+        currency,
+      });
+    } catch (savingsError) {
+      logger.error('GoalService', 'Savings expense logging failed (non-fatal):', savingsError);
+    }
+  }
+
   return updated;
 }
 

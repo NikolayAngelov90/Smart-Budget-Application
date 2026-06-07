@@ -15,7 +15,7 @@ function tx(categoryId: string, amount: number, date: string, type: 'expense' | 
   seq += 1;
   return {
     id: `t${seq}`, user_id: 'u1', category_id: categoryId, amount, date, type,
-    notes: null, currency: 'USD', exchange_rate: null, household_id: null, allowance_id: null,
+    notes: null, currency: 'USD', exchange_rate: null, household_id: null, allowance_id: null, goal_contribution_id: null,
     created_at: `${date}T00:00:00Z`, updated_at: `${date}T00:00:00Z`,
   };
 }

@@ -107,6 +107,7 @@ export interface Database {
           exchange_rate: number | null; // Rate at time of entry (Story 10-6)
           household_id: string | null; // Story 13.5 (shared-category transaction when set)
           allowance_id: string | null; // Story 13.6 (private allowance spending when set)
+          goal_contribution_id: string | null; // Story 13.9 (Savings expense from a goal contribution)
           created_at: string;
           updated_at: string;
         };
@@ -122,6 +123,7 @@ export interface Database {
           exchange_rate?: number | null; // Story 10-6
           household_id?: string | null; // Story 13.5
           allowance_id?: string | null; // Story 13.6
+          goal_contribution_id?: string | null; // Story 13.9
           created_at?: string;
           updated_at?: string;
         };
@@ -137,6 +139,7 @@ export interface Database {
           exchange_rate?: number | null; // Story 10-6
           household_id?: string | null; // Story 13.5
           allowance_id?: string | null; // Story 13.6
+          goal_contribution_id?: string | null; // Story 13.9
           created_at?: string;
           updated_at?: string;
         };
@@ -744,6 +747,17 @@ export interface Database {
         };
         Returns: string | null;
       };
+      // Story 13.9: per-member contributed totals for a shared goal (sums, never rows)
+      household_goal_breakdown: {
+        Args: {
+          p_goal_id: string;
+        };
+        Returns: {
+          user_id: string;
+          email: string;
+          contributed: number;
+        }[];
+      };
     };
     Enums: {
       transaction_type: TransactionType;
@@ -868,6 +882,30 @@ export interface ContributionSummary {
   /** Total shared-expense pot (Σ contributed across members). */
   total: number;
   splits: ContributionSplit[];
+}
+
+// Story 13.9: Shared household savings goals
+/** A goal that belongs to a household (shared). */
+export type HouseholdGoal = Goal & { household_id: string };
+
+/** Per-member contributed total to a shared goal (from household_goal_breakdown RPC). */
+export interface GoalMemberBreakdown {
+  user_id: string;
+  email: string;
+  contributed: number;
+}
+
+/** A shared goal plus its per-member breakdown for display. */
+export interface HouseholdGoalWithBreakdown {
+  goal: HouseholdGoal;
+  breakdown: GoalMemberBreakdown[];
+}
+
+/** Input for creating a shared household goal. */
+export interface CreateHouseholdGoalInput {
+  name: string;
+  target_amount: number;
+  deadline?: string | null;
 }
 
 // Transaction with category details (for joined queries)
@@ -1183,6 +1221,8 @@ export interface Goal {
   deadline: string | null;
   /** Milestone thresholds (25, 50, 75, 100) that have been celebrated. Prevents re-triggering. */
   milestones_celebrated: number[];
+  /** Story 13.9: set => shared household goal (visible to members); null => personal. */
+  household_id?: string | null;
   created_at: string;
   updated_at: string;
 }

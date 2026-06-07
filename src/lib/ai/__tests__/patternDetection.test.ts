@@ -50,6 +50,7 @@ function makeTx(
     exchange_rate: null,
     household_id: null,
     allowance_id: null,
+    goal_contribution_id: null,
   };
 }
 

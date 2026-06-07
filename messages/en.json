@@ -59,6 +59,25 @@
     "noHousehold": "You're not in a household yet. Create or join one to see the shared dashboard.",
     "noHouseholdCta": "Go to household settings"
   },
+  "householdGoals": {
+    "heading": "Shared goals",
+    "newGoal": "New goal",
+    "name": "Goal name",
+    "target": "Target amount",
+    "deadline": "Deadline (optional)",
+    "create": "Create",
+    "cancel": "Cancel",
+    "none": "No shared goals yet.",
+    "created": "Shared goal created",
+    "createFailed": "Couldn't create the goal. Please try again.",
+    "invalidGoal": "Enter a name and a target amount greater than 0",
+    "contribute": "Contribute",
+    "contributeAmount": "Amount",
+    "save": "Save",
+    "contributed": "Contribution added",
+    "contributeFailed": "Couldn't add your contribution. Please try again.",
+    "invalidAmount": "Enter an amount greater than 0"
+  },
   "allowance": {
     "heading": "Personal allowance",
     "privacyNote": "Only you can see this. Your allowance and its spending are private — never shown to other household members.",

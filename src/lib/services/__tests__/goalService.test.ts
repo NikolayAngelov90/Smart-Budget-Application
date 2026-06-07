@@ -280,11 +280,20 @@ describe('addContribution', () => {
       from: jest.fn().mockImplementation(() => {
         fromCallCount++;
         if (fromCallCount === 1) {
-          // goal_contributions INSERT
-          return { insert: jest.fn().mockResolvedValue(insertResult) };
+          // goal_contributions INSERT ... .select('id').single() (Story 13.9)
+          return {
+            insert: jest.fn().mockReturnValue({
+              select: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: insertResult.error ? null : { id: 'contrib-1' },
+                  error: insertResult.error,
+                }),
+              }),
+            }),
+          };
         }
         if (fromCallCount === 2) {
-          // goals SELECT current_amount
+          // goals SELECT current_amount, name
           const fetchChain = {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
