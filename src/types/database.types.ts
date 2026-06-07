@@ -575,6 +575,7 @@ export interface Database {
           user_id: string;
           role: HouseholdRole;
           preset: HouseholdPreset | null; // Story 13.4
+          contribution_percentage: number | null; // Story 13.7
           joined_at: string;
         };
         Insert: {
@@ -583,6 +584,7 @@ export interface Database {
           user_id: string;
           role?: HouseholdRole;
           preset?: HouseholdPreset | null; // Story 13.4
+          contribution_percentage?: number | null; // Story 13.7
           joined_at?: string;
         };
         Update: {
@@ -591,6 +593,7 @@ export interface Database {
           user_id?: string;
           role?: HouseholdRole;
           preset?: HouseholdPreset | null; // Story 13.4
+          contribution_percentage?: number | null; // Story 13.7
           joined_at?: string;
         };
         Relationships: [
@@ -722,6 +725,18 @@ export interface Database {
           total: number;
         }[];
       };
+      // Story 13.7: per-member percentage + contributed total (sums, never rows)
+      household_contributions: {
+        Args: {
+          p_household_id: string;
+        };
+        Returns: {
+          user_id: string;
+          email: string;
+          contribution_percentage: number | null;
+          contributed: number;
+        }[];
+      };
     };
     Enums: {
       transaction_type: TransactionType;
@@ -810,6 +825,35 @@ export interface AllowanceStatus {
   spent: number;
   /** monthly_amount - spent, or null when no allowance is configured. */
   remaining: number | null;
+}
+
+// Story 13.7: Income-proportional contribution splits
+/** Raw row returned by the household_contributions() RPC (sums, never rows). */
+export interface HouseholdContributionRow {
+  user_id: string;
+  email: string;
+  contribution_percentage: number | null;
+  contributed: number;
+}
+
+/** A member's computed split: fair share of the shared pot + contribution progress. */
+export interface ContributionSplit {
+  user_id: string;
+  email: string;
+  percentage: number | null;
+  contributed: number;
+  /** Normalized share of the total shared pot derived from percentages. */
+  fairShare: number;
+  /** contributed / fairShare (0 when fairShare is 0); not clamped. */
+  progress: number;
+  /** True for the requesting user's own row. */
+  isSelf: boolean;
+}
+
+export interface ContributionSummary {
+  /** Total shared-expense pot (Σ contributed across members). */
+  total: number;
+  splits: ContributionSplit[];
 }
 
 // Transaction with category details (for joined queries)

@@ -61,6 +61,21 @@
     "invalidAmount": "Enter a valid non-negative amount",
     "none": "No allowance set yet. Set one up for private personal spending."
   },
+  "contribution": {
+    "heading": "Contribution split",
+    "hint": "Set your share as a percentage (no income needed). Each member's fair share of shared expenses is calculated from these percentages.",
+    "yourPercentage": "Set your percentage",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "Contribution updated",
+    "saveFailed": "Couldn't save your percentage. Please try again.",
+    "invalidPercentage": "Enter a percentage between 0 and 100",
+    "fairShare": "Fair share",
+    "contributed": "Contributed",
+    "you": "You",
+    "normalizedHint": "Percentages don't add up to 100% — shares are normalized proportionally.",
+    "none": "No members yet."
+  },
   "invitations": {
     "heading": "Invite members",
     "emailPlaceholder": "name@email.com",
