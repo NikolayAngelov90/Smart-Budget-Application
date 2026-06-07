@@ -13,7 +13,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
 import { sendPushToUser } from '@/lib/services/pushService';
-import type { Household, HouseholdInvitation, HouseholdInvitationWithState } from '@/types/database.types';
+import type { Household, HouseholdInvitation, HouseholdInvitationWithState, MyInvitation } from '@/types/database.types';
 
 /** Caller is not an admin of any household (or not in one). → 403 */
 export class NotHouseholdAdminError extends Error {
@@ -148,7 +148,42 @@ export async function createInvitation(userId: string, email: string): Promise<H
     logger.error('InvitationService', `Invitation insert failed for ${userId}: ${error.message}`);
     throw new Error('Failed to create invitation');
   }
+
+  // Best-effort: if the invitee already has an account, push them a notification so they
+  // know without the admin having to share the link manually. Never fail the invite on this.
+  await notifyInviteeIfRegistered(admin, normalized, householdId).catch((err) => {
+    logger.error('InvitationService', 'Best-effort invitee notification failed:', err);
+  });
+
   return data as HouseholdInvitation;
+}
+
+/**
+ * Pushes an "invited" notification to the invitee IF their email maps to an existing
+ * account. No-op when the email isn't registered yet (they'll see the in-app banner once
+ * they sign up with that address and the link is shared). Best-effort.
+ */
+async function notifyInviteeIfRegistered(
+  admin: ServiceClient,
+  email: string,
+  householdId: string
+): Promise<void> {
+  const { data: inviteeId, error } = await admin.rpc('user_id_by_email', { p_email: email });
+  if (error || !inviteeId) return;
+
+  const { data: household } = await admin
+    .from('households')
+    .select('name')
+    .eq('id', householdId)
+    .maybeSingle();
+  const householdName = (household as { name?: string } | null)?.name ?? 'a household';
+
+  await sendPushToUser(admin, inviteeId as string, {
+    type: 'household_event',
+    title: 'Household invitation',
+    body: `You've been invited to join ${householdName}.`,
+    data: { url: '/settings' },
+  });
 }
 
 /**
@@ -214,6 +249,37 @@ export async function revokeInvitation(userId: string, invitationId: string): Pr
     logger.error('InvitationService', `Revoke failed for ${userId}: ${error.message}`);
     throw new Error('Failed to revoke invitation');
   }
+}
+
+/**
+ * Lists the PENDING, non-expired invitations addressed to the given email — i.e. the
+ * invitations the current (authenticated) user can accept. Keyed off the caller's own
+ * session email, so no cross-user lookup is involved. Powers the in-app invite banner.
+ */
+export async function listMyPendingInvitations(userEmail: string): Promise<MyInvitation[]> {
+  const normalized = normalizeEmail(userEmail);
+  if (!normalized) return [];
+
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from('household_invitations')
+    .select('id, token, expires_at, households(name)')
+    .eq('email', normalized)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    logger.error('InvitationService', `listMyPendingInvitations failed: ${error.message}`);
+    throw new Error('Failed to load your invitations');
+  }
+
+  const now = Date.now();
+  return (data ?? [])
+    .filter((inv) => new Date((inv as { expires_at: string }).expires_at).getTime() >= now)
+    .map((inv) => {
+      const row = inv as { id: string; token: string; households?: { name?: string } | null };
+      return { id: row.id, token: row.token, householdName: row.households?.name ?? 'a household' };
+    });
 }
 
 // ============================================================================

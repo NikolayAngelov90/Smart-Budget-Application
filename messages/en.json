@@ -92,7 +92,12 @@
     "copyFailed": "Couldn't copy the link",
     "revoke": "Revoke invitation",
     "revoked": "Invitation revoked",
-    "revokeFailed": "Couldn't revoke the invitation"
+    "revokeFailed": "Couldn't revoke the invitation",
+    "invitedToJoin": "You've been invited to join {household}.",
+    "acceptCta": "Accept",
+    "joining": "Joining...",
+    "joinedSuccess": "You've joined the household",
+    "acceptFailed": "Couldn't accept the invitation. Please try again."
   },
   "join": {
     "title": "Join household",
@@ -559,7 +564,17 @@
     "quietHoursEnd": "Quiet hours end",
     "enablePush": "Enable browser notifications",
     "disablePush": "Disable browser notifications",
-    "pushNotSupported": "Push notifications are not supported on this browser"
+    "pushNotSupported": "Push notifications are not supported on this browser",
+    "statusLabel": "Notifications",
+    "statusOn": "On",
+    "statusOff": "Off",
+    "statusBlocked": "Blocked",
+    "blockedHelp": "Notifications are blocked. Enable them for this app in your browser or device settings, then come back and turn them on here.",
+    "sendTest": "Send a test notification",
+    "testSent": "Test notification sent — check your device.",
+    "testNoDevices": "No subscribed devices. Turn on notifications first, then try again.",
+    "testFailed": "Couldn't send the test notification.",
+    "iosHint": "On iPhone/iPad, notifications only work after you add the app to your Home Screen (Share → Add to Home Screen) and open it from there — they don't work in the Safari tab."
   },
   "analytics": {
     "title": "Engagement Analytics",

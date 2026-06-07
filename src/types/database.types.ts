@@ -737,6 +737,13 @@ export interface Database {
           contributed: number;
         }[];
       };
+      // Story 13.2 follow-up: resolve an email to its auth.users id (service-role only)
+      user_id_by_email: {
+        Args: {
+          p_email: string;
+        };
+        Returns: string | null;
+      };
     };
     Enums: {
       transaction_type: TransactionType;
@@ -804,6 +811,13 @@ export type HouseholdInvitationWithState = HouseholdInvitation & {
   isExpired: boolean;
   acceptLink?: string;
 };
+
+/** A pending invitation addressed to the current user (for the in-app accept banner). */
+export interface MyInvitation {
+  id: string;
+  token: string;
+  householdName: string;
+}
 
 // Story 13.4: aggregate result from household_category_totals() (sums, never rows)
 export interface HouseholdCategoryTotal {

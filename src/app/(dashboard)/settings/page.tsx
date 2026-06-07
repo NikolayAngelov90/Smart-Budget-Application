@@ -43,6 +43,7 @@ import {
   AlertIcon,
   Flex,
   Icon,
+  Badge,
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { DownloadIcon, DeleteIcon, ChevronRightIcon, AtSignIcon, StarIcon } from '@chakra-ui/icons';
@@ -908,7 +909,38 @@ function NotificationsSection({
   onUpdatePreferences,
 }: NotificationsSectionProps) {
   const t = useTranslations('notifications');
-  const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
+  const toast = useToast();
+  const { isSupported, isSubscribed, isLoading, permission, subscribe, unsubscribe, error } = usePushNotifications();
+  const [isTesting, setIsTesting] = useState(false);
+
+  const isBlocked = permission === 'denied';
+
+  const handleTest = async () => {
+    setIsTesting(true);
+    try {
+      const res = await fetch('/api/push/test', { method: 'POST' });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(json?.error?.message || t('testFailed'));
+      }
+      const sent = json?.data?.sent ?? 0;
+      toast({
+        title: sent > 0 ? t('testSent') : t('testNoDevices'),
+        status: sent > 0 ? 'success' : 'warning',
+        duration: 4000,
+        isClosable: true,
+      });
+    } catch (err) {
+      toast({
+        title: err instanceof Error ? err.message : t('testFailed'),
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   return (
     <Card>
@@ -927,18 +959,58 @@ function NotificationsSection({
 
           {isSupported && (
             <VStack spacing={4} align="stretch">
-              {/* Browser push subscription toggle */}
-              <HStack justify="space-between">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  colorScheme={isSubscribed ? 'red' : 'blue'}
-                  isLoading={isLoading}
-                  onClick={isSubscribed ? unsubscribe : subscribe}
+              {/* Clear current status so it's obvious whether push is ON or OFF */}
+              <HStack justify="space-between" align="center">
+                <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                  {t('statusLabel')}
+                </Text>
+                <Badge
+                  colorScheme={isBlocked ? 'red' : isSubscribed ? 'green' : 'gray'}
+                  borderRadius="full"
+                  px={3}
+                  py={1}
                 >
-                  {isSubscribed ? t('disablePush') : t('enablePush')}
-                </Button>
+                  {isBlocked ? t('statusBlocked') : isSubscribed ? t('statusOn') : t('statusOff')}
+                </Badge>
               </HStack>
+
+              {/* Enable / disable — label + color reflect the action and current state */}
+              <Button
+                size="sm"
+                colorScheme={isSubscribed ? 'gray' : 'blue'}
+                variant={isSubscribed ? 'outline' : 'solid'}
+                isLoading={isLoading}
+                isDisabled={isBlocked}
+                onClick={isSubscribed ? unsubscribe : subscribe}
+                alignSelf="flex-start"
+              >
+                {isSubscribed ? t('disablePush') : t('enablePush')}
+              </Button>
+
+              {isBlocked && (
+                <Alert status="warning" borderRadius="md" fontSize="sm">
+                  <AlertIcon />
+                  {t('blockedHelp')}
+                </Alert>
+              )}
+
+              {error && !isBlocked && (
+                <Alert status="error" borderRadius="md" fontSize="sm">
+                  <AlertIcon />
+                  {error}
+                </Alert>
+              )}
+
+              {/* Verify the whole pipeline end-to-end */}
+              {isSubscribed && (
+                <Button size="sm" variant="ghost" colorScheme="blue" onClick={handleTest} isLoading={isTesting} alignSelf="flex-start">
+                  {t('sendTest')}
+                </Button>
+              )}
+
+              <Text fontSize="xs" color="gray.500">
+                {t('iosHint')}
+              </Text>
 
               <Divider />
 

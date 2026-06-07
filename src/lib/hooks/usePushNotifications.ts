@@ -17,10 +17,15 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
+/** Browser notification permission, or 'unsupported' when the API is unavailable. */
+export type NotificationPermissionState = 'granted' | 'denied' | 'default' | 'unsupported';
+
 export interface UsePushNotificationsResult {
   isSupported: boolean;
   isSubscribed: boolean;
   isLoading: boolean;
+  /** Current OS/browser permission — 'denied' means the user must re-enable in settings. */
+  permission: NotificationPermissionState;
   subscribe: () => Promise<void>;
   unsubscribe: () => Promise<void>;
   error: string | null;
@@ -38,6 +43,11 @@ export function usePushNotifications(): UsePushNotificationsResult {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [permission, setPermission] = useState<NotificationPermissionState>(
+    typeof window !== 'undefined' && 'Notification' in window
+      ? Notification.permission
+      : 'unsupported'
+  );
 
   // Check current subscription status on mount.
   // Use a 3-second timeout so isLoading always clears even in dev mode
@@ -64,8 +74,9 @@ export function usePushNotifications(): UsePushNotificationsResult {
     setError(null);
     setIsLoading(true);
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
+      const result = await Notification.requestPermission();
+      setPermission(result as NotificationPermissionState);
+      if (result !== 'granted') {
         setError('Notification permission denied');
         return;
       }
@@ -133,5 +144,5 @@ export function usePushNotifications(): UsePushNotificationsResult {
     }
   }, [isSupported]);
 
-  return { isSupported, isSubscribed, isLoading, subscribe, unsubscribe, error };
+  return { isSupported, isSubscribed, isLoading, permission, subscribe, unsubscribe, error };
 }

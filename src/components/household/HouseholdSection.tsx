@@ -29,6 +29,7 @@ import { mutate as globalMutate } from 'swr';
 import { useTranslations } from 'next-intl';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { HouseholdInvites } from '@/components/household/HouseholdInvites';
+import { PendingInviteBanner } from '@/components/household/PendingInviteBanner';
 import { AllowanceCard } from '@/components/household/AllowanceCard';
 import { ContributionSplitCard } from '@/components/household/ContributionSplitCard';
 import type { HouseholdPreset } from '@/types/database.types';
@@ -156,6 +157,8 @@ export function HouseholdSection() {
             </VStack>
           ) : (
             <VStack align="stretch" spacing={3}>
+              {/* Story 13.2 follow-up: surface any invitation addressed to this user */}
+              <PendingInviteBanner />
               <Text fontSize="sm" color="gray.600">
                 {t('emptyPrompt')}
               </Text>

@@ -22,7 +22,7 @@ if (process.env.VAPID_SUBJECT && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && pro
 }
 
 export interface PushPayload {
-  type: 'nudge' | 'milestone' | 'reengagement' | 'household_event';
+  type: 'nudge' | 'milestone' | 'reengagement' | 'household_event' | 'test';
   title: string;
   body: string;
   data?: { url?: string };

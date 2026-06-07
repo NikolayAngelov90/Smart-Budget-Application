@@ -19,6 +19,7 @@ import { sendPushToUser } from '@/lib/services/pushService';
 import {
   createInvitation,
   listInvitations,
+  listMyPendingInvitations,
   revokeInvitation,
   acceptInvitation,
   validateInvitation,
@@ -56,6 +57,7 @@ interface AdminOpts {
   insert?: { data: object | null; error: object | null };
   revokeLookup?: { data: object | null; error: object | null };
   thenResult?: { data?: unknown; error: object | null }; // list select / revoke update (awaited chain)
+  inviteeId?: string | null; // user_id_by_email RPC result (Story 13.2 follow-up notify)
 }
 
 function makeAdmin(opts: AdminOpts = {}) {
@@ -66,6 +68,7 @@ function makeAdmin(opts: AdminOpts = {}) {
     insert = { data: INVITE, error: null },
     revokeLookup,
     thenResult = { data: [INVITE], error: null },
+    inviteeId = null,
   } = opts;
 
   const membersChain = {
@@ -86,7 +89,8 @@ function makeAdmin(opts: AdminOpts = {}) {
     then: jest.fn((resolve: (v: unknown) => unknown) => Promise.resolve(thenResult).then(resolve)),
   };
   const from = jest.fn((t: string) => (t === 'household_members' ? membersChain : invChain));
-  return { client: { from }, membersChain, invChain };
+  const rpc = jest.fn().mockResolvedValue({ data: inviteeId, error: null });
+  return { client: { from, rpc }, membersChain, invChain, rpc };
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -128,6 +132,49 @@ describe('createInvitation', () => {
     const { client } = makeAdmin({ insert: { data: null, error: { code: '23505', message: 'dup' } } });
     mockSrv.mockReturnValue(client as never);
     await expect(createInvitation('user-1', 'a@x.com')).rejects.toBeInstanceOf(InvitationExistsError);
+  });
+
+  it('pushes a notification when the invitee already has an account', async () => {
+    const { client } = makeAdmin({ inviteeId: 'invitee-9' });
+    mockSrv.mockReturnValue(client as never);
+    await createInvitation('user-1', 'a@x.com');
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush.mock.calls[0]![1]).toBe('invitee-9'); // userId
+  });
+
+  it('does not push when the invitee email is not registered (and never fails the invite)', async () => {
+    const { client } = makeAdmin({ inviteeId: null });
+    mockSrv.mockReturnValue(client as never);
+    const result = await createInvitation('user-1', 'a@x.com');
+    expect(result).toEqual(INVITE);
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+});
+
+describe('listMyPendingInvitations', () => {
+  const future = new Date(Date.now() + 1_000_000_000).toISOString();
+  const past = new Date(Date.now() - 1_000).toISOString();
+
+  it('returns pending, non-expired invites for the email with the household name', async () => {
+    const { client } = makeAdmin({
+      thenResult: {
+        data: [
+          { id: 'i1', token: 't1', expires_at: future, households: { name: 'Casa' } },
+          { id: 'i2', token: 't2', expires_at: past, households: { name: 'Old' } }, // expired → filtered
+        ],
+        error: null,
+      },
+    });
+    mockSrv.mockReturnValue(client as never);
+    const result = await listMyPendingInvitations('  A@X.com ');
+    expect(result).toEqual([{ id: 'i1', token: 't1', householdName: 'Casa' }]);
+  });
+
+  it('returns [] for an empty email without a DB call', async () => {
+    const { client } = makeAdmin();
+    mockSrv.mockReturnValue(client as never);
+    expect(await listMyPendingInvitations('')).toEqual([]);
+    expect(client.from).not.toHaveBeenCalled();
   });
 });
 
