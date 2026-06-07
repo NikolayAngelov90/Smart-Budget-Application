@@ -64,6 +64,8 @@ next-env.d.ts
 public/sw.js
 public/workbox-*.js
 public/fallback-*.js
+public/worker-*.js
+public/sw.js.map
 
 # SWC compiler cache
 .swc/
