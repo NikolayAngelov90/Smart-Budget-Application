@@ -5,6 +5,7 @@ import { Providers } from './providers';
 import './globals.css';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
+import { ServiceWorkerRegistrar } from '@/components/pwa/ServiceWorkerRegistrar';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -46,6 +47,7 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
+        <ServiceWorkerRegistrar />
         <SpeedInsights />
         <Analytics />
       </body>

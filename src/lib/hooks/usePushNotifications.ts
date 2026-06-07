@@ -87,7 +87,15 @@ export function usePushNotifications(): UsePushNotificationsResult {
         return;
       }
 
-      const reg = await navigator.serviceWorker.ready;
+      // Ensure the SW is registered (App-Router auto-register is unreliable), then wait for
+      // it to activate — but never hang the button: time out with a clear error after 10s.
+      await navigator.serviceWorker.register('/sw.js').catch(() => {});
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<ServiceWorkerRegistration>((_, reject) =>
+          setTimeout(() => reject(new Error('Service worker did not activate. Reload the app and try again.')), 10000)
+        ),
+      ]);
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         // Cast required: TypeScript types Uint8Array.buffer as ArrayBufferLike,
