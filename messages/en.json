@@ -42,7 +42,22 @@
     "presetRoommates": "Roommates — share bills, keep the rest private",
     "presetPartners": "Partners — share totals only",
     "presetApplied": "Preset applied to your shared categories",
-    "presetFailed": "Couldn't apply the preset. Please try again."
+    "presetFailed": "Couldn't apply the preset. Please try again.",
+    "viewDashboard": "View household dashboard"
+  },
+  "householdDashboard": {
+    "title": "Household",
+    "subtitle": "Shared spending, contributions, and goals for your household.",
+    "combinedSpending": "Combined spending",
+    "contributionProgress": "Contribution progress",
+    "sharedGoals": "Shared goals",
+    "totalOnly": "total only",
+    "you": "You",
+    "noSharedCategories": "No shared categories yet. Mark a category as shared to see combined spending here.",
+    "noContributions": "No contributions yet.",
+    "noSharedGoals": "No shared goals yet.",
+    "noHousehold": "You're not in a household yet. Create or join one to see the shared dashboard.",
+    "noHouseholdCta": "Go to household settings"
   },
   "allowance": {
     "heading": "Personal allowance",
