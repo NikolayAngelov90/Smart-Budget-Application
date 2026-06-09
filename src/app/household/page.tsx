@@ -1,33 +1,33 @@
 'use client';
 
 /**
- * Household Dashboard Page — Story 13.8
+ * Household Page — Epic 13 hub (Stories 13.1–13.11)
  *
- * Shared view of household financial health: combined spending by shared category,
- * each member's contribution progress, and shared goal status. Membership-gated; updates
- * in near-real-time when another member changes a transaction.
+ * The single home for everything household: shared spending, contribution split, shared
+ * goals, household AI insights, the personal allowance, transparency preset, invitations,
+ * and member management. Membership-gated; updates in near-real-time when another member
+ * changes a transaction. Transparency is enforced server-side by the membership-gated RPCs.
  *
- * Transparency is enforced server-side by the membership-gated RPCs (private excluded,
- * category_only = totals only) — this page only renders what those endpoints return.
+ * (Management used to live in Settings; it now lives here so the whole feature is reachable
+ * from the Household nav tab.)
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { Box, Heading, Text, VStack, Grid, Button, Card, CardBody } from '@chakra-ui/react';
-import NextLink from 'next/link';
+import { Box, Heading, Text, VStack } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { mutate as globalMutate } from 'swr';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { CombinedSpendingCard } from '@/components/household/CombinedSpendingCard';
-import { ContributionProgressCard } from '@/components/household/ContributionProgressCard';
 import { SharedGoalsCard } from '@/components/household/SharedGoalsCard';
 import { HouseholdInsightsCard } from '@/components/household/HouseholdInsightsCard';
+import { HouseholdSection } from '@/components/household/HouseholdSection';
 
-export default function HouseholdDashboardPage() {
+export default function HouseholdPage() {
   const t = useTranslations('householdDashboard');
   const { household, isLoading } = useHousehold();
 
-  // AC#5: when another member changes a transaction, revalidate the dashboard aggregates.
+  // When another member changes a transaction, revalidate the household aggregates.
   // Trailing guard so a burst of inserts collapses into a single refresh; SWR also dedupes.
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
   const revalidate = useCallback(() => {
@@ -57,31 +57,21 @@ export default function HouseholdDashboardPage() {
         </Text>
       </VStack>
 
-      {isLoading ? null : !household ? (
-        <Card>
-          <CardBody>
-            <VStack align="stretch" spacing={3}>
-              <Text fontSize="sm" color="gray.600">
-                {t('noHousehold')}
-              </Text>
-              <Button as={NextLink} href="/settings" colorScheme="blue" alignSelf="flex-start" size="sm">
-                {t('noHouseholdCta')}
-              </Button>
-            </VStack>
-          </CardBody>
-        </Card>
-      ) : (
-        <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={6}>
-          <Box gridColumn={{ lg: '1 / -1' }}>
+      <VStack align="stretch" spacing={6}>
+        {/* Member-only shared views (read-only aggregates). Hidden until you're in a household. */}
+        {!isLoading && household && (
+          <>
             <HouseholdInsightsCard />
-          </Box>
-          <CombinedSpendingCard />
-          <ContributionProgressCard />
-          <Box gridColumn={{ lg: '1 / -1' }}>
+            <CombinedSpendingCard />
             <SharedGoalsCard />
-          </Box>
-        </Grid>
-      )}
+          </>
+        )}
+
+        {/* Management hub: create/join, invitations, members, transparency preset, personal
+            allowance, and the contribution split editor. Renders the create form + pending
+            invite banner when you're not yet in a household. */}
+        <HouseholdSection />
+      </VStack>
     </Box>
   );
 }

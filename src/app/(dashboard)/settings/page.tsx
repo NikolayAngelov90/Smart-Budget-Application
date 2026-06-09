@@ -59,7 +59,6 @@ import { ProfilePictureUpload } from '@/components/settings/ProfilePictureUpload
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import { ActiveDevicesSection } from '@/components/settings/ActiveDevicesSection';
 import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
-import { HouseholdSection } from '@/components/household/HouseholdSection';
 import type { SupportedLocale } from '@/i18n/routing';
 import type { PDFReportData } from '@/types/export.types';
 import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
@@ -548,8 +547,7 @@ export default function SettingsPage() {
             </CardBody>
           </Card>
 
-          {/* Story 13.1: Household creation / membership */}
-          <HouseholdSection />
+          {/* Household management moved to its own Household nav tab (/household). */}
 
           {/* AC-8.3.2: Account Information Section */}
           <Card>

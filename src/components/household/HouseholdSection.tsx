@@ -26,7 +26,6 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { mutate as globalMutate } from 'swr';
-import NextLink from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { HouseholdInvites } from '@/components/household/HouseholdInvites';
@@ -127,11 +126,6 @@ export function HouseholdSection() {
                   {household.role === 'admin' ? t('roleAdmin') : t('roleMember')}
                 </Badge>
               </HStack>
-              {/* Story 13.8: entry point to the shared household dashboard */}
-              <Button as={NextLink} href="/household" variant="outline" colorScheme="blue" size="sm" alignSelf="flex-start">
-                {t('viewDashboard')}
-              </Button>
-
               {household.role === 'admin' && <HouseholdInvites />}
 
               {/* Story 13.11: member roster + admin removal */}

@@ -18,6 +18,11 @@ jest.mock('@/lib/hooks/useUserPreferences', () => ({ useUserPreferences: () => (
 jest.mock('@/lib/hooks/useRealtimeSubscription', () => ({ useRealtimeSubscription: jest.fn() }));
 jest.mock('@/lib/hooks/useHouseholdGoals', () => ({ useHouseholdGoals: () => ({ goals: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
 jest.mock('@/lib/hooks/useHouseholdInsights', () => ({ useHouseholdInsights: () => ({ insights: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
+// HouseholdSection (now rendered on the page) pulls in these — keep them deterministic.
+jest.mock('@/lib/hooks/useInvitations', () => ({ useInvitations: () => ({ invitations: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
+jest.mock('@/lib/hooks/useAllowance', () => ({ useAllowance: () => ({ status: null, isLoading: false, error: undefined, mutate: jest.fn() }) }));
+jest.mock('@/lib/hooks/useHouseholdMembers', () => ({ useHouseholdMembers: () => ({ members: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
+jest.mock('@/lib/hooks/useMyInvitations', () => ({ useMyInvitations: () => ({ invitations: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
 jest.mock('swr', () => ({ ...jest.requireActual('swr'), mutate: jest.fn() }));
 
 const mockHousehold = useHousehold as jest.MockedFunction<typeof useHousehold>;
@@ -53,7 +58,6 @@ it('renders the three sections with combined spending + category_only tag for a 
   render(<HouseholdDashboardPage />);
 
   expect(screen.getByText('Combined spending')).toBeInTheDocument();
-  expect(screen.getByText('Contribution progress')).toBeInTheDocument();
   expect(screen.getByText('Shared goals')).toBeInTheDocument();
   expect(screen.getByText('No shared goals yet.')).toBeInTheDocument();
   expect(screen.getByText('Groceries')).toBeInTheDocument();
