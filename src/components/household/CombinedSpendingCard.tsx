@@ -8,7 +8,7 @@
  * categories already excluded server-side. category_only rows are tagged "total only".
  */
 
-import { Card, CardBody, VStack, HStack, Heading, Text, Progress, Badge } from '@chakra-ui/react';
+import { Box, Card, CardBody, VStack, HStack, Heading, Text, Progress, Badge } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { useHouseholdCategoryTotals } from '@/lib/hooks/useHouseholdCategoryTotals';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -26,9 +26,14 @@ export function CombinedSpendingCard() {
     <Card>
       <CardBody>
         <VStack align="stretch" spacing={3}>
-          <Heading as="h2" size="md" color="gray.700">
-            {t('combinedSpending')}
-          </Heading>
+          <Box>
+            <Heading as="h2" size="md" color="gray.700">
+              {t('combinedSpending')}
+            </Heading>
+            <Text fontSize="xs" color="gray.500">
+              {t('thisMonth')}
+            </Text>
+          </Box>
 
           {isLoading ? null : totals.length === 0 ? (
             <Text fontSize="sm" color="gray.600">

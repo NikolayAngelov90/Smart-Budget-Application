@@ -758,7 +758,7 @@ export interface Database {
           contributed: number;
         }[];
       };
-      // Story 13.10: date-bounded shared-category totals (private excluded; sums only)
+      // Story 13.10 / 13.8: date-bounded shared-category totals (private excluded; sums only)
       household_category_period_totals: {
         Args: {
           p_household_id: string;
@@ -768,6 +768,7 @@ export interface Database {
         Returns: {
           category_id: string;
           category_name: string;
+          visibility_level: VisibilityLevel;
           total: number;
         }[];
       };

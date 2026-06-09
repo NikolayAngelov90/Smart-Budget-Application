@@ -60,6 +60,7 @@
     "title": "Household",
     "subtitle": "Shared spending, contributions, and goals for your household.",
     "combinedSpending": "Combined spending",
+    "thisMonth": "This month",
     "contributionProgress": "Contribution progress",
     "sharedGoals": "Shared goals",
     "totalOnly": "total only",
