@@ -10,14 +10,14 @@
  */
 
 import { Box, Flex, VStack, Text, IconButton } from '@chakra-ui/react';
-import { ViewIcon, EditIcon, AddIcon, SettingsIcon } from '@chakra-ui/icons';
+import { ViewIcon, EditIcon, AddIcon, InfoIcon, SettingsIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { ComponentType } from 'react';
 import { HouseholdIcon } from '@/components/icons/HouseholdIcon';
 
-type NavKey = 'dashboard' | 'transactions' | 'household' | 'settings';
+type NavKey = 'dashboard' | 'transactions' | 'household' | 'insights' | 'settings';
 
 interface NavTab {
   key: NavKey;
@@ -25,13 +25,13 @@ interface NavTab {
   icon: ComponentType;
 }
 
-// Mobile bottom bar is space-constrained (4 tabs + Add). Household takes the slot that
-// was Insights; Insights remains in the desktop sidebar and at /insights.
+// 5 labelled tabs + the centre "Add" (2 on the left of Add, 3 on the right).
 const NAV_TABS: NavTab[] = [
   { key: 'dashboard', href: '/dashboard', icon: ViewIcon },
   { key: 'transactions', href: '/transactions', icon: EditIcon },
-  // "Add" center tab is rendered separately
+  // "Add" center tab is rendered separately (between index 1 and 2)
   { key: 'household', href: '/household', icon: HouseholdIcon },
+  { key: 'insights', href: '/insights', icon: InfoIcon },
   { key: 'settings', href: '/settings', icon: SettingsIcon },
 ];
 
