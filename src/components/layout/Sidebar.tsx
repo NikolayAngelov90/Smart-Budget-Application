@@ -1,7 +1,7 @@
 'use client';
 
 import { Box, VStack, Link as ChakraLink, Icon, HStack, Text, IconButton, Tooltip } from '@chakra-ui/react';
-import { ViewIcon, EditIcon, AtSignIcon, InfoIcon, SettingsIcon, StarIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { ViewIcon, EditIcon, AtSignIcon, InfoIcon, StarIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -14,7 +14,7 @@ const navItemKeys = [
   { key: 'goals' as const, href: '/goals', icon: StarIcon },
   { key: 'household' as const, href: '/household', icon: HouseholdIcon },
   { key: 'insights' as const, href: '/insights', icon: InfoIcon },
-  { key: 'settings' as const, href: '/settings', icon: SettingsIcon },
+  // Settings is reached from the header account menu (avatar → Account Settings), not the nav.
 ];
 
 interface SidebarProps {

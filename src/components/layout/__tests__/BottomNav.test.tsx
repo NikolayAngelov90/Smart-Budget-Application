@@ -40,7 +40,7 @@ describe('BottomNav', () => {
     mockUsePathname.mockReturnValue('/dashboard');
   });
 
-  it('renders all tab areas (Dashboard, Transactions, Add, Household, Insights, Settings)', () => {
+  it('renders all tab areas (Dashboard, Transactions, Add, Household, Insights)', () => {
     renderWithChakra(<BottomNav onAddClick={onAddClick} />);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('BottomNav', () => {
     expect(screen.getByText('Add')).toBeInTheDocument();
     expect(screen.getByText('Household')).toBeInTheDocument();
     expect(screen.getByText('Insights')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument();
   });
 
   it('calls onAddClick when the Add button is tapped', () => {
@@ -99,6 +99,5 @@ describe('BottomNav', () => {
     expect(screen.getByRole('link', { name: /^transactions$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^household$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^insights$/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /^settings$/i })).toBeInTheDocument();
   });
 });

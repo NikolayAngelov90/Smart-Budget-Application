@@ -10,14 +10,14 @@
  */
 
 import { Box, Flex, VStack, Text, IconButton } from '@chakra-ui/react';
-import { ViewIcon, EditIcon, AddIcon, InfoIcon, SettingsIcon } from '@chakra-ui/icons';
+import { ViewIcon, EditIcon, AddIcon, InfoIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { ComponentType } from 'react';
 import { HouseholdIcon } from '@/components/icons/HouseholdIcon';
 
-type NavKey = 'dashboard' | 'transactions' | 'household' | 'insights' | 'settings';
+type NavKey = 'dashboard' | 'transactions' | 'household' | 'insights';
 
 interface NavTab {
   key: NavKey;
@@ -25,14 +25,14 @@ interface NavTab {
   icon: ComponentType;
 }
 
-// 5 labelled tabs + the centre "Add" (2 on the left of Add, 3 on the right).
+// 4 labelled tabs + the centre "Add" (2 on each side). Settings is reached from the
+// header account menu (avatar → Account Settings), not the bottom bar.
 const NAV_TABS: NavTab[] = [
   { key: 'dashboard', href: '/dashboard', icon: ViewIcon },
   { key: 'transactions', href: '/transactions', icon: EditIcon },
   // "Add" center tab is rendered separately (between index 1 and 2)
   { key: 'household', href: '/household', icon: HouseholdIcon },
   { key: 'insights', href: '/insights', icon: InfoIcon },
-  { key: 'settings', href: '/settings', icon: SettingsIcon },
 ];
 
 interface BottomNavProps {

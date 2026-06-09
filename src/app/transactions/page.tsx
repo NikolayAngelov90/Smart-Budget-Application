@@ -16,7 +16,6 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   Box,
   Container,
@@ -53,7 +52,7 @@ import {
   ModalBody,
   Progress,
 } from '@chakra-ui/react';
-import { CloseIcon, SearchIcon, EditIcon, DeleteIcon, ChevronLeftIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon } from '@chakra-ui/icons';
+import { CloseIcon, SearchIcon, EditIcon, DeleteIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -676,21 +675,6 @@ function TransactionsContent() {
   return (
     <AppLayout>
       <Container maxW="container.xl" py={6}>
-        {/* Back to Dashboard Link (Story 5.6) */}
-        <Box mb={4}>
-          <Button
-            as={Link}
-            href="/dashboard"
-            leftIcon={<ChevronLeftIcon />}
-            variant="ghost"
-            colorScheme="blue"
-            size="sm"
-            _hover={{ bg: 'blue.50' }}
-          >
-            {t('backToDashboard')}
-          </Button>
-        </Box>
-
         {/* Page Header */}
         <Flex
           justify="space-between"
