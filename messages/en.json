@@ -78,6 +78,10 @@
     "contributeFailed": "Couldn't add your contribution. Please try again.",
     "invalidAmount": "Enter an amount greater than 0"
   },
+  "householdInsights": {
+    "heading": "Household insights",
+    "none": "No household insights yet — they appear once there's enough shared spending to compare month to month."
+  },
   "allowance": {
     "heading": "Personal allowance",
     "privacyNote": "Only you can see this. Your allowance and its spending are private — never shown to other household members.",

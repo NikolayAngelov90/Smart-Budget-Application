@@ -17,6 +17,7 @@ jest.mock('@/lib/hooks/useContributions', () => ({ useContributions: jest.fn() }
 jest.mock('@/lib/hooks/useUserPreferences', () => ({ useUserPreferences: () => ({ preferences: { currency_format: 'EUR' } }) }));
 jest.mock('@/lib/hooks/useRealtimeSubscription', () => ({ useRealtimeSubscription: jest.fn() }));
 jest.mock('@/lib/hooks/useHouseholdGoals', () => ({ useHouseholdGoals: () => ({ goals: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
+jest.mock('@/lib/hooks/useHouseholdInsights', () => ({ useHouseholdInsights: () => ({ insights: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
 jest.mock('swr', () => ({ ...jest.requireActual('swr'), mutate: jest.fn() }));
 
 const mockHousehold = useHousehold as jest.MockedFunction<typeof useHousehold>;

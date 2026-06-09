@@ -758,6 +758,19 @@ export interface Database {
           contributed: number;
         }[];
       };
+      // Story 13.10: date-bounded shared-category totals (private excluded; sums only)
+      household_category_period_totals: {
+        Args: {
+          p_household_id: string;
+          p_start: string;
+          p_end: string;
+        };
+        Returns: {
+          category_id: string;
+          category_name: string;
+          total: number;
+        }[];
+      };
     };
     Enums: {
       transaction_type: TransactionType;
@@ -906,6 +919,28 @@ export interface CreateHouseholdGoalInput {
   name: string;
   target_amount: number;
   deadline?: string | null;
+}
+
+// Story 13.10: Household-level AI insights
+/** Per-category aggregate total for a date window (from household_category_period_totals). */
+export interface HouseholdPeriodTotal {
+  category_id: string;
+  category_name: string;
+  total: number;
+}
+
+/** A generated household insight (computed on-demand; not persisted). */
+export interface HouseholdInsight {
+  type: 'household_category_change' | 'household_spend_change';
+  title: string;
+  description: string;
+  metadata: {
+    category_id?: string;
+    category_name?: string;
+    current_amount?: number;
+    previous_amount?: number;
+    percent_change?: number;
+  };
 }
 
 // Transaction with category details (for joined queries)

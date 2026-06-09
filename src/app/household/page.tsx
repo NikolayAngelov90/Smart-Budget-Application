@@ -21,6 +21,7 @@ import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { CombinedSpendingCard } from '@/components/household/CombinedSpendingCard';
 import { ContributionProgressCard } from '@/components/household/ContributionProgressCard';
 import { SharedGoalsCard } from '@/components/household/SharedGoalsCard';
+import { HouseholdInsightsCard } from '@/components/household/HouseholdInsightsCard';
 
 export default function HouseholdDashboardPage() {
   const t = useTranslations('householdDashboard');
@@ -35,6 +36,7 @@ export default function HouseholdDashboardPage() {
       globalMutate('/api/households/category-totals');
       globalMutate('/api/households/contributions');
       globalMutate('/api/households/goals'); // a contribution also logs a transaction → keep goals fresh
+      globalMutate('/api/households/insights'); // shared spend changed → recompute insights
     }, 150);
   }, []);
   useRealtimeSubscription(revalidate);
@@ -70,6 +72,9 @@ export default function HouseholdDashboardPage() {
         </Card>
       ) : (
         <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={6}>
+          <Box gridColumn={{ lg: '1 / -1' }}>
+            <HouseholdInsightsCard />
+          </Box>
           <CombinedSpendingCard />
           <ContributionProgressCard />
           <Box gridColumn={{ lg: '1 / -1' }}>
