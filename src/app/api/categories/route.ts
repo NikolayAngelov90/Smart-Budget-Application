@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
       .select(
         `
         id,
+        user_id,
         name,
         color,
         type,
@@ -152,6 +153,9 @@ export async function GET(request: NextRequest) {
       const usage = usageMap.get(category.id);
       return {
         ...category,
+        // Story 13.5 follow-up: lets the client show a share toggle only on the caller's
+        // own categories (you can't share a co-member's category).
+        isOwn: category.user_id === user.id,
         last_used_at: usage?.last_used_at || null,
         usage_count: usage?.usage_count || 0,
       };

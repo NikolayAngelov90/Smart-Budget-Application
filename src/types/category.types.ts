@@ -28,6 +28,7 @@ export interface Category {
   is_predefined: boolean;
   household_id?: string | null; // Story 13.5: set => shared household category
   visibility_level?: 'shared' | 'category_only' | 'private'; // Story 13.4
+  isOwn?: boolean; // Story 13.5 follow-up: true when the category belongs to the caller (GET only)
   created_at: string;
 }
 

@@ -53,6 +53,7 @@ import { useTranslations } from 'next-intl';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CategoryModal } from '@/components/categories/CategoryModal';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
+import { useHousehold } from '@/lib/hooks/useHousehold';
 import type { Category } from '@/types/category.types';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -74,8 +75,32 @@ export default function CategoriesPage() {
 
   // Fetch categories with SWR
   const { data, error, isLoading, mutate } = useSWR('/api/categories', fetcher);
+  const { household } = useHousehold();
+  const canShare = !!household;
 
   const categories: Category[] = data?.data || [];
+
+  // Story 13.5 follow-up: share / un-share any of the user's own categories (incl. default).
+  const handleToggleShare = async (category: Category) => {
+    const next = !category.household_id;
+    try {
+      const response = await fetch(`/api/categories/${category.id}/share`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shared: next }),
+      });
+      if (!response.ok) throw new Error('share failed');
+      await mutate();
+      toast({
+        title: next ? t('sharedToHousehold', { name: category.name }) : t('unsharedFromHousehold', { name: category.name }),
+        status: 'success',
+        duration: 2500,
+        isClosable: true,
+      });
+    } catch {
+      toast({ title: t('shareFailed'), status: 'error', duration: 3500, isClosable: true });
+    }
+  };
 
   // Filter categories by type
   const filteredCategories =
@@ -229,6 +254,8 @@ export default function CategoriesPage() {
                   error={error}
                   onEdit={handleEditClick}
                   onDelete={handleDeleteClick}
+                  canShare={canShare}
+                  onToggleShare={handleToggleShare}
                 />
               </TabPanel>
               <TabPanel px={0}>
@@ -238,6 +265,8 @@ export default function CategoriesPage() {
                   error={error}
                   onEdit={handleEditClick}
                   onDelete={handleDeleteClick}
+                  canShare={canShare}
+                  onToggleShare={handleToggleShare}
                 />
               </TabPanel>
               <TabPanel px={0}>
@@ -247,6 +276,8 @@ export default function CategoriesPage() {
                   error={error}
                   onEdit={handleEditClick}
                   onDelete={handleDeleteClick}
+                  canShare={canShare}
+                  onToggleShare={handleToggleShare}
                 />
               </TabPanel>
             </TabPanels>
@@ -283,6 +314,8 @@ interface CategoryListProps {
   error: unknown;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
+  canShare: boolean;
+  onToggleShare: (category: Category) => void;
 }
 
 function CategoryList({
@@ -291,6 +324,8 @@ function CategoryList({
   error,
   onEdit,
   onDelete,
+  canShare,
+  onToggleShare,
 }: CategoryListProps) {
   const t = useTranslations('categories');
 
@@ -338,6 +373,8 @@ function CategoryList({
           category={category}
           onEdit={onEdit}
           onDelete={onDelete}
+          canShare={canShare}
+          onToggleShare={onToggleShare}
         />
       ))}
     </Grid>
@@ -348,11 +385,16 @@ interface CategoryCardProps {
   category: Category;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
+  canShare: boolean;
+  onToggleShare: (category: Category) => void;
 }
 
-function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) {
+function CategoryCard({ category, onEdit, onDelete, canShare, onToggleShare }: CategoryCardProps) {
   const t = useTranslations('categories');
   const [isHovered, setIsHovered] = useState(false);
+  const isShared = !!category.household_id;
+  // You can share/un-share your OWN categories (predefined included) when in a household.
+  const showShareToggle = canShare && category.isOwn !== false;
 
   return (
     <Box
@@ -384,32 +426,52 @@ function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) {
                 {t('default')}
               </Badge>
             )}
+            {isShared && (
+              <Badge colorScheme="blue" fontSize="xs">
+                {t('sharedLabel')}
+              </Badge>
+            )}
           </HStack>
         </HStack>
 
-        {/* Edit and Delete Buttons for Custom Categories */}
-        {!category.is_predefined && (
+        {/* Actions: share toggle (any own category, incl. default) + edit/delete (custom only) */}
+        {(showShareToggle || !category.is_predefined) && (
           <HStack
             spacing={1}
             opacity={{ base: 1, md: isHovered ? 1 : 0 }}
             transition="opacity 0.2s"
+            flexShrink={0}
           >
-            <IconButton
-              aria-label={t('editCategoryAriaLabel')}
-              icon={<EditIcon />}
-              size="sm"
-              variant="ghost"
-              colorScheme="blue"
-              onClick={() => onEdit(category)}
-            />
-            <IconButton
-              aria-label={t('deleteCategoryAriaLabel')}
-              icon={<DeleteIcon />}
-              size="sm"
-              variant="ghost"
-              colorScheme="red"
-              onClick={() => onDelete(category)}
-            />
+            {showShareToggle && (
+              <Button
+                size="xs"
+                variant={isShared ? 'solid' : 'outline'}
+                colorScheme="blue"
+                onClick={() => onToggleShare(category)}
+              >
+                {isShared ? t('stopSharing') : t('shareWithHousehold')}
+              </Button>
+            )}
+            {!category.is_predefined && (
+              <>
+                <IconButton
+                  aria-label={t('editCategoryAriaLabel')}
+                  icon={<EditIcon />}
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="blue"
+                  onClick={() => onEdit(category)}
+                />
+                <IconButton
+                  aria-label={t('deleteCategoryAriaLabel')}
+                  icon={<DeleteIcon />}
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="red"
+                  onClick={() => onDelete(category)}
+                />
+              </>
+            )}
           </HStack>
         )}
       </HStack>
