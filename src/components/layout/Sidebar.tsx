@@ -5,12 +5,14 @@ import { ViewIcon, EditIcon, AtSignIcon, InfoIcon, SettingsIcon, StarIcon, Chevr
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { HouseholdIcon } from '@/components/icons/HouseholdIcon';
 
 const navItemKeys = [
   { key: 'dashboard' as const, href: '/dashboard', icon: ViewIcon },
   { key: 'transactions' as const, href: '/transactions', icon: EditIcon },
   { key: 'categories' as const, href: '/categories', icon: AtSignIcon },
   { key: 'goals' as const, href: '/goals', icon: StarIcon },
+  { key: 'household' as const, href: '/household', icon: HouseholdIcon },
   { key: 'insights' as const, href: '/insights', icon: InfoIcon },
   { key: 'settings' as const, href: '/settings', icon: SettingsIcon },
 ];
