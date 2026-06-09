@@ -82,17 +82,17 @@ function ProjectionRow({ projection, currency }: ProjectionRowProps) {
 
   return (
     <Flex
-      align="center"
+      direction={{ base: 'column', md: 'row' }}
+      align={{ base: 'stretch', md: 'center' }}
       justify="space-between"
       px={4}
       py={3}
       borderBottom="1px solid"
       borderColor="gray.100"
-      flexWrap="wrap"
       gap={2}
     >
-      {/* Left: color swatch + name + badges */}
-      <Flex align="center" gap={2} flex="1" minW={0}>
+      {/* Left: color swatch + name + badges (own full-width line on mobile) */}
+      <Flex align="center" gap={2} flex={{ md: 1 }} minW={0}>
         <Box
           w={3}
           h={3}
@@ -112,8 +112,14 @@ function ProjectionRow({ projection, currency }: ProjectionRowProps) {
         <TrendBadge trend={trend} trend_percentage={trend_percentage} />
       </Flex>
 
-      {/* Right: transaction count + monthly avg + annual projection */}
-      <Flex align="center" gap={4} flexShrink={0}>
+      {/* Right: transaction count + monthly avg + annual projection (spread on mobile) */}
+      <Flex
+        align="center"
+        gap={4}
+        flexShrink={0}
+        w={{ base: 'full', md: 'auto' }}
+        justify={{ base: 'space-between', md: 'flex-end' }}
+      >
         <Box textAlign="right">
           <Text fontSize="xs" color="gray.500">
             {t('transactions')}

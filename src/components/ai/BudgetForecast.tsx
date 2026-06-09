@@ -48,17 +48,17 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
 
   return (
     <Flex
-      align="center"
+      direction={{ base: 'column', md: 'row' }}
+      align={{ base: 'stretch', md: 'center' }}
       justify="space-between"
       px={4}
       py={3}
       borderBottom="1px solid"
       borderColor="gray.100"
-      flexWrap="wrap"
       gap={2}
     >
-      {/* Left: color swatch + name + risk badge */}
-      <Flex align="center" gap={2} flex="1" minW={0}>
+      {/* Left: color swatch + name + risk badge (own full-width line on mobile) */}
+      <Flex align="center" gap={2} flex={{ md: 1 }} minW={0}>
         <Box
           w={3}
           h={3}
@@ -81,8 +81,14 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
         ) : null}
       </Flex>
 
-      {/* Right: spent so far + projected EOM */}
-      <Flex align="center" gap={4} flexShrink={0}>
+      {/* Right: spent so far + projected EOM (spread on mobile) */}
+      <Flex
+        align="center"
+        gap={4}
+        flexShrink={0}
+        w={{ base: 'full', md: 'auto' }}
+        justify={{ base: 'space-between', md: 'flex-end' }}
+      >
         <Box textAlign="right">
           <Text fontSize="xs" color="gray.500">
             {t('spentSoFar')}
