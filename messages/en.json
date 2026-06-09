@@ -43,7 +43,16 @@
     "presetPartners": "Partners — share totals only",
     "presetApplied": "Preset applied to your shared categories",
     "presetFailed": "Couldn't apply the preset. Please try again.",
-    "viewDashboard": "View household dashboard"
+    "viewDashboard": "View household dashboard",
+    "cancel": "Cancel",
+    "you": "You",
+    "membersHeading": "Members",
+    "remove": "Remove",
+    "removeConfirmTitle": "Remove member?",
+    "removeConfirmBody": "Remove {email} from the household? Their access to all shared data is revoked immediately. Their personal data is kept, and shared history they created remains.",
+    "removeCta": "Remove",
+    "removed": "Member removed",
+    "removeFailed": "Couldn't remove the member. Please try again."
   },
   "householdDashboard": {
     "title": "Household",

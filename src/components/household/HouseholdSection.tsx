@@ -30,6 +30,7 @@ import NextLink from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { HouseholdInvites } from '@/components/household/HouseholdInvites';
+import { HouseholdMembers } from '@/components/household/HouseholdMembers';
 import { PendingInviteBanner } from '@/components/household/PendingInviteBanner';
 import { AllowanceCard } from '@/components/household/AllowanceCard';
 import { ContributionSplitCard } from '@/components/household/ContributionSplitCard';
@@ -131,6 +132,9 @@ export function HouseholdSection() {
               </Button>
 
               {household.role === 'admin' && <HouseholdInvites />}
+
+              {/* Story 13.11: member roster + admin removal */}
+              <HouseholdMembers isAdmin={household.role === 'admin'} />
 
               {/* Story 13.4: transparency preset (applies defaults to your shared categories) */}
               <Box>

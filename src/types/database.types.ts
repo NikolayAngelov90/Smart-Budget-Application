@@ -771,6 +771,18 @@ export interface Database {
           total: number;
         }[];
       };
+      // Story 13.11: membership-gated member roster (for the admin management UI)
+      household_members_list: {
+        Args: {
+          p_household_id: string;
+        };
+        Returns: {
+          user_id: string;
+          email: string;
+          role: HouseholdRole;
+          joined_at: string;
+        }[];
+      };
     };
     Enums: {
       transaction_type: TransactionType;
@@ -919,6 +931,17 @@ export interface CreateHouseholdGoalInput {
   name: string;
   target_amount: number;
   deadline?: string | null;
+}
+
+// Story 13.11: Member removal & access revocation
+/** A household member roster entry (from household_members_list), enriched with isSelf. */
+export interface HouseholdMemberListEntry {
+  user_id: string;
+  email: string;
+  role: HouseholdRole;
+  joined_at: string;
+  /** True for the requesting user's own row (can't be removed via the UI). */
+  isSelf: boolean;
 }
 
 // Story 13.10: Household-level AI insights
