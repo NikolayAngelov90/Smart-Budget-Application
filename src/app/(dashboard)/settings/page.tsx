@@ -63,6 +63,7 @@ import type { SupportedLocale } from '@/i18n/routing';
 import type { PDFReportData } from '@/types/export.types';
 import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
 import { FinancialDisclaimer } from '@/components/ai/FinancialDisclaimer';
+import { ValuesPlanSection } from '@/components/values/ValuesPlanSection';
 import { SUPPORTED_CURRENCIES, getEnabledCurrencies } from '@/lib/config/currencies';
 import { formatExchangeRate } from '@/lib/utils/currency';
 import type { ExchangeRateResponse } from '@/types/exchangeRate.types';
@@ -548,6 +549,9 @@ export default function SettingsPage() {
           </Card>
 
           {/* Household management moved to its own Household nav tab (/household). */}
+
+          {/* Story 14.1: Values-Based Spending Plan */}
+          <ValuesPlanSection />
 
           {/* AC-8.3.2: Account Information Section */}
           <Card>

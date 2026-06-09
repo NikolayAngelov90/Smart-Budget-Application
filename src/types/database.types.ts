@@ -705,6 +705,78 @@ export interface Database {
           }
         ];
       };
+      // Story 14.1: Values-based spending plan (owner-only). Table is `user_values`.
+      user_values: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          priority: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          priority?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          priority?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_values_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      value_categories: {
+        Row: {
+          id: string;
+          user_id: string;
+          value_id: string;
+          category_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          value_id: string;
+          category_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          value_id?: string;
+          category_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'value_categories_value_id_fkey';
+            columns: ['value_id'];
+            referencedRelation: 'user_values';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'value_categories_category_id_fkey';
+            columns: ['category_id'];
+            referencedRelation: 'categories';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -943,6 +1015,28 @@ export interface HouseholdMemberListEntry {
   joined_at: string;
   /** True for the requesting user's own row (can't be removed via the UI). */
   isSelf: boolean;
+}
+
+// Story 14.1: Values-based spending plan
+export type SpendingValue = Database['public']['Tables']['user_values']['Row'];
+export type ValueCategory = Database['public']['Tables']['value_categories']['Row'];
+
+/** A value plus the ids of the categories mapped to it. */
+export interface ValueWithCategories {
+  id: string;
+  name: string;
+  priority: number;
+  category_ids: string[];
+}
+
+export interface CreateValueInput {
+  name: string;
+  categoryIds?: string[];
+}
+
+export interface UpdateValueInput {
+  name?: string;
+  priority?: number;
 }
 
 // Story 13.10: Household-level AI insights
