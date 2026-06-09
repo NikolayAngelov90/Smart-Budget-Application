@@ -41,6 +41,8 @@
     "presetNewlyweds": "Newlyweds — share everything",
     "presetRoommates": "Roommates — share bills, keep the rest private",
     "presetPartners": "Partners — share totals only",
+    "presetCustom": "Custom",
+    "presetActive": "Active preset: {preset}",
     "presetApplied": "Preset applied to your shared categories",
     "presetFailed": "Couldn't apply the preset. Please try again.",
     "viewDashboard": "View household dashboard",

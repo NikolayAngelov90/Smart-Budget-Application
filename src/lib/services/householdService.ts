@@ -124,7 +124,7 @@ export async function getCurrentHousehold(userId: string): Promise<HouseholdWith
 
   const { data: membership, error } = await supabase
     .from('household_members')
-    .select('role, households(*)')
+    .select('role, preset, households(*)')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -138,7 +138,11 @@ export async function getCurrentHousehold(userId: string): Promise<HouseholdWith
 
   // `households(*)` returns the joined row (object for a to-one relationship).
   const household = membership.households as unknown as Household;
-  return { ...household, role: membership.role as HouseholdRole };
+  return {
+    ...household,
+    role: membership.role as HouseholdRole,
+    preset: (membership.preset ?? null) as HouseholdPreset | null,
+  };
 }
 
 /**

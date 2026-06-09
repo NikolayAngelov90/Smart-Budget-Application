@@ -54,6 +54,7 @@ export function HouseholdSection() {
       });
       if (!response.ok) throw new Error(t('presetFailed'));
       await globalMutate('/api/categories'); // visibility of the caller's shared categories changed
+      await mutate(); // refresh household so the picker reflects the now-saved preset
       toast({ title: t('presetApplied'), status: 'success', duration: 3000, isClosable: true });
     } catch (presetError) {
       toast({
@@ -147,6 +148,7 @@ export function HouseholdSection() {
                 </Text>
                 <Select
                   placeholder={t('presetChoose')}
+                  value={household.preset ?? ''}
                   isDisabled={isApplyingPreset}
                   onChange={(e) => {
                     if (e.target.value) handlePreset(e.target.value as HouseholdPreset);
@@ -156,7 +158,22 @@ export function HouseholdSection() {
                   <option value="newlyweds">{t('presetNewlyweds')}</option>
                   <option value="roommates">{t('presetRoommates')}</option>
                   <option value="partners">{t('presetPartners')}</option>
+                  <option value="custom">{t('presetCustom')}</option>
                 </Select>
+                {household.preset && (
+                  <Text fontSize="xs" color="gray.600" mt={1}>
+                    {t('presetActive', {
+                      preset:
+                        household.preset === 'newlyweds'
+                          ? t('presetNewlyweds')
+                          : household.preset === 'roommates'
+                            ? t('presetRoommates')
+                            : household.preset === 'partners'
+                              ? t('presetPartners')
+                              : t('presetCustom'),
+                    })}
+                  </Text>
+                )}
               </Box>
 
               {/* Story 13.6: private personal allowance (owner-only) */}

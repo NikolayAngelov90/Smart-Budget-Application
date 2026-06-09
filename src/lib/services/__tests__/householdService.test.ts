@@ -127,7 +127,7 @@ describe('getCurrentHousehold', () => {
     );
 
     const result = await getCurrentHousehold('user-1');
-    expect(result).toEqual({ ...HOUSEHOLD, role: 'admin' });
+    expect(result).toEqual({ ...HOUSEHOLD, role: 'admin', preset: null });
   });
 
   it('returns null when the user has no household', async () => {

@@ -837,8 +837,8 @@ export type HouseholdMember = Database['public']['Tables']['household_members'][
 export type HouseholdMemberInsert = Database['public']['Tables']['household_members']['Insert'];
 export type HouseholdMemberUpdate = Database['public']['Tables']['household_members']['Update'];
 
-/** A household plus the requesting user's role within it. */
-export type HouseholdWithRole = Household & { role: HouseholdRole };
+/** A household plus the requesting user's role + their chosen transparency preset. */
+export type HouseholdWithRole = Household & { role: HouseholdRole; preset?: HouseholdPreset | null };
 
 // Story 13.2: Household invitations
 export type HouseholdInvitation = Database['public']['Tables']['household_invitations']['Row'];
