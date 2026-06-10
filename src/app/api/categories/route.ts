@@ -69,15 +69,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const typeFilter = searchParams.get('type') as 'income' | 'expense' | null;
 
-    // Story 13.5: include the caller's household so shared categories are returned too.
-    const { data: membership } = await supabase
-      .from('household_members')
-      .select('household_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    const householdId = membership?.household_id ?? null;
-
-    // Query categories. Personal (user_id) + shared (household_id) — RLS also enforces this.
+    // Return ONLY the caller's own categories. A co-member's shared categories are NOT
+    // listed here — every member already has their own (seeded) categories, so including
+    // co-members' shared rows produced duplicate names (e.g. two "Groceries": yours + the
+    // shared one). Shared spend is viewed on the /household dashboard; this page manages
+    // YOUR categories. The caller's own shared categories still appear (via user_id) with
+    // the "Shared" badge + share/un-share toggle.
     const query = supabase
       .from('categories')
       .select(
@@ -92,13 +89,8 @@ export async function GET(request: NextRequest) {
         visibility_level,
         created_at
       `
-      );
-
-    if (householdId) {
-      query.or(`user_id.eq.${user.id},household_id.eq.${householdId}`);
-    } else {
-      query.eq('user_id', user.id);
-    }
+      )
+      .eq('user_id', user.id);
 
     // Apply type filter if specified
     if (typeFilter) {
