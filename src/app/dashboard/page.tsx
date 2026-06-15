@@ -30,6 +30,7 @@ import { RecoveryPlan } from '@/components/ai/RecoveryPlan';
 import { SeasonalAwareness } from '@/components/ai/SeasonalAwareness';
 import { ReengagementSummary } from '@/components/ai/ReengagementSummary';
 import { WeeklyDigestCard } from '@/components/ai/WeeklyDigestCard';
+import { ValuesSpendingCard } from '@/components/values/ValuesSpendingCard';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -60,6 +61,7 @@ export default function DashboardPage() {
         mutate('/api/dashboard/seasonal', undefined, { revalidate: true }),
         mutate('/api/reengagement', undefined, { revalidate: true }),
         mutate('/api/user/digest', undefined, { revalidate: true }),
+        mutate('/api/values/spending', undefined, { revalidate: true }),
       ]);
     }, [])
   );
@@ -188,6 +190,11 @@ export default function DashboardPage() {
         <MonthOverMonth />
       </Box>
 
+      {/* Spending by Value - Story 14.2 (progressive disclosure: renders null if no values plan) */}
+      <Box mb={{ base: 6, md: 8 }}>
+        <ValuesSpendingCard />
+      </Box>
+
       {/* Spending Heatmap - Story 11.3 (progressive disclosure: renders null if <7 days of data) */}
       <Box mb={{ base: 6, md: 8 }}>
         <SpendingHeatmap />
@@ -228,6 +235,7 @@ export default function DashboardPage() {
             mutate('/api/dashboard/stats', undefined, { revalidate: true }),
             mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),
             mutate('/api/dashboard/trends', undefined, { revalidate: true }),
+            mutate('/api/values/spending', undefined, { revalidate: true }),
           ]);
         }}
       />

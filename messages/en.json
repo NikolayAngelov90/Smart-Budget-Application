@@ -23,7 +23,15 @@
     "updated": "Value updated",
     "deleted": "Value deleted",
     "saveFailed": "Something went wrong. Please try again.",
-    "duplicateName": "You already have a value with that name."
+    "duplicateName": "You already have a value with that name.",
+    "spendingHeading": "Spending by Value",
+    "thisMonth": "This month",
+    "trendUp": "{pct}% more",
+    "trendDown": "{pct}% less",
+    "trendFlat": "Steady",
+    "misaligned": "Over-spending vs priority",
+    "unassigned": "Unassigned",
+    "unassignedHelp": "Spending in categories not linked to any value."
   },
   "common": {
     "appName": "Smart Budget Application",

@@ -1039,6 +1039,32 @@ export interface UpdateValueInput {
   priority?: number;
 }
 
+// Story 14.2: Values-context spending view
+/** One value's spend in the context of the user's plan (current month). */
+export interface ValueSpendRow {
+  id: string;
+  name: string;
+  /** 1-based priority rank (1 = highest priority). */
+  rank: number;
+  amount: number;
+  /** Share of overall (deduped) monthly spend, 0-100. */
+  percentage: number;
+  trendDirection: 'up' | 'down' | 'flat';
+  /** Rounded absolute % change vs the previous month (0 when no meaningful baseline). */
+  trendPct: number;
+  /** Low priority but a large share of spend — a gentle nudge, not an alarm. */
+  misaligned: boolean;
+}
+
+export interface ValuesSpendingView {
+  hasPlan: boolean;
+  /** Total monthly expense across all categories (deduped denominator). */
+  totalSpend: number;
+  values: ValueSpendRow[];
+  /** Spend in categories not mapped to any value. */
+  unassigned: { amount: number; percentage: number };
+}
+
 // Story 13.10: Household-level AI insights
 /** Per-category aggregate total for a date window (from household_category_period_totals). */
 export interface HouseholdPeriodTotal {

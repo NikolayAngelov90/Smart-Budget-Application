@@ -23,7 +23,15 @@
     "updated": "Ценността е обновена",
     "deleted": "Ценността е изтрита",
     "saveFailed": "Нещо се обърка. Моля, опитайте отново.",
-    "duplicateName": "Вече имате ценност с това име."
+    "duplicateName": "Вече имате ценност с това име.",
+    "spendingHeading": "Харчене по ценности",
+    "thisMonth": "Този месец",
+    "trendUp": "{pct}% повече",
+    "trendDown": "{pct}% по-малко",
+    "trendFlat": "Без промяна",
+    "misaligned": "Преразход спрямо приоритета",
+    "unassigned": "Без ценност",
+    "unassignedHelp": "Харчене в категории, които не са свързани с ценност."
   },
   "common": {
     "appName": "Smart Budget Application",
