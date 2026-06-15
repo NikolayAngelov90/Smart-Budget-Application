@@ -22,6 +22,7 @@ import {
   createTestUser,
   deleteTestUser,
   signInAsTestUser,
+  seedSingle,
 } from '@/lib/test-utils/rlsClient';
 
 const PWD = 'rls-test-passw0rd!';
@@ -44,23 +45,23 @@ rlsDescribe('Household isolation (Story 13.1)', () => {
     b1Id = await createTestUser(b1Email, PWD);
 
     // Household A: a1 (admin) + a2 (member). Household B: b1 (admin).
-    const { data: hA } = await svc
-      .from('households')
-      .insert({ name: 'Household A', created_by: a1Id })
-      .select('id')
-      .single();
-    householdAId = hA!.id;
+    // seedSingle throws a labelled error if the insert returns no row (e.g. a stack that
+    // stopped exposing tables to the Data API) instead of a cryptic null-deref below.
+    const hA = await seedSingle<{ id: string }>(
+      svc.from('households').insert({ name: 'Household A', created_by: a1Id }).select('id').single(),
+      'household A'
+    );
+    householdAId = hA.id;
     await svc.from('household_members').insert([
       { household_id: householdAId, user_id: a1Id, role: 'admin' },
       { household_id: householdAId, user_id: a2Id, role: 'member' },
     ]);
 
-    const { data: hB } = await svc
-      .from('households')
-      .insert({ name: 'Household B', created_by: b1Id })
-      .select('id')
-      .single();
-    householdBId = hB!.id;
+    const hB = await seedSingle<{ id: string }>(
+      svc.from('households').insert({ name: 'Household B', created_by: b1Id }).select('id').single(),
+      'household B'
+    );
+    householdBId = hB.id;
     await svc
       .from('household_members')
       .insert({ household_id: householdBId, user_id: b1Id, role: 'admin' });

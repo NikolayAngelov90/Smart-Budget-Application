@@ -97,6 +97,34 @@ export async function createTestUser(email: string, password: string): Promise<s
   return data.user.id;
 }
 
+/**
+ * Awaits a seeding query that should return exactly one row and throws a LOUD,
+ * labelled error if it doesn't. Use for service-role `insert(...).select(...).single()`
+ * seeds so a broken stack surfaces the real PostgREST error instead of a cryptic
+ * `Cannot read properties of null (reading 'id')` a line later.
+ *
+ * This caught us once: Supabase CLI v2.106.0 stopped auto-exposing new tables to the
+ * Data API, so service-role inserts returned no row and every seed null-dereffed.
+ *
+ * @example
+ *   const household = await seedSingle(
+ *     svc.from('households').insert({ name: 'A', created_by: aId }).select('id').single(),
+ *     'household A'
+ *   );
+ */
+export async function seedSingle<T>(
+  query: PromiseLike<{ data: T | null; error: { message: string } | null }>,
+  label: string
+): Promise<T> {
+  const { data, error } = await query;
+  if (error || !data) {
+    throw new Error(
+      `RLS seed "${label}" failed: ${error?.message ?? 'no row returned'} — is the table exposed to the Data API / granted to service_role?`
+    );
+  }
+  return data;
+}
+
 /** Deletes a seeded auth user (cascades app data via ON DELETE CASCADE). */
 export async function deleteTestUser(userId: string): Promise<void> {
   const admin = createServiceClient();

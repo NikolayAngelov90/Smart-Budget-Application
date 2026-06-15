@@ -33,7 +33,14 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned (do NOT use `latest`). Supabase CLI v2.106.0 (2026-06-11) shipped a
+          # breaking change: new public-schema objects are no longer auto-exposed to the
+          # Data API / auto-granted to roles by default. Under that default, PostgREST
+          # writes — even as service_role — return no rows, so every *.rls.test.ts seed
+          # (`insert().select().single()`) yields null and the suites fail. v2.105.0 is the
+          # last release before that change. Revisit when migrations add explicit grants
+          # (or config.toml opts back into auto-exposure) for the new behavior.
+          version: 2.105.0
 
       - name: Start Supabase (applies supabase/migrations/*)
         run: supabase start
