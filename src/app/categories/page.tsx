@@ -56,7 +56,15 @@ import { CategoryBadge } from '@/components/categories/CategoryBadge';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import type { Category } from '@/types/category.types';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Throws on HTTP errors so SWR surfaces the error state instead of treating
+// an error payload as a successful (empty) categories response.
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Request failed with status ${res.status}`);
+  }
+  return res.json();
+};
 
 export default function CategoriesPage() {
   const t = useTranslations('categories');

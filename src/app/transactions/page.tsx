@@ -98,8 +98,15 @@ interface TransactionResponse {
   offset: number;
 }
 
-// Fetcher function for SWR
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Fetcher function for SWR — throws on HTTP errors so SWR surfaces the error state
+// instead of rendering an error payload as data (which crashed the list view).
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Request failed with status ${res.status}`);
+  }
+  return res.json();
+};
 
 function TransactionsContent() {
   const t = useTranslations('transactions');
@@ -204,8 +211,8 @@ function TransactionsContent() {
     setCurrentPage(1);
   }, [startDate, endDate, categoryFilter, typeFilter, currencyFilter, debouncedSearch]);
 
-  // Build query string for API (Story 9-7: dynamic pagination)
-  const buildQueryString = useCallback(() => {
+  // Build the active filter params — shared by the list query and CSV export
+  const buildFilterParams = useCallback(() => {
     const params = new URLSearchParams();
 
     if (startDate) params.append('startDate', startDate);
@@ -214,11 +221,18 @@ function TransactionsContent() {
     if (typeFilter !== 'all') params.append('type', typeFilter);
     if (currencyFilter) params.append('currency', currencyFilter);
     if (debouncedSearch) params.append('search', debouncedSearch);
+
+    return params;
+  }, [startDate, endDate, categoryFilter, typeFilter, currencyFilter, debouncedSearch]);
+
+  // Build query string for API (Story 9-7: dynamic pagination)
+  const buildQueryString = useCallback(() => {
+    const params = buildFilterParams();
     params.append('limit', pageSize.toString());
     params.append('offset', ((currentPage - 1) * pageSize).toString());
 
     return params.toString();
-  }, [startDate, endDate, categoryFilter, typeFilter, currencyFilter, debouncedSearch, pageSize, currentPage]);
+  }, [buildFilterParams, pageSize, currentPage]);
 
   // Fetch transactions with optimized SWR configuration
   const {
@@ -524,12 +538,14 @@ function TransactionsContent() {
     }
   };
 
-  // Story 8.1: Export all transactions to CSV
+  // Story 8.1: Export transactions to CSV, respecting the active filters/date range
   const handleExportCSV = async () => {
     setIsExporting(true);
     try {
-      // Fetch all transactions without pagination
-      const response = await fetch('/api/transactions?all=true');
+      // Fetch all matching transactions without pagination
+      const exportParams = buildFilterParams();
+      exportParams.append('all', 'true');
+      const response = await fetch(`/api/transactions?${exportParams.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to fetch transactions for export');
       }
@@ -539,7 +555,9 @@ function TransactionsContent() {
       if (data.data.length === 0) {
         toast({
           title: t('noTransactionsToExport'),
-          description: t('addTransactionsFirst'),
+          description: hasActiveFilters
+            ? t('noTransactionsToExportFiltered')
+            : t('addTransactionsFirst'),
           status: 'info',
           duration: 3000,
         });
@@ -568,7 +586,9 @@ function TransactionsContent() {
       // AC-8.1.11: Success toast
       toast({
         title: t('csvExportedSuccess'),
-        description: t('exportedCount', { count: data.data.length }),
+        description: hasActiveFilters
+          ? t('exportedCountFiltered', { count: data.data.length })
+          : t('exportedCount', { count: data.data.length }),
         status: 'success',
         duration: 3000,
         isClosable: true,
