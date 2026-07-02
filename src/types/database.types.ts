@@ -740,6 +740,58 @@ export interface Database {
           }
         ];
       };
+      category_budgets: {
+        Row: {
+          id: string;
+          user_id: string;
+          household_id: string | null;
+          category_id: string;
+          period: 'monthly';
+          limit_amount: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          household_id?: string | null;
+          category_id: string;
+          period?: 'monthly';
+          limit_amount: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          household_id?: string | null;
+          category_id?: string;
+          period?: 'monthly';
+          limit_amount?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'category_budgets_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'category_budgets_category_id_fkey';
+            columns: ['category_id'];
+            referencedRelation: 'categories';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'category_budgets_household_id_fkey';
+            columns: ['household_id'];
+            referencedRelation: 'households';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       value_categories: {
         Row: {
           id: string;
@@ -1166,12 +1218,16 @@ export interface CategoryForecast {
   projected_eom: number;
   /** 3-month rolling average monthly spend (0 if no history) */
   historical_avg: number;
-  /** true when projected_eom > historical_avg and historical_avg > 0 */
+  /** true when projected_eom > resolved budget and resolved budget > 0 (ADR-025) */
   is_at_risk: boolean;
   /** Days from 1st of month to today (inclusive) */
   days_elapsed: number;
   /** Total calendar days in current month */
   days_in_month: number;
+  /** Resolved budget the at-risk check compared against (ADR-025) */
+  budget_amount: number;
+  /** Whether budget_amount is a user-set limit or the historical-average fallback */
+  budget_source: 'explicit' | 'historical_average';
 }
 
 /** API response shape from GET /api/dashboard/budget-forecast */
@@ -1181,6 +1237,44 @@ export interface ForecastResponse {
   hasCurrentMonthData: boolean;
   /** ISO date string of when the forecast was computed */
   generated_at: string;
+}
+
+// ============================================================================
+// CATEGORY BUDGET TYPES (ADR-025)
+// ============================================================================
+
+/** Row in the category_budgets table (migration 032) */
+export interface CategoryBudget {
+  id: string;
+  user_id: string;
+  household_id: string | null;
+  category_id: string;
+  period: 'monthly';
+  limit_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** One budgeted category with current-month usage, from GET /api/budgets */
+export interface BudgetSummary {
+  id: string;
+  category_id: string;
+  category_name: string;
+  category_color: string;
+  limit_amount: number;
+  /** Current-month expense total for the category */
+  spent: number;
+  /** limit_amount - spent (negative when over) */
+  remaining: number;
+  /** spent / limit_amount * 100, rounded to 1dp (100+ when over; 0 limit + spend = 999) */
+  pct_used: number;
+  status: 'ok' | 'warning' | 'over';
+}
+
+/** API response shape from GET /api/budgets */
+export interface BudgetsResponse {
+  budgets: BudgetSummary[];
+  month: string; // YYYY-MM
 }
 
 // ============================================================================

@@ -108,4 +108,62 @@ describe('evaluateNudge', () => {
       expect(typeof result!.body).toBe('string');
     });
   });
+
+  // ADR-025: the baseline may be an explicit user-set budget — copy must be honest
+  describe('explicit budget source (ADR-025)', () => {
+    it('defaults to historical-average copy when budgetSource is omitted', () => {
+      const result = evaluateNudge({ ...BASE, currentMonthTotal: 120, historicalAvg: 100 });
+      expect(result!.body).toContain('usual monthly average');
+      expect(result!.body).not.toContain('your budget is');
+    });
+
+    it('uses "your budget" copy when exceeded with an explicit budget', () => {
+      const result = evaluateNudge({
+        ...BASE,
+        currentMonthTotal: 120,
+        historicalAvg: 100,
+        budgetSource: 'explicit',
+      });
+      expect(result!.severity).toBe('exceeded');
+      expect(result!.title).toContain('exceeded your budget');
+      expect(result!.body).toContain('your budget is');
+      expect(result!.body).not.toContain('usual');
+    });
+
+    it('uses budget copy when approaching with an explicit budget', () => {
+      const result = evaluateNudge({
+        ...BASE,
+        currentMonthTotal: 85,
+        historicalAvg: 100,
+        budgetSource: 'explicit',
+      });
+      expect(result!.severity).toBe('approaching');
+      expect(result!.body).toContain('Dining budget');
+      expect(result!.body).not.toContain('usual');
+      // Explicit budgets are exact — no approximation tilde
+      expect(result!.body).not.toContain('~');
+    });
+
+    it('still returns null below 80% with an explicit budget', () => {
+      expect(
+        evaluateNudge({
+          ...BASE,
+          currentMonthTotal: 79,
+          historicalAvg: 100,
+          budgetSource: 'explicit',
+        })
+      ).toBeNull();
+    });
+
+    it('returns null for a zero baseline regardless of source', () => {
+      expect(
+        evaluateNudge({
+          ...BASE,
+          currentMonthTotal: 50,
+          historicalAvg: 0,
+          budgetSource: 'explicit',
+        })
+      ).toBeNull();
+    });
+  });
 });

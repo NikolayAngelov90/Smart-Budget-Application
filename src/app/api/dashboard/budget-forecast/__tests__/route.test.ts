@@ -48,9 +48,10 @@ function makeSupabaseMock(overrides: {
   currentTx?: object[];
   historicalTx?: object[];
   categories?: object[];
+  budgets?: object[];
   dbError?: object | null;
 }) {
-  const { user = { id: 'user-1' }, authError = null, currentTx = [], historicalTx = [], categories = [], dbError = null } = overrides;
+  const { user = { id: 'user-1' }, authError = null, currentTx = [], historicalTx = [], categories = [], budgets = [], dbError = null } = overrides;
 
   const makeQueryChain = (data: object[], error: object | null = null) => {
     const chain = {
@@ -59,11 +60,13 @@ function makeSupabaseMock(overrides: {
       gte: jest.fn().mockReturnThis(),
       lte: jest.fn().mockReturnThis(),
       lt: jest.fn().mockResolvedValue({ data, error }),
+      is: jest.fn().mockResolvedValue({ data, error }),
       order: jest.fn().mockResolvedValue({ data, error }),
     };
     // make the terminal call resolve
     chain.lte.mockResolvedValue({ data, error });
     chain.lt.mockResolvedValue({ data, error });
+    chain.is.mockResolvedValue({ data, error });
     chain.select.mockReturnValue(chain);
     chain.eq.mockReturnValue(chain);
     chain.gte.mockReturnValue(chain);
@@ -75,7 +78,8 @@ function makeSupabaseMock(overrides: {
     callCount++;
     if (callCount === 1) return makeQueryChain(currentTx, dbError);
     if (callCount === 2) return makeQueryChain(historicalTx, dbError);
-    return makeQueryChain(categories, dbError);
+    if (callCount === 3) return makeQueryChain(categories, dbError);
+    return makeQueryChain(budgets, dbError); // ADR-025: category_budgets query
   });
 
   return {
@@ -110,7 +114,7 @@ describe('GET /api/dashboard/budget-forecast', () => {
 
   it('calls computeEndOfMonthForecasts and returns forecasts when data exists', async () => {
     const fakeTx = { id: 't1', user_id: 'user-1', category_id: 'cat-1', amount: 100, type: 'expense', date: '2026-06-05', notes: null, currency: 'USD', exchange_rate: null, created_at: '2026-06-05T00:00:00Z', updated_at: '2026-06-05T00:00:00Z' };
-    const fakeForecast = { category_id: 'cat-1', category_name: 'Dining', category_color: '#aaa', spent_so_far: 100, projected_eom: 300, historical_avg: 200, is_at_risk: true, days_elapsed: 10, days_in_month: 30 };
+    const fakeForecast = { category_id: 'cat-1', category_name: 'Dining', category_color: '#aaa', spent_so_far: 100, projected_eom: 300, historical_avg: 200, is_at_risk: true, days_elapsed: 10, days_in_month: 30, budget_amount: 200, budget_source: 'historical_average' as const };
 
     mockCreateClient.mockResolvedValue(makeSupabaseMock({ currentTx: [fakeTx] }) as never);
     mockComputeForecasts.mockReturnValue([fakeForecast]);
@@ -136,6 +140,7 @@ describe('GET /api/dashboard/budget-forecast', () => {
       gte: jest.fn().mockReturnThis(),
       lte: jest.fn().mockRejectedValue(new Error('DB failure')),
       lt: jest.fn().mockRejectedValue(new Error('DB failure')),
+      is: jest.fn().mockRejectedValue(new Error('DB failure')),
     }));
     mockCreateClient.mockResolvedValue(mockClient as never);
 

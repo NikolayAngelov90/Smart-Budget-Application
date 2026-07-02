@@ -48,12 +48,16 @@ import {
   AlertDialogOverlay,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
-import useSWR from 'swr';
+import useSWR, { mutate as globalMutate } from 'swr';
 import { useTranslations } from 'next-intl';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CategoryModal } from '@/components/categories/CategoryModal';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
+import { BudgetEditor } from '@/components/categories/BudgetEditor';
 import { useHousehold } from '@/lib/hooks/useHousehold';
+import { useBudgets } from '@/lib/hooks/useBudgets';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import type { BudgetSummary } from '@/types/database.types';
 import type { Category } from '@/types/category.types';
 
 // Throws on HTTP errors so SWR surfaces the error state instead of treating
@@ -85,6 +89,22 @@ export default function CategoriesPage() {
   const { data, error, isLoading, mutate } = useSWR('/api/categories', fetcher);
   const { household } = useHousehold();
   const canShare = !!household;
+
+  // ADR-025: personal monthly budgets per category (with current-month usage)
+  const { data: budgetsData, mutate: mutateBudgets } = useBudgets();
+  const { preferences } = useUserPreferences();
+  const currencyCode = preferences?.currency_format || 'EUR';
+  const budgetByCategory = new Map<string, BudgetSummary>(
+    (budgetsData?.budgets ?? []).map((b) => [b.category_id, b])
+  );
+  // Until budgets load, hide the editor: a "Set budget" affordance over an unseen
+  // existing limit invites a silent overwrite.
+  const budgetsReady = budgetsData !== undefined;
+  // Budget changes move the forecast's at-risk baseline — revalidate both.
+  const handleBudgetChanged = () => {
+    mutateBudgets();
+    globalMutate('/api/dashboard/budget-forecast', undefined, { revalidate: true });
+  };
 
   const categories: Category[] = data?.data || [];
 
@@ -264,6 +284,10 @@ export default function CategoriesPage() {
                   onDelete={handleDeleteClick}
                   canShare={canShare}
                   onToggleShare={handleToggleShare}
+                  budgetByCategory={budgetByCategory}
+                  budgetsReady={budgetsReady}
+                  currencyCode={currencyCode}
+                  onBudgetChanged={handleBudgetChanged}
                 />
               </TabPanel>
               <TabPanel px={0}>
@@ -275,6 +299,10 @@ export default function CategoriesPage() {
                   onDelete={handleDeleteClick}
                   canShare={canShare}
                   onToggleShare={handleToggleShare}
+                  budgetByCategory={budgetByCategory}
+                  budgetsReady={budgetsReady}
+                  currencyCode={currencyCode}
+                  onBudgetChanged={handleBudgetChanged}
                 />
               </TabPanel>
               <TabPanel px={0}>
@@ -286,6 +314,10 @@ export default function CategoriesPage() {
                   onDelete={handleDeleteClick}
                   canShare={canShare}
                   onToggleShare={handleToggleShare}
+                  budgetByCategory={budgetByCategory}
+                  budgetsReady={budgetsReady}
+                  currencyCode={currencyCode}
+                  onBudgetChanged={handleBudgetChanged}
                 />
               </TabPanel>
             </TabPanels>
@@ -324,6 +356,10 @@ interface CategoryListProps {
   onDelete: (category: Category) => void;
   canShare: boolean;
   onToggleShare: (category: Category) => void;
+  budgetByCategory: Map<string, BudgetSummary>;
+  budgetsReady: boolean;
+  currencyCode: string;
+  onBudgetChanged: () => void;
 }
 
 function CategoryList({
@@ -334,6 +370,10 @@ function CategoryList({
   onDelete,
   canShare,
   onToggleShare,
+  budgetByCategory,
+  budgetsReady,
+  currencyCode,
+  onBudgetChanged,
 }: CategoryListProps) {
   const t = useTranslations('categories');
 
@@ -383,6 +423,10 @@ function CategoryList({
           onDelete={onDelete}
           canShare={canShare}
           onToggleShare={onToggleShare}
+          budget={budgetByCategory.get(category.id) ?? null}
+          budgetsReady={budgetsReady}
+          currencyCode={currencyCode}
+          onBudgetChanged={onBudgetChanged}
         />
       ))}
     </Grid>
@@ -395,14 +439,30 @@ interface CategoryCardProps {
   onDelete: (category: Category) => void;
   canShare: boolean;
   onToggleShare: (category: Category) => void;
+  budget: BudgetSummary | null;
+  budgetsReady: boolean;
+  currencyCode: string;
+  onBudgetChanged: () => void;
 }
 
-function CategoryCard({ category, onEdit, onDelete, canShare, onToggleShare }: CategoryCardProps) {
+function CategoryCard({
+  category,
+  onEdit,
+  onDelete,
+  canShare,
+  onToggleShare,
+  budget,
+  budgetsReady,
+  currencyCode,
+  onBudgetChanged,
+}: CategoryCardProps) {
   const t = useTranslations('categories');
   const [isHovered, setIsHovered] = useState(false);
   const isShared = !!category.household_id;
   // You can share/un-share your OWN categories (predefined included) when in a household.
   const showShareToggle = canShare && category.isOwn !== false;
+  // ADR-025: budgets apply to your own expense categories, once budgets have loaded
+  const canBudget = category.type === 'expense' && category.isOwn !== false && budgetsReady;
 
   return (
     <Box
@@ -483,6 +543,17 @@ function CategoryCard({ category, onEdit, onDelete, canShare, onToggleShare }: C
           </HStack>
         )}
       </HStack>
+
+      {/* ADR-025: monthly budget progress + set/edit/clear (own expense categories) */}
+      {canBudget && (
+        <BudgetEditor
+          categoryId={category.id}
+          categoryName={category.name}
+          budget={budget}
+          currencyCode={currencyCode}
+          onChanged={onBudgetChanged}
+        />
+      )}
     </Box>
   );
 }

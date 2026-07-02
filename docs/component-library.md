@@ -14,6 +14,8 @@ Comprehensive catalog of reusable React components in the Smart Budget Applicati
    - [CategoryBadge](#categorybadge)
    - [StatCard](#statcard)
    - [RecentTransactions](#recenttransactions)
+   - [BudgetHealthCard](#budgethealthcard)
+   - [BudgetEditor](#budgeteditor)
    - [AIInsightCard](#aiinsightcard)
 3. [Form Components](#form-components)
    - [CategoryMenu](#categorymenu)
@@ -255,6 +257,48 @@ mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true });
 ```
 
 **Related:** Dashboard page, Transactions page
+
+---
+
+### BudgetHealthCard
+
+**Location:** `src/components/dashboard/BudgetHealthCard.tsx`
+
+**Purpose:** Dashboard module (ADR-025) showing month-to-date progress against set category budgets, most urgent first. No props — fetches via `useBudgets()` (`/api/budgets`).
+
+**Features:**
+- Progressive disclosure: renders null until at least one budget exists (and stays quiet on errors)
+- Progress bars colored by status: green (<80%), orange (80–100%), red (>100%)
+- Overspend banner ("N categories over budget") + per-row over/remaining amounts
+- "Manage budgets" link to `/categories`
+
+**Related:** BudgetEditor, useBudgets, budgetResolver
+
+---
+
+### BudgetEditor
+
+**Location:** `src/components/categories/BudgetEditor.tsx`
+
+**Purpose:** Compact budget row for a category card (ADR-025): current-month progress against the monthly limit, or a "Set budget" affordance, with a popover to set/change/clear the limit.
+
+**Props:**
+```typescript
+interface BudgetEditorProps {
+  categoryId: string;
+  categoryName: string;
+  budget: BudgetSummary | null;  // null = no budget set
+  currencyCode: string;
+  onChanged: () => void;         // revalidate after save/clear
+}
+```
+
+**Features:**
+- Popover with a single decimal-validated amount input (Enter saves), Save + Clear actions
+- Progress bar colored by status; "over by" warning text when exceeded
+- Only rendered for the user's own expense categories
+
+**Related:** Categories page, BudgetHealthCard, `/api/budgets`
 
 ---
 

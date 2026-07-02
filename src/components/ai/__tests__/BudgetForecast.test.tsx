@@ -34,6 +34,7 @@ jest.mock('next-intl', () => ({
       onTrack: 'On track',
       noData: 'No spending data for this month yet',
     };
+    if (key === 'vsYourBudget') return `vs your budget of ${params?.amount ?? ''}`;
     return map[key] ?? key;
   },
 }));
@@ -64,6 +65,8 @@ function makeForecast(overrides: Partial<CategoryForecast> = {}): CategoryForeca
     is_at_risk: true,
     days_elapsed: 10,
     days_in_month: 30,
+    budget_amount: 200,
+    budget_source: 'historical_average',
     ...overrides,
   };
 }
@@ -133,10 +136,31 @@ describe('BudgetForecast', () => {
       expect(screen.getByText('On track')).toBeInTheDocument();
     });
 
-    it('shows NO badge for new categories with zero historical average (M2 fix)', () => {
+    // ADR-025: the "vs your budget" sub-line renders ONLY for explicit budgets so
+    // zero-config rows keep today's exact copy (frozen AC1).
+    it('shows the budget sub-line for explicit budgets only', () => {
       mockUseBudgetForecast.mockReturnValue(hookResult({
         hasCurrentMonthData: true,
-        forecasts: [makeForecast({ is_at_risk: false, historical_avg: 0 })],
+        forecasts: [
+          makeForecast({ budget_source: 'explicit', budget_amount: 250 }),
+          makeForecast({
+            category_id: 'cat-2',
+            category_name: 'Transport',
+            budget_source: 'historical_average',
+            budget_amount: 200,
+          }),
+        ],
+      }));
+      renderWithChakra(<BudgetForecast />);
+      // Exactly one sub-line: the explicit row; the average row keeps legacy copy
+      expect(screen.getAllByText(/vs your budget of/)).toHaveLength(1);
+    });
+
+    it('shows NO badge for new categories with zero historical average (M2 fix)', () => {
+      // No history + no explicit budget → resolver yields budget_amount 0 (no baseline)
+      mockUseBudgetForecast.mockReturnValue(hookResult({
+        hasCurrentMonthData: true,
+        forecasts: [makeForecast({ is_at_risk: false, historical_avg: 0, budget_amount: 0 })],
       }));
       renderWithChakra(<BudgetForecast />);
       expect(screen.queryByText('At risk')).not.toBeInTheDocument();

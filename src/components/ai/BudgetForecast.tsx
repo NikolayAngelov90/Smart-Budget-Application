@@ -42,9 +42,16 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
     category_color,
     spent_so_far,
     projected_eom,
-    historical_avg,
     is_at_risk,
+    budget_amount,
+    budget_source,
   } = forecast;
+
+  // ADR-025 honesty: name the comparison target when it's a user-set budget.
+  // Average-baseline rows keep today's exact copy (zero-config must stay unchanged),
+  // so the sub-line renders ONLY for explicit budgets.
+  const hasBaseline = budget_amount > 0;
+  const showBudgetLine = budget_source === 'explicit' && hasBaseline;
 
   return (
     <Flex
@@ -74,7 +81,7 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
           <Badge colorScheme="orange" flexShrink={0}>
             {t('atRisk')}
           </Badge>
-        ) : historical_avg > 0 ? (
+        ) : hasBaseline ? (
           <Badge colorScheme="green" flexShrink={0}>
             {t('onTrack')}
           </Badge>
@@ -108,6 +115,11 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
           >
             {formatAmount(projected_eom, currency)}
           </Text>
+          {showBudgetLine && (
+            <Text fontSize="xs" color="blue.600">
+              {t('vsYourBudget', { amount: formatAmount(budget_amount, currency) })}
+            </Text>
+          )}
         </Box>
       </Flex>
     </Flex>

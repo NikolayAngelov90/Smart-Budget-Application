@@ -3,13 +3,15 @@
  *
  * Pure computation module for end-of-month spending projections.
  * Extrapolates current daily spending rate to project full-month totals
- * and flags categories whose trajectory exceeds their 3-month historical average.
+ * and flags categories whose trajectory exceeds their resolved budget —
+ * the user's explicit limit when set (ADR-025), else the 3-month average.
  *
  * No Supabase, no side effects — pure input → output.
  */
 
 import { endOfMonth } from 'date-fns';
 import { calculateMean } from './spendingAnalysis';
+import { resolveBudget } from './budgetResolver';
 import type { Category, CategoryForecast, Transaction } from '@/types/database.types';
 
 export interface ForecastEngineInput {
@@ -19,6 +21,8 @@ export interface ForecastEngineInput {
   historicalTransactions: Transaction[];
   categories: Category[];
   today: Date;
+  /** Explicit monthly limits by category id (ADR-025); absent = average fallback */
+  budgets?: Map<string, number>;
 }
 
 /**
@@ -27,13 +31,14 @@ export interface ForecastEngineInput {
  * Algorithm:
  *   dailyRate    = spentSoFar / daysElapsed
  *   projectedEOM = spentSoFar + (dailyRate × daysRemaining)
- *   isAtRisk     = projectedEOM > historicalAvg (and historicalAvg > 0)
+ *   budget       = resolveBudget(explicit limit if set, else historical average)
+ *   isAtRisk     = projectedEOM > budget (and budget > 0)
  *
  * Returns categories sorted: at-risk first, then by projected_eom descending.
  * Categories with zero current-month spending are excluded.
  */
 export function computeEndOfMonthForecasts(input: ForecastEngineInput): CategoryForecast[] {
-  const { currentMonthTransactions, historicalTransactions, categories, today } = input;
+  const { currentMonthTransactions, historicalTransactions, categories, today, budgets } = input;
 
   const daysElapsed = today.getDate();
   const daysInMonth = endOfMonth(today).getDate();
@@ -74,7 +79,12 @@ export function computeEndOfMonthForecasts(input: ForecastEngineInput): Category
     const monthlyTotals = Array.from(historicalMonthMap.get(category.id)?.values() ?? []);
     const historicalAvg = Math.round(calculateMean(monthlyTotals) * 100) / 100;
 
-    const isAtRisk = historicalAvg > 0 && projectedEom > historicalAvg;
+    // ADR-025: at-risk compares against the resolved budget, not the raw average
+    const resolved = resolveBudget({
+      explicitLimit: budgets?.get(category.id) ?? null,
+      threeMonthAverage: historicalAvg,
+    });
+    const isAtRisk = resolved.amount > 0 && projectedEom > resolved.amount;
 
     forecasts.push({
       category_id: category.id,
@@ -86,6 +96,8 @@ export function computeEndOfMonthForecasts(input: ForecastEngineInput): Category
       is_at_risk: isAtRisk,
       days_elapsed: daysElapsed,
       days_in_month: daysInMonth,
+      budget_amount: Math.round(resolved.amount * 100) / 100,
+      budget_source: resolved.source,
     });
   }
 

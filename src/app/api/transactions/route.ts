@@ -439,10 +439,12 @@ export async function POST(request: NextRequest) {
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NudgePayload } from '@/types/database.types';
 import { calculateMean } from '@/lib/ai/spendingAnalysis';
+import { resolveBudget } from '@/lib/ai/budgetResolver';
 
 /**
  * Computes the nudge context for a single category after a new expense.
- * Fetches current-month total + 3-month historical average from the DB.
+ * Fetches current-month total + 3-month historical average + any explicit
+ * budget from the DB, then resolves the baseline via budgetResolver (ADR-025).
  */
 async function evaluateNudgeForTransaction(
   supabase: SupabaseClient,
@@ -464,7 +466,7 @@ async function evaluateNudgeForTransaction(
   const prefs = (profile?.preferences ?? {}) as { currency_format?: unknown };
   const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
 
-  const [currentResult, historicalResult, goalResult] = await Promise.all([
+  const [currentResult, historicalResult, goalResult, budgetResult] = await Promise.all([
     supabase
       .from('transactions')
       .select('amount')
@@ -489,6 +491,16 @@ async function evaluateNudgeForTransaction(
       .not('deadline', 'is', null)
       .order('deadline', { ascending: true })
       .limit(1),
+
+    // ADR-025: explicit personal budget for this category, if any
+    supabase
+      .from('category_budgets')
+      .select('limit_amount')
+      .eq('user_id', userId)
+      .eq('category_id', categoryId)
+      .eq('period', 'monthly')
+      .is('household_id', null)
+      .maybeSingle(),
   ]);
 
   if (currentResult.error || historicalResult.error) return null;
@@ -504,6 +516,11 @@ async function evaluateNudgeForTransaction(
   }
   const historicalAvg = calculateMean(Array.from(monthMap.values()));
 
+  // ADR-025: baseline = explicit budget when set, else the historical average.
+  // budgetResult errors are ignored (proxy fallback keeps nudges working).
+  const explicitLimit = budgetResult.error ? null : (budgetResult.data?.limit_amount ?? null);
+  const resolved = resolveBudget({ explicitLimit, threeMonthAverage: historicalAvg });
+
   const affectedGoalName = goalResult.data?.[0]?.name ?? null;
 
   return evaluateNudge({
@@ -511,7 +528,8 @@ async function evaluateNudgeForTransaction(
     categoryId,
     categoryName,
     currentMonthTotal,
-    historicalAvg,
+    historicalAvg: resolved.amount,
+    budgetSource: resolved.source,
     affectedGoalName,
     currency,
   });

@@ -237,4 +237,78 @@ describe('computeEndOfMonthForecasts', () => {
       expect(result[0]!.historical_avg).toBe(300);
     });
   });
+
+  // ADR-025: at-risk compares against the resolved budget (explicit limit when set)
+  describe('explicit budgets (ADR-025)', () => {
+    // avg = $600/mo; current $100 → projects to $300 (under avg, over a $250 limit)
+    const historical = [
+      makeTx('h1', 'cat-d', 600, '2026-05-15'),
+      makeTx('h2', 'cat-d', 600, '2026-04-15'),
+    ];
+    const current = [makeTx('t1', 'cat-d', 100, '2026-06-05')];
+
+    it('is zero-config identical when no budgets map is passed', () => {
+      const without = computeEndOfMonthForecasts({
+        currentMonthTransactions: current,
+        historicalTransactions: historical,
+        categories: [CAT_DINING],
+        today: TODAY,
+      });
+      const withEmpty = computeEndOfMonthForecasts({
+        currentMonthTransactions: current,
+        historicalTransactions: historical,
+        categories: [CAT_DINING],
+        today: TODAY,
+        budgets: new Map(),
+      });
+      expect(without).toEqual(withEmpty);
+      expect(without[0]!.is_at_risk).toBe(false); // $300 projected < $600 avg
+      expect(without[0]!.budget_amount).toBe(600);
+      expect(without[0]!.budget_source).toBe('historical_average');
+    });
+
+    it('flags at-risk against an explicit limit below the average', () => {
+      const result = computeEndOfMonthForecasts({
+        currentMonthTransactions: current,
+        historicalTransactions: historical,
+        categories: [CAT_DINING],
+        today: TODAY,
+        budgets: new Map([['cat-d', 250]]),
+      });
+      // $300 projected > $250 limit, even though it's under the $600 average
+      expect(result[0]!.is_at_risk).toBe(true);
+      expect(result[0]!.budget_amount).toBe(250);
+      expect(result[0]!.budget_source).toBe('explicit');
+      // historical_avg stays reported for transparency
+      expect(result[0]!.historical_avg).toBe(600);
+    });
+
+    it('clears at-risk with a generous explicit limit above the projection', () => {
+      const result = computeEndOfMonthForecasts({
+        currentMonthTransactions: current,
+        historicalTransactions: historical,
+        categories: [CAT_DINING],
+        today: TODAY,
+        budgets: new Map([['cat-d', 1000]]),
+      });
+      expect(result[0]!.is_at_risk).toBe(false);
+      expect(result[0]!.budget_amount).toBe(1000);
+      expect(result[0]!.budget_source).toBe('explicit');
+    });
+
+    it('gives a new category a baseline via an explicit limit (no history)', () => {
+      const result = computeEndOfMonthForecasts({
+        currentMonthTransactions: [makeTx('t1', 'cat-t', 200, '2026-06-05')],
+        historicalTransactions: [],
+        categories: [CAT_TRANSPORT],
+        today: TODAY,
+        budgets: new Map([['cat-t', 300]]),
+      });
+      // $600 projected > $300 limit — at risk even with zero history
+      expect(result[0]!.is_at_risk).toBe(true);
+      expect(result[0]!.budget_amount).toBe(300);
+      expect(result[0]!.budget_source).toBe('explicit');
+      expect(result[0]!.historical_avg).toBe(0);
+    });
+  });
 });

@@ -736,7 +736,27 @@
     "projectedEOM": "Projected EOM",
     "atRisk": "At risk",
     "onTrack": "On track",
+    "vsYourBudget": "vs your budget of {amount}",
     "noData": "No spending data for this month yet"
+  },
+  "budgets": {
+    "healthTitle": "Budget Health",
+    "manageBudgets": "Manage budgets",
+    "setBudget": "Set budget",
+    "edit": "Edit",
+    "save": "Save",
+    "clear": "Clear",
+    "monthlyLimitFor": "Monthly budget for {name}",
+    "invalidAmount": "Enter a valid amount (max 2 decimals)",
+    "savedSuccess": "Budget for {name} saved",
+    "saveFailed": "Failed to save budget",
+    "clearedSuccess": "Budget for {name} removed",
+    "clearFailed": "Failed to remove budget",
+    "spentOfLimit": "{spent} of {limit}",
+    "remainingThisMonth": "{amount} left this month",
+    "overBy": "Over budget by {amount}",
+    "overBudgetWarning": "{count, plural, one {1 category is over budget this month} other {# categories are over budget this month}}",
+    "progressAriaLabel": "{name} budget usage: {pct}%"
   },
   "projections": {
     "title": "Spending Forecast",

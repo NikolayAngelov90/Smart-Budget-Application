@@ -736,7 +736,27 @@
     "projectedEOM": "Прогноза",
     "atRisk": "Риск",
     "onTrack": "В рамките",
+    "vsYourBudget": "спрямо вашия бюджет от {amount}",
     "noData": "Все още няма разходи за този месец"
+  },
+  "budgets": {
+    "healthTitle": "Състояние на бюджета",
+    "manageBudgets": "Управление на бюджети",
+    "setBudget": "Задай бюджет",
+    "edit": "Редактирай",
+    "save": "Запази",
+    "clear": "Премахни",
+    "monthlyLimitFor": "Месечен бюджет за {name}",
+    "invalidAmount": "Въведете валидна сума (макс. 2 знака след запетаята)",
+    "savedSuccess": "Бюджетът за {name} е запазен",
+    "saveFailed": "Неуспешно запазване на бюджета",
+    "clearedSuccess": "Бюджетът за {name} е премахнат",
+    "clearFailed": "Неуспешно премахване на бюджета",
+    "spentOfLimit": "{spent} от {limit}",
+    "remainingThisMonth": "Остават {amount} този месец",
+    "overBy": "Над бюджета с {amount}",
+    "overBudgetWarning": "{count, plural, one {1 категория е над бюджета този месец} other {# категории са над бюджета този месец}}",
+    "progressAriaLabel": "Използване на бюджета за {name}: {pct}%"
   },
   "projections": {
     "title": "Прогноза за разходите",

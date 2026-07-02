@@ -32,6 +32,8 @@ import { ReengagementSummary } from '@/components/ai/ReengagementSummary';
 import { WeeklyDigestCard } from '@/components/ai/WeeklyDigestCard';
 import { ValuesSpendingCard } from '@/components/values/ValuesSpendingCard';
 import { RecentTransactions, RECENT_TRANSACTIONS_KEY } from '@/components/dashboard/RecentTransactions';
+import { BudgetHealthCard } from '@/components/dashboard/BudgetHealthCard';
+import { BUDGETS_KEY } from '@/lib/hooks/useBudgets';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -64,6 +66,7 @@ export default function DashboardPage() {
         mutate('/api/user/digest', undefined, { revalidate: true }),
         mutate('/api/values/spending', undefined, { revalidate: true }),
         mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
+        mutate(BUDGETS_KEY, undefined, { revalidate: true }),
       ]);
     }, [])
   );
@@ -150,6 +153,10 @@ export default function DashboardPage() {
       <Box mb={{ base: 6, md: 8 }}>
         <DashboardStats />
       </Box>
+
+      {/* Budget Health - ADR-025 (progressive disclosure: renders null with no budgets;
+          carries its own bottom margin so zero-budget users get no phantom gap) */}
+      <BudgetHealthCard />
 
       {/* AI Budget Coach - Story 6.2 */}
       <AIBudgetCoach />
@@ -244,6 +251,7 @@ export default function DashboardPage() {
             mutate('/api/dashboard/trends', undefined, { revalidate: true }),
             mutate('/api/values/spending', undefined, { revalidate: true }),
             mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
+            mutate(BUDGETS_KEY, undefined, { revalidate: true }),
           ]);
         }}
       />
