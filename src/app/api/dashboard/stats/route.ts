@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { format } from 'date-fns';
 import { createClient } from '@/lib/supabase/server';
 import { calculateTrend } from '@/lib/utils/currency';
 import { getExchangeRates } from '@/lib/services/exchangeRateService';
@@ -67,8 +68,10 @@ export async function GET(request: NextRequest) {
     // Preferred currency for cross-currency conversion (default EUR)
     const preferredCurrency = (searchParams.get('currency') || 'EUR').toUpperCase();
 
-    // Calculate current month date range
-    const currentDate = monthParam ? new Date(`${monthParam}-01`) : new Date();
+    // Calculate current month date range.
+    // transactions.date is a DATE column, so compare against plain YYYY-MM-DD strings —
+    // toISOString() shifts local midnight into the previous UTC day on non-UTC servers.
+    const currentDate = monthParam ? new Date(`${monthParam}-01T00:00:00`) : new Date();
     const currentMonthStart = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),
@@ -77,10 +80,7 @@ export async function GET(request: NextRequest) {
     const currentMonthEnd = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth() + 1,
-      0,
-      23,
-      59,
-      59
+      0
     );
 
     // Calculate previous month date range
@@ -92,10 +92,7 @@ export async function GET(request: NextRequest) {
     const previousMonthEnd = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),
-      0,
-      23,
-      59,
-      59
+      0
     );
 
     // Query current month aggregation
@@ -103,8 +100,8 @@ export async function GET(request: NextRequest) {
       .from('transactions')
       .select('amount, type, currency, exchange_rate')
       .eq('user_id', user.id)
-      .gte('date', currentMonthStart.toISOString())
-      .lte('date', currentMonthEnd.toISOString());
+      .gte('date', format(currentMonthStart, 'yyyy-MM-dd'))
+      .lte('date', format(currentMonthEnd, 'yyyy-MM-dd'));
 
     if (currentError) {
       logger.error('Dashboard', 'Error fetching current month stats:', currentError);
@@ -119,8 +116,8 @@ export async function GET(request: NextRequest) {
       .from('transactions')
       .select('amount, type, currency, exchange_rate')
       .eq('user_id', user.id)
-      .gte('date', previousMonthStart.toISOString())
-      .lte('date', previousMonthEnd.toISOString());
+      .gte('date', format(previousMonthStart, 'yyyy-MM-dd'))
+      .lte('date', format(previousMonthEnd, 'yyyy-MM-dd'));
 
     if (previousError) {
       logger.error('Dashboard', 'Error fetching previous month stats:', previousError);
