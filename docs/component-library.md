@@ -13,6 +13,7 @@ Comprehensive catalog of reusable React components in the Smart Budget Applicati
 2. [Data Display Components](#data-display-components)
    - [CategoryBadge](#categorybadge)
    - [StatCard](#statcard)
+   - [RecentTransactions](#recenttransactions)
    - [AIInsightCard](#aiinsightcard)
 3. [Form Components](#form-components)
    - [CategoryMenu](#categorymenu)
@@ -198,12 +199,16 @@ interface StatCardProps {
   colorScheme?: string;               // Chakra color (green, red, blue)
   icon?: ReactNode;                   // Optional icon
   isLoading?: boolean;                // Show skeleton
+  trendIsPositiveGood?: boolean;      // false for costs: up-arrow = red (default true)
+  showTrend?: boolean;                // false hides arrow/percent, shows only trendLabel
 }
 ```
 
 **Features:**
 - Skeleton loading state (smooth UX during data fetch)
 - Trend arrow (↑ for positive, ↓ for negative)
+- Trend color reflects whether the change is good news (`trendIsPositiveGood`),
+  so rising expenses read as red even though the arrow points up
 - Responsive font sizes (smaller on mobile)
 - Color-coded by scheme (green for positive, red for negative)
 - Card styling with shadow and border
@@ -226,6 +231,30 @@ import { formatCurrency } from '@/lib/utils/currency';
 **Visual:** White card with large value (e.g., "$1,500"), small label above, small trend below with arrow.
 
 **Related:** DashboardStats (container), Dashboard page
+
+---
+
+### RecentTransactions
+
+**Location:** `src/components/dashboard/RecentTransactions.tsx`
+
+**Purpose:** Dashboard module showing the latest 5 transactions with a "View all" link to `/transactions`. No props — fetches `/api/transactions?limit=5&offset=0` via SWR (key exported as `RECENT_TRANSACTIONS_KEY`) and revalidates on realtime transaction events.
+
+**Features:**
+- Loading skeletons, error alert, and quiet empty state
+- Category dot badge, user-preference date format, notes preview
+- Signed amounts colored by type (green income, red expense) in the transaction currency
+
+**Usage:**
+```tsx
+import { RecentTransactions, RECENT_TRANSACTIONS_KEY } from '@/components/dashboard/RecentTransactions';
+
+<RecentTransactions />
+// After creating a transaction elsewhere:
+mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true });
+```
+
+**Related:** Dashboard page, Transactions page
 
 ---
 

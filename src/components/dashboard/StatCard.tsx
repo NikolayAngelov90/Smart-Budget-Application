@@ -26,6 +26,16 @@ export interface StatCardProps {
   colorScheme: 'green' | 'red';
   icon?: React.ReactElement;
   isLoading?: boolean;
+  /**
+   * Whether an upward trend is good news (income/balance) or bad news (expenses).
+   * Controls the trend arrow color: good = green, bad = red. Defaults to true.
+   */
+  trendIsPositiveGood?: boolean;
+  /**
+   * When false, the arrow + percentage are hidden and only trendLabel is shown
+   * (e.g. savings rate with no income recorded yet). Defaults to true.
+   */
+  showTrend?: boolean;
 }
 
 export function StatCard({
@@ -36,9 +46,13 @@ export function StatCard({
   colorScheme,
   icon,
   isLoading = false,
+  trendIsPositiveGood = true,
+  showTrend = true,
 }: StatCardProps) {
   // Determine trend type for arrow direction
   const trendType = trend >= 0 ? 'increase' : 'decrease';
+  const trendIsGood = trendIsPositiveGood ? trend >= 0 : trend <= 0;
+  const trendColor = trendIsGood ? 'green.500' : 'red.500';
 
   if (isLoading) {
     return (
@@ -96,8 +110,8 @@ export function StatCard({
         </StatNumber>
 
         <StatHelpText fontSize={{ base: '0.75rem', md: '0.875rem' }} color="gray.600" mb={0}>
-          <StatArrow type={trendType} />
-          {Math.abs(trend).toFixed(2)}% {trendLabel}
+          {showTrend && <StatArrow type={trendType} color={trendColor} />}
+          {showTrend ? `${Math.abs(trend).toFixed(1)}% ${trendLabel}` : trendLabel}
         </StatHelpText>
       </Stat>
     </Box>

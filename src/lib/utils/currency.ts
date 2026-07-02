@@ -96,8 +96,12 @@ export function formatExchangeRate(
 
 export function calculateTrend(current: number, previous: number): number {
   if (previous === 0) {
-    return current > 0 ? 100 : 0;
+    if (current > 0) return 100;
+    if (current < 0) return -100;
+    return 0;
   }
 
-  return ((current - previous) / previous) * 100;
+  // Divide by |previous| so the sign always reflects the direction of change,
+  // even when the previous value is negative (e.g. a negative monthly balance).
+  return ((current - previous) / Math.abs(previous)) * 100;
 }

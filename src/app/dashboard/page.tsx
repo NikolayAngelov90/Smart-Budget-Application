@@ -31,6 +31,7 @@ import { SeasonalAwareness } from '@/components/ai/SeasonalAwareness';
 import { ReengagementSummary } from '@/components/ai/ReengagementSummary';
 import { WeeklyDigestCard } from '@/components/ai/WeeklyDigestCard';
 import { ValuesSpendingCard } from '@/components/values/ValuesSpendingCard';
+import { RecentTransactions, RECENT_TRANSACTIONS_KEY } from '@/components/dashboard/RecentTransactions';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -62,6 +63,7 @@ export default function DashboardPage() {
         mutate('/api/reengagement', undefined, { revalidate: true }),
         mutate('/api/user/digest', undefined, { revalidate: true }),
         mutate('/api/values/spending', undefined, { revalidate: true }),
+        mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
       ]);
     }, [])
   );
@@ -185,6 +187,11 @@ export default function DashboardPage() {
         </Box>
       </Grid>
 
+      {/* Recent Transactions — latest activity at a glance */}
+      <Box mb={{ base: 6, md: 8 }}>
+        <RecentTransactions />
+      </Box>
+
       {/* Month-over-Month Comparison - Story 5.5 */}
       <Box mb={{ base: 6, md: 8 }}>
         <MonthOverMonth />
@@ -236,6 +243,7 @@ export default function DashboardPage() {
             mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),
             mutate('/api/dashboard/trends', undefined, { revalidate: true }),
             mutate('/api/values/spending', undefined, { revalidate: true }),
+            mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
           ]);
         }}
       />

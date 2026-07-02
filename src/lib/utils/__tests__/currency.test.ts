@@ -171,7 +171,18 @@ describe('calculateTrend', () => {
     expect(calculateTrend(100, 0)).toBe(100);
   });
 
+  test('returns -100 when previous is 0 and current is negative', () => {
+    expect(calculateTrend(-100, 0)).toBe(-100);
+  });
+
   test('returns 0 when both are 0', () => {
     expect(calculateTrend(0, 0)).toBe(0);
+  });
+
+  test('sign reflects direction of change when previous is negative', () => {
+    // Improved from -100 to +50 → positive trend
+    expect(calculateTrend(50, -100)).toBe(150);
+    // Worsened from -100 to -200 → negative trend
+    expect(calculateTrend(-200, -100)).toBe(-100);
   });
 });
