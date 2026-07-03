@@ -30,6 +30,7 @@ import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { GoalCard } from '@/components/goals/GoalCard';
 import { GoalForm } from '@/components/goals/GoalForm';
 import { WishlistSection } from '@/components/goals/WishlistSection';
+import { WhatIfSimulator } from '@/components/goals/WhatIfSimulator';
 export default function GoalsPage() {
   const t = useTranslations('goals');
   const { goals, isLoading, mutate } = useGoals();
@@ -99,6 +100,9 @@ export default function GoalsPage() {
 
         {/* Wishlist with budget impact — Story 14.3 (FR15) */}
         <WishlistSection />
+
+        {/* "What If" savings simulator — Story 14.4 (FR16, exploratory only) */}
+        <WhatIfSimulator />
       </Box>
 
       {/* Create goal modal */}

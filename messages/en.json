@@ -787,6 +787,23 @@
     "showHistory": "Show history ({count})",
     "hideHistory": "Hide history"
   },
+  "whatIf": {
+    "title": "\"What If\" Simulator",
+    "subtitle": "Try out spending changes and see the projected savings — nothing is saved or applied.",
+    "emptyState": "Once you have a few months of spending history, you can simulate changes here.",
+    "loadFailed": "Unable to load the simulator.",
+    "avgPerMonth": "~{amount}/mo",
+    "reducedTo": "−{pct}% → {amount}/mo",
+    "sliderAriaLabel": "Reduce {name} spending by percentage",
+    "subscriptionsHeading": "Cancel a subscription",
+    "cancelSubscription": "Cancel {name} ({amount}/mo)",
+    "monthlySavings": "Projected monthly savings",
+    "annualSavings": "Projected annual savings",
+    "goalEarlierMonths": "You'd reach your {goal} goal about {months} months earlier",
+    "goalEarlierDays": "You'd reach your {goal} goal about {days, plural, one {1 day} other {# days}} earlier",
+    "reset": "Reset",
+    "exploratoryDisclaimer": "Exploratory only — your budgets, transactions, and subscriptions are not changed."
+  },
   "projections": {
     "title": "Spending Forecast",
     "subtitle": "Based on last {count} months of data",

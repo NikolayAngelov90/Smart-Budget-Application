@@ -1378,6 +1378,55 @@ export interface WishlistResponse {
 }
 
 // ============================================================================
+// WHAT-IF SIMULATION TYPES (Story 14.4 / FR16)
+// ============================================================================
+
+/** A category eligible for slider adjustment (positive 3-month average spend) */
+export interface WhatIfCategory {
+  category_id: string;
+  name: string;
+  color: string;
+  /** 3-month average monthly expense (preferred currency, rounded 2dp) */
+  avg_monthly: number;
+}
+
+/** An active detected subscription offered for cancel-simulation */
+export interface WhatIfSubscription {
+  id: string;
+  name: string;
+  /** Recurring charge normalized to a monthly amount (rounded 2dp) */
+  monthly_amount: number;
+}
+
+/** Static simulation context from GET /api/what-if (all math runs client-side) */
+export interface WhatIfContextResponse {
+  /** false when the user has no positive-average expense categories */
+  hasData: boolean;
+  categories: WhatIfCategory[];
+  subscriptions: WhatIfSubscription[];
+  /** Nearest unmet future-deadline goal, or null */
+  goal: {
+    name: string;
+    target_amount: number;
+    current_amount: number;
+    deadline: string; // YYYY-MM-DD
+  } | null;
+}
+
+/** Result of a what-if projection (whatIfEngine) — exploratory only, never persisted */
+export interface WhatIfProjection {
+  monthly_savings: number;
+  annual_savings: number;
+  /** Null when no goal, zero savings, met target, or past deadline */
+  goal_impact: {
+    goal_name: string;
+    days_earlier: number;
+    /** days_earlier / 30.44, rounded to 1dp */
+    months_earlier: number;
+  } | null;
+}
+
+// ============================================================================
 // RECOVERY PLAN TYPES (Story 12.4 / FR4)
 // ============================================================================
 
