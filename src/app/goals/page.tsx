@@ -29,6 +29,7 @@ import { useGoals } from '@/lib/hooks/useGoals';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { GoalCard } from '@/components/goals/GoalCard';
 import { GoalForm } from '@/components/goals/GoalForm';
+import { WishlistSection } from '@/components/goals/WishlistSection';
 export default function GoalsPage() {
   const t = useTranslations('goals');
   const { goals, isLoading, mutate } = useGoals();
@@ -95,6 +96,9 @@ export default function GoalsPage() {
             ))}
           </SimpleGrid>
         )}
+
+        {/* Wishlist with budget impact — Story 14.3 (FR15) */}
+        <WishlistSection />
       </Box>
 
       {/* Create goal modal */}

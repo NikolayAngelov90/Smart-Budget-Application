@@ -792,6 +792,52 @@ export interface Database {
           }
         ];
       };
+      wishlist_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          category_id: string | null;
+          name: string;
+          price: number;
+          status: 'active' | 'purchased' | 'removed';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category_id?: string | null;
+          name: string;
+          price: number;
+          status?: 'active' | 'purchased' | 'removed';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category_id?: string | null;
+          name?: string;
+          price?: number;
+          status?: 'active' | 'purchased' | 'removed';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'wishlist_items_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'wishlist_items_category_id_fkey';
+            columns: ['category_id'];
+            referencedRelation: 'categories';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       value_categories: {
         Row: {
           id: string;
@@ -1275,6 +1321,56 @@ export interface BudgetSummary {
 export interface BudgetsResponse {
   budgets: BudgetSummary[];
   month: string; // YYYY-MM
+}
+
+// ============================================================================
+// WISHLIST TYPES (Story 14.3 / FR15)
+// ============================================================================
+
+export type WishlistStatus = 'active' | 'purchased' | 'removed';
+
+/** Row in the wishlist_items table (migration 033) */
+export interface WishlistItem {
+  id: string;
+  user_id: string;
+  category_id: string | null;
+  name: string;
+  price: number;
+  status: WishlistStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Computed at read time by wishlistImpactEngine — never persisted */
+export interface WishlistItemImpact {
+  /** Current month income − expenses − price (always present) */
+  month_balance_after: number;
+  /** Explicit category budget impact; null when no budget or no category linked */
+  category_budget: {
+    category_name: string;
+    limit_amount: number;
+    /** limit − spent − price (negative = purchase exceeds the budget) */
+    remaining_after: number;
+    exceeds_budget: boolean;
+  } | null;
+  /** Delay to the nearest-deadline unmet goal; null when no such goal */
+  goal_delay: {
+    goal_name: string;
+    delay_days: number;
+  } | null;
+  /** Highest-priority value mapped to the linked category; null without plan/category */
+  aligned_value: string | null;
+}
+
+/** Wishlist item enriched with its computed impact, from GET /api/wishlist */
+export interface WishlistItemWithImpact extends WishlistItem {
+  category_name: string | null;
+  impact: WishlistItemImpact;
+}
+
+/** API response shape from GET /api/wishlist */
+export interface WishlistResponse {
+  items: WishlistItemWithImpact[];
 }
 
 // ============================================================================
