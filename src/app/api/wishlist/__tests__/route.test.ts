@@ -1,13 +1,12 @@
 /**
+ * @jest-environment node
+ *
  * Wishlist API Route Tests — Story 14.3
+ * (pragma must live in the FIRST docblock — Jest ignores later ones)
  *
  * GET /api/wishlist — items with read-time impact (real engine, mocked data layer)
  * POST /api/wishlist — create with zod validation
  * PATCH /api/wishlist/:id — status transitions
- */
-
-/**
- * @jest-environment node
  */
 
 jest.mock('next/server', () => ({
@@ -72,7 +71,7 @@ const mockGetValuesPlan = getValuesPlan as jest.MockedFunction<typeof getValuesP
 // Chainable query stub: every method returns `this`; awaiting resolves to `result`.
 function chain(result: { data: unknown; error: unknown }) {
   const q: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'gte', 'lte', 'in', 'is', 'not', 'order', 'limit']) {
+  for (const m of ['select', 'eq', 'gt', 'gte', 'lte', 'in', 'is', 'not', 'order', 'limit']) {
     q[m] = jest.fn(() => q);
   }
   q.then = (resolve: (v: unknown) => unknown) => resolve(result);
@@ -213,6 +212,65 @@ describe('GET /api/wishlist', () => {
     expect(item.impact.aligned_value).toBeNull();
   });
 
+  it('nulls the month balance (never fabricates −price) when month totals fail', async () => {
+    mockCreateClient.mockResolvedValue(
+      makeSupabase({
+        transactions: { data: null, error: { message: 'boom' } },
+        categories: { data: [], error: null },
+        goals: { data: [], error: null },
+      }) as never
+    );
+    mockListWishlist.mockResolvedValue([{ ...ITEM, category_id: null }]);
+
+    const res = await GET();
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.items[0].impact.month_balance_after).toBeNull();
+  });
+
+  it('suppresses the budget line (never spent:0) when the spend query fails', async () => {
+    mockCreateClient.mockResolvedValue(
+      makeSupabase({
+        transactions: [
+          { data: [{ amount: 2000, type: 'income', exchange_rate: null }], error: null },
+          { data: null, error: { message: 'boom' } }, // per-category spend query
+        ],
+        category_budgets: { data: [{ category_id: 'cat-1', limit_amount: 300 }], error: null },
+        goals: { data: [], error: null },
+        categories: { data: [{ id: 'cat-1', name: 'Electronics' }], error: null },
+      }) as never
+    );
+    mockListWishlist.mockResolvedValue([ITEM]);
+
+    const res = await GET();
+    const body = await res.json();
+    expect(body.items[0].impact.category_budget).toBeNull();
+    // Month balance is unaffected by the spend-query failure
+    expect(body.items[0].impact.month_balance_after).toBe(1900);
+  });
+
+  it('returns null impact projections for purchased/removed items', async () => {
+    mockCreateClient.mockResolvedValue(
+      makeSupabase({
+        transactions: {
+          data: [{ amount: 2000, type: 'income', exchange_rate: null }],
+          error: null,
+        },
+        category_budgets: { data: [{ category_id: 'cat-1', limit_amount: 300 }], error: null },
+        goals: { data: [FUTURE_GOAL], error: null },
+        categories: { data: [{ id: 'cat-1', name: 'Electronics' }], error: null },
+      }) as never
+    );
+    mockListWishlist.mockResolvedValue([{ ...ITEM, status: 'purchased' }]);
+
+    const res = await GET();
+    const body = await res.json();
+    const impact = body.items[0].impact;
+    expect(impact.month_balance_after).toBeNull();
+    expect(impact.category_budget).toBeNull();
+    expect(impact.goal_delay).toBeNull();
+  });
+
   it('converts foreign-currency month totals via the stored rate', async () => {
     mockCreateClient.mockResolvedValue(
       makeSupabase({
@@ -263,6 +321,18 @@ describe('POST /api/wishlist', () => {
     expect(res.status).toBe(201);
     expect(body.data).toEqual(ITEM);
     expect(mockCreateItem).toHaveBeenCalledWith('user-1', 'Headphones', 100, VALID_UUID);
+  });
+
+  it.each([
+    ['name at exactly 100 chars', { name: 'x'.repeat(100), price: 10 }],
+    ['price at the minimum granularity', { name: 'X', price: 0.01 }],
+    ['large 2-decimal price (float-epsilon regression)', { name: 'X', price: 1234567890.12 }],
+    ['price at the max cap', { name: 'X', price: 9_999_999_999.99 }],
+  ])('accepts boundary input: %s', async (_label, body) => {
+    mockCreateClient.mockResolvedValue(makeSupabase() as never);
+    mockCreateItem.mockResolvedValue(ITEM);
+    const res = await POST(makeRequest(body));
+    expect(res.status).toBe(201);
   });
 
   it('maps WishlistCategoryError to 400', async () => {

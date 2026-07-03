@@ -5,8 +5,9 @@
  * POST /api/wishlist { name, price, category_id? } - add an item
  *
  * Impact enrichments (month balance, category budget, goal delay, value alignment)
- * degrade independently to null on failure — the list itself never 500s because a
- * migration isn't applied or an optional feature has no data (AC #7).
+ * degrade independently to null on failure (AC #7) — an enrichment query error can
+ * never 500 the list. The wishlist_items table itself (migration 033) is required;
+ * without it GET fails like any other unapplied-migration endpoint.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,7 +38,9 @@ const createSchema = z.object({
     .positive()
     .finite()
     .max(9_999_999_999.99)
-    .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6, {
+    // toFixed-based check stays exact at any magnitude (a fixed epsilon fails
+    // for legitimate 2-decimal values >= ~1e8 where float error exceeds it)
+    .refine((v) => Number(v.toFixed(2)) === v, {
       message: 'Price can have maximum 2 decimal places',
     }),
   category_id: z.string().uuid().nullable().optional(),
@@ -68,6 +71,7 @@ export async function GET() {
     }
 
     const today = new Date();
+    const todayKey = toLocalISODate(today);
     const monthStart = toLocalISODate(new Date(today.getFullYear(), today.getMonth(), 1));
     const monthEnd = toLocalISODate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
 
@@ -88,11 +92,15 @@ export async function GET() {
         .eq('user_id', user.id)
         .eq('period', 'monthly')
         .is('household_id', null),
+      // Future deadlines only, server-side — otherwise expired/met goals fill the
+      // window and starve out the true nearest goal (unmet filter stays client-side;
+      // PostgREST can't compare two columns).
       genericClient
         .from('goals')
         .select('name, target_amount, current_amount, deadline')
         .eq('user_id', user.id)
         .not('deadline', 'is', null)
+        .gt('deadline', todayKey)
         .order('deadline', { ascending: true })
         .limit(10),
       supabase
@@ -105,7 +113,9 @@ export async function GET() {
       }),
     ]);
 
-    // Month totals — degrade to zeros with a warning rather than failing the list
+    // Month totals — on failure the balance becomes null downstream (an honest
+    // "unknown" beats fabricating income 0 − expenses 0 − price = a red −price).
+    const monthTotalsKnown = !txResult.error;
     let monthIncome = 0;
     let monthExpenses = 0;
     if (txResult.error) {
@@ -135,15 +145,14 @@ export async function GET() {
       (categoriesResult.error ? [] : (categoriesResult.data ?? [])).map((c) => [c.id, c.name])
     );
 
-    // Nearest ACTIVE goal: soonest future deadline with an unmet target
+    // Nearest ACTIVE goal: query returned future deadlines only; pick first unmet
     let nearestGoal: GoalRow | null = null;
     if (goalsResult.error) {
       logger.warn('Wishlist', 'goals unavailable:', goalsResult.error);
     } else {
-      const todayKey = toLocalISODate(today);
       nearestGoal =
         ((goalsResult.data ?? []) as GoalRow[]).find(
-          (g) => g.deadline > todayKey && g.target_amount > g.current_amount
+          (g) => g.target_amount > g.current_amount
         ) ?? null;
     }
 
@@ -151,6 +160,9 @@ export async function GET() {
     // separately (the month-totals query doesn't carry category_id) and only for
     // linked categories that actually have a budget — usually zero or a few ids.
     const spendByCategory = new Map<string, number>();
+    // On failure, suppress the budget line entirely — "spent: 0" would render a
+    // confidently wrong "leaves your full budget" instead of no line.
+    let spendKnown = true;
     const budgetedLinkedCategoryIds = Array.from(
       new Set(
         items
@@ -169,6 +181,7 @@ export async function GET() {
         .in('category_id', budgetedLinkedCategoryIds);
       if (spendError) {
         logger.warn('Wishlist', 'category spend unavailable:', spendError);
+        spendKnown = false;
       } else {
         for (const tx of spendRows ?? []) {
           const amount = tx.exchange_rate ? tx.amount * tx.exchange_rate : tx.amount;
@@ -180,9 +193,30 @@ export async function GET() {
     const enriched: WishlistItemWithImpact[] = items.map((item) => {
       const categoryName = item.category_id ? (categoryNames.get(item.category_id) ?? null) : null;
 
+      // Highest-priority value mapped to the linked category (plan is priority ASC)
+      const alignedValueName = item.category_id
+        ? (plan.find((v) => v.category_ids.includes(item.category_id!))?.name ?? null)
+        : null;
+
+      // Hypothetical-purchase math only applies to ACTIVE items — a purchased
+      // item's real transaction is (or will be) in the month totals, so keeping
+      // the projection would double-count it.
+      if (item.status !== 'active') {
+        return {
+          ...item,
+          category_name: categoryName,
+          impact: {
+            month_balance_after: null,
+            category_budget: null,
+            goal_delay: null,
+            aligned_value: alignedValueName,
+          },
+        };
+      }
+
       const limitAmount = item.category_id ? budgetByCategory.get(item.category_id) : undefined;
       const categoryBudget =
-        item.category_id && limitAmount !== undefined && categoryName
+        item.category_id && limitAmount !== undefined && categoryName && spendKnown
           ? {
               categoryName,
               limitAmount,
@@ -190,30 +224,27 @@ export async function GET() {
             }
           : null;
 
-      // Highest-priority value mapped to the linked category (plan is priority ASC)
-      const alignedValueName = item.category_id
-        ? (plan.find((v) => v.category_ids.includes(item.category_id!))?.name ?? null)
-        : null;
+      const impact = computeWishlistImpact({
+        price: item.price,
+        monthIncome,
+        monthExpenses,
+        categoryBudget,
+        nearestGoal: nearestGoal
+          ? {
+              name: nearestGoal.name,
+              targetAmount: nearestGoal.target_amount,
+              currentAmount: nearestGoal.current_amount,
+              deadline: nearestGoal.deadline,
+            }
+          : null,
+        alignedValueName,
+        today,
+      });
 
       return {
         ...item,
         category_name: categoryName,
-        impact: computeWishlistImpact({
-          price: item.price,
-          monthIncome,
-          monthExpenses,
-          categoryBudget,
-          nearestGoal: nearestGoal
-            ? {
-                name: nearestGoal.name,
-                targetAmount: nearestGoal.target_amount,
-                currentAmount: nearestGoal.current_amount,
-                deadline: nearestGoal.deadline,
-              }
-            : null,
-          alignedValueName,
-          today,
-        }),
+        impact: monthTotalsKnown ? impact : { ...impact, month_balance_after: null },
       };
     });
 

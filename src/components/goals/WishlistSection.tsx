@@ -63,9 +63,11 @@ export function WishlistSection() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [formError, setFormError] = useState('');
+  // Per-field errors so each message is aria-associated with its own input
+  const [nameError, setNameError] = useState('');
+  const [priceError, setPriceError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [updatingIds, setUpdatingIds] = useState<ReadonlySet<string>>(new Set());
   const [showHistory, setShowHistory] = useState(false);
 
   const items = data?.items ?? [];
@@ -79,11 +81,16 @@ export function WishlistSection() {
     const normalizedPrice = price.trim().replace(',', '.');
     const parsedPrice = parseFloat(normalizedPrice);
     if (!trimmedName || trimmedName.length > 100) {
-      setFormError(t('invalidName'));
+      setNameError(t('invalidName'));
       return;
     }
-    if (!PRICE_PATTERN.test(price.trim()) || isNaN(parsedPrice) || parsedPrice <= 0) {
-      setFormError(t('invalidPrice'));
+    if (
+      !PRICE_PATTERN.test(price.trim()) ||
+      isNaN(parsedPrice) ||
+      parsedPrice <= 0 ||
+      parsedPrice > 9_999_999_999.99 // mirror the server cap so the field-level hint shows
+    ) {
+      setPriceError(t('invalidPrice'));
       return;
     }
 
@@ -105,7 +112,8 @@ export function WishlistSection() {
       setName('');
       setPrice('');
       setCategoryId('');
-      setFormError('');
+      setNameError('');
+      setPriceError('');
       mutate();
       toast({ title: t('addedSuccess', { name: trimmedName }), status: 'success', duration: 2500, isClosable: true });
     } catch (err) {
@@ -122,19 +130,37 @@ export function WishlistSection() {
   };
 
   const handleStatusChange = async (item: WishlistItemWithImpact, status: WishlistStatus) => {
-    setUpdatingId(item.id);
+    if (updatingIds.has(item.id)) return;
+    setUpdatingIds((prev) => new Set(prev).add(item.id));
+
+    const flipStatus = (current: typeof data) =>
+      current
+        ? { items: current.items.map((i) => (i.id === item.id ? { ...i, status } : i)) }
+        : { items: [] };
+
     try {
-      const response = await fetch(`/api/wishlist/${item.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-      if (!response.ok) throw new Error('Failed to update wishlist item');
-      mutate();
+      // Optimistic: flip the status in the cache immediately, roll back on error,
+      // then revalidate so the server recomputes impact for the new status.
+      await mutate(
+        async (current) => {
+          const response = await fetch(`/api/wishlist/${item.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+          });
+          if (!response.ok) throw new Error('Failed to update wishlist item');
+          return flipStatus(current);
+        },
+        { optimisticData: flipStatus, rollbackOnError: true, revalidate: true }
+      );
     } catch {
       toast({ title: t('updateFailed'), status: 'error', duration: 4000, isClosable: true });
     } finally {
-      setUpdatingId(null);
+      setUpdatingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
     }
   };
 
@@ -158,7 +184,7 @@ export function WishlistSection() {
       <Card mb={4}>
         <CardBody>
           <SimpleGrid columns={{ base: 1, md: 4 }} spacing={3} alignItems="end">
-            <FormControl isInvalid={!!formError && !name.trim()}>
+            <FormControl isInvalid={!!nameError}>
               <FormLabel fontSize="sm" mb={1}>
                 {t('itemName')}
               </FormLabel>
@@ -168,11 +194,12 @@ export function WishlistSection() {
                 placeholder={t('itemNamePlaceholder')}
                 onChange={(e) => {
                   setName(e.target.value);
-                  setFormError('');
+                  setNameError('');
                 }}
               />
+              {nameError && <FormErrorMessage>{nameError}</FormErrorMessage>}
             </FormControl>
-            <FormControl isInvalid={!!formError && !!name.trim()}>
+            <FormControl isInvalid={!!priceError}>
               <FormLabel fontSize="sm" mb={1}>
                 {t('price')}
               </FormLabel>
@@ -182,7 +209,7 @@ export function WishlistSection() {
                 value={price}
                 onChange={(e) => {
                   setPrice(e.target.value);
-                  setFormError('');
+                  setPriceError('');
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -191,6 +218,7 @@ export function WishlistSection() {
                   }
                 }}
               />
+              {priceError && <FormErrorMessage>{priceError}</FormErrorMessage>}
             </FormControl>
             <FormControl>
               <FormLabel fontSize="sm" mb={1}>
@@ -217,25 +245,21 @@ export function WishlistSection() {
               {t('addItem')}
             </Button>
           </SimpleGrid>
-          {formError && (
-            <FormControl isInvalid mt={2}>
-              <FormErrorMessage mt={0}>{formError}</FormErrorMessage>
-            </FormControl>
-          )}
         </CardBody>
       </Card>
 
-      {/* List states */}
+      {/* List states — with keepPreviousData, stale data keeps rendering through a
+          transient revalidation error; the alert shows only when nothing is cached */}
       {isLoading && !data && <Skeleton height="96px" borderRadius="md" data-testid="wishlist-skeleton" />}
 
-      {!isLoading && error && (
+      {!isLoading && error && !data && (
         <Alert status="error" borderRadius="md">
           <AlertIcon />
           {t('loadFailed')}
         </Alert>
       )}
 
-      {!error && data && activeItems.length === 0 && !showHistory && (
+      {data && activeItems.length === 0 && !showHistory && (
         <Card>
           <CardBody>
             <Text color="gray.500" fontSize="sm" textAlign="center" py={2}>
@@ -245,7 +269,7 @@ export function WishlistSection() {
         </Card>
       )}
 
-      {!error && activeItems.length > 0 && (
+      {activeItems.length > 0 && (
         <Card>
           <CardBody p={0}>
             {activeItems.map((item) => (
@@ -253,7 +277,7 @@ export function WishlistSection() {
                 key={item.id}
                 item={item}
                 currencyCode={currencyCode}
-                isUpdating={updatingId === item.id}
+                isUpdating={updatingIds.has(item.id)}
                 onStatusChange={handleStatusChange}
               />
             ))}
@@ -269,7 +293,7 @@ export function WishlistSection() {
                 key={item.id}
                 item={item}
                 currencyCode={currencyCode}
-                isUpdating={updatingId === item.id}
+                isUpdating={updatingIds.has(item.id)}
                 onStatusChange={handleStatusChange}
               />
             ))}

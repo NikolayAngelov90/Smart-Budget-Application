@@ -1343,8 +1343,12 @@ export interface WishlistItem {
 
 /** Computed at read time by wishlistImpactEngine — never persisted */
 export interface WishlistItemImpact {
-  /** Current month income − expenses − price (always present) */
-  month_balance_after: number;
+  /**
+   * Current month income − expenses − price. Null when month totals were
+   * unavailable (honest "unknown" beats a fabricated −price) and for
+   * non-active items (a purchase already made is no longer hypothetical).
+   */
+  month_balance_after: number | null;
   /** Explicit category budget impact; null when no budget or no category linked */
   category_budget: {
     category_name: string;

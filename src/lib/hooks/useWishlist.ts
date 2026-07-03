@@ -6,7 +6,7 @@
  * SWR hook for the caller's wishlist items with read-time impact analysis.
  */
 
-import useSWR from 'swr';
+import useSWR, { type KeyedMutator } from 'swr';
 import type { WishlistResponse } from '@/types/database.types';
 
 export const WISHLIST_KEY = '/api/wishlist';
@@ -23,7 +23,8 @@ export interface UseWishlistResult {
   data: WishlistResponse | undefined;
   error: Error | undefined;
   isLoading: boolean;
-  mutate: () => void;
+  /** Full SWR mutator so callers can do optimistic cache updates */
+  mutate: KeyedMutator<WishlistResponse>;
 }
 
 export function useWishlist(): UseWishlistResult {

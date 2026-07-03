@@ -99,14 +99,32 @@ function makeItem(overrides: Partial<WishlistItemWithImpact> = {}): WishlistItem
   };
 }
 
-const hookResult = (overrides: Partial<ReturnType<typeof useWishlist>>) =>
-  ({
+// SWR-like mutate stub: executes async function updaters (the optimistic path
+// runs the PATCH inside the updater), passing the current cache data through.
+const makeMutate = (currentData: () => unknown) =>
+  jest.fn(async (updater?: unknown) => {
+    if (typeof updater === 'function') {
+      return (updater as (d: unknown) => Promise<unknown>)(currentData());
+    }
+    return undefined;
+  });
+
+const hookResult = (overrides: Partial<ReturnType<typeof useWishlist>>) => {
+  const result = {
     data: undefined,
     error: undefined,
     isLoading: false,
-    mutate: jest.fn(),
     ...overrides,
-  }) as ReturnType<typeof useWishlist>;
+  } as ReturnType<typeof useWishlist>;
+  if (!overrides.mutate) {
+    result.mutate = makeMutate(() => result.data) as unknown as ReturnType<
+      typeof useWishlist
+    >['mutate'];
+  }
+  return result;
+};
+
+const ORIGINAL_FETCH = global.fetch;
 
 describe('WishlistSection', () => {
   beforeEach(() => {
@@ -115,6 +133,10 @@ describe('WishlistSection', () => {
       ok: true,
       json: async () => ({ data: {} }),
     }) as jest.Mock;
+  });
+
+  afterAll(() => {
+    global.fetch = ORIGINAL_FETCH;
   });
 
   it('renders the heading, subtitle and add form', () => {
@@ -247,13 +269,14 @@ describe('WishlistSection', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  it('marks an item purchased via PATCH', async () => {
-    const mutate = jest.fn();
-    mockUseWishlist.mockReturnValue(hookResult({ data: { items: [makeItem()] }, mutate }));
+  it('marks an item purchased via PATCH (optimistic mutate)', async () => {
+    const result = hookResult({ data: { items: [makeItem()] } });
+    mockUseWishlist.mockReturnValue(result);
     renderWithChakra(<WishlistSection />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Purchased' }));
 
+    // The PATCH runs inside the optimistic mutate updater
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/wishlist/w-1',
@@ -263,7 +286,10 @@ describe('WishlistSection', () => {
         })
       );
     });
-    expect(mutate).toHaveBeenCalled();
+    expect(result.mutate).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ rollbackOnError: true, revalidate: true })
+    );
   });
 
   it('shows the history toggle when purchased/removed items exist', () => {

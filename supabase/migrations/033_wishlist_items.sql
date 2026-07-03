@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS wishlist_items (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_wishlist_items_user ON wishlist_items (user_id);
+-- (user_id, status) also serves plain user_id lookups as a prefix — one index suffices.
 CREATE INDEX IF NOT EXISTS idx_wishlist_items_user_status ON wishlist_items (user_id, status);
 
 DROP TRIGGER IF EXISTS update_wishlist_items_updated_at ON wishlist_items;
@@ -47,18 +47,15 @@ CREATE POLICY "Users can insert their own wishlist items"
       )
     )
   );
+-- UPDATE deliberately checks ownership ONLY. Re-validating category_id here would
+-- brick status-only updates when a linked shared category is later reassigned to
+-- the household admin (13-11 member removal) — RLS has no OLD/NEW to detect "column
+-- unchanged". The INSERT policy fully guards category linkage; the app never
+-- changes category_id on update, and a direct caller writing a foreign category id
+-- only pollutes their own row (name/budget lookups elsewhere are owner-filtered).
 DROP POLICY IF EXISTS "Users can update their own wishlist items" ON wishlist_items;
 CREATE POLICY "Users can update their own wishlist items"
-  ON wishlist_items FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (
-    auth.uid() = user_id
-    AND (
-      category_id IS NULL
-      OR category_id IN (
-        SELECT id FROM categories
-        WHERE categories.user_id = auth.uid() AND categories.type = 'expense'
-      )
-    )
-  );
+  ON wishlist_items FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Users can delete their own wishlist items" ON wishlist_items;
 CREATE POLICY "Users can delete their own wishlist items"
   ON wishlist_items FOR DELETE USING (auth.uid() = user_id);

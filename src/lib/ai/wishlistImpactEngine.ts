@@ -50,7 +50,11 @@ function parseLocalDate(dateString: string): Date | null {
   return new Date(y, m - 1, d);
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
+// Normalize -0 so a balance in (−0.005, 0) doesn't render as "-€0.00"
+const round2 = (n: number) => {
+  const r = Math.round(n * 100) / 100;
+  return r === 0 ? 0 : r;
+};
 
 export function computeWishlistImpact(input: WishlistImpactInput): WishlistItemImpact {
   const { price, monthIncome, monthExpenses, categoryBudget, nearestGoal, alignedValueName, today } = input;

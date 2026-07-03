@@ -86,9 +86,11 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
                       })}
                 </Text>
               )}
-              <Text fontSize="sm" color={impact.month_balance_after < 0 ? 'red.600' : 'gray.600'}>
-                {t('monthBalanceAfter', { amount: fmt(impact.month_balance_after) })}
-              </Text>
+              {impact.month_balance_after !== null && (
+                <Text fontSize="sm" color={impact.month_balance_after < 0 ? 'red.600' : 'gray.600'}>
+                  {t('monthBalanceAfter', { amount: fmt(impact.month_balance_after) })}
+                </Text>
+              )}
               {impact.goal_delay && (
                 <Text fontSize="sm" color="orange.600">
                   {t('goalDelay', {

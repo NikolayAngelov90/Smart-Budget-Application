@@ -31,7 +31,9 @@ const upsertSchema = z.object({
     .positive()
     .finite()
     .max(9_999_999_999.99)
-    .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6, {
+    // toFixed-based check stays exact at any magnitude (a fixed epsilon fails
+    // for legitimate 2-decimal values >= ~1e8 where float error exceeds it)
+    .refine((v) => Number(v.toFixed(2)) === v, {
       message: 'Amount can have maximum 2 decimal places',
     }),
 });

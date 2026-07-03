@@ -1,13 +1,12 @@
 /**
+ * @jest-environment node
+ *
  * Budgets API Route Tests — ADR-025
+ * (pragma must live in the FIRST docblock — Jest ignores later ones)
  *
  * GET /api/budgets — list with current-month spend + status
  * PUT /api/budgets — upsert a category budget
  * DELETE /api/budgets/:id — remove a budget
- */
-
-/**
- * @jest-environment node
  */
 
 jest.mock('next/server', () => ({

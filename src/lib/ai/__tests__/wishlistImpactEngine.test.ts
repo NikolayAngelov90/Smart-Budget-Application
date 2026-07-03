@@ -44,6 +44,23 @@ describe('computeWishlistImpact', () => {
       });
       expect(impact.month_balance_after).toBe(40.05);
     });
+
+    it('normalizes -0 so the UI never renders "-€0.00"', () => {
+      // 100 − 50 − 50.001 = −0.001 → rounds to −0 → normalized to 0
+      const impact = computeWishlistImpact({
+        ...BASE,
+        monthIncome: 100,
+        monthExpenses: 50,
+        price: 50.001,
+      });
+      expect(Object.is(impact.month_balance_after, -0)).toBe(false);
+      expect(impact.month_balance_after).toBe(0);
+    });
+
+    it('handles the minimum price granularity (0.01)', () => {
+      const impact = computeWishlistImpact({ ...BASE, price: 0.01 });
+      expect(impact.month_balance_after).toBe(499.99);
+    });
   });
 
   describe('category budget impact (explicit budgets only)', () => {
