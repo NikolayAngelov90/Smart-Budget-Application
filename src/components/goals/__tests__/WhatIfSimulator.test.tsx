@@ -153,14 +153,36 @@ describe('WhatIfSimulator', () => {
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
   });
 
-  it('shows the error state only when nothing is cached', () => {
+  it('shows the error state when nothing is cached', () => {
     mockUseWhatIf.mockReturnValue(hookResult({ error: new Error('boom') }));
     renderWithChakra(<WhatIfSimulator />);
     expect(screen.getByText('Unable to load the simulator.')).toBeInTheDocument();
+  });
 
-    // Stale data renders through a transient error (14-3 lesson)
+  it('renders stale data through a transient error WITHOUT the error alert', () => {
     mockUseWhatIf.mockReturnValue(hookResult({ data: CONTEXT, error: new Error('boom') }));
     renderWithChakra(<WhatIfSimulator />);
     expect(screen.getByText('Dining')).toBeInTheDocument();
+    expect(screen.queryByText('Unable to load the simulator.')).not.toBeInTheDocument();
+  });
+
+  it('offers subscription toggles even with no categorized spend (subscriptions-only user)', () => {
+    mockUseWhatIf.mockReturnValue(
+      hookResult({
+        data: {
+          hasData: true,
+          categories: [],
+          subscriptions: [{ id: 's-1', name: 'Netflix', monthly_amount: 10 }],
+          goal: null,
+        },
+      })
+    );
+    renderWithChakra(<WhatIfSimulator />);
+
+    expect(screen.getByRole('checkbox')).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByText('€10.00')).toBeInTheDocument();
   });
 });

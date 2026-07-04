@@ -796,10 +796,11 @@
     "reducedTo": "−{pct}% → {amount}/мес.",
     "sliderAriaLabel": "Намали разходите за {name} с процент",
     "subscriptionsHeading": "Откажи абонамент",
+    "subscriptionsOverlapHint": "Таксите за абонаменти обикновено вече са включени в средните стойности на категориите по-горе, така че комбинираните спестявания може да се припокриват.",
     "cancelSubscription": "Откажи {name} ({amount}/мес.)",
     "monthlySavings": "Прогнозни месечни спестявания",
     "annualSavings": "Прогнозни годишни спестявания",
-    "goalEarlierMonths": "Бихте достигнали целта „{goal}“ около {months} месеца по-рано",
+    "goalEarlierMonths": "Бихте достигнали целта „{goal}“ около {months, plural, one {1 месец} other {# месеца}} по-рано",
     "goalEarlierDays": "Бихте достигнали целта „{goal}“ около {days, plural, one {1 ден} other {# дни}} по-рано",
     "reset": "Нулирай",
     "exploratoryDisclaimer": "Само за проба — бюджетите, транзакциите и абонаментите ви не се променят."

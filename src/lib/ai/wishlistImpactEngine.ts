@@ -43,11 +43,14 @@ export interface WishlistImpactInput {
 const MS_PER_DAY = 86_400_000;
 
 /** Parse a YYYY-MM-DD DATE string as LOCAL midnight — never new Date('YYYY-MM-DD')
- *  (UTC-midnight parse misdates by a day in non-UTC timezones; 14-2 review lesson). */
+ *  (UTC-midnight parse misdates by a day in non-UTC timezones; 14-2 review lesson).
+ *  Round-trip-validated so rollover garbage like 2026-13-40 is rejected (14-4 review). */
 function parseLocalDate(dateString: string): Date | null {
   const [y, m, d] = dateString.split('-').map(Number);
   if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
+  const date = new Date(y, m - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+  return date;
 }
 
 // Normalize -0 so a balance in (−0.005, 0) doesn't render as "-€0.00"
@@ -81,7 +84,8 @@ export function computeWishlistImpact(input: WishlistImpactInput): WishlistItemI
     const remainingToTarget = nearestGoal.targetAmount - nearestGoal.currentAmount;
     if (deadline && remainingToTarget > 0) {
       const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const daysToDeadline = Math.ceil((deadline.getTime() - todayLocal.getTime()) / MS_PER_DAY);
+      // Round (not ceil): midnight-to-midnight spans are whole days ± a DST hour (14-4 review)
+      const daysToDeadline = Math.round((deadline.getTime() - todayLocal.getTime()) / MS_PER_DAY);
       if (daysToDeadline > 0) {
         const dailyRequired = remainingToTarget / daysToDeadline;
         goalDelay = {

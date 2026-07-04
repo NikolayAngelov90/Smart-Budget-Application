@@ -9,8 +9,10 @@
  * no POST/PATCH anywhere and never writes budgets, transactions, or
  * subscriptions. All projection math runs client-side in whatIfEngine.
  *
- * Degradation: subscriptions/goal fail independently to empty/null (warn logs);
- * missing expense history → hasData:false empty state — never fabricated zeros.
+ * Degradation: subscriptions/goal fail independently to empty/null (warn logs).
+ * A genuinely empty history → hasData:false empty state; a QUERY ERROR on the
+ * core inputs → 500 (the UI shows its error alert) — telling a long-time user
+ * they have "no spending history" over a transient failure would be a lie.
  */
 
 import { NextResponse } from 'next/server';
@@ -72,10 +74,12 @@ export async function GET() {
         .eq('type', 'expense')
         .gte('date', threeMonthsAgo)
         .lt('date', currentMonthStart),
+      // RLS-visible (dual-path) — NOT own-only: household members legitimately
+      // spend into co-members' shared categories, and that history must keep
+      // its slider instead of silently vanishing (14-4 review).
       supabase
         .from('categories')
         .select('id, name, color')
-        .eq('user_id', user.id)
         .eq('type', 'expense'),
       supabase
         .from('detected_subscriptions')
@@ -90,25 +94,16 @@ export async function GET() {
         .not('deadline', 'is', null)
         .gt('deadline', todayKey)
         .order('deadline', { ascending: true })
-        .limit(10),
+        // Wide window: already-MET goals can't be filtered in PostgREST (no
+        // column-vs-column compare) and would otherwise starve the unmet pick
+        .limit(50),
     ]);
 
-    // Expense history + category names are the simulator's core inputs — without
-    // either there are no honest sliders to show (never fabricate zero-averages).
-    if (historyResult.error || categoriesResult.error) {
-      logger.warn(
-        'WhatIf',
-        'expense history unavailable:',
-        historyResult.error ?? categoriesResult.error
-      );
-      const empty: WhatIfContextResponse = {
-        hasData: false,
-        categories: [],
-        subscriptions: [],
-        goal: null,
-      };
-      return NextResponse.json(empty);
-    }
+    // Expense history + category names are the simulator's core inputs. A query
+    // ERROR is a 500 (UI error alert) — returning hasData:false here would show
+    // a long-time user the "no spending history yet" empty state (14-4 review).
+    if (historyResult.error) throw historyResult.error;
+    if (categoriesResult.error) throw categoriesResult.error;
 
     // 3-month average per category: bucket by category × YYYY-MM month key
     // (timezone-safe string slice), then mean over the months present —
@@ -162,7 +157,9 @@ export async function GET() {
     }
 
     const response: WhatIfContextResponse = {
-      hasData: categories.length > 0,
+      // Subscriptions alone are simulatable — a user with no recent categorized
+      // spend but active subscriptions still gets the cancel toggles (AC #2)
+      hasData: categories.length > 0 || subscriptions.length > 0,
       categories,
       subscriptions,
       goal,

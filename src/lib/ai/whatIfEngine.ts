@@ -36,15 +36,20 @@ export interface WhatIfEngineInput {
 }
 
 const MS_PER_DAY = 86_400_000;
-/** Average days per month (365.25 / 12) — shared by savings→pace and days→months */
+/** Average days per month, ≈ 30.44 — do NOT "correct" to 365.25/12 (30.4375);
+ *  the engine tests pin projections computed against exactly 30.44. */
 export const DAYS_PER_MONTH = 30.44;
 
 /** Parse a YYYY-MM-DD DATE string as LOCAL midnight — never new Date('YYYY-MM-DD')
- *  (UTC-midnight parse misdates by a day in non-UTC timezones; 14-2/14-3 lesson). */
+ *  (UTC-midnight parse misdates by a day in non-UTC timezones; 14-2/14-3 lesson).
+ *  Round-trip-validated so rollover garbage like 2026-13-40 is rejected, not
+ *  silently normalized into a confident nonsense projection. */
 function parseLocalDate(dateString: string): Date | null {
   const [y, m, d] = dateString.split('-').map(Number);
   if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
+  const date = new Date(y, m - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+  return date;
 }
 
 // Normalize -0 so the UI never renders "-€0.00" (14-3 review lesson)
@@ -76,7 +81,9 @@ export function computeWhatIfProjection(input: WhatIfEngineInput): WhatIfProject
     const remaining = goal.targetAmount - goal.currentAmount;
     if (deadline && remaining > 0) {
       const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const daysToDeadline = Math.ceil((deadline.getTime() - todayLocal.getTime()) / MS_PER_DAY);
+      // Round (not ceil): midnight-to-midnight spans are whole days ± a DST hour,
+      // and ceil turns a 25-hour fall-back day into an extra day of runway.
+      const daysToDeadline = Math.round((deadline.getTime() - todayLocal.getTime()) / MS_PER_DAY);
       if (daysToDeadline > 0) {
         const dailyRequired = remaining / daysToDeadline;
         const newDaily = dailyRequired + monthlySavings / DAYS_PER_MONTH;

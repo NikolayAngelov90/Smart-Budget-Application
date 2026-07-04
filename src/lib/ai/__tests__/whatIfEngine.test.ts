@@ -133,6 +133,15 @@ describe('computeWhatIfProjection', () => {
       });
       expect(p.goal_impact).toBeNull();
     });
+
+    it('rejects rollover garbage dates instead of normalizing them (2026-13-40)', () => {
+      const p = computeWhatIfProjection({
+        ...BASE,
+        adjustments: [{ avgMonthly: 400, reductionPct: 25 }],
+        goal: { ...GOAL_30D, deadline: '2026-13-40' },
+      });
+      expect(p.goal_impact).toBeNull();
+    });
   });
 
   it('exposes the shared days-per-month constant', () => {

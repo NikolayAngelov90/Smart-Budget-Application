@@ -80,8 +80,11 @@ export function WhatIfSimulator() {
     [categories, subscriptions, reductions, cancelled, data?.goal]
   );
 
+  // Count only adjustments for items still present — revalidation can drop a
+  // category/subscription while its stale local entry lingers (14-4 review)
   const hasAdjustments =
-    cancelled.size > 0 || Object.values(reductions).some((pct) => pct > 0);
+    subscriptions.some((s) => cancelled.has(s.id)) ||
+    categories.some((c) => (reductions[c.category_id] ?? 0) > 0);
 
   const handleReset = () => {
     setReductions({});
@@ -163,7 +166,8 @@ export function WhatIfSimulator() {
                         <SliderTrack>
                           <SliderFilledTrack />
                         </SliderTrack>
-                        <SliderThumb boxSize={5} />
+                        {/* Larger thumb on touch devices (44px-target guidance) */}
+                        <SliderThumb boxSize={{ base: 7, md: 5 }} />
                       </Slider>
                     </Box>
                   );
@@ -171,16 +175,24 @@ export function WhatIfSimulator() {
 
                 {subscriptions.length > 0 && (
                   <>
-                    <Divider />
+                    {categories.length > 0 && <Divider />}
                     <VStack align="stretch" spacing={3}>
                       <Text fontSize="sm" fontWeight="medium" color="gray.600">
                         {t('subscriptionsHeading')}
                       </Text>
+                      {/* Honest-projection hint: subscription charges usually sit
+                          inside a category's average, so combined savings overlap */}
+                      {categories.length > 0 && (
+                        <Text fontSize="xs" color="gray.500">
+                          {t('subscriptionsOverlapHint')}
+                        </Text>
+                      )}
                       {subscriptions.map((sub) => (
                         <Checkbox
                           key={sub.id}
                           isChecked={cancelled.has(sub.id)}
                           colorScheme="green"
+                          py={{ base: 2, md: 0.5 }}
                           onChange={(e) =>
                             setCancelled((prev) => {
                               const next = new Set(prev);

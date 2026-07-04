@@ -796,10 +796,11 @@
     "reducedTo": "−{pct}% → {amount}/mo",
     "sliderAriaLabel": "Reduce {name} spending by percentage",
     "subscriptionsHeading": "Cancel a subscription",
+    "subscriptionsOverlapHint": "Subscription charges are usually already part of a category's average above, so combined savings can overlap.",
     "cancelSubscription": "Cancel {name} ({amount}/mo)",
     "monthlySavings": "Projected monthly savings",
     "annualSavings": "Projected annual savings",
-    "goalEarlierMonths": "You'd reach your {goal} goal about {months} months earlier",
+    "goalEarlierMonths": "You'd reach your {goal} goal about {months, plural, one {1 month} other {# months}} earlier",
     "goalEarlierDays": "You'd reach your {goal} goal about {days, plural, one {1 day} other {# days}} earlier",
     "reset": "Reset",
     "exploratoryDisclaimer": "Exploratory only — your budgets, transactions, and subscriptions are not changed."

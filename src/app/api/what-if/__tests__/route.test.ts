@@ -50,13 +50,20 @@ function chain(result: { data: unknown; error: unknown }) {
 }
 
 type Plan = Record<string, { data: unknown; error: unknown }>;
+type ChainStub = ReturnType<typeof chain>;
 
 function makeSupabase(plan: Plan = {}, user: object | null = { id: 'user-1' }) {
+  // Record every chain per table so tests can assert the FILTERS, not just the
+  // data (14-4 review: an arg-blind stub let user-scoping/date bounds vanish)
+  const chains: Record<string, ChainStub[]> = {};
   return {
     auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: null }) },
-    from: jest.fn((table: string) =>
-      chain(plan[table] ?? { data: [], error: null })
-    ),
+    from: jest.fn((table: string) => {
+      const q = chain(plan[table] ?? { data: [], error: null });
+      (chains[table] ??= []).push(q);
+      return q;
+    }),
+    chains,
   };
 }
 
@@ -84,12 +91,11 @@ describe('GET /api/what-if', () => {
   });
 
   it('computes per-category month-bucket averages, excludes zero-average categories, sorts desc', async () => {
-    mockCreateClient.mockResolvedValue(
-      makeSupabase({
-        transactions: { data: HISTORY, error: null },
-        categories: { data: CATEGORIES, error: null },
-      }) as never
-    );
+    const supabase = makeSupabase({
+      transactions: { data: HISTORY, error: null },
+      categories: { data: CATEGORIES, error: null },
+    });
+    mockCreateClient.mockResolvedValue(supabase as never);
 
     const res = await GET();
     const body = await res.json();
@@ -102,6 +108,33 @@ describe('GET /api/what-if', () => {
       { category_id: 'cat-2', name: 'Transport', color: '#bbb', avg_monthly: 90 },
       // cat-3 excluded (no spend)
     ]);
+
+    // The history query MUST be user-scoped and bounded before the current month
+    const txChain = supabase.chains['transactions']![0]! as Record<string, jest.Mock>;
+    expect(txChain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(txChain.eq).toHaveBeenCalledWith('type', 'expense');
+    expect(txChain.gte).toHaveBeenCalledWith('date', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    expect(txChain.lt).toHaveBeenCalledWith('date', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+  });
+
+  it('offers subscriptions-only simulation when there is no recent categorized spend (AC #2)', async () => {
+    mockCreateClient.mockResolvedValue(
+      makeSupabase({
+        transactions: { data: [], error: null },
+        categories: { data: CATEGORIES, error: null },
+        detected_subscriptions: {
+          data: [{ id: 's-1', merchant_pattern: 'Netflix', estimated_amount: 15, frequency: 'monthly' }],
+          error: null,
+        },
+      }) as never
+    );
+
+    const res = await GET();
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.hasData).toBe(true); // subscriptions alone are simulatable
+    expect(body.categories).toEqual([]);
+    expect(body.subscriptions).toHaveLength(1);
   });
 
   it('converts foreign-currency history via the stored rate', async () => {
@@ -187,7 +220,7 @@ describe('GET /api/what-if', () => {
     expect(body.goal).toBeNull();
   });
 
-  it('returns hasData:false (empty state, no fabricated averages) when history fails', async () => {
+  it('returns 500 (error alert, never a fake "no history" empty state) when the history query errors', async () => {
     mockCreateClient.mockResolvedValue(
       makeSupabase({
         transactions: { data: null, error: { message: 'relation missing' } },
@@ -196,9 +229,7 @@ describe('GET /api/what-if', () => {
     );
 
     const res = await GET();
-    const body = await res.json();
-    expect(res.status).toBe(200);
-    expect(body).toEqual({ hasData: false, categories: [], subscriptions: [], goal: null });
+    expect(res.status).toBe(500);
   });
 
   it('returns hasData:false when no category has a positive average', async () => {
