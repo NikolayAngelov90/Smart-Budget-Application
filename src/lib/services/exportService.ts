@@ -17,6 +17,83 @@ import type { PDFReportData } from '@/types/export.types';
 import { trackCSVExported, trackPDFExported } from './analyticsService';
 import { formatCurrency } from '@/lib/utils/currency';
 
+const CSV_UTF8_BOM = '\uFEFF';
+const PDF_FONT_FAMILY = 'NotoSans';
+const PDF_FONT_REGULAR_FILE = 'NotoSans-Regular.ttf';
+const PDF_FONT_BOLD_FILE = 'NotoSans-Bold.ttf';
+
+type FontStyle = 'normal' | 'bold';
+
+interface FontDefinition {
+  fileName: string;
+  url: string;
+  style: FontStyle;
+}
+
+interface JsPDFWithFontVfs {
+  addFileToVFS(fileName: string, fileContent: string): void;
+  addFont(fileName: string, fontName: string, fontStyle: FontStyle): string;
+  existsFileInVFS?(fileName: string): boolean;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = '';
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+
+  return btoa(binary);
+}
+
+async function registerPdfUnicodeFont(doc: jsPDF): Promise<string> {
+  const fontDoc = doc as Partial<JsPDFWithFontVfs>;
+
+  if (
+    typeof window === 'undefined' ||
+    typeof fetch === 'undefined' ||
+    typeof fontDoc.addFileToVFS !== 'function' ||
+    typeof fontDoc.addFont !== 'function'
+  ) {
+    return 'helvetica';
+  }
+
+  const fonts: FontDefinition[] = [
+    { fileName: PDF_FONT_REGULAR_FILE, url: `/fonts/${PDF_FONT_REGULAR_FILE}`, style: 'normal' },
+    { fileName: PDF_FONT_BOLD_FILE, url: `/fonts/${PDF_FONT_BOLD_FILE}`, style: 'bold' },
+  ];
+  const addFileToVFS = fontDoc.addFileToVFS.bind(fontDoc);
+  const addFont = fontDoc.addFont.bind(fontDoc);
+
+  try {
+    await Promise.all(
+      fonts.map(async ({ fileName, url, style }) => {
+        const fontExists =
+          typeof fontDoc.existsFileInVFS === 'function' && fontDoc.existsFileInVFS(fileName);
+
+        if (!fontExists) {
+          const response = await fetch(url);
+
+          if (!response.ok) {
+            throw new Error(`Failed to load PDF font: ${url}`);
+          }
+
+          const fontBase64 = arrayBufferToBase64(await response.arrayBuffer());
+          addFileToVFS(fileName, fontBase64);
+        }
+        addFont(fileName, PDF_FONT_FAMILY, style);
+      })
+    );
+
+    return PDF_FONT_FAMILY;
+  } catch (error) {
+    logger.error('ExportService', 'Error loading Unicode PDF font:', error);
+    return 'helvetica';
+  }
+}
+
 /**
  * Transaction type with category information
  * Matches the structure returned by GET /api/transactions
@@ -151,7 +228,7 @@ export async function exportTransactionsToCSV(
     const csv = Papa.unparse(csvData);
 
     // Create blob for download
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([CSV_UTF8_BOM + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
     // AC-8.1.3: Filename format transactions-YYYY-MM-DD.csv
@@ -211,6 +288,7 @@ export async function exportMonthlyReportToPDF(
       unit: 'mm',
       format: 'a4',
     });
+    const pdfFontFamily = await registerPdfUnicodeFont(doc);
 
     // AC-8.2.8: Professional styling - colors and fonts
     const primaryColor: [number, number, number] = [36, 76, 125]; // Trust Blue
@@ -222,13 +300,13 @@ export async function exportMonthlyReportToPDF(
     // AC-8.2.4: Header with app title and month/year
     doc.setFontSize(22);
     doc.setTextColor(...primaryColor);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(pdfFontFamily, 'bold');
     doc.text('Smart Budget Application', 105, yPosition, { align: 'center' });
 
     yPosition += 10;
     doc.setFontSize(16);
     doc.setTextColor(...textColor);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(pdfFontFamily, 'normal');
     const monthYear = format(new Date(reportData.month + '-01'), 'MMMM yyyy');
     doc.text(`Monthly Financial Report - ${monthYear}`, 105, yPosition, { align: 'center' });
 
@@ -236,7 +314,7 @@ export async function exportMonthlyReportToPDF(
 
     // AC-8.2.5: Summary section (income, expenses, net balance)
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(pdfFontFamily, 'bold');
     doc.setTextColor(...primaryColor);
     doc.text('Financial Summary', 20, yPosition);
 
@@ -267,6 +345,7 @@ export async function exportMonthlyReportToPDF(
       },
       margin: { left: 20, right: 20 },
       styles: {
+        font: pdfFontFamily,
         cellPadding: 5,
         lineColor: [200, 200, 200],
         lineWidth: 0.1,
@@ -279,7 +358,7 @@ export async function exportMonthlyReportToPDF(
     // AC-8.2.6: Category breakdown with amounts and percentages
     if (reportData.categories.length > 0) {
       doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(pdfFontFamily, 'bold');
       doc.setTextColor(...primaryColor);
       doc.text('Spending by Category', 20, yPosition);
 
@@ -309,6 +388,7 @@ export async function exportMonthlyReportToPDF(
         },
         margin: { left: 20, right: 20 },
         styles: {
+          font: pdfFontFamily,
           cellPadding: 5,
           lineColor: [200, 200, 200],
           lineWidth: 0.1,
@@ -328,7 +408,7 @@ export async function exportMonthlyReportToPDF(
       }
 
       doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(pdfFontFamily, 'bold');
       doc.setTextColor(...primaryColor);
       doc.text('Top 5 Expenses', 20, yPosition);
 
@@ -359,6 +439,7 @@ export async function exportMonthlyReportToPDF(
         },
         margin: { left: 20, right: 20 },
         styles: {
+          font: pdfFontFamily,
           cellPadding: 5,
           lineColor: [200, 200, 200],
           lineWidth: 0.1,

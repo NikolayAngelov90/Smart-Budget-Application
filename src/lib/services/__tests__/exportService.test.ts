@@ -129,6 +129,31 @@ describe('exportTransactionsToCSV', () => {
     expect(csvData[0]!.Notes).toBe('Bought groceries, milk, and bread\n"Special quote"');
   });
 
+  test('preserves Bulgarian text in category and notes data', async () => {
+    const transactions = [
+      {
+        id: '1',
+        amount: 25.50,
+        type: 'expense' as const,
+        date: '2025-12-14',
+        notes: 'Хранителен магазин',
+        created_at: '2025-12-14T10:30:00Z',
+        category: {
+          id: 'cat-1',
+          name: 'Храна',
+          color: '#FF0000',
+          type: 'expense' as const,
+        },
+      },
+    ];
+
+    await exportTransactionsToCSV(transactions);
+
+    const csvData = mockUnparse.mock.calls[0]![0] as CSVRowData[];
+    expect(csvData[0]!.Category).toBe('Храна');
+    expect(csvData[0]!.Notes).toBe('Хранителен магазин');
+  });
+
   // AC-8.1.4: Test empty notes display as empty string, not "null"
   test('handles null notes as empty string', async () => {
     const transactions = [
@@ -260,10 +285,12 @@ describe('exportTransactionsToCSV', () => {
     await exportTransactionsToCSV(transactions);
 
     // Verify Blob was created with correct content type
-    expect(global.Blob).toHaveBeenCalledWith(
-      [expect.any(String)],
-      { type: 'text/csv;charset=utf-8;' }
-    );
+    expect(global.Blob).toHaveBeenCalledWith([expect.any(String)], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
+    const blobContents = (global.Blob as jest.Mock).mock.calls[0]![0] as string[];
+    expect(blobContents[0]!.startsWith('\uFEFF')).toBe(true);
 
     // Verify createObjectURL was called
     expect(mockCreateObjectURL).toHaveBeenCalled();

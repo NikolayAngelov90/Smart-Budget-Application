@@ -15,6 +15,9 @@ const mockSetTextColor = jest.fn();
 const mockSetFont = jest.fn();
 const mockText = jest.fn();
 const mockGetNumberOfPages = jest.fn().mockReturnValue(1);
+const mockAddFileToVFS = jest.fn();
+const mockAddFont = jest.fn();
+const mockExistsFileInVFS = jest.fn().mockReturnValue(false);
 
 jest.mock('jspdf', () => {
   return jest.fn().mockImplementation(() => ({
@@ -25,6 +28,9 @@ jest.mock('jspdf', () => {
     addPage: mockAddPage,
     save: mockSave,
     getNumberOfPages: mockGetNumberOfPages,
+    addFileToVFS: mockAddFileToVFS,
+    addFont: mockAddFont,
+    existsFileInVFS: mockExistsFileInVFS,
     lastAutoTable: { finalY: 100 },
   }));
 });
@@ -58,6 +64,11 @@ describe('exportMonthlyReportToPDF', () => {
     jest.clearAllMocks();
     // Reset mock implementations that may have been overridden in tests
     mockSave.mockReset();
+    mockExistsFileInVFS.mockReturnValue(false);
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: jest.fn().mockResolvedValue(new Uint8Array([1, 2, 3]).buffer),
+    }) as jest.Mock;
   });
 
   const createSampleReportData = (): PDFReportData => ({
@@ -187,8 +198,12 @@ describe('exportMonthlyReportToPDF', () => {
     await exportMonthlyReportToPDF(reportData);
 
     // Verify font configuration
-    expect(mockSetFont).toHaveBeenCalledWith('helvetica', 'bold');
-    expect(mockSetFont).toHaveBeenCalledWith('helvetica', 'normal');
+    expect(mockAddFileToVFS).toHaveBeenCalledWith('NotoSans-Regular.ttf', expect.any(String));
+    expect(mockAddFileToVFS).toHaveBeenCalledWith('NotoSans-Bold.ttf', expect.any(String));
+    expect(mockAddFont).toHaveBeenCalledWith('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+    expect(mockAddFont).toHaveBeenCalledWith('NotoSans-Bold.ttf', 'NotoSans', 'bold');
+    expect(mockSetFont).toHaveBeenCalledWith('NotoSans', 'bold');
+    expect(mockSetFont).toHaveBeenCalledWith('NotoSans', 'normal');
 
     // Verify colors are set
     expect(mockSetTextColor).toHaveBeenCalled();
@@ -203,6 +218,42 @@ describe('exportMonthlyReportToPDF', () => {
           textColor: [255, 255, 255],
           fontStyle: 'bold',
         }),
+        styles: expect.objectContaining({
+          font: 'NotoSans',
+        }),
+      })
+    );
+  });
+
+  test('uses Unicode font for Bulgarian category and transaction notes', async () => {
+    const reportData: PDFReportData = {
+      month: '2025-01',
+      summary: { totalIncome: 0.0, totalExpenses: 50.0, netBalance: -50.0 },
+      categories: [{ name: 'Храна', amount: 50.0, percentage: 100.0, color: '#FF0000' }],
+      topTransactions: [
+        { date: '2025-01-15', category: 'Храна', amount: 50.0, notes: 'Хранителен магазин' },
+      ],
+    };
+
+    await exportMonthlyReportToPDF(reportData);
+
+    expect(mockAutoTable).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        body: expect.arrayContaining([
+          ['Храна', expect.stringContaining('50.00'), '100.0%'],
+        ]),
+        styles: expect.objectContaining({ font: 'NotoSans' }),
+      })
+    );
+
+    expect(mockAutoTable).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        body: expect.arrayContaining([
+          [expect.any(String), 'Храна', expect.stringContaining('50.00'), 'Хранителен магазин'],
+        ]),
+        styles: expect.objectContaining({ font: 'NotoSans' }),
       })
     );
   });
