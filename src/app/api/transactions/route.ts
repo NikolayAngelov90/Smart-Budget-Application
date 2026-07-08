@@ -438,7 +438,7 @@ export async function POST(request: NextRequest) {
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NudgePayload } from '@/types/database.types';
-import { calculateMean } from '@/lib/ai/spendingAnalysis';
+import { fixedWindowMonthlyAverage, AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
 import { resolveBudget } from '@/lib/ai/budgetResolver';
 
 /**
@@ -454,7 +454,7 @@ async function evaluateNudgeForTransaction(
 ): Promise<NudgePayload | null> {
   const now = new Date();
   const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const d3m = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+  const d3m = new Date(now.getFullYear(), now.getMonth() - AVERAGE_WINDOW_MONTHS, 1);
   const threeMonthsAgo = `${d3m.getFullYear()}-${String(d3m.getMonth() + 1).padStart(2, '0')}-01`;
 
   // Resolve the user's display currency so nudge messages format amounts correctly.
@@ -508,13 +508,13 @@ async function evaluateNudgeForTransaction(
   // Current month total (the new transaction is already inserted)
   const currentMonthTotal = (currentResult.data ?? []).reduce((sum, t) => sum + t.amount, 0);
 
-  // Historical avg: group by YYYY-MM then calculateMean across months
+  // Historical avg: group by YYYY-MM, fixed window — see fixedWindowMonthlyAverage
   const monthMap = new Map<string, number>();
   for (const tx of historicalResult.data ?? []) {
     const key = tx.date.substring(0, 7);
     monthMap.set(key, (monthMap.get(key) ?? 0) + tx.amount);
   }
-  const historicalAvg = calculateMean(Array.from(monthMap.values()));
+  const historicalAvg = fixedWindowMonthlyAverage(Array.from(monthMap.values()));
 
   // ADR-025: baseline = explicit budget when set, else the historical average.
   // budgetResult errors are ignored (proxy fallback keeps nudges working).

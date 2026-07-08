@@ -62,7 +62,8 @@ describe('buildRecoveryPlanTargets', () => {
 
   describe('overspent detection + target math', () => {
     it('identifies an overspent category and targets the historical minimum', () => {
-      // history: May 400, Apr 200 → avg 300, min 200; current 500 > 300 → overspent
+      // history: May 400, Apr 200 → avg (400+200)/3 = 200 (fixed ÷3 window),
+      // min 200; current 500 > 200 → overspent
       const result = buildRecoveryPlanTargets({
         currentMonthTransactions: [makeTx('t1', 'cat-d', 500, '2026-06-05')],
         historicalTransactions: [
@@ -73,7 +74,7 @@ describe('buildRecoveryPlanTargets', () => {
       });
       expect(result).toHaveLength(1);
       const t = result[0]!;
-      expect(t.historical_avg).toBe(300);
+      expect(t.historical_avg).toBe(200);
       expect(t.historical_min).toBe(200);
       expect(t.monthly_target).toBe(200);
       expect(t.current_spend).toBe(500);

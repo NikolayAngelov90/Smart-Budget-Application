@@ -3,13 +3,15 @@
  *
  * Pure computation module for 30-day budget recovery plans (Story 12.4 / FR4).
  * Identifies categories where current-month spend exceeds the 3-month historical
- * average (the budget proxy — no budget-limits table exists) and builds a
- * realistic per-category target based on the user's leanest historical month.
+ * average and builds a realistic per-category target based on the user's
+ * leanest historical month. The average uses the FIXED window (see
+ * fixedWindowMonthlyAverage) so recovery agrees with nudges/forecasts about
+ * what "usual spend" means (extended by the 2026-07-02 review decision).
  *
  * No Supabase, no side effects — pure input → output.
  */
 
-import { calculateMean } from './spendingAnalysis';
+import { fixedWindowMonthlyAverage } from './spendingAnalysis';
 import type { Category, RecoveryTarget, Transaction } from '@/types/database.types';
 
 export interface RecoveryPlannerInput {
@@ -71,7 +73,7 @@ export function buildRecoveryPlanTargets(input: RecoveryPlannerInput): RecoveryT
     // Need at least one prior month of data to derive avg + min
     if (monthlyTotals.length === 0) continue;
 
-    const historicalAvg = calculateMean(monthlyTotals);
+    const historicalAvg = fixedWindowMonthlyAverage(monthlyTotals);
     if (historicalAvg <= 0) continue;
 
     // Overspent: current month exceeds the historical average

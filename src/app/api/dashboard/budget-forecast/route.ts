@@ -14,6 +14,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { computeEndOfMonthForecasts } from '@/lib/ai/forecastEngine';
+import { AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
 import { toLocalISODate } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 
@@ -41,7 +42,9 @@ export async function GET() {
     const today = new Date();
     const currentMonthStart = toLocalISODate(new Date(today.getFullYear(), today.getMonth(), 1));
     const currentMonthEnd = toLocalISODate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
-    const threeMonthsAgo = toLocalISODate(new Date(today.getFullYear(), today.getMonth() - 3, 1));
+    const threeMonthsAgo = toLocalISODate(
+      new Date(today.getFullYear(), today.getMonth() - AVERAGE_WINDOW_MONTHS, 1)
+    );
 
     // Fetch current-month, prior-3-months, categories, and explicit budgets in parallel
     const [currentResult, historicalResult, categoriesResult, budgetsResult] = await Promise.all([

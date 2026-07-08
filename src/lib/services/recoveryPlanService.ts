@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildRecoveryPlanTargets } from '@/lib/ai/recoveryPlanner';
+import { AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
 import { toLocalISODate } from '@/lib/utils/date';
 import type {
   Category,
@@ -37,7 +38,7 @@ async function fetchPlanDataset(
 ): Promise<PlanDataset> {
   const currentMonthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
   const currentMonthEnd = toLocalISODate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
-  const threeMonthsAgoDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+  const threeMonthsAgoDate = new Date(today.getFullYear(), today.getMonth() - AVERAGE_WINDOW_MONTHS, 1);
   const threeMonthsAgo = toLocalISODate(threeMonthsAgoDate);
 
   const [currentResult, historicalResult, categoriesResult] = await Promise.all([

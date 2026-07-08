@@ -18,7 +18,7 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
-import { calculateMean } from '@/lib/ai/spendingAnalysis';
+import { fixedWindowMonthlyAverage, AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
 import { toLocalISODate } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 import type { WhatIfContextResponse, WhatIfSubscription } from '@/types/database.types';
@@ -60,7 +60,9 @@ export async function GET() {
     const today = new Date();
     const todayKey = toLocalISODate(today);
     const currentMonthStart = toLocalISODate(new Date(today.getFullYear(), today.getMonth(), 1));
-    const threeMonthsAgo = toLocalISODate(new Date(today.getFullYear(), today.getMonth() - 3, 1));
+    const threeMonthsAgo = toLocalISODate(
+      new Date(today.getFullYear(), today.getMonth() - AVERAGE_WINDOW_MONTHS, 1)
+    );
 
     // goals are not in the typed Database schema (goalService pattern)
     const genericClient = supabase as unknown as SupabaseClient;
@@ -105,9 +107,10 @@ export async function GET() {
     if (historyResult.error) throw historyResult.error;
     if (categoriesResult.error) throw categoriesResult.error;
 
-    // 3-month average per category: bucket by category × YYYY-MM month key
-    // (timezone-safe string slice), then mean over the months present —
-    // same semantics as the nudge helper and forecastEngine.
+    // Per-category average: bucket by category × YYYY-MM month key (timezone-safe
+    // string slice), fixed window — see fixedWindowMonthlyAverage. Same divisor
+    // semantics as the nudge helper / forecastEngine (summands differ: this route
+    // converts stored exchange rates; currency unification is a deferred item).
     const monthMaps = new Map<string, Map<string, number>>();
     for (const tx of historyResult.data ?? []) {
       if (!tx.category_id) continue;
@@ -121,7 +124,7 @@ export async function GET() {
     const categories = (categoriesResult.data ?? [])
       .map((c) => {
         const monthlyTotals = Array.from(monthMaps.get(c.id)?.values() ?? []);
-        const avg = Math.round(calculateMean(monthlyTotals) * 100) / 100;
+        const avg = Math.round(fixedWindowMonthlyAverage(monthlyTotals) * 100) / 100;
         return { category_id: c.id, name: c.name, color: c.color, avg_monthly: avg };
       })
       .filter((c) => c.avg_monthly > 0)

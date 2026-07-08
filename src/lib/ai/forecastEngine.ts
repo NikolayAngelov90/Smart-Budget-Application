@@ -10,7 +10,7 @@
  */
 
 import { endOfMonth } from 'date-fns';
-import { calculateMean } from './spendingAnalysis';
+import { fixedWindowMonthlyAverage } from './spendingAnalysis';
 import { resolveBudget } from './budgetResolver';
 import type { Category, CategoryForecast, Transaction } from '@/types/database.types';
 
@@ -75,9 +75,9 @@ export function computeEndOfMonthForecasts(input: ForecastEngineInput): Category
     const dailyRate = spentSoFar / daysElapsed;
     const projectedEom = Math.round((spentSoFar + dailyRate * daysRemaining) * 100) / 100;
 
-    // Historical monthly totals for this category
+    // Historical monthly totals — fixed window, see fixedWindowMonthlyAverage
     const monthlyTotals = Array.from(historicalMonthMap.get(category.id)?.values() ?? []);
-    const historicalAvg = Math.round(calculateMean(monthlyTotals) * 100) / 100;
+    const historicalAvg = Math.round(fixedWindowMonthlyAverage(monthlyTotals) * 100) / 100;
 
     // ADR-025: at-risk compares against the resolved budget, not the raw average
     const resolved = resolveBudget({

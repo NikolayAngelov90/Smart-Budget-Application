@@ -898,6 +898,31 @@ if (!user) {
 
 ## Error Handling
 
+### Degradation Policy (query failures vs. missing data)
+
+> Adopted at the epic-14 retrospective (2026-07-02) after the "fabricated numbers
+> on failure" defect class recurred in the 14-3 AND 14-4 code reviews. New specs
+> should cite this table instead of re-deriving the rules in review.
+
+**The rule: never fabricate a number.** When an input is unavailable, a feature
+may hide, say "unknown", or fail — but it must never render a value computed
+from silently-zeroed inputs (e.g. `spent: 0` → "leaves your full budget",
+`income 0 − expenses 0 − price` → a red fake balance, a query error rendered as
+"you have no spending history").
+
+| Situation | Correct behavior | Wrong behavior | Precedent |
+|---|---|---|---|
+| **Core input query ERRORS** (the feature is meaningless without it) | Return **500**; the client shows its error alert; SWR `keepPreviousData` keeps stale data rendering through transient failures | Returning 200 with an "empty" payload — it lies ("no history") and poisons the SWR cache | what-if history query (14-4 review) |
+| **Optional enrichment query ERRORS** (feature works without it) | Degrade that enrichment to `null`/`[]` with a `logger.warn`; everything else renders | Failing the whole endpoint, or building the enrichment from partial inputs | wishlist budgets/goals/plan; forecast `category_budgets` (unapplied-migration safety) |
+| **Enrichment input is partially unavailable** (e.g. spend query failed but limits loaded) | Suppress the derived field entirely (`null`) | Computing it with the missing part as 0 (`spent: 0` → confidently wrong) | wishlist `spendKnown` flag (14-3 review) |
+| **Data is genuinely EMPTY** (new user, nothing recorded) | Honest empty state (`hasData: false` / empty list) with helpful copy | An error state, or a zeroed dashboard | what-if `hasData`; progressive-disclosure cards |
+| **A value is unknowable for this row** (e.g. projection for a purchased wishlist item) | Type the field nullable and send `null`; UI omits the line | Sending a stale/hypothetical number the client must know to ignore | `month_balance_after: number \| null` (14-3 review) |
+| **Client-side fetch/render** | Fetchers throw on `!res.ok`; error UI only when nothing is cached (stale-through-error) | Rendering an error payload as data; hiding cached data because a background revalidation failed | useBudgets/useWishlist/useWhatIf; BudgetHealthCard |
+
+Checklist for new endpoints: label every input **core** or **enrichment**;
+core error → 500, enrichment error → warn + null; partial enrichment → null,
+never zero-filled; empty ≠ error; nullable types for unknowable fields.
+
 ### Client-Side Error Handling
 
 ```typescript

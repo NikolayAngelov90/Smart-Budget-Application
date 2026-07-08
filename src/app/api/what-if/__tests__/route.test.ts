@@ -102,10 +102,10 @@ describe('GET /api/what-if', () => {
     expect(res.status).toBe(200);
     expect(body.hasData).toBe(true);
     expect(body.categories).toEqual([
-      // cat-1: (300 + 500) / 2 months = 400
-      { category_id: 'cat-1', name: 'Dining', color: '#aaa', avg_monthly: 400 },
-      // cat-2: 90 / 1 month = 90
-      { category_id: 'cat-2', name: 'Transport', color: '#bbb', avg_monthly: 90 },
+      // cat-1: (300 + 500) / FIXED 3-month window = 266.67 (retro ÷3 decision)
+      { category_id: 'cat-1', name: 'Dining', color: '#aaa', avg_monthly: 266.67 },
+      // cat-2: 90 / 3 = 30
+      { category_id: 'cat-2', name: 'Transport', color: '#bbb', avg_monthly: 30 },
       // cat-3 excluded (no spend)
     ]);
 
@@ -150,7 +150,7 @@ describe('GET /api/what-if', () => {
 
     const res = await GET();
     const body = await res.json();
-    expect(body.categories[0].avg_monthly).toBe(200);
+    expect(body.categories[0].avg_monthly).toBe(66.67); // (100 × rate 2) / 3
   });
 
   it.each([

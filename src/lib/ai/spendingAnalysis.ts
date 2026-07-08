@@ -41,6 +41,47 @@ export function calculateMean(amounts: number[]): number {
 }
 
 /**
+ * Fixed averaging window for budget baselines (nudges, forecasts, recovery,
+ * what-if). Callers MUST use this constant for their history-fetch lookback
+ * too, so the divisor and the query window can never drift apart.
+ */
+export const AVERAGE_WINDOW_MONTHS = 3;
+
+/**
+ * Fixed-window monthly average: total spend ÷ the WINDOW SIZE, not ÷ months
+ * present (epic-14 retro decision, 2026-07-02). A single spike month inside a
+ * 3-month window reads as spike/3 — not as the user's "usual" monthly spend,
+ * which inflated nudge/forecast/simulator baselines.
+ *
+ * Defensive divisor: if a caller ever supplies MORE buckets than the window
+ * (a wider fetch), we divide by the bucket count instead — a fixed ÷window
+ * on an over-long input would EXCEED the true mean and reintroduce exactly
+ * the inflation this helper exists to kill.
+ *
+ * Trade-off (accepted in the retro): users with fewer than `windowMonths` of
+ * history get smaller baselines — which means nudges/at-risk flags fire
+ * EARLIER for them, not later. Only a fully-empty input returns 0 and takes
+ * the "no baseline → no signal" guard paths.
+ *
+ * @param monthTotals - Per-month spend totals for the months that HAD spend
+ * @param windowMonths - Window size in months (default AVERAGE_WINDOW_MONTHS)
+ */
+export function fixedWindowMonthlyAverage(
+  monthTotals: number[],
+  windowMonths: number = AVERAGE_WINDOW_MONTHS
+): number {
+  if (!monthTotals || monthTotals.length === 0) {
+    return 0;
+  }
+  if (!Number.isFinite(windowMonths) || windowMonths <= 0) {
+    return 0;
+  }
+
+  const sum = monthTotals.reduce((acc, total) => acc + total, 0);
+  return sum / Math.max(windowMonths, monthTotals.length);
+}
+
+/**
  * Calculate the standard deviation of an array of numbers
  *
  * Uses population standard deviation formula: sqrt(sum((x - mean)^2) / n)

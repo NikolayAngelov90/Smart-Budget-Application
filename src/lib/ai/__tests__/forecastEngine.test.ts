@@ -205,8 +205,8 @@ describe('computeEndOfMonthForecasts', () => {
   });
 
   describe('historical average calculation', () => {
-    it('computes per-month totals then averages across months', () => {
-      // May: $400+$100=$500; Apr: $300 → avg = ($500+$300)/2 = $400
+    it('computes per-month totals then divides by the FIXED 3-month window', () => {
+      // May: $400+$100=$500; Apr: $300 → avg = ($500+$300)/3 = $266.67 (retro ÷3)
       const historical = [
         makeTx('h1', 'cat-d', 400, '2026-05-10'),
         makeTx('h2', 'cat-d', 100, '2026-05-20'),
@@ -219,7 +219,7 @@ describe('computeEndOfMonthForecasts', () => {
         categories: [CAT_DINING],
         today: TODAY,
       });
-      expect(result[0]!.historical_avg).toBe(400);
+      expect(result[0]!.historical_avg).toBe(266.67);
     });
 
     it('ignores income transactions in historical data', () => {
@@ -234,13 +234,14 @@ describe('computeEndOfMonthForecasts', () => {
         categories: [CAT_DINING],
         today: TODAY,
       });
-      expect(result[0]!.historical_avg).toBe(300);
+      expect(result[0]!.historical_avg).toBe(100); // 300 / fixed 3-month window
     });
   });
 
   // ADR-025: at-risk compares against the resolved budget (explicit limit when set)
   describe('explicit budgets (ADR-025)', () => {
-    // avg = $600/mo; current $100 → projects to $300 (under avg, over a $250 limit)
+    // avg = $1200/3 = $400/mo (fixed window); current $100 → projects to $300
+    // (under the average, over a $250 limit)
     const historical = [
       makeTx('h1', 'cat-d', 600, '2026-05-15'),
       makeTx('h2', 'cat-d', 600, '2026-04-15'),
@@ -262,8 +263,8 @@ describe('computeEndOfMonthForecasts', () => {
         budgets: new Map(),
       });
       expect(without).toEqual(withEmpty);
-      expect(without[0]!.is_at_risk).toBe(false); // $300 projected < $600 avg
-      expect(without[0]!.budget_amount).toBe(600);
+      expect(without[0]!.is_at_risk).toBe(false); // $300 projected < $400 avg
+      expect(without[0]!.budget_amount).toBe(400);
       expect(without[0]!.budget_source).toBe('historical_average');
     });
 
@@ -275,12 +276,12 @@ describe('computeEndOfMonthForecasts', () => {
         today: TODAY,
         budgets: new Map([['cat-d', 250]]),
       });
-      // $300 projected > $250 limit, even though it's under the $600 average
+      // $300 projected > $250 limit, even though it's under the $400 average
       expect(result[0]!.is_at_risk).toBe(true);
       expect(result[0]!.budget_amount).toBe(250);
       expect(result[0]!.budget_source).toBe('explicit');
       // historical_avg stays reported for transparency
-      expect(result[0]!.historical_avg).toBe(600);
+      expect(result[0]!.historical_avg).toBe(400);
     });
 
     it('clears at-risk with a generous explicit limit above the projection', () => {
