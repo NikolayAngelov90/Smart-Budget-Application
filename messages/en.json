@@ -787,6 +787,15 @@
     "showHistory": "Show history ({count})",
     "hideHistory": "Hide history"
   },
+  "streaks": {
+    "dayStreak": "{days, plural, one {1-day streak} other {#-day streak}}",
+    "weekStreak": "{weeks, plural, one {1 week} other {# weeks}}",
+    "freezeUsed": "Streak freeze used — your streak is safe. You get a new freeze next week.",
+    "freezeUsedShort": "Freeze used",
+    "freezeAvailable": "A streak freeze is ready: miss a day this week and your streak survives.",
+    "freezeSpent": "This week's streak freeze is used — log daily to keep your streak.",
+    "ariaSummary": "Logging streak: {days, plural, one {1 day} other {# days}}; {weeks, plural, one {1 consecutive week} other {# consecutive weeks}}; longest {longest, plural, one {1 day} other {# days}}"
+  },
   "whatIf": {
     "title": "\"What If\" Simulator",
     "subtitle": "Try out spending changes and see the projected savings — nothing is saved or applied.",

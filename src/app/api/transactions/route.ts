@@ -422,7 +422,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ data: transaction, nudge: nudgePayload }, { status: 201 });
+    // Story 15.1: Record logging activity for the streak — ALL transaction types
+    // (income counts as logging), non-fatal enrichment per the degradation policy
+    // (docs/api-conventions.md#degradation-policy). Log day = server day of the
+    // POST action (the act of logging, not the transaction's backdatable date).
+    const streakResult = await recordLogActivity(user.id, localDayKey(new Date())).catch(
+      (err) => {
+        logger.error('Transactions', 'Streak recording failed (non-fatal):', err);
+        return null;
+      }
+    );
+
+    return NextResponse.json(
+      { data: transaction, nudge: nudgePayload, streak: streakResult?.state ?? null },
+      { status: 201 }
+    );
   } catch (error) {
     logger.error('Transactions', 'Unexpected error in POST /api/transactions:', error);
     return NextResponse.json(
@@ -440,6 +454,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NudgePayload } from '@/types/database.types';
 import { fixedWindowMonthlyAverage, AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
 import { resolveBudget } from '@/lib/ai/budgetResolver';
+import { localDayKey } from '@/lib/ai/streakEngine';
+import { recordLogActivity } from '@/lib/services/streakService';
 
 /**
  * Computes the nudge context for a single category after a new expense.

@@ -34,6 +34,10 @@ import { ValuesSpendingCard } from '@/components/values/ValuesSpendingCard';
 import { RecentTransactions, RECENT_TRANSACTIONS_KEY } from '@/components/dashboard/RecentTransactions';
 import { BudgetHealthCard } from '@/components/dashboard/BudgetHealthCard';
 import { BUDGETS_KEY } from '@/lib/hooks/useBudgets';
+import { StreakBadge } from '@/components/dashboard/StreakBadge';
+import { STREAK_KEY } from '@/lib/hooks/useStreak';
+import { advanceStreak, localDayKey } from '@/lib/ai/streakEngine';
+import type { StreakResponse } from '@/types/database.types';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -67,6 +71,7 @@ export default function DashboardPage() {
         mutate('/api/values/spending', undefined, { revalidate: true }),
         mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
         mutate(BUDGETS_KEY, undefined, { revalidate: true }),
+        mutate(STREAK_KEY, undefined, { revalidate: true }),
       ]);
     }, [])
   );
@@ -125,13 +130,23 @@ export default function DashboardPage() {
         </Flex>
       )}
       <VStack align="start" spacing={{ base: 4, md: 6 }} mb={{ base: 6, md: 8 }}>
-        <Heading
-          as="h1"
-          fontSize={{ base: '2rem', lg: '2.5rem' }}
-          color="gray.800"
+        <Flex
+          w="full"
+          justify="space-between"
+          align="center"
+          gap={3}
+          flexWrap="wrap"
         >
-          {t('title')}
-        </Heading>
+          <Heading
+            as="h1"
+            fontSize={{ base: '2rem', lg: '2.5rem' }}
+            color="gray.800"
+          >
+            {t('title')}
+          </Heading>
+          {/* Story 15.1: logging streak — single mount point (15-6 opt-out gates here) */}
+          <StreakBadge />
+        </Flex>
         <Text fontSize={{ base: '0.875rem', lg: '1rem' }} color="gray.600">
           {t('subtitle')}
         </Text>
@@ -245,6 +260,16 @@ export default function DashboardPage() {
         onClose={() => setIsTransactionModalOpen(false)}
         onSuccess={async () => {
           setIsTransactionModalOpen(false);
+          // Story 15.1 AC #3: optimistic streak bump via the CLIENT-side engine —
+          // instant (<100ms, no network), then background revalidation reconciles
+          // with server truth (the POST already recorded it server-side).
+          mutate<StreakResponse>(
+            STREAK_KEY,
+            (current) => ({
+              streak: advanceStreak(current?.streak ?? null, localDayKey(new Date())).state,
+            }),
+            { revalidate: true }
+          );
           await Promise.all([
             mutate('/api/dashboard/stats', undefined, { revalidate: true }),
             mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),

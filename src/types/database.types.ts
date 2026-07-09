@@ -792,6 +792,52 @@ export interface Database {
           }
         ];
       };
+      streaks: {
+        Row: {
+          id: string;
+          user_id: string;
+          current_streak: number;
+          longest_streak: number;
+          weekly_streak: number;
+          last_log_date: string | null;
+          last_log_week: string | null;
+          freeze_used_on: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          current_streak?: number;
+          longest_streak?: number;
+          weekly_streak?: number;
+          last_log_date?: string | null;
+          last_log_week?: string | null;
+          freeze_used_on?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          current_streak?: number;
+          longest_streak?: number;
+          weekly_streak?: number;
+          last_log_date?: string | null;
+          last_log_week?: string | null;
+          freeze_used_on?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'streaks_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       wishlist_items: {
         Row: {
           id: string;
@@ -1375,6 +1421,37 @@ export interface WishlistItemWithImpact extends WishlistItem {
 /** API response shape from GET /api/wishlist */
 export interface WishlistResponse {
   items: WishlistItemWithImpact[];
+}
+
+// ============================================================================
+// GAMIFICATION TYPES (Story 15.1 / FR28, ADR-012)
+// ============================================================================
+
+/** A user's streak state (row in the streaks table, minus ids/timestamps) */
+export interface StreakState {
+  current_streak: number;
+  longest_streak: number;
+  weekly_streak: number;
+  /** YYYY-MM-DD of the last counted log day, or null before the first log */
+  last_log_date: string | null;
+  /** ISO year-week key of the last counted log, e.g. '2026-W27' */
+  last_log_week: string | null;
+  /** YYYY-MM-DD the weekly freeze was last consumed on, or null */
+  freeze_used_on: string | null;
+}
+
+/** What happened when a log day was applied to the streak */
+export type StreakEvent = 'started' | 'extended' | 'same_day' | 'frozen' | 'reset';
+
+/** Result of advancing the streak state machine by one log day */
+export interface StreakAdvanceResult {
+  state: StreakState;
+  event: StreakEvent;
+}
+
+/** API response shape from GET /api/streaks */
+export interface StreakResponse {
+  streak: StreakState | null;
 }
 
 // ============================================================================
