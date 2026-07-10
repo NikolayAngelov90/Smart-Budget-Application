@@ -16,7 +16,11 @@
 import { useEffect, useCallback, useState } from 'react';
 import { Box, Heading, Text, VStack, Grid, Flex, Spinner } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
-import { mutate } from 'swr';
+// useSWRConfig().mutate is scoped to the app's localStorage cache provider —
+// the module-level `mutate` export binds to SWR's DEFAULT cache and never
+// reaches the hooks (proven in the 15-1 review; the revalidations below were
+// silently inert with the global import).
+import { useSWRConfig } from 'swr';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { AIBudgetCoach } from '@/components/dashboard/AIBudgetCoach';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
@@ -45,6 +49,7 @@ import TransactionEntryModal from '@/components/transactions/TransactionEntryMod
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
+  const { mutate } = useSWRConfig();
   const { preferences } = useUserPreferences();
   const { data: stats } = useDashboardStats(undefined, preferences?.currency_format);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -73,7 +78,7 @@ export default function DashboardPage() {
         mutate(BUDGETS_KEY, undefined, { revalidate: true }),
         mutate(STREAK_KEY, undefined, { revalidate: true }),
       ]);
-    }, [])
+    }, [mutate])
   );
 
   // Performance monitoring: Mark dashboard render start
@@ -263,13 +268,18 @@ export default function DashboardPage() {
           // Story 15.1 AC #3: optimistic streak bump via the CLIENT-side engine —
           // instant (<100ms, no network), then background revalidation reconciles
           // with server truth (the POST already recorded it server-side).
+          // Only advance an EXISTING cached streak: fabricating from an empty
+          // cache would flash "1-day streak" at a 30-day user (15-1 review).
           mutate<StreakResponse>(
             STREAK_KEY,
-            (current) => ({
-              streak: advanceStreak(current?.streak ?? null, localDayKey(new Date())).state,
-            }),
+            (current) =>
+              current?.streak
+                ? { streak: advanceStreak(current.streak, localDayKey(new Date())).state }
+                : current,
             { revalidate: true }
-          );
+          ).catch(() => {
+            // Revalidation failure is non-fatal; the next focus/refresh reconciles
+          });
           await Promise.all([
             mutate('/api/dashboard/stats', undefined, { revalidate: true }),
             mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),

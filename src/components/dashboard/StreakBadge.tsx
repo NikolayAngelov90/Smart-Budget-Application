@@ -10,10 +10,16 @@
  * alone (15-8 groundwork).
  */
 
-import { Box, HStack, Text, Tooltip, VisuallyHidden } from '@chakra-ui/react';
+import { Box, HStack, Text, Tooltip } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { useStreak } from '@/lib/hooks/useStreak';
-import { isFreezeAvailable, isoWeekKey } from '@/lib/ai/streakEngine';
+import {
+  isFreezeAvailable,
+  isStreakBroken,
+  isoWeekKey,
+  localDayKey,
+  wasJustFrozen,
+} from '@/lib/ai/streakEngine';
 
 export function StreakBadge() {
   const t = useTranslations('streaks');
@@ -24,31 +30,38 @@ export function StreakBadge() {
   const streak = data?.streak;
   if (!streak || streak.current_streak <= 0) return null;
 
-  // The engine sets freeze_used_on to the log day it bridged INTO — when that
-  // matches the last counted day, the most recent advance was a freeze.
-  const freezeJustUsed =
-    streak.freeze_used_on !== null && streak.freeze_used_on === streak.last_log_date;
-  const freezeAvailable = isFreezeAvailable(streak, isoWeekKey(new Date()));
+  // A streak whose gap can no longer be bridged is DEAD — showing a weeks-old
+  // count as alive (with a "freeze ready" tooltip) would be a lie (15-1 review).
+  // Hiding it is the no-guilt behavior; comeback flows are Story 15.4's job.
+  const now = new Date();
+  if (isStreakBroken(streak, localDayKey(now))) return null;
 
-  const summary = t('ariaSummary', {
+  // The engine stamps freeze_used_on with the MISSED day it bridged; the
+  // bridging log lands exactly one day later (engine helper encodes this).
+  const freezeJustUsed = wasJustFrozen(streak);
+  const freezeAvailable = isFreezeAvailable(streak, isoWeekKey(now));
+
+  const freezeStatus = freezeJustUsed
+    ? t('freezeUsed')
+    : freezeAvailable
+      ? t('freezeAvailable')
+      : t('freezeSpent');
+
+  // One combined accessible summary: streak + longest + freeze status —
+  // everything the tooltip shows, available without hover (15-8 groundwork)
+  const summary = `${t('ariaSummary', {
     days: streak.current_streak,
     weeks: streak.weekly_streak,
     longest: streak.longest_streak,
-  });
+  })}. ${freezeStatus}`;
 
   return (
-    <Tooltip
-      hasArrow
-      label={
-        freezeJustUsed
-          ? t('freezeUsed')
-          : freezeAvailable
-            ? t('freezeAvailable')
-            : t('freezeSpent')
-      }
-    >
+    <Tooltip hasArrow label={`${t('longestLabel', { longest: streak.longest_streak })} · ${freezeStatus}`}>
+      {/* Focusable so keyboard/touch users can open the tooltip; the aria-label
+          carries the same information for screen readers */}
       <Box
         as="section"
+        tabIndex={0}
         aria-label={summary}
         display="inline-flex"
         alignItems="center"
@@ -58,7 +71,8 @@ export function StreakBadge() {
         borderWidth="1px"
         borderColor="orange.200"
         borderRadius="full"
-        minH="36px"
+        minH={{ base: '44px', md: '36px' }}
+        _focusVisible={{ boxShadow: 'outline' }}
       >
         <HStack spacing={2}>
           <Text aria-hidden="true" fontSize="md" lineHeight="1">
@@ -77,7 +91,6 @@ export function StreakBadge() {
               ❄️ {t('freezeUsedShort')}
             </Text>
           )}
-          <VisuallyHidden>{summary}</VisuallyHidden>
         </HStack>
       </Box>
     </Tooltip>

@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS streaks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
   current_streak INTEGER NOT NULL DEFAULT 0 CHECK (current_streak >= 0),
-  longest_streak INTEGER NOT NULL DEFAULT 0 CHECK (longest_streak >= 0),
+  -- The engine maintains longest >= current; enforce the invariant at the DB too
+  longest_streak INTEGER NOT NULL DEFAULT 0 CHECK (longest_streak >= 0 AND longest_streak >= current_streak),
   weekly_streak INTEGER NOT NULL DEFAULT 0 CHECK (weekly_streak >= 0),
   last_log_date DATE,
   -- ISO year-week key, e.g. '2026-W27' (kept as TEXT: lexicographic order == chronological)

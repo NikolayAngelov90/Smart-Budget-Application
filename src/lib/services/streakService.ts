@@ -11,9 +11,10 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { advanceStreak } from '@/lib/ai/streakEngine';
+import { advanceStreak, isValidDayKey } from '@/lib/ai/streakEngine';
 import { logger } from '@/lib/utils/logger';
 import type { StreakAdvanceResult, StreakState } from '@/types/database.types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 const STATE_COLUMNS =
   'current_streak, longest_streak, weekly_streak, last_log_date, last_log_week, freeze_used_on';
@@ -36,6 +37,31 @@ export async function getStreak(userId: string): Promise<StreakState | null> {
 }
 
 /**
+ * Compare-and-swap update: only writes if the row's last_log_date still matches
+ * what we read — a concurrent writer (second device, midnight-straddling POSTs)
+ * makes the CAS miss instead of being blindly overwritten (15-1 review).
+ * Returns true when a row was updated.
+ */
+async function casUpdate(
+  supabase: SupabaseClient,
+  userId: string,
+  expectedLastLogDate: string | null,
+  state: StreakState
+): Promise<boolean> {
+  let query = supabase.from('streaks').update(state).eq('user_id', userId);
+  query =
+    expectedLastLogDate === null
+      ? query.is('last_log_date', null)
+      : query.eq('last_log_date', expectedLastLogDate);
+  const { data, error } = await query.select('user_id');
+  if (error) {
+    logger.error('StreakService', `update failed: ${error.message}`);
+    throw new Error('Failed to update streak');
+  }
+  return (data ?? []).length > 0;
+}
+
+/**
  * Applies one log day to the user's streak (idempotent per day) and persists
  * the result. Returns the advanced state + what happened.
  */
@@ -43,6 +69,11 @@ export async function recordLogActivity(
   userId: string,
   logDayKey: string
 ): Promise<StreakAdvanceResult> {
+  // Reject garbage keys up front — a bad key must never persist a junk row
+  if (!isValidDayKey(logDayKey)) {
+    throw new Error('Invalid log day key');
+  }
+
   const supabase = await createClient();
 
   const current = await getStreak(userId);
@@ -54,15 +85,21 @@ export async function recordLogActivity(
   }
 
   if (current) {
-    const { error } = await supabase
-      .from('streaks')
-      .update(result.state)
-      .eq('user_id', userId);
-    if (error) {
-      logger.error('StreakService', `update failed: ${error.message}`);
-      throw new Error('Failed to update streak');
+    if (await casUpdate(supabase, userId, current.last_log_date, result.state)) {
+      return result;
     }
-    return result;
+    // CAS miss: someone advanced the row since our read — re-read and retry once
+    const fresh = await getStreak(userId);
+    const retried = advanceStreak(fresh, logDayKey);
+    if (fresh && retried.event !== 'same_day') {
+      if (await casUpdate(supabase, userId, fresh.last_log_date, retried.state)) {
+        return retried;
+      }
+      // Still racing — the concurrent writer owns this day; report its state
+      const latest = await getStreak(userId);
+      return { state: latest ?? retried.state, event: 'same_day' };
+    }
+    return retried;
   }
 
   const { error } = await supabase.from('streaks').insert({ user_id: userId, ...result.state });
@@ -71,15 +108,24 @@ export async function recordLogActivity(
     // request created the row; re-read and re-apply once (budgetService lesson)
     if (error.code === '23505') {
       const raced = await getStreak(userId);
-      const retried = advanceStreak(raced, logDayKey);
-      if (raced && retried.event !== 'same_day') {
-        const { error: retryError } = await supabase
+      if (!raced) {
+        // Winner row vanished between conflict and re-read (e.g. deletion race):
+        // one more insert attempt; never report a state the DB doesn't hold
+        const retryInsert = advanceStreak(null, logDayKey);
+        const { error: insertRetryError } = await supabase
           .from('streaks')
-          .update(retried.state)
-          .eq('user_id', userId);
-        if (retryError) {
-          logger.error('StreakService', `retry update failed: ${retryError.message}`);
-          throw new Error('Failed to update streak');
+          .insert({ user_id: userId, ...retryInsert.state });
+        if (insertRetryError) {
+          logger.error('StreakService', `insert retry failed: ${insertRetryError.message}`);
+          throw new Error('Failed to save streak');
+        }
+        return retryInsert;
+      }
+      const retried = advanceStreak(raced, logDayKey);
+      if (retried.event !== 'same_day') {
+        if (!(await casUpdate(supabase, userId, raced.last_log_date, retried.state))) {
+          const latest = await getStreak(userId);
+          return { state: latest ?? retried.state, event: 'same_day' };
         }
       }
       return retried;

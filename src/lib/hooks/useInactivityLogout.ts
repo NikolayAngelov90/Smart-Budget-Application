@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { clearOfflineCache } from '@/lib/services/offlineService';
 
 /**
  * Inactivity Logout Hook
@@ -63,6 +64,12 @@ export function useInactivityLogout() {
     async (reason: 'inactivity' | 'manual' = 'inactivity') => {
       clearTimers();
       setShowWarning(false);
+
+      // Clear the persisted SWR cache BEFORE signing out — otherwise the next
+      // user on a shared device paints the previous user's cached data (the
+      // manual signOut() in @/lib/auth/client does this; the inactivity path
+      // was missing it — 15-1 review).
+      clearOfflineCache();
 
       // Sign out from Supabase
       await supabase.auth.signOut();

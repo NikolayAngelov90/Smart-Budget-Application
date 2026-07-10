@@ -60,6 +60,10 @@ interface CreateTransactionRequest {
   currency?: string; // Story 10-6: ISO 4217 currency code
   exchange_rate?: number | null; // Story 10-6: rate at time of entry
   allowance_id?: string | null; // Story 13.6: tag as private allowance spending
+  /** Story 15.1: the CLIENT's local calendar day of the logging action, so the
+   *  streak counts the user's day, not the server's UTC day. Validated and
+   *  clamped to ±1 day of the server day; falls back to the server day. */
+  log_day?: string;
 }
 
 /**
@@ -401,6 +405,21 @@ export async function POST(request: NextRequest) {
       logger.error('Transactions', 'Failed to check insight trigger:', error);
     });
 
+    // Story 15.1: Record logging activity for the streak — ALL transaction types
+    // (income counts as logging), non-fatal enrichment per the degradation policy
+    // (docs/api-conventions.md#degradation-policy). The streak counts the USER's
+    // calendar day: trust the client's log_day when it's a valid date within
+    // ±1 day of the server day (clock-skew/timezone window, anti-farming clamp);
+    // otherwise fall back to the server day. Started BEFORE the nudge await so
+    // both enrichments run concurrently (no extra serial round-trips).
+    const streakPromise = recordLogActivity(
+      user.id,
+      resolveLogDay(body.log_day, new Date())
+    ).catch((err) => {
+      logger.warn('Transactions', 'Streak recording failed (non-fatal):', err);
+      return null;
+    });
+
     // Story 12.3: Evaluate nudge for expense transactions only
     let nudgePayload = null;
     if (body.type === 'expense') {
@@ -410,7 +429,7 @@ export async function POST(request: NextRequest) {
         body.category_id,
         category.name
       ).catch((err) => {
-        logger.error('Transactions', 'Nudge evaluation failed (non-fatal):', err);
+        logger.warn('Transactions', 'Nudge evaluation failed (non-fatal):', err);
         return null;
       });
 
@@ -422,16 +441,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Story 15.1: Record logging activity for the streak — ALL transaction types
-    // (income counts as logging), non-fatal enrichment per the degradation policy
-    // (docs/api-conventions.md#degradation-policy). Log day = server day of the
-    // POST action (the act of logging, not the transaction's backdatable date).
-    const streakResult = await recordLogActivity(user.id, localDayKey(new Date())).catch(
-      (err) => {
-        logger.error('Transactions', 'Streak recording failed (non-fatal):', err);
-        return null;
-      }
-    );
+    const streakResult = await streakPromise;
 
     return NextResponse.json(
       { data: transaction, nudge: nudgePayload, streak: streakResult?.state ?? null },
@@ -454,8 +464,24 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NudgePayload } from '@/types/database.types';
 import { fixedWindowMonthlyAverage, AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
 import { resolveBudget } from '@/lib/ai/budgetResolver';
-import { localDayKey } from '@/lib/ai/streakEngine';
+import { localDayKey, isValidDayKey } from '@/lib/ai/streakEngine';
 import { recordLogActivity } from '@/lib/services/streakService';
+
+/**
+ * Story 15.1: pick the streak log day. The client's local calendar day wins
+ * when it's a real date within ±1 day of the server day (timezone/clock-skew
+ * window; the clamp prevents backdated streak farming); else the server day.
+ */
+function resolveLogDay(clientDay: string | undefined, now: Date): string {
+  const serverDay = localDayKey(now);
+  if (!clientDay || !isValidDayKey(clientDay)) return serverDay;
+  const toUtcMs = (key: string) => {
+    const [y, m, d] = key.split('-').map(Number);
+    return Date.UTC(y!, m! - 1, d!);
+  };
+  const dayDiff = Math.abs(toUtcMs(clientDay) - toUtcMs(serverDay)) / 86_400_000;
+  return dayDiff <= 1 ? clientDay : serverDay;
+}
 
 /**
  * Computes the nudge context for a single category after a new expense.

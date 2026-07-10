@@ -794,6 +794,7 @@
     "freezeUsedShort": "Freeze used",
     "freezeAvailable": "A streak freeze is ready: miss a day this week and your streak survives.",
     "freezeSpent": "This week's streak freeze is used — log daily to keep your streak.",
+    "longestLabel": "Longest streak: {longest, plural, one {1 day} other {# days}}",
     "ariaSummary": "Logging streak: {days, plural, one {1 day} other {# days}}; {weeks, plural, one {1 consecutive week} other {# consecutive weeks}}; longest {longest, plural, one {1 day} other {# days}}"
   },
   "whatIf": {

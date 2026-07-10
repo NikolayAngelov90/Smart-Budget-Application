@@ -20,6 +20,7 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
 interface ChainStub {
   select: jest.Mock;
   eq: jest.Mock;
+  is: jest.Mock;
   insert: jest.Mock;
   update: jest.Mock;
   maybeSingle: jest.Mock;
@@ -28,7 +29,7 @@ interface ChainStub {
 function chain(result: { data: unknown; error: unknown }): ChainStub {
   const q = {} as ChainStub;
   const bag = q as unknown as Record<string, jest.Mock>;
-  for (const m of ['select', 'eq', 'insert', 'update']) {
+  for (const m of ['select', 'eq', 'is', 'insert', 'update']) {
     bag[m] = jest.fn(() => q);
   }
   q.maybeSingle = jest.fn().mockResolvedValue(result);
@@ -111,7 +112,7 @@ describe('recordLogActivity', () => {
     const client = makeClient({
       streaks: [
         { data: STATE, error: null }, // getStreak
-        { data: null, error: null }, // update ok
+        { data: [{ user_id: 'u-1' }], error: null }, // CAS update matched 1 row
       ],
     });
     mockCreateClient.mockResolvedValue(client as never);
@@ -124,6 +125,49 @@ describe('recordLogActivity', () => {
       expect.objectContaining({ current_streak: 4, last_log_date: '2026-01-07' })
     );
     expect(updateChain.eq).toHaveBeenCalledWith('user_id', 'u-1');
+    // Compare-and-swap guard: only writes if the row is still what we read
+    expect(updateChain.eq).toHaveBeenCalledWith('last_log_date', '2026-01-06');
+  });
+
+  it('rejects garbage day keys before touching the db', async () => {
+    await expect(recordLogActivity('u-1', '2026-13-40')).rejects.toThrow('Invalid log day key');
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it('CAS miss (concurrent writer) → re-reads and retries once', async () => {
+    const advanced = { ...STATE, current_streak: 4, last_log_date: '2026-01-07' };
+    const client = makeClient({
+      streaks: [
+        { data: STATE, error: null }, // getStreak (stale)
+        { data: [], error: null }, // CAS update matched 0 rows (someone else wrote)
+        { data: advanced, error: null }, // re-read fresh state
+        { data: [{ user_id: 'u-1' }], error: null }, // retry CAS ok
+      ],
+    });
+    mockCreateClient.mockResolvedValue(client as never);
+
+    const result = await recordLogActivity('u-1', '2026-01-08');
+    // Fresh state last_log 01-07 + log 01-08 → extended to 5
+    expect(result.event).toBe('extended');
+    expect(result.state.current_streak).toBe(5);
+  });
+
+  it('23505 with a vanished winner row retries the insert (never fabricates)', async () => {
+    const client = makeClient({
+      streaks: [
+        { data: null, error: null }, // getStreak → none
+        { data: null, error: { code: '23505', message: 'duplicate' } }, // insert loses
+        { data: null, error: null }, // re-read → row gone
+        { data: null, error: null }, // insert retry ok
+      ],
+    });
+    mockCreateClient.mockResolvedValue(client as never);
+
+    const result = await recordLogActivity('u-1', '2026-01-05');
+    expect(result.event).toBe('started');
+    expect(result.state.current_streak).toBe(1);
+    // Fourth chain was an insert, not a fabricated return
+    expect(client.chains[3]!.insert).toHaveBeenCalled();
   });
 
   it('skips the write entirely for same-day repeats (idempotent)', async () => {
@@ -141,7 +185,7 @@ describe('recordLogActivity', () => {
         { data: null, error: null }, // getStreak → none (stale)
         { data: null, error: { code: '23505', message: 'duplicate' } }, // insert loses race
         { data: STATE, error: null }, // re-read winner row
-        { data: null, error: null }, // retry update ok
+        { data: [{ user_id: 'u-1' }], error: null }, // CAS update matched 1 row
       ],
     });
     mockCreateClient.mockResolvedValue(client as never);

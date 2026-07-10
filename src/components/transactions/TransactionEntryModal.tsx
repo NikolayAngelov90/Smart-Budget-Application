@@ -73,6 +73,7 @@ import { useSmartNudge } from '@/lib/hooks/useSmartNudge';
 import { SmartNudge } from '@/components/ai/SmartNudge';
 import { getEnabledCurrencies } from '@/lib/config/currencies';
 import { triggerHaptic } from '@/lib/utils/haptic';
+import { localDayKey } from '@/lib/ai/streakEngine';
 import type { NudgePayload } from '@/types/database.types';
 
 // Transaction type
@@ -373,6 +374,9 @@ export default function TransactionEntryModal({
             exchange_rate: exchangeRate,
             // Story 13.6: tag as private allowance spending when the toggle is eligible + on.
             allowance_id: canTagAllowance && useAllowanceTag ? allowanceStatus?.allowance?.id : undefined,
+            // Story 15.1: the USER's calendar day, so the streak counts local days
+            // (server clamps to ±1 day of its own clock)
+            log_day: localDayKey(new Date()),
           }),
         });
       }

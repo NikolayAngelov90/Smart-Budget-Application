@@ -53,12 +53,53 @@ function weekKeyForDay(dayKey: string): string | null {
   return date ? isoWeekKey(date) : null;
 }
 
+/** True when the key parses as a real YYYY-MM-DD calendar date */
+export function isValidDayKey(dayKey: string): boolean {
+  return parseLocalDate(dayKey) !== null;
+}
+
+/** Day key shifted by n days (n may be negative) */
+function addDays(dayKey: string, n: number): string | null {
+  const date = parseLocalDate(dayKey);
+  if (!date) return null;
+  return localDayKey(new Date(date.getFullYear(), date.getMonth(), date.getDate() + n));
+}
+
 /** The weekly freeze is available when never used or last used in an earlier ISO week */
 export function isFreezeAvailable(state: StreakState, currentWeekKey: string): boolean {
   if (!state.freeze_used_on) return true;
   const usedWeek = weekKeyForDay(state.freeze_used_on);
   if (!usedWeek) return true; // garbage stored date — don't lock the freeze forever
   return usedWeek < currentWeekKey;
+}
+
+/**
+ * Whether the most recent advance was a freeze bridge: the freeze stamps the
+ * MISSED day, and the bridging log lands exactly one day after it.
+ */
+export function wasJustFrozen(state: StreakState): boolean {
+  if (!state.freeze_used_on || !state.last_log_date) return false;
+  return dayDiff(state.freeze_used_on, state.last_log_date) === 1;
+}
+
+/**
+ * Whether the stored streak is already dead as of `todayKey` — i.e. the gap
+ * since the last log can no longer be bridged (more than one missed day, or
+ * exactly one missed day whose week's freeze is spent). The badge hides broken
+ * streaks instead of showing a weeks-old count as if it were alive (15-1
+ * review). A 1-missed-day gap with a freeze available is still ALIVE — that's
+ * the freeze promise.
+ */
+export function isStreakBroken(state: StreakState | null, todayKey: string): boolean {
+  if (!state || !state.last_log_date || state.current_streak <= 0) return false;
+  const diff = dayDiff(state.last_log_date, todayKey);
+  if (diff === null || diff <= 1) return false; // logged today/yesterday (or garbage input)
+  if (diff === 2) {
+    const missedDayKey = addDays(state.last_log_date, 1);
+    const missedWeekKey = missedDayKey ? weekKeyForDay(missedDayKey) : null;
+    return !(missedWeekKey && isFreezeAvailable(state, missedWeekKey));
+  }
+  return true;
 }
 
 const EMPTY_STATE: StreakState = {
@@ -121,16 +162,22 @@ export function advanceStreak(state: StreakState | null, logDayKey: string): Str
   let freezeUsedOn = prev.freeze_used_on;
   let event: StreakAdvanceResult['event'];
 
+  // The freeze belongs to the week of the MISSED day, not the resume day —
+  // otherwise a miss on Sunday charged to Monday's week both double-dips the
+  // old week and steals the new week's freeze (15-1 review).
+  const missedDayKey = diff === 2 ? addDays(prev.last_log_date, 1) : null;
+  const missedWeekKey = missedDayKey ? weekKeyForDay(missedDayKey) : null;
+
   if (diff === 1) {
     currentStreak = prev.current_streak + 1;
     event = 'extended';
-  } else if (diff === 2 && isFreezeAvailable(prev, logWeek)) {
-    // Exactly one missed day, freeze available → auto-bridge it (no-guilt UX)
+  } else if (diff === 2 && missedDayKey && missedWeekKey && isFreezeAvailable(prev, missedWeekKey)) {
+    // Exactly one missed day, that week's freeze available → auto-bridge (no-guilt UX)
     currentStreak = prev.current_streak + 1;
-    freezeUsedOn = logDayKey;
+    freezeUsedOn = missedDayKey;
     event = 'frozen';
   } else {
-    // Longer gap, or the weekly freeze is spent → fresh start (15.4 owns comebacks)
+    // Longer gap, or that week's freeze is spent → fresh start (15.4 owns comebacks)
     currentStreak = 1;
     event = 'reset';
   }
