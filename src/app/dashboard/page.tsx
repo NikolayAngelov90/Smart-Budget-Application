@@ -40,6 +40,8 @@ import { BudgetHealthCard } from '@/components/dashboard/BudgetHealthCard';
 import { BUDGETS_KEY } from '@/lib/hooks/useBudgets';
 import { StreakBadge } from '@/components/dashboard/StreakBadge';
 import { STREAK_KEY } from '@/lib/hooks/useStreak';
+import { BudgetScoreRing } from '@/components/dashboard/BudgetScoreRing';
+import { SCORE_KEY } from '@/lib/hooks/useBudgetScore';
 import { advanceStreak, localDayKey } from '@/lib/ai/streakEngine';
 import type { StreakResponse } from '@/types/database.types';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
@@ -77,6 +79,7 @@ export default function DashboardPage() {
         mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
         mutate(BUDGETS_KEY, undefined, { revalidate: true }),
         mutate(STREAK_KEY, undefined, { revalidate: true }),
+        mutate(SCORE_KEY, undefined, { revalidate: true }),
       ]);
     }, [mutate])
   );
@@ -173,6 +176,10 @@ export default function DashboardPage() {
       <Box mb={{ base: 6, md: 8 }}>
         <DashboardStats />
       </Box>
+
+      {/* Story 15.2: Budget Score — single mount point (15-6 opt-out gates here);
+          renders null until the user has scoreable data */}
+      <BudgetScoreRing />
 
       {/* Budget Health - ADR-025 (progressive disclosure: renders null with no budgets;
           carries its own bottom margin so zero-budget users get no phantom gap) */}
@@ -287,6 +294,8 @@ export default function DashboardPage() {
             mutate('/api/values/spending', undefined, { revalidate: true }),
             mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
             mutate(BUDGETS_KEY, undefined, { revalidate: true }),
+            // Story 15.2 AC #4: the score updates after each transaction
+            mutate(SCORE_KEY, undefined, { revalidate: true }),
           ]);
         }}
       />

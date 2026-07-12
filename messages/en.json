@@ -797,6 +797,32 @@
     "longestLabel": "Longest streak: {longest, plural, one {1 day} other {# days}}",
     "ariaSummary": "Logging streak: {days, plural, one {1 day} other {# days}}; {weeks, plural, one {1 consecutive week} other {# consecutive weeks}}; longest {longest, plural, one {1 day} other {# days}}"
   },
+  "score": {
+    "ariaLabel": "Budget Score: {score} out of 100, level {level}",
+    "breakdownTitle": "What shapes your score",
+    "levels": {
+      "beginner": "Beginner",
+      "building": "Building",
+      "steady": "Steady",
+      "strong": "Strong",
+      "master": "Master"
+    },
+    "factors": {
+      "adherence": "Budget adherence",
+      "consistency": "Logging consistency",
+      "goals": "Goal progress"
+    },
+    "status": {
+      "helping": "Helping",
+      "hurting": "Hurting",
+      "neutral": "Neutral",
+      "unscored": "Not scored yet"
+    },
+    "hint": {
+      "adherence": "Set a category budget (or build spending history) to score this.",
+      "goals": "Create a savings goal to score this."
+    }
+  },
   "whatIf": {
     "title": "\"What If\" Simulator",
     "subtitle": "Try out spending changes and see the projected savings — nothing is saved or applied.",

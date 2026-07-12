@@ -1454,6 +1454,38 @@ export interface StreakResponse {
   streak: StreakState | null;
 }
 
+/** Budget Score factor identifiers (Story 15.2 / FR29) */
+export type ScoreFactorKey = 'adherence' | 'consistency' | 'goals';
+
+/** How a factor is contributing: scored factors are helping/hurting/neutral; unscored = inputs don't exist yet */
+export type ScoreFactorStatus = 'helping' | 'hurting' | 'neutral' | 'unscored';
+
+/** One factor of the Budget Score breakdown */
+export interface ScoreFactor {
+  key: ScoreFactorKey;
+  /** Points earned (0..max); 0 for unscored factors */
+  earned: number;
+  /** Factor weight (adherence 50 / consistency 30 / goals 20) */
+  max: number;
+  status: ScoreFactorStatus;
+}
+
+/** Budget Score level tier (bands: 0-24/25-49/50-74/75-89/90-100) */
+export type BudgetScoreLevel = 'beginner' | 'building' | 'steady' | 'strong' | 'master';
+
+/** The computed Budget Score (0-100), its tier, and the factor breakdown */
+export interface BudgetScore {
+  score: number;
+  level: BudgetScoreLevel;
+  factors: ScoreFactor[];
+}
+
+/** API response shape from GET /api/gamification/score */
+export interface BudgetScoreResponse {
+  hasData: boolean;
+  budgetScore: BudgetScore | null;
+}
+
 // ============================================================================
 // WHAT-IF SIMULATION TYPES (Story 14.4 / FR16)
 // ============================================================================
