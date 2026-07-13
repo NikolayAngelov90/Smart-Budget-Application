@@ -57,16 +57,15 @@ describe('middleware', () => {
     expect(response.headers.get('location')).toContain('redirect=%2Fdashboard');
   });
 
-  it('redirects unauthenticated users from /api routes to /login', async () => {
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: null },
-    });
-
+  it('passes /api routes through WITHOUT a Supabase auth round-trip', async () => {
+    // Every API route self-authenticates (getUser → 401, or CRON_SECRET).
+    // The middleware skipping getUser here removes a full Supabase Auth
+    // network round-trip from every API request (2026-07-13 perf pass).
     const request = new NextRequest('http://localhost:3000/api/transactions');
     const response = await middleware(request);
 
-    expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toContain('/login');
+    expect(response.status).toBe(200); // pass-through; the route itself 401s
+    expect(mockGetUser).not.toHaveBeenCalled();
   });
 
   it('redirects authenticated users from /login to /dashboard', async () => {

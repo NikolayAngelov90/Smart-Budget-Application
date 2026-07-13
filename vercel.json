@@ -2,6 +2,7 @@
   "git": {
     "deploymentEnabled": false
   },
+  "regions": ["arn1"],
   "crons": [
     {
       "path": "/api/cron/generate-insights",

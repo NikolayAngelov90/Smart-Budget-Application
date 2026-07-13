@@ -29,6 +29,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  // API routes authenticate themselves (every handler calls auth.getUser()
+  // and returns 401; cron routes check CRON_SECRET) — audited 2026-07-13, all
+  // 71 routes. Skipping the middleware getUser() here removes a full Supabase
+  // Auth round-trip from EVERY API request; session cookies are refreshed by
+  // page navigations, which still run the full check below.
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
