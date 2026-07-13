@@ -34,6 +34,7 @@ import {
 import { keyframes } from '@emotion/react';
 import { useTranslations } from 'next-intl';
 import { useBudgetScore } from '@/lib/hooks/useBudgetScore';
+import { useAchievementToast } from '@/lib/hooks/useAchievementToast';
 import type { BudgetScoreLevel, ScoreFactor } from '@/types/database.types';
 
 const LEVEL_COLOR: Record<BudgetScoreLevel, string> = {
@@ -71,6 +72,19 @@ export function BudgetScoreRing() {
   const t = useTranslations('score');
   const { data } = useBudgetScore();
   const prefersReducedMotion = usePrefersReducedMotion();
+  const toastAchievements = useAchievementToast();
+
+  // Story 15.3: score-side unlocks (budgets/goals/score achievements) arrive
+  // in the score payload — toast each batch once (SWR may hand back the same
+  // cached object across renders; the ref guards against re-toasting it)
+  const toastedRef = useRef<unknown>(null);
+  const newlyUnlocked = data?.newlyUnlocked;
+  useEffect(() => {
+    if (!newlyUnlocked || newlyUnlocked.length === 0) return;
+    if (toastedRef.current === newlyUnlocked) return;
+    toastedRef.current = newlyUnlocked;
+    toastAchievements(newlyUnlocked);
+  }, [newlyUnlocked, toastAchievements]);
 
   // Level-up pulse: animate only when the level rises within this session
   const prevLevelRef = useRef<BudgetScoreLevel | null>(null);

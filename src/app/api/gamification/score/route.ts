@@ -18,6 +18,8 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { computeBudgetScore } from '@/lib/ai/budgetScoreEngine';
+import { evaluateAchievements } from '@/lib/ai/achievementEngine';
+import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
 import { AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import { getStreak } from '@/lib/services/streakService';
@@ -134,9 +136,30 @@ export async function GET() {
       today,
     });
 
+    // Story 15.3: score-side achievement evaluation (score / budgets / goals —
+    // all already in hand). Best-effort enrichment: failure warns and returns
+    // [] — NEVER breaks the score response (degradation policy).
+    const newlyUnlocked = await (async () => {
+      const unlocked = await getUnlocked(user.id);
+      const earned = evaluateAchievements({
+        score: budgetScore?.score,
+        // Errored queries are UNKNOWABLE signals — skip, don't evaluate as false
+        hasBudget: budgetsResult.error ? undefined : explicitBudgets.size > 0,
+        goals: goalsResult.error ? undefined : goals,
+        alreadyUnlocked: new Set(unlocked.map((a) => a.achievement_key)),
+      });
+      if (earned.length === 0) return [];
+      const inserted = await unlockAchievements(user.id, earned);
+      return inserted.map((a) => a.achievement_key);
+    })().catch((err) => {
+      logger.warn('BudgetScoreAPI', 'Achievement evaluation failed (non-fatal):', err);
+      return [];
+    });
+
     const response: BudgetScoreResponse = {
       hasData: budgetScore !== null,
       budgetScore,
+      newlyUnlocked,
     };
     return NextResponse.json(response);
   } catch (error) {

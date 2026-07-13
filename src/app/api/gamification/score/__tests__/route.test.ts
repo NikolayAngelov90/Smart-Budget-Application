@@ -47,12 +47,14 @@ interface ChainStub {
   lte: jest.Mock;
   lt: jest.Mock;
   or: jest.Mock;
+  order: jest.Mock;
+  upsert: jest.Mock;
 }
 
 function chain(result: { data: unknown; error: unknown }): ChainStub {
   const q = {} as ChainStub;
   const bag = q as unknown as Record<string, jest.Mock>;
-  for (const m of ['select', 'eq', 'is', 'gte', 'lte', 'lt', 'or']) {
+  for (const m of ['select', 'eq', 'is', 'gte', 'lte', 'lt', 'or', 'order', 'upsert']) {
     bag[m] = jest.fn(() => q);
   }
   (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) =>
@@ -159,6 +161,11 @@ describe('GET /api/gamification/score', () => {
       expect.stringMatching(/^deadline\.is\.null,deadline\.gt\.\d{4}-\d{2}-\d{2}$/)
     );
     expect(mockGetStreak).toHaveBeenCalledWith('user-1');
+
+    // Story 15.3: score-side achievement enrichment reports what was inserted
+    // (user_achievements chains resolve {data: []} → getUnlocked [] → first_goal
+    // earned → upsert; the stub echoes [] so nothing is reported as new)
+    expect(Array.isArray(body.newlyUnlocked)).toBe(true);
   });
 
   it('returns hasData:false for a user with no activity at all', async () => {
@@ -168,7 +175,7 @@ describe('GET /api/gamification/score', () => {
     const res = await GET();
     const body = await res.json();
     expect(res.status).toBe(200);
-    expect(body).toEqual({ hasData: false, budgetScore: null });
+    expect(body).toEqual({ hasData: false, budgetScore: null, newlyUnlocked: [] });
   });
 
   it('500s when a CORE input fails (transactions) — never fabricate a score', async () => {

@@ -443,8 +443,26 @@ export async function POST(request: NextRequest) {
 
     const streakResult = await streakPromise;
 
+    // Story 15.3: achievement evaluation — non-fatal enrichment. Signals in
+    // hand: all-time tx count (cheap index-only count) + the just-advanced
+    // streak. Score/goal/budget achievements are evaluated by the score GET
+    // (which already has those inputs). Failures → warn + [] (degradation policy).
+    const achievements = await evaluateTransactionAchievements(
+      supabase,
+      user.id,
+      streakResult?.state ?? null
+    ).catch((err) => {
+      logger.warn('Transactions', 'Achievement evaluation failed (non-fatal):', err);
+      return [] as AchievementKey[];
+    });
+
     return NextResponse.json(
-      { data: transaction, nudge: nudgePayload, streak: streakResult?.state ?? null },
+      {
+        data: transaction,
+        nudge: nudgePayload,
+        streak: streakResult?.state ?? null,
+        achievements,
+      },
       { status: 201 }
     );
   } catch (error) {
@@ -466,6 +484,42 @@ import { fixedWindowMonthlyAverage, AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spend
 import { resolveBudget } from '@/lib/ai/budgetResolver';
 import { localDayKey, isValidDayKey } from '@/lib/ai/streakEngine';
 import { recordLogActivity } from '@/lib/services/streakService';
+import { evaluateAchievements } from '@/lib/ai/achievementEngine';
+import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
+import type { AchievementKey, StreakState } from '@/types/database.types';
+
+/**
+ * Story 15.3: evaluates transaction-side achievements (counts + streaks) and
+ * persists new unlocks idempotently. Returns only what was ACTUALLY inserted
+ * (a concurrent evaluator losing the race reports nothing). Caller treats
+ * this as non-fatal enrichment.
+ */
+async function evaluateTransactionAchievements(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  streak: StreakState | null
+): Promise<AchievementKey[]> {
+  const [unlocked, countResult] = await Promise.all([
+    getUnlocked(userId),
+    supabase
+      .from('transactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId),
+  ]);
+
+  // Count unavailable → skip count conditions (unknowable ≠ 0), keep streak ones
+  const transactionCount =
+    countResult.error || countResult.count == null ? undefined : countResult.count;
+
+  const earned = evaluateAchievements({
+    transactionCount,
+    streak,
+    alreadyUnlocked: new Set(unlocked.map((a) => a.achievement_key)),
+  });
+  if (earned.length === 0) return [];
+  const inserted = await unlockAchievements(userId, earned);
+  return inserted.map((a) => a.achievement_key);
+}
 
 /**
  * Story 15.1: pick the streak log day. The client's local calendar day wins

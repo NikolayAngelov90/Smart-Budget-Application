@@ -64,6 +64,7 @@ import type { PDFReportData } from '@/types/export.types';
 import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
 import { FinancialDisclaimer } from '@/components/ai/FinancialDisclaimer';
 import { ValuesPlanSection } from '@/components/values/ValuesPlanSection';
+import { AchievementsSection } from '@/components/settings/AchievementsSection';
 import { SUPPORTED_CURRENCIES, getEnabledCurrencies } from '@/lib/config/currencies';
 import { formatExchangeRate } from '@/lib/utils/currency';
 import type { ExchangeRateResponse } from '@/types/exchangeRate.types';
@@ -552,6 +553,9 @@ export default function SettingsPage() {
 
           {/* Story 14.1: Values-Based Spending Plan */}
           <ValuesPlanSection />
+
+          {/* Story 15.3: Achievement gallery — settings section per UX (no new nav) */}
+          <AchievementsSection />
 
           {/* AC-8.3.2: Account Information Section */}
           <Card>

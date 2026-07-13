@@ -824,6 +824,36 @@
       "goals": "Create a savings goal to score this."
     }
   },
+  "achievements": {
+    "heading": "Achievements",
+    "toastTitle": "Achievement unlocked!",
+    "unlockedOn": "Unlocked {date}",
+    "locked": "Locked",
+    "names": {
+      "first_transaction": "First Step",
+      "ten_transactions": "Getting Consistent",
+      "hundred_transactions": "Century Logger",
+      "week_streak": "One Week Strong",
+      "month_streak": "Habit Master",
+      "first_budget": "Budget Setter",
+      "first_goal": "Goal Getter",
+      "goal_reached": "Goal Crusher",
+      "score_steady": "Steady Hands",
+      "score_master": "Budget Master"
+    },
+    "conditions": {
+      "first_transaction": "Log your first transaction",
+      "ten_transactions": "Log 10 transactions",
+      "hundred_transactions": "Log 100 transactions",
+      "week_streak": "Keep a 7-day logging streak",
+      "month_streak": "Keep a 30-day logging streak",
+      "first_budget": "Set your first category budget",
+      "first_goal": "Create your first savings goal",
+      "goal_reached": "Reach a savings goal",
+      "score_steady": "Reach a Budget Score of 50",
+      "score_master": "Reach a Budget Score of 90"
+    }
+  },
   "whatIf": {
     "title": "\"What If\" Simulator",
     "subtitle": "Try out spending changes and see the projected savings — nothing is saved or applied.",

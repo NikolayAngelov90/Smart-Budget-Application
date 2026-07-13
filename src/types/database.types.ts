@@ -1484,6 +1484,33 @@ export interface BudgetScore {
 export interface BudgetScoreResponse {
   hasData: boolean;
   budgetScore: BudgetScore | null;
+  /** Story 15.3: achievement keys newly unlocked by this evaluation (enrichment) */
+  newlyUnlocked?: AchievementKey[];
+}
+
+/** Achievement identifiers (Story 15.3 / FR30) — definitions live in the code catalog */
+export type AchievementKey =
+  | 'first_transaction'
+  | 'ten_transactions'
+  | 'hundred_transactions'
+  | 'week_streak'
+  | 'month_streak'
+  | 'first_budget'
+  | 'first_goal'
+  | 'goal_reached'
+  | 'score_steady'
+  | 'score_master';
+
+/** An unlock row from the user_achievements table (036) */
+export interface UserAchievement {
+  achievement_key: AchievementKey;
+  /** ISO timestamp of the unlock */
+  unlocked_at: string;
+}
+
+/** API response shape from GET /api/achievements */
+export interface AchievementsResponse {
+  achievements: UserAchievement[];
 }
 
 // ============================================================================

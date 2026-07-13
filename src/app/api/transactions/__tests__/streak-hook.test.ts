@@ -23,11 +23,19 @@ jest.mock('@/lib/services/insightService', () => ({
 jest.mock('@/lib/ai/nudgeEngine', () => ({ evaluateNudge: jest.fn(() => null) }));
 jest.mock('@/lib/services/pushService', () => ({ sendPushToUser: jest.fn(), isWithinQuietHours: jest.fn(() => false) }));
 jest.mock('@/lib/services/streakService', () => ({ recordLogActivity: jest.fn() }));
+jest.mock('@/lib/services/achievementService', () => ({
+  getUnlocked: jest.fn().mockResolvedValue([]),
+  unlockAchievements: jest.fn(),
+}));
 jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
 import { POST } from '@/app/api/transactions/route';
 import { createClient } from '@/lib/supabase/server';
 import { recordLogActivity } from '@/lib/services/streakService';
+import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
+
+const mockGetUnlocked = getUnlocked as jest.MockedFunction<typeof getUnlocked>;
+const mockUnlockAchievements = unlockAchievements as jest.MockedFunction<typeof unlockAchievements>;
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockRecordLogActivity = recordLogActivity as jest.MockedFunction<typeof recordLogActivity>;
@@ -73,6 +81,10 @@ const req = (body: unknown) => ({ json: async () => body }) as never;
 beforeEach(() => {
   jest.clearAllMocks();
   mockRecordLogActivity.mockResolvedValue({ state: STREAK_STATE, event: 'extended' });
+  mockGetUnlocked.mockResolvedValue([]);
+  mockUnlockAchievements.mockImplementation(async (_userId, keys) =>
+    keys.map((achievement_key) => ({ achievement_key, unlocked_at: '2026-07-13T10:00:00Z' }))
+  );
 });
 
 it('records logging activity for an INCOME transaction and returns the streak', async () => {
@@ -105,5 +117,50 @@ it('streak failure is non-fatal: POST still 201 with streak null', async () => {
 
   expect(res.status).toBe(201);
   expect(body.streak).toBeNull();
+  expect(body.data).toBeDefined();
+});
+
+it('returns newly unlocked achievements in the 201 envelope (Story 15.3)', async () => {
+  // 7-day streak after this log → week_streak earned
+  mockRecordLogActivity.mockResolvedValue({
+    state: { ...STREAK_STATE, current_streak: 7 },
+    event: 'extended',
+  });
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const body = await res.json();
+
+  expect(res.status).toBe(201);
+  expect(body.achievements).toEqual(['week_streak']);
+  expect(mockUnlockAchievements).toHaveBeenCalledWith('user-1', ['week_streak']);
+});
+
+it('already-unlocked achievements are not re-reported', async () => {
+  mockRecordLogActivity.mockResolvedValue({
+    state: { ...STREAK_STATE, current_streak: 7 },
+    event: 'extended',
+  });
+  mockGetUnlocked.mockResolvedValue([
+    { achievement_key: 'week_streak', unlocked_at: '2026-07-01T00:00:00Z' },
+  ] as never);
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const body = await res.json();
+
+  expect(body.achievements).toEqual([]);
+  expect(mockUnlockAchievements).not.toHaveBeenCalled();
+});
+
+it('achievement evaluation failure is non-fatal: POST still 201 with achievements []', async () => {
+  mockGetUnlocked.mockRejectedValue(new Error('achievements table missing'));
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const body = await res.json();
+
+  expect(res.status).toBe(201);
+  expect(body.achievements).toEqual([]);
   expect(body.data).toBeDefined();
 });

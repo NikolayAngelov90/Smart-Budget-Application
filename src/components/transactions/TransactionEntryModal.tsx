@@ -74,7 +74,8 @@ import { SmartNudge } from '@/components/ai/SmartNudge';
 import { getEnabledCurrencies } from '@/lib/config/currencies';
 import { triggerHaptic } from '@/lib/utils/haptic';
 import { localDayKey } from '@/lib/ai/streakEngine';
-import type { NudgePayload } from '@/types/database.types';
+import { useAchievementToast } from '@/lib/hooks/useAchievementToast';
+import type { AchievementKey, NudgePayload } from '@/types/database.types';
 
 // Transaction type
 type TransactionType = 'expense' | 'income';
@@ -152,6 +153,7 @@ export default function TransactionEntryModal({
   transaction = null,
 }: TransactionEntryModalProps) {
   const toast = useToast();
+  const toastAchievements = useAchievementToast();
   const t = useTranslations('transactions');
   const tCommon = useTranslations('common');
   const { nudge, showNudge, dismissNudge } = useSmartNudge();
@@ -391,6 +393,13 @@ export default function TransactionEntryModal({
       const nudgePayload = (responseData as { nudge?: NudgePayload | null }).nudge;
       if (nudgePayload && mode === 'create') {
         showNudge(nudgePayload);
+      }
+
+      // Story 15.3: celebrate newly unlocked achievements (create only). The
+      // modal owns the response, so this single wiring point covers BOTH
+      // mount points (dashboard modal + AppLayout quick-add).
+      if (mode === 'create') {
+        toastAchievements((responseData as { achievements?: AchievementKey[] }).achievements);
       }
 
       // Success!
