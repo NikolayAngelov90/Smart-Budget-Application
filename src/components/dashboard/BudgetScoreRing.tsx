@@ -85,6 +85,10 @@ export function BudgetScoreRing() {
       const timer = setTimeout(() => setJustLeveledUp(false), 1200);
       return () => clearTimeout(timer);
     }
+    // Down/flat transition: reset explicitly — if a level DROP lands within
+    // the pulse window, the cleanup above cancels the timer and justLeveledUp
+    // would stick true forever, swallowing every future level-up pulse.
+    setJustLeveledUp(false);
   }, [level]);
 
   // Progressive disclosure: nothing until the user has scoreable data.
@@ -162,12 +166,11 @@ export function BudgetScoreRing() {
                     </Tag>
                   </HStack>
                 </HStack>
-                {factor.status === 'unscored' &&
-                  (factor.key === 'adherence' || factor.key === 'goals') && (
-                    <Text fontSize="xs" color="gray.500" mt={1}>
-                      {t(`hint.${factor.key}`)}
-                    </Text>
-                  )}
+                {factor.status === 'unscored' && (
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    {t(`hint.${factor.key}`)}
+                  </Text>
+                )}
               </Box>
             ))}
           </VStack>

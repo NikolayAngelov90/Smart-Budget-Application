@@ -88,11 +88,16 @@ export async function GET() {
           .eq('user_id', user.id)
           .or(`deadline.is.null,deadline.gt.${todayKey}`),
 
-        // Streak enrichment — 034 may be unapplied; never let it 500 the score
-        getStreak(user.id).catch((error) => {
-          logger.warn('BudgetScoreAPI', 'streaks unavailable, consistency scores 0:', error);
-          return null;
-        }),
+        // Streak enrichment — 034 may be unapplied; never let it 500 the score.
+        // Unknowable ≠ zero: an unreadable table marks consistency UNSCORED
+        // (degradation policy), while a missing row legitimately scores 0.
+        getStreak(user.id).then(
+          (state) => ({ state, unavailable: false }),
+          (error) => {
+            logger.warn('BudgetScoreAPI', 'streaks unavailable, consistency unscored:', error);
+            return { state: null, unavailable: true };
+          }
+        ),
       ]);
 
     // Core inputs — a score computed without them would be fabricated
@@ -117,7 +122,6 @@ export async function GET() {
       ])
     );
     const goals = (goalsResult.error ? [] : (goalsResult.data ?? [])) as Goal[];
-    const streak = streakResult;
 
     const budgetScore = computeBudgetScore({
       currentMonthTransactions,
@@ -125,7 +129,8 @@ export async function GET() {
       categories,
       explicitBudgets,
       goals,
-      streak,
+      streak: streakResult.state,
+      streakUnavailable: streakResult.unavailable,
       today,
     });
 

@@ -7,10 +7,17 @@
  * Epic-12/whatIfEngine/streakEngine precedent). The engine returns numbers
  * and enums only; ALL user-facing text is i18n keys in the component.
  *
- * Factors whose inputs don't exist yet are UNSCORED and the score
- * renormalizes over the scored weights — having no budgets or no goals
- * must never punish (no-guilt UX principle). Score computed read-time;
+ * Factors whose inputs don't exist yet — or are UNKNOWABLE (streak data
+ * unavailable) — are UNSCORED and the score renormalizes over the scored
+ * weights: missing budgets, goals, or a broken streaks table must never
+ * punish (no-guilt UX + degradation policy). Score computed read-time;
  * no persistence (documented ADR-012 deviation, see story Dev Notes).
+ *
+ * Adherence scores ACTUAL month-to-date spend against the resolved budget
+ * (review decision 2026-07-13): pace projection punished on-budget lumpy
+ * spending (rent paid on the 1st), and early warning is already the job of
+ * nudges + BudgetForecast. Categories without spend this month are skipped
+ * (forecastEngine precedent) — dormant categories neither help nor hurt.
  */
 
 import { resolveBudget } from './budgetResolver';
@@ -37,8 +44,14 @@ export interface BudgetScoreInput {
   explicitBudgets: Map<string, number>;
   /** Own, unexpired goals (deadline null or in the future — filtered server-side) */
   goals: Goal[];
-  /** Streak row from 15.1, or null (no row / streaks table unavailable) */
+  /** Streak row from 15.1, or null when the user has no row yet */
   streak: StreakState | null;
+  /**
+   * True when streak state could not be READ (e.g. migration 034 unapplied).
+   * Unknowable ≠ zero: consistency goes UNSCORED instead of scoring 0
+   * ("hurting") for an infra failure — degradation policy.
+   */
+  streakUnavailable?: boolean;
   today: Date;
 }
 
@@ -51,10 +64,8 @@ export const GOALS_MAX = 20;
 export const HELPING_THRESHOLD = 0.7;
 export const HURTING_THRESHOLD = 0.4;
 
-// Adherence projection: sub-score 1 at projectedRatio<=1, 0 at >=RATIO_FLOOR
+// Adherence: sub-score 1 while spent/budget <= 1, 0 at >= ADHERENCE_RATIO_CEILING
 export const ADHERENCE_RATIO_CEILING = 1.5;
-/** Month-progress floor so a day-1 purchase doesn't project ×30 */
-export const MONTH_PROGRESS_FLOOR = 0.1;
 
 // Consistency: daily streak capped at 30 days (20 pts), weekly at 8 weeks (10 pts)
 export const DAILY_STREAK_CAP = 30;
@@ -63,6 +74,9 @@ const DAILY_POINTS = 20;
 const WEEKLY_POINTS = 10;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+
+/** Round to one decimal — the display precision factors carry */
+const roundTenth = (v: number) => Math.round(v * 10) / 10;
 
 function statusFor(earned: number, max: number): ScoreFactor['status'] {
   const share = earned / max;
@@ -81,13 +95,14 @@ export function levelFor(score: number): BudgetScoreLevel {
 }
 
 /**
- * Budget adherence (0..50), or null when NO category has a resolvable budget.
- * Per budgeted category: projectedRatio = (spentMTD / monthProgress) / budget;
- * sub-score 1 when <=1, 0 when >=1.5, linear between.
+ * Budget adherence (0..50), or null when no ACTIVE category has a resolvable
+ * budget. Per category with MTD spend and a budget: ratio = spent / budget;
+ * sub-score 1 while <=1, 0 at >=1.5, linear between. Zero-spend categories
+ * are skipped (forecastEngine precedent) — an untouched seasonal category
+ * must not hand out free perfect sub-scores that dilute real overspend.
  */
 function adherenceEarned(input: BudgetScoreInput): number | null {
-  const { currentMonthTransactions, historicalTransactions, categories, explicitBudgets, today } =
-    input;
+  const { currentMonthTransactions, historicalTransactions, categories, explicitBudgets } = input;
 
   // MTD spend per category
   const currentSpend = new Map<string, number>();
@@ -109,11 +124,11 @@ function adherenceEarned(input: BudgetScoreInput): number | null {
     monthly.set(monthKey, (monthly.get(monthKey) ?? 0) + tx.amount);
   }
 
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const monthProgress = clamp(today.getDate() / daysInMonth, MONTH_PROGRESS_FLOOR, 1);
-
   const subScores: number[] = [];
   for (const category of categories) {
+    const spent = currentSpend.get(category.id) ?? 0;
+    if (spent <= 0) continue; // dormant this month — neither helps nor hurts
+
     const monthTotals = Array.from(historicalMonthMap.get(category.id)?.values() ?? []);
     // ADR-025: the resolver is the ONLY explicit-vs-average chooser
     const resolved = resolveBudget({
@@ -122,23 +137,31 @@ function adherenceEarned(input: BudgetScoreInput): number | null {
     });
     if (resolved.amount <= 0) continue; // 0 = "no baseline" to every consumer
 
-    const spent = currentSpend.get(category.id) ?? 0;
-    const projectedRatio = spent / monthProgress / resolved.amount;
-    subScores.push(
-      clamp((ADHERENCE_RATIO_CEILING - projectedRatio) / (ADHERENCE_RATIO_CEILING - 1), 0, 1)
-    );
+    const ratio = spent / resolved.amount;
+    subScores.push(clamp((ADHERENCE_RATIO_CEILING - ratio) / (ADHERENCE_RATIO_CEILING - 1), 0, 1));
   }
 
-  if (subScores.length === 0) return null; // unscored — nothing has a budget yet
+  if (subScores.length === 0) return null; // unscored — nothing budgeted is active yet
   const mean = subScores.reduce((a, b) => a + b, 0) / subScores.length;
   return mean * ADHERENCE_MAX;
 }
 
 /**
- * Logging consistency (0..30) — ALWAYS scored: absence of logging is knowable.
- * A broken streak earns 0 (same invariant as the badge hiding dead streaks).
+ * Logging consistency (0..30), or null when unknowable. Scored — including a
+ * legitimate 0 — whenever streak state was readable and the user has logged
+ * before (a streak row or any transaction history): absence of logging is
+ * knowable. Unscored when the streak read failed (never punish an infra
+ * error) or the user has never logged anything. A broken streak earns 0
+ * (same invariant as the badge hiding dead streaks).
  */
-function consistencyEarned(streak: StreakState | null, today: Date): number {
+function consistencyEarned(input: BudgetScoreInput): number | null {
+  const { streak, streakUnavailable, today } = input;
+  if (streakUnavailable) return null;
+  const hasLogged =
+    streak !== null ||
+    input.currentMonthTransactions.length > 0 ||
+    input.historicalTransactions.length > 0;
+  if (!hasLogged) return null;
   if (!streak || streak.current_streak <= 0) return 0;
   if (isStreakBroken(streak, localDayKey(today))) return 0;
   const daily = (Math.min(streak.current_streak, DAILY_STREAK_CAP) / DAILY_STREAK_CAP) * DAILY_POINTS;
@@ -157,50 +180,34 @@ function goalsEarned(goals: Goal[]): number | null {
   return mean * GOALS_MAX;
 }
 
+function toFactor(key: ScoreFactor['key'], raw: number | null, max: number): ScoreFactor {
+  if (raw === null) return { key, earned: 0, max, status: 'unscored' };
+  // Status derives from the same rounded value the breakdown displays, so
+  // "35/50" can never carry a tag that contradicts the visible number
+  const earned = roundTenth(raw);
+  return { key, earned, max, status: statusFor(earned, max) };
+}
+
 /**
  * Computes the Budget Score. Returns null when NO factor is scored
  * (the route pairs that with hasData:false).
  */
 export function computeBudgetScore(input: BudgetScoreInput): BudgetScore | null {
-  const adherence = adherenceEarned(input);
-  const goals = goalsEarned(input.goals);
-
-  // Consistency is only meaningful once the user logs at all; when there is
-  // neither transaction history nor a streak row nor goals, nothing is scored.
-  const hasAnyActivity =
-    input.currentMonthTransactions.length > 0 ||
-    input.historicalTransactions.length > 0 ||
-    input.streak !== null ||
-    input.goals.length > 0;
-  if (!hasAnyActivity) return null;
-
-  const consistency = consistencyEarned(input.streak, input.today);
-
-  const factors: ScoreFactor[] = [
-    {
-      key: 'adherence',
-      earned: adherence === null ? 0 : Math.round(adherence * 10) / 10,
-      max: ADHERENCE_MAX,
-      status: adherence === null ? 'unscored' : statusFor(adherence, ADHERENCE_MAX),
-    },
-    {
-      key: 'consistency',
-      earned: Math.round(consistency * 10) / 10,
-      max: CONSISTENCY_MAX,
-      status: statusFor(consistency, CONSISTENCY_MAX),
-    },
-    {
-      key: 'goals',
-      earned: goals === null ? 0 : Math.round(goals * 10) / 10,
-      max: GOALS_MAX,
-      status: goals === null ? 'unscored' : statusFor(goals, GOALS_MAX),
-    },
+  const raw: Array<[ScoreFactor['key'], number | null, number]> = [
+    ['adherence', adherenceEarned(input), ADHERENCE_MAX],
+    ['consistency', consistencyEarned(input), CONSISTENCY_MAX],
+    ['goals', goalsEarned(input.goals), GOALS_MAX],
   ];
 
-  // Renormalize over scored weights only — unscored factors neither help nor hurt
-  const scored = factors.filter((f) => f.status !== 'unscored');
-  const earnedSum = scored.reduce((a, f) => a + f.earned, 0);
-  const maxSum = scored.reduce((a, f) => a + f.max, 0);
+  const factors: ScoreFactor[] = raw.map(([key, value, max]) => toFactor(key, value, max));
+
+  // Renormalize over scored weights only — unscored factors neither help nor
+  // hurt. The 0-100 score sums the RAW values (display rounding must not be
+  // able to flip a level band edge).
+  const scored = raw.filter(([, value]) => value !== null);
+  if (scored.length === 0) return null;
+  const earnedSum = scored.reduce((a, [, value]) => a + (value as number), 0);
+  const maxSum = scored.reduce((a, [, , max]) => a + max, 0);
   const score = clamp(Math.round((earnedSum / maxSum) * 100), 0, 100);
 
   return { score, level: levelFor(score), factors };

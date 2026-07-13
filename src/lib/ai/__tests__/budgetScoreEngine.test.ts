@@ -2,7 +2,8 @@
  * Budget Score Engine Tests — Story 15.2
  * Pure unit tests — no mocks needed.
  *
- * Fixed clock: 2026-07-15 (July has 31 days → monthProgress = 15/31 ≈ 0.4839).
+ * Fixed clock: 2026-07-15. Adherence scores ACTUAL MTD spend vs budget
+ * (review decision 2026-07-13) — no pace projection.
  */
 
 import {
@@ -10,7 +11,6 @@ import {
   CONSISTENCY_MAX,
   DAILY_STREAK_CAP,
   WEEKLY_STREAK_CAP,
-  MONTH_PROGRESS_FLOOR,
   computeBudgetScore,
   levelFor,
   type BudgetScoreInput,
@@ -90,8 +90,8 @@ describe('adherence factor', () => {
     expect(adherence.earned).toBe(0);
   });
 
-  it('scores 1.0 sub-score when projected spend is within the explicit budget', () => {
-    // Spent 200 of 500 budget at ~48% of month → projected ~413 < 500 → full points
+  it('scores 1.0 sub-score while actual spend is within the explicit budget', () => {
+    // Spent 200 of 500 budget → ratio 0.4 → full points
     const result = computeBudgetScore(
       makeInput({
         currentMonthTransactions: [tx('c1', 200, '2026-07-10')],
@@ -104,8 +104,8 @@ describe('adherence factor', () => {
     expect(adherence.status).toBe('helping');
   });
 
-  it('scores 0 when projected spend reaches 1.5× the budget', () => {
-    // Spent 400 of 200 budget mid-month → projected ~827 → ratio > 1.5 → 0 pts
+  it('scores 0 when actual spend reaches 1.5× the budget', () => {
+    // Spent 400 of 200 budget → ratio 2.0 → 0 pts
     const result = computeBudgetScore(
       makeInput({
         currentMonthTransactions: [tx('c1', 400, '2026-07-10')],
@@ -119,7 +119,7 @@ describe('adherence factor', () => {
   });
 
   it('resolves the budget from the fixed ÷3 historical average when no explicit limit (ADR-025)', () => {
-    // 3 months × 300 → average 300; spent 100 at ~48% → projected ~207 < 300 → full pts
+    // 3 months × 300 → average 300; spent 100 → ratio 0.33 → full pts
     const result = computeBudgetScore(
       makeInput({
         currentMonthTransactions: [tx('c1', 100, '2026-07-10')],
@@ -148,24 +148,38 @@ describe('adherence factor', () => {
     expect(adherence.earned).toBe(ADHERENCE_MAX);
   });
 
-  it('floors month progress at 10% so a day-1 purchase does not project ×31', () => {
-    // Day 1 of July: raw progress 1/31 ≈ 0.032 → floored to 0.1.
-    // Spent 40 of 500 → projected 400 (not 1240) → within budget → full pts.
+  it('skips zero-spend budgeted categories — dormant categories neither help nor hurt', () => {
+    // c1 untouched (budget 500), c2 blown 3× (600 of 200) → only c2 counts → 0 pts,
+    // not the diluted (1.0 + 0)/2 = 25 the free perfect sub-score would give
     const result = computeBudgetScore(
       makeInput({
-        currentMonthTransactions: [tx('c1', 40, '2026-07-01')],
-        categories: [cat('c1')],
-        explicitBudgets: new Map([['c1', 500]]),
-        today: new Date(2026, 6, 1),
+        currentMonthTransactions: [tx('c2', 600, '2026-07-10')],
+        categories: [cat('c1'), cat('c2')],
+        explicitBudgets: new Map([
+          ['c1', 500],
+          ['c2', 200],
+        ]),
       })
     )!;
     const adherence = result.factors.find((f) => f.key === 'adherence')!;
-    expect(adherence.earned).toBe(ADHERENCE_MAX);
-    expect(MONTH_PROGRESS_FLOOR).toBe(0.1);
+    expect(adherence.earned).toBe(0);
+    expect(adherence.status).toBe('hurting');
   });
 
-  it('averages sub-scores across budgeted categories', () => {
-    // c1 perfect (1.0), c2 blown (0) → mean 0.5 → 25 pts → neutral band
+  it('is unscored when budgets exist but nothing was spent this month', () => {
+    // A lapsed month must not score perfect adherence for doing nothing
+    const result = computeBudgetScore(
+      makeInput({
+        historicalTransactions: [tx('c1', 300, '2026-06-10')],
+        categories: [cat('c1')],
+        explicitBudgets: new Map([['c1', 500]]),
+      })
+    )!;
+    expect(result.factors.find((f) => f.key === 'adherence')!.status).toBe('unscored');
+  });
+
+  it('averages sub-scores across active budgeted categories', () => {
+    // c1 within budget (1.0), c2 blown 4.5× (0) → mean 0.5 → 25 pts → neutral band
     const result = computeBudgetScore(
       makeInput({
         currentMonthTransactions: [tx('c1', 100, '2026-07-10'), tx('c2', 900, '2026-07-10')],
@@ -213,13 +227,38 @@ describe('consistency factor', () => {
     expect(consistency.status).toBe('hurting');
   });
 
-  it('no streak row scores 0 (knowable absence), still scored not unscored', () => {
+  it('no streak row + transaction history scores 0 (knowable absence, not unscored)', () => {
     const result = computeBudgetScore(
-      makeInput({ goals: [goal(50, 100)] }) // activity via goals
+      makeInput({ historicalTransactions: [tx('c1', 50, '2026-06-10')] })
     )!;
     const consistency = result.factors.find((f) => f.key === 'consistency')!;
     expect(consistency.status).toBe('hurting');
     expect(consistency.earned).toBe(0);
+  });
+
+  it('is UNSCORED for a user who has never logged anything (goals only)', () => {
+    const result = computeBudgetScore(makeInput({ goals: [goal(50, 100)] }))!;
+    const consistency = result.factors.find((f) => f.key === 'consistency')!;
+    expect(consistency.status).toBe('unscored');
+  });
+
+  it('is UNSCORED when streak state is unavailable — infra failure never punishes', () => {
+    // Daily logger + full goals, but the streaks table errored (034 unapplied):
+    // consistency must renormalize away, not score 0/"hurting"
+    const result = computeBudgetScore(
+      makeInput({
+        currentMonthTransactions: [tx('c1', 100, '2026-07-10')],
+        categories: [cat('c1')],
+        explicitBudgets: new Map([['c1', 500]]),
+        goals: [goal(100, 100)],
+        streak: null,
+        streakUnavailable: true,
+      })
+    )!;
+    const consistency = result.factors.find((f) => f.key === 'consistency')!;
+    expect(consistency.status).toBe('unscored');
+    // Renormalized over adherence(50) + goals(20) only → perfect user stays 100
+    expect(result.score).toBe(100);
   });
 });
 
@@ -267,6 +306,24 @@ describe('renormalization', () => {
     )!;
     expect(result.score).toBe(63); // round(50/80×100)
     expect(result.level).toBe('steady');
+  });
+
+  it('renormalizes over consistency + goals (50) when adherence is unscored', () => {
+    // daily 15 → 10 pts + weekly 4 → 5 pts = 15/30; goal 50% → 10/20
+    const result = computeBudgetScore(
+      makeInput({ streak: streak(), goals: [goal(50, 100)] })
+    )!;
+    expect(result.factors.find((f) => f.key === 'adherence')!.status).toBe('unscored');
+    expect(result.score).toBe(50); // round((15+10)/50×100)
+    expect(result.level).toBe('steady');
+  });
+
+  it('returns null for a budget-set-but-never-logged user (docstring contract)', () => {
+    // Explicit budget exists but zero txns/streak/goals → NO factor scored → null
+    const result = computeBudgetScore(
+      makeInput({ categories: [cat('c1')], explicitBudgets: new Map([['c1', 500]]) })
+    );
+    expect(result).toBeNull();
   });
 
   it('all three factors sum over 100 when all scored', () => {

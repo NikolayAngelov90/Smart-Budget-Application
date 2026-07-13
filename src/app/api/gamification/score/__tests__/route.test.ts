@@ -31,6 +31,9 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { createClient } from '@/lib/supabase/server';
 import { getStreak } from '@/lib/services/streakService';
+import { isoWeekKey, localDayKey } from '@/lib/ai/streakEngine';
+import { AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
+import { toLocalISODate } from '@/lib/utils/date';
 import { GET } from '../route';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -83,15 +86,24 @@ function makeSupabase(plan: Partial<Record<string, Result | Result[]>>, user: ob
   };
 }
 
+// Internally consistent, clock-relative fixture — the route evaluates
+// brokenness against the REAL today, and week keys must be valid ISO weeks
+const NOW = new Date();
 const STREAK = {
   current_streak: 30,
   longest_streak: 30,
   weekly_streak: 8,
-  // Alive relative to the real clock — the engine checks brokenness vs today
-  last_log_date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`,
-  last_log_week: '2026-W99',
+  last_log_date: localDayKey(NOW),
+  last_log_week: isoWeekKey(NOW),
   freeze_used_on: null,
 };
+
+// The exact date-window keys the route must query with (same construction)
+const CURRENT_MONTH_START = toLocalISODate(new Date(NOW.getFullYear(), NOW.getMonth(), 1));
+const CURRENT_MONTH_END = toLocalISODate(new Date(NOW.getFullYear(), NOW.getMonth() + 1, 0));
+const THREE_MONTHS_AGO = toLocalISODate(
+  new Date(NOW.getFullYear(), NOW.getMonth() - AVERAGE_WINDOW_MONTHS, 1)
+);
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -129,6 +141,12 @@ describe('GET /api/gamification/score', () => {
       expect(c.eq).toHaveBeenCalledWith('user_id', 'user-1');
       expect(c.eq).toHaveBeenCalledWith('type', 'expense');
     }
+    // Date-window assertions — swapped/deleted month bounds must not pass
+    const [currentChain, historicalChain] = supabase.chains['transactions']!;
+    expect(currentChain!.gte).toHaveBeenCalledWith('date', CURRENT_MONTH_START);
+    expect(currentChain!.lte).toHaveBeenCalledWith('date', CURRENT_MONTH_END);
+    expect(historicalChain!.gte).toHaveBeenCalledWith('date', THREE_MONTHS_AGO);
+    expect(historicalChain!.lt).toHaveBeenCalledWith('date', CURRENT_MONTH_START);
     expect(supabase.chains['categories']![0]!.eq).toHaveBeenCalledWith('user_id', 'user-1');
     const budgetsChain = supabase.chains['category_budgets']![0]!;
     expect(budgetsChain.eq).toHaveBeenCalledWith('user_id', 'user-1');
@@ -183,7 +201,7 @@ describe('GET /api/gamification/score', () => {
     expect(body.hasData).toBe(true); // historical average still yields adherence
   });
 
-  it('degrades when the streaks table is unavailable (034 unapplied) — consistency 0', async () => {
+  it('degrades when the streaks table is unavailable (034 unapplied) — consistency UNSCORED, never punished', async () => {
     const supabase = makeSupabase({
       transactions: [
         { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
@@ -191,6 +209,7 @@ describe('GET /api/gamification/score', () => {
       ],
       categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
       category_budgets: { data: [{ category_id: 'c1', limit_amount: 5000 }], error: null },
+      goals: { data: [{ current_amount: 100, target_amount: 100 }], error: null },
     });
     mockCreateClient.mockResolvedValue(supabase as never);
     mockGetStreak.mockRejectedValue(new Error('Failed to load streak'));
@@ -201,7 +220,11 @@ describe('GET /api/gamification/score', () => {
     const consistency = body.budgetScore.factors.find(
       (f: { key: string }) => f.key === 'consistency'
     );
-    expect(consistency.earned).toBe(0);
+    // Unknowable ≠ zero: an infra failure renormalizes away instead of
+    // showing a false "hurting" 0/30 (degradation policy)
+    expect(consistency.status).toBe('unscored');
+    // Perfect adherence + full goals stay 100 despite the outage
+    expect(body.budgetScore.score).toBe(100);
   });
 
   it('degrades when goals query fails — factor unscored, still 200', async () => {
