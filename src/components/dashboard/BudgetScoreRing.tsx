@@ -70,13 +70,17 @@ const LEVEL_ORDER: BudgetScoreLevel[] = ['beginner', 'building', 'steady', 'stro
 
 export function BudgetScoreRing() {
   const t = useTranslations('score');
-  const { data } = useBudgetScore();
+  const { data, mutate } = useBudgetScore();
   const prefersReducedMotion = usePrefersReducedMotion();
   const toastAchievements = useAchievementToast();
 
-  // Story 15.3: score-side unlocks (budgets/goals/score achievements) arrive
-  // in the score payload — toast each batch once (SWR may hand back the same
-  // cached object across renders; the ref guards against re-toasting it)
+  // Story 15.3: score-side unlocks arrive in the score payload. newlyUnlocked
+  // is a ONE-SHOT event riding a cacheable response: the localStorage SWR
+  // provider persists it, so a ref guard alone replays the celebration on
+  // back-nav/next launch/offline launches (15-3 review HIGH). After toasting,
+  // scrub the event out of the cached payload (no revalidation) so no future
+  // mount — this session or the next — can see it again. The ref still guards
+  // strict-mode double-invocation within a single mount.
   const toastedRef = useRef<unknown>(null);
   const newlyUnlocked = data?.newlyUnlocked;
   useEffect(() => {
@@ -84,7 +88,12 @@ export function BudgetScoreRing() {
     if (toastedRef.current === newlyUnlocked) return;
     toastedRef.current = newlyUnlocked;
     toastAchievements(newlyUnlocked);
-  }, [newlyUnlocked, toastAchievements]);
+    mutate((current) => (current ? { ...current, newlyUnlocked: [] } : current), {
+      revalidate: false,
+    }).catch(() => {
+      // Cache rewrite failure is cosmetic — worst case the ref still guards this mount
+    });
+  }, [newlyUnlocked, toastAchievements, mutate]);
 
   // Level-up pulse: animate only when the level rises within this session
   const prevLevelRef = useRef<BudgetScoreLevel | null>(null);

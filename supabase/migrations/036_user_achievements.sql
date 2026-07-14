@@ -14,6 +14,18 @@ CREATE TABLE IF NOT EXISTS user_achievements (
   UNIQUE (user_id, achievement_key)
 );
 
+-- The table is REST-exposed with an INSERT policy, so the catalog whitelist
+-- must live at the trust boundary too (15-3 review: service-layer validation
+-- alone let any authenticated user self-award badges / insert unbounded junk
+-- keys via PostgREST). Adding achievement #11 = one-line constraint swap.
+ALTER TABLE user_achievements DROP CONSTRAINT IF EXISTS user_achievements_key_in_catalog;
+ALTER TABLE user_achievements ADD CONSTRAINT user_achievements_key_in_catalog
+  CHECK (achievement_key IN (
+    'first_transaction', 'ten_transactions', 'hundred_transactions',
+    'week_streak', 'month_streak', 'first_budget', 'first_goal',
+    'goal_reached', 'score_steady', 'score_master'
+  ));
+
 ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own achievements" ON user_achievements;

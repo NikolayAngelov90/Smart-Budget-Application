@@ -8,6 +8,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { format } from 'date-fns';
 import { ChakraProvider } from '@chakra-ui/react';
 import { AchievementsSection } from '@/components/settings/AchievementsSection';
 import { useAchievements } from '@/lib/hooks/useAchievements';
@@ -19,6 +20,7 @@ jest.mock('@/lib/hooks/useAchievements', () => ({
 }));
 
 jest.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     if (key === 'unlockedOn') return `Unlocked ${params?.date}`;
     if (key === 'heading') return 'Achievements';
@@ -66,10 +68,13 @@ describe('AchievementsSection', () => {
     );
     renderWithChakra(<AchievementsSection />);
 
-    expect(screen.getByText('Unlocked Jul 1, 2026')).toBeInTheDocument();
+    // Expectation computed through the SAME format path - literal strings
+    // break on runners at extreme UTC offsets (15-3 review)
+    const expectedDate = format(new Date('2026-07-01T10:00:00Z'), 'MMM d, yyyy');
+    expect(screen.getByText(`Unlocked ${expectedDate}`)).toBeInTheDocument();
     expect(screen.getAllByText('Locked')).toHaveLength(ACHIEVEMENTS.length - 1);
     expect(
-      screen.getByLabelText('names.first_transaction, Unlocked Jul 1, 2026')
+      screen.getByLabelText(`names.first_transaction, Unlocked ${expectedDate}`)
     ).toBeInTheDocument();
     expect(screen.getByLabelText('names.week_streak, Locked')).toBeInTheDocument();
   });

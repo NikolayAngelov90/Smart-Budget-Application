@@ -827,6 +827,7 @@
   "achievements": {
     "heading": "Постижения",
     "toastTitle": "Отключено постижение!",
+    "toastBatch": "{count} отключени постижения! Вижте ги всички в Настройки.",
     "unlockedOn": "Отключено на {date}",
     "locked": "Заключено",
     "names": {

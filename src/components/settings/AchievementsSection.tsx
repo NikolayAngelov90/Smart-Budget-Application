@@ -11,8 +11,9 @@
  */
 
 import { Badge, Box, Heading, SimpleGrid, Text, VStack } from '@chakra-ui/react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { format } from 'date-fns';
+import { bg } from 'date-fns/locale';
 import { ACHIEVEMENTS } from '@/lib/ai/achievementCatalog';
 import { useAchievements } from '@/lib/hooks/useAchievements';
 import type { UserAchievement } from '@/types/database.types';
@@ -21,6 +22,9 @@ const ACHIEVEMENT_GOLD = '#D69E2E';
 
 export function AchievementsSection() {
   const t = useTranslations('achievements');
+  // Locale-aware unlock dates — "Отключено на Jul 1, 2026" is not a sentence (15-3 review)
+  const locale = useLocale();
+  const dateLocale = locale === 'bg' ? bg : undefined;
   const { data } = useAchievements();
 
   const unlockedByKey = new Map<string, UserAchievement>(
@@ -37,7 +41,9 @@ export function AchievementsSection() {
           const unlock = unlockedByKey.get(key);
           const name = t(`names.${key}`);
           const unlockedLabel = unlock
-            ? t('unlockedOn', { date: format(new Date(unlock.unlocked_at), 'MMM d, yyyy') })
+            ? t('unlockedOn', {
+                date: format(new Date(unlock.unlocked_at), 'MMM d, yyyy', { locale: dateLocale }),
+              })
             : null;
           return (
             <VStack

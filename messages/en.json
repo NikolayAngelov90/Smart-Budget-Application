@@ -827,6 +827,7 @@
   "achievements": {
     "heading": "Achievements",
     "toastTitle": "Achievement unlocked!",
+    "toastBatch": "{count} achievements unlocked! See them all in Settings.",
     "unlockedOn": "Unlocked {date}",
     "locked": "Locked",
     "names": {

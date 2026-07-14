@@ -61,9 +61,17 @@ describe('GET /api/achievements', () => {
     expect(mockGetUnlocked).toHaveBeenCalledWith('user-1');
   });
 
-  it('degrades to an empty list when the table is unavailable (036 unapplied)', async () => {
+  it('500s when the unlocked list cannot be read (error-as-empty would render every badge Locked and poison the SWR cache)', async () => {
     mockCreateClient.mockResolvedValue(makeSupabase() as never);
     mockGetUnlocked.mockRejectedValue(new Error('Failed to load achievements'));
+
+    const res = await GET();
+    expect(res.status).toBe(500);
+  });
+
+  it('empty is not an error: a user with no unlocks gets 200 []', async () => {
+    mockCreateClient.mockResolvedValue(makeSupabase() as never);
+    mockGetUnlocked.mockResolvedValue([]);
 
     const res = await GET();
     const body = await res.json();

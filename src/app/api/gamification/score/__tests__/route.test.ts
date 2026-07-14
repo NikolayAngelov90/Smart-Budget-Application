@@ -156,16 +156,112 @@ describe('GET /api/gamification/score', () => {
     expect(budgetsChain.is).toHaveBeenCalledWith('household_id', null);
     const goalsChain = supabase.chains['goals']![0]!;
     expect(goalsChain.eq).toHaveBeenCalledWith('user_id', 'user-1');
-    // Expired goals filtered SERVER-side (14-3 lesson)
-    expect(goalsChain.or).toHaveBeenCalledWith(
-      expect.stringMatching(/^deadline\.is\.null,deadline\.gt\.\d{4}-\d{2}-\d{2}$/)
-    );
+    // 15-3 review: ALL own goals are fetched (achievements must see expired
+    // goals - unlocks are once-ever); the score factor filters actives in code
+    expect(goalsChain.or).not.toHaveBeenCalled();
     expect(mockGetStreak).toHaveBeenCalledWith('user-1');
 
     // Story 15.3: score-side achievement enrichment reports what was inserted
-    // (user_achievements chains resolve {data: []} → getUnlocked [] → first_goal
-    // earned → upsert; the stub echoes [] so nothing is reported as new)
     expect(Array.isArray(body.newlyUnlocked)).toBe(true);
+  });
+
+  it('persists and reports score-side unlocks (upsert args asserted)', async () => {
+    const inserted = [
+      { achievement_key: 'first_budget', unlocked_at: '2026-07-13T10:00:00Z' },
+      { achievement_key: 'first_goal', unlocked_at: '2026-07-13T10:00:00Z' },
+      { achievement_key: 'score_steady', unlocked_at: '2026-07-13T10:00:00Z' },
+      { achievement_key: 'score_master', unlocked_at: '2026-07-13T10:00:00Z' },
+    ];
+    const supabase = makeSupabase({
+      transactions: [
+        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
+        { data: [], error: null },
+      ],
+      categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
+      category_budgets: { data: [{ category_id: 'c1', limit_amount: 5000 }], error: null },
+      goals: { data: [{ current_amount: 50, target_amount: 100, deadline: null }], error: null },
+      user_achievements: [
+        { data: [], error: null }, // getUnlocked -> none yet
+        { data: inserted, error: null }, // upsert returns inserted rows
+      ],
+    });
+    mockCreateClient.mockResolvedValue(supabase as never);
+    mockGetStreak.mockResolvedValue(STREAK);
+
+    const res = await GET();
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    // Full adherence + full consistency + half goals -> score 90 -> master:
+    // earns first_budget + first_goal + score_steady + score_master (catalog order)
+    expect(body.newlyUnlocked).toEqual([
+      'first_budget',
+      'first_goal',
+      'score_steady',
+      'score_master',
+    ]);
+    const upsertChain = supabase.chains['user_achievements']![1]!;
+    expect(upsertChain.upsert).toHaveBeenCalledWith(
+      [
+        { user_id: 'user-1', achievement_key: 'first_budget' },
+        { user_id: 'user-1', achievement_key: 'first_goal' },
+        { user_id: 'user-1', achievement_key: 'score_steady' },
+        { user_id: 'user-1', achievement_key: 'score_master' },
+      ],
+      { onConflict: 'user_id,achievement_key', ignoreDuplicates: true }
+    );
+  });
+
+  it('an EXPIRED reached goal still unlocks goal achievements but never scores the goals factor', async () => {
+    const supabase = makeSupabase({
+      transactions: [
+        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
+        { data: [], error: null },
+      ],
+      categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
+      category_budgets: { data: [{ category_id: 'c1', limit_amount: 5000 }], error: null },
+      goals: {
+        data: [{ current_amount: 100, target_amount: 100, deadline: '2020-01-01' }],
+        error: null,
+      },
+      user_achievements: [
+        { data: [], error: null },
+        {
+          data: [
+            { achievement_key: 'first_goal', unlocked_at: '2026-07-13T10:00:00Z' },
+            { achievement_key: 'goal_reached', unlocked_at: '2026-07-13T10:00:00Z' },
+          ],
+          error: null,
+        },
+      ],
+    });
+    mockCreateClient.mockResolvedValue(supabase as never);
+    mockGetStreak.mockResolvedValue(STREAK);
+
+    const res = await GET();
+    const body = await res.json();
+    expect(body.newlyUnlocked).toEqual(expect.arrayContaining(['first_goal', 'goal_reached']));
+    const goalsFactor = body.budgetScore.factors.find((f: { key: string }) => f.key === 'goals');
+    expect(goalsFactor.status).toBe('unscored'); // expired -> not an active goal
+  });
+
+  it('achievement enrichment failure leaves the score intact (200, newlyUnlocked [])', async () => {
+    const supabase = makeSupabase({
+      transactions: [
+        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
+        { data: [], error: null },
+      ],
+      categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
+      category_budgets: { data: [{ category_id: 'c1', limit_amount: 5000 }], error: null },
+      user_achievements: { data: null, error: { message: 'boom' } }, // getUnlocked throws
+    });
+    mockCreateClient.mockResolvedValue(supabase as never);
+    mockGetStreak.mockResolvedValue(STREAK);
+
+    const res = await GET();
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.budgetScore).not.toBeNull();
+    expect(body.newlyUnlocked).toEqual([]);
   });
 
   it('returns hasData:false for a user with no activity at all', async () => {

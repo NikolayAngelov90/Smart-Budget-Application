@@ -2,8 +2,11 @@
  * Achievements API Route — Story 15.3 (FR30)
  *
  * GET /api/achievements — the caller's unlocked achievements for the gallery.
- * Missing table (036 unapplied) degrades to an empty list (streaks-route
- * precedent): the gallery renders everything locked, nothing breaks.
+ * The unlocked list IS this endpoint's core input: a read failure returns 500
+ * (degradation policy — error-as-empty would render every badge "Locked" and
+ * poison the SWR cache with authoritative emptiness; a 500 lets
+ * keepPreviousData hold the last known truth). Empty ≠ error: a user with no
+ * unlocks still gets 200 [].
  */
 
 import { NextResponse } from 'next/server';
@@ -27,10 +30,7 @@ export async function GET() {
       return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
-    const achievements = await getUnlocked(user.id).catch((error) => {
-      logger.warn('AchievementsAPI', 'achievements unavailable, returning empty:', error);
-      return [];
-    });
+    const achievements = await getUnlocked(user.id);
 
     const response: AchievementsResponse = { achievements };
     return NextResponse.json(response);

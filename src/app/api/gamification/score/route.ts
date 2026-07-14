@@ -82,13 +82,15 @@ export async function GET() {
           .eq('period', 'monthly')
           .is('household_id', null),
 
-        // Own, unexpired goals only (14-3 lesson: expired filtered SERVER-side).
+        // ALL own goals — the score factor needs only unexpired ones (filtered
+        // in code below; DATE strings compare lexicographically), but the
+        // achievement evaluation must see expired goals too: unlocks are
+        // once-ever, and a goal reached ON its deadline day must still count
+        // (15-3 review MED — the old server-side .gt filter permanently lost
+        // first_goal/goal_reached for goals that expired before the next
+        // dashboard visit). Own goals are few; no LIMIT starvation risk here.
         // goals aren't in the typed Database schema (13-9 gotcha) — generic client.
-        (supabase as unknown as SupabaseClient)
-          .from('goals')
-          .select('*')
-          .eq('user_id', user.id)
-          .or(`deadline.is.null,deadline.gt.${todayKey}`),
+        (supabase as unknown as SupabaseClient).from('goals').select('*').eq('user_id', user.id),
 
         // Streak enrichment — 034 may be unapplied; never let it 500 the score.
         // Unknowable ≠ zero: an unreadable table marks consistency UNSCORED
@@ -123,14 +125,16 @@ export async function GET() {
         b.limit_amount,
       ])
     );
-    const goals = (goalsResult.error ? [] : (goalsResult.data ?? [])) as Goal[];
+    const allGoals = (goalsResult.error ? [] : (goalsResult.data ?? [])) as Goal[];
+    // Score factor: ACTIVE goals only (deadline null or in the future)
+    const activeGoals = allGoals.filter((g) => g.deadline === null || g.deadline > todayKey);
 
     const budgetScore = computeBudgetScore({
       currentMonthTransactions,
       historicalTransactions,
       categories,
       explicitBudgets,
-      goals,
+      goals: activeGoals,
       streak: streakResult.state,
       streakUnavailable: streakResult.unavailable,
       today,
@@ -143,9 +147,10 @@ export async function GET() {
       const unlocked = await getUnlocked(user.id);
       const earned = evaluateAchievements({
         score: budgetScore?.score,
-        // Errored queries are UNKNOWABLE signals — skip, don't evaluate as false
+        // Errored queries are UNKNOWABLE signals — skip, don't evaluate as false.
+        // Achievements see ALL goals incl. expired (unlocks are once-ever).
         hasBudget: budgetsResult.error ? undefined : explicitBudgets.size > 0,
-        goals: goalsResult.error ? undefined : goals,
+        goals: goalsResult.error ? undefined : allGoals,
         alreadyUnlocked: new Set(unlocked.map((a) => a.achievement_key)),
       });
       if (earned.length === 0) return [];

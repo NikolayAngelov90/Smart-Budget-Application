@@ -420,6 +420,15 @@ export async function POST(request: NextRequest) {
       return null;
     });
 
+    // Story 15.3: achievement prereqs (unlocked keys + tx count) don't depend
+    // on streak state — fetch them concurrently with streak + nudge. The catch
+    // attaches HERE so a rejection during the awaits above can't surface as an
+    // unhandled rejection (null = evaluation skipped, non-fatal).
+    const achievementPrereqsPromise = fetchAchievementPrereqs(supabase, user.id).catch((err) => {
+      logger.warn('Transactions', 'Achievement prereq fetch failed (non-fatal):', err);
+      return null;
+    });
+
     // Story 12.3: Evaluate nudge for expense transactions only
     let nudgePayload = null;
     if (body.type === 'expense') {
@@ -447,14 +456,16 @@ export async function POST(request: NextRequest) {
     // hand: all-time tx count (cheap index-only count) + the just-advanced
     // streak. Score/goal/budget achievements are evaluated by the score GET
     // (which already has those inputs). Failures → warn + [] (degradation policy).
-    const achievements = await evaluateTransactionAchievements(
-      supabase,
-      user.id,
-      streakResult?.state ?? null
-    ).catch((err) => {
-      logger.warn('Transactions', 'Achievement evaluation failed (non-fatal):', err);
-      return [] as AchievementKey[];
-    });
+    const achievements = await achievementPrereqsPromise
+      .then((prereqs) =>
+        prereqs
+          ? evaluateTransactionAchievements(prereqs, user.id, streakResult?.state ?? null)
+          : ([] as AchievementKey[])
+      )
+      .catch((err) => {
+        logger.warn('Transactions', 'Achievement evaluation failed (non-fatal):', err);
+        return [] as AchievementKey[];
+      });
 
     return NextResponse.json(
       {
@@ -485,20 +496,19 @@ import { resolveBudget } from '@/lib/ai/budgetResolver';
 import { localDayKey, isValidDayKey } from '@/lib/ai/streakEngine';
 import { recordLogActivity } from '@/lib/services/streakService';
 import { evaluateAchievements } from '@/lib/ai/achievementEngine';
+import { ACHIEVEMENTS } from '@/lib/ai/achievementCatalog';
 import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
 import type { AchievementKey, StreakState } from '@/types/database.types';
 
 /**
- * Story 15.3: evaluates transaction-side achievements (counts + streaks) and
- * persists new unlocks idempotently. Returns only what was ACTUALLY inserted
- * (a concurrent evaluator losing the race reports nothing). Caller treats
- * this as non-fatal enrichment.
+ * Story 15.3: fetches the achievement-evaluation prerequisites (unlocked keys
+ * + all-time tx count). Started CONCURRENTLY with the streak promise — neither
+ * fetch depends on streak state (15-3 review: was a needless serial hop).
  */
-async function evaluateTransactionAchievements(
+async function fetchAchievementPrereqs(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  streak: StreakState | null
-): Promise<AchievementKey[]> {
+  userId: string
+): Promise<{ alreadyUnlocked: Set<string>; transactionCount: number | undefined }> {
   const [unlocked, countResult] = await Promise.all([
     getUnlocked(userId),
     supabase
@@ -511,10 +521,30 @@ async function evaluateTransactionAchievements(
   const transactionCount =
     countResult.error || countResult.count == null ? undefined : countResult.count;
 
-  const earned = evaluateAchievements({
-    transactionCount,
-    streak,
+  return {
     alreadyUnlocked: new Set(unlocked.map((a) => a.achievement_key)),
+    transactionCount,
+  };
+}
+
+/**
+ * Story 15.3: evaluates transaction-side achievements (counts + streaks) and
+ * persists new unlocks idempotently. Returns only what was ACTUALLY inserted
+ * (a concurrent evaluator losing the race reports nothing). Caller treats
+ * this as non-fatal enrichment.
+ */
+async function evaluateTransactionAchievements(
+  prereqs: { alreadyUnlocked: Set<string>; transactionCount: number | undefined },
+  userId: string,
+  streak: StreakState | null
+): Promise<AchievementKey[]> {
+  // All 10 badges earned → nothing left to evaluate, ever
+  if (prereqs.alreadyUnlocked.size >= ACHIEVEMENTS.length) return [];
+
+  const earned = evaluateAchievements({
+    transactionCount: prereqs.transactionCount,
+    streak,
+    alreadyUnlocked: prereqs.alreadyUnlocked,
   });
   if (earned.length === 0) return [];
   const inserted = await unlockAchievements(userId, earned);
