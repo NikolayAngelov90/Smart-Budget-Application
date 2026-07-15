@@ -35,6 +35,10 @@ DROP POLICY IF EXISTS "Users can insert their own achievements" ON user_achievem
 CREATE POLICY "Users can insert their own achievements"
   ON user_achievements FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
 
--- Explicit grants (032/033 lesson): SELECT + INSERT only — append-only surface
+-- Explicit grants (032/033 lesson): SELECT + INSERT only — append-only surface.
+-- The REVOKE matters: Supabase default privileges grant ALL to authenticated
+-- on new public tables, and grants are additive — without it, UPDATE/DELETE
+-- linger (blocked by RLS today, but append-only means append-only both layers).
 GRANT SELECT, INSERT ON user_achievements TO authenticated;
+REVOKE UPDATE, DELETE ON user_achievements FROM authenticated;
 GRANT ALL ON user_achievements TO service_role;
