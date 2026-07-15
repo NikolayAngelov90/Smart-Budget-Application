@@ -24,12 +24,11 @@ jest.mock('@/lib/ai/nudgeEngine', () => ({ evaluateNudge: jest.fn(() => null) })
 jest.mock('@/lib/services/pushService', () => ({ sendPushToUser: jest.fn(), isWithinQuietHours: jest.fn(() => false) }));
 jest.mock('@/lib/services/streakService', () => ({
   recordLogActivity: jest.fn(),
-  restoreStreak: jest.fn(),
 }));
 jest.mock('@/lib/services/comebackService', () => ({
-  getActiveChallenge: jest.fn().mockResolvedValue(null),
-  countLogsSince: jest.fn(),
-  markStatus: jest.fn(),
+  getLatestChallenge: jest.fn().mockResolvedValue(null),
+  createChallenge: jest.fn(),
+  completeChallengeIfEarned: jest.fn().mockResolvedValue(null),
 }));
 jest.mock('@/lib/services/achievementService', () => ({
   getUnlocked: jest.fn().mockResolvedValue([]),
@@ -41,13 +40,15 @@ import { POST } from '@/app/api/transactions/route';
 import { createClient } from '@/lib/supabase/server';
 import { recordLogActivity } from '@/lib/services/streakService';
 import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
-import { restoreStreak } from '@/lib/services/streakService';
-import { countLogsSince, getActiveChallenge, markStatus } from '@/lib/services/comebackService';
+import {
+  completeChallengeIfEarned,
+  createChallenge,
+  getLatestChallenge,
+} from '@/lib/services/comebackService';
 
-const mockRestoreStreak = restoreStreak as jest.MockedFunction<typeof restoreStreak>;
-const mockGetActiveChallenge = getActiveChallenge as jest.MockedFunction<typeof getActiveChallenge>;
-const mockCountLogsSince = countLogsSince as jest.MockedFunction<typeof countLogsSince>;
-const mockMarkStatus = markStatus as jest.MockedFunction<typeof markStatus>;
+const mockGetLatestChallenge = getLatestChallenge as jest.MockedFunction<typeof getLatestChallenge>;
+const mockCreateChallenge = createChallenge as jest.MockedFunction<typeof createChallenge>;
+const mockComplete = completeChallengeIfEarned as jest.MockedFunction<typeof completeChallengeIfEarned>;
 
 const mockGetUnlocked = getUnlocked as jest.MockedFunction<typeof getUnlocked>;
 const mockUnlockAchievements = unlockAchievements as jest.MockedFunction<typeof unlockAchievements>;
@@ -100,7 +101,9 @@ beforeEach(() => {
   mockUnlockAchievements.mockImplementation(async (_userId, keys) =>
     keys.map((achievement_key) => ({ achievement_key, unlocked_at: '2026-07-13T10:00:00Z' }))
   );
-  mockGetActiveChallenge.mockResolvedValue(null);
+  mockGetLatestChallenge.mockResolvedValue(null);
+  mockCreateChallenge.mockResolvedValue(null as never);
+  mockComplete.mockResolvedValue(null);
 });
 
 const ACTIVE_CHALLENGE = {
@@ -191,13 +194,13 @@ it('achievement evaluation failure is non-fatal: POST still 201 with achievement
   expect(body.data).toBeDefined();
 });
 
-it('completes the comeback challenge at target: restore + Phoenix + envelope (Story 15.4)', async () => {
-  mockGetActiveChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
-  mockCountLogsSince.mockResolvedValue(3); // post-insert count reaches target
-  mockRestoreStreak.mockResolvedValue(10); // floor(12/2)=6 + rebuilt 4 = 10
+it('completes the comeback challenge at target: service helper + Phoenix + envelope (Story 15.4)', async () => {
+  mockGetLatestChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
+  mockComplete.mockResolvedValue({ completed: true, restoredStreak: 10 } as never);
   mockRecordLogActivity.mockResolvedValue({
     state: { ...STREAK_STATE, current_streak: 4 },
     event: 'extended',
+    previous: STREAK_STATE,
   });
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
@@ -205,30 +208,27 @@ it('completes the comeback challenge at target: restore + Phoenix + envelope (St
   const body = await res.json();
 
   expect(res.status).toBe(201);
-  expect(mockMarkStatus).toHaveBeenCalledWith('user-1', 'ch-1', 'completed');
-  // engine math: min(12, floor(12*0.5) + 4) = 10
-  expect(mockRestoreStreak).toHaveBeenCalledWith('user-1', 10);
+  expect(mockComplete).toHaveBeenCalledWith('user-1', ACTIVE_CHALLENGE, 4);
   expect(body.comeback).toEqual({ completed: true, restoredStreak: 10 });
   // Phoenix rides the existing achievements wiring
   expect(body.achievements).toContain('comeback');
 });
 
-it('below target: no completion, comeback null in envelope', async () => {
-  mockGetActiveChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
-  mockCountLogsSince.mockResolvedValue(2);
+it('below target: helper returns null, comeback null in envelope', async () => {
+  mockGetLatestChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
+  mockComplete.mockResolvedValue(null);
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
   const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
   const body = await res.json();
 
   expect(body.comeback).toBeNull();
-  expect(mockMarkStatus).not.toHaveBeenCalled();
-  expect(mockRestoreStreak).not.toHaveBeenCalled();
+  expect(body.achievements).not.toContain('comeback');
 });
 
 it('comeback evaluation failure is non-fatal: POST still 201 with comeback null', async () => {
-  mockGetActiveChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
-  mockCountLogsSince.mockRejectedValue(new Error('boom'));
+  mockGetLatestChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
+  mockComplete.mockRejectedValue(new Error('boom'));
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
   const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
@@ -237,4 +237,41 @@ it('comeback evaluation failure is non-fatal: POST still 201 with comeback null'
   expect(res.status).toBe(201);
   expect(body.comeback).toBeNull();
   expect(body.data).toBeDefined();
+});
+
+it('create-on-log: a returning user whose FIRST action is a log still gets the challenge (15-4 review)', async () => {
+  // Pre-advance snapshot: 12-day streak, last log 10 days ago (stale row)
+  const daysAgo = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const previous = { ...STREAK_STATE, current_streak: 12, last_log_date: daysAgo(10) };
+  mockRecordLogActivity.mockResolvedValue({
+    state: { ...STREAK_STATE, current_streak: 1, last_log_date: daysAgo(0) },
+    event: 'reset',
+    previous,
+  });
+  mockGetLatestChallenge.mockResolvedValue(null);
+  mockCreateChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: daysAgo(0) }));
+  expect(res.status).toBe(201);
+  // Snapshot captured from the PRE-advance state; window anchored at the tx
+  expect(mockCreateChallenge).toHaveBeenCalledWith('user-1', 12, undefined);
+  expect(mockComplete).toHaveBeenCalled(); // evaluated against the new challenge
+});
+
+it('Phoenix repair: a previously-completed challenge re-derives the signal (self-healing badge)', async () => {
+  mockGetLatestChallenge.mockResolvedValue({ ...ACTIVE_CHALLENGE, status: 'completed' } as never);
+  mockComplete.mockResolvedValue(null); // nothing newly completed
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const body = await res.json();
+
+  expect(res.status).toBe(201);
+  expect(body.comeback).toBeNull(); // no new completion event
+  expect(body.achievements).toContain('comeback'); // lost award repaired
 });

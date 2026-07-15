@@ -86,6 +86,29 @@ describe('ComebackChallengeCard', () => {
     expect(screen.getByText('Finish to bring back 6 days of your streak.')).toBeInTheDocument();
   });
 
+  it('renders nothing for an already-expired challenge (dashboard left open across expiry)', () => {
+    mockUseComeback.mockReturnValue(
+      hookResult({
+        data: {
+          challenge: { ...CHALLENGE, expires_at: new Date(Date.now() - 1000).toISOString() },
+          loggedCount: 2,
+        },
+      })
+    );
+    renderWithChakra(<ComebackChallengeCard />);
+    expect(screen.queryByText(/Welcome back/)).not.toBeInTheDocument();
+  });
+
+  it('exposes the card and progress via aria labels', () => {
+    mockUseComeback.mockReturnValue(
+      hookResult({ data: { challenge: CHALLENGE, loggedCount: 1 } })
+    );
+    renderWithChakra(<ComebackChallengeCard />);
+
+    expect(screen.getByLabelText('Welcome back! 🔥')).toBeInTheDocument(); // section
+    expect(screen.getByLabelText('1 of 3 logged')).toBeInTheDocument(); // Progress bar
+  });
+
   it('dismiss PATCHes and hides optimistically', async () => {
     mockUseComeback.mockReturnValue(
       hookResult({ data: { challenge: CHALLENGE, loggedCount: 0 } })
@@ -100,6 +123,19 @@ describe('ComebackChallengeCard', () => {
         '/api/comeback',
         expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ action: 'dismiss' }) })
       );
+    });
+  });
+
+  it('un-hides when the dismiss PATCH fails so the user can retry', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    mockUseComeback.mockReturnValue(
+      hookResult({ data: { challenge: CHALLENGE, loggedCount: 0 } })
+    );
+    renderWithChakra(<ComebackChallengeCard />);
+
+    fireEvent.click(screen.getByText('Not now'));
+    await waitFor(() => {
+      expect(screen.getByText(/Welcome back/)).toBeInTheDocument(); // rolled back
     });
   });
 });

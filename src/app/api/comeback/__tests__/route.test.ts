@@ -28,6 +28,10 @@ jest.mock('@/lib/services/comebackService', () => ({
   createChallenge: jest.fn(),
   markStatus: jest.fn(),
   countLogsSince: jest.fn(),
+  completeChallengeIfEarned: jest.fn(),
+}));
+jest.mock('@/lib/services/achievementService', () => ({
+  unlockAchievements: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('@/lib/utils/logger', () => ({
@@ -37,12 +41,14 @@ jest.mock('@/lib/utils/logger', () => ({
 import { createClient } from '@/lib/supabase/server';
 import { getStreak } from '@/lib/services/streakService';
 import {
+  completeChallengeIfEarned,
   countLogsSince,
   createChallenge,
   getActiveChallenge,
   getLatestChallenge,
   markStatus,
 } from '@/lib/services/comebackService';
+import { unlockAchievements } from '@/lib/services/achievementService';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import { GET, PATCH } from '../route';
 
@@ -53,6 +59,8 @@ const mockGetActive = getActiveChallenge as jest.MockedFunction<typeof getActive
 const mockCreate = createChallenge as jest.MockedFunction<typeof createChallenge>;
 const mockMarkStatus = markStatus as jest.MockedFunction<typeof markStatus>;
 const mockCount = countLogsSince as jest.MockedFunction<typeof countLogsSince>;
+const mockComplete = completeChallengeIfEarned as jest.MockedFunction<typeof completeChallengeIfEarned>;
+const mockUnlock = unlockAchievements as jest.MockedFunction<typeof unlockAchievements>;
 
 function makeSupabase(user: object | null = { id: 'user-1' }) {
   return {
@@ -90,7 +98,9 @@ const req = (body: unknown) => ({ json: async () => body }) as never;
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockMarkStatus.mockResolvedValue(undefined);
+  mockMarkStatus.mockResolvedValue(true);
+  mockComplete.mockResolvedValue(null);
+  mockUnlock.mockResolvedValue([]);
 });
 
 describe('GET /api/comeback', () => {
@@ -186,10 +196,44 @@ describe('PATCH /api/comeback', () => {
     expect(res.status).toBe(404);
   });
 
-  it('rejects unknown actions — dismiss is the ONLY client-driven transition', async () => {
+  it('rejects unknown actions — dismiss is the ONLY client-driven transition (zod)', async () => {
     mockCreateClient.mockResolvedValue(makeSupabase() as never);
     const res = await PATCH(req({ action: 'complete' }));
     expect(res.status).toBe(400);
     expect(mockMarkStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/comeback — self-heal (15-4 review)', () => {
+  it('completes a target-reached active challenge and awards Phoenix idempotently', async () => {
+    mockCreateClient.mockResolvedValue(makeSupabase() as never);
+    mockGetStreak.mockResolvedValue({ ...STALE_STREAK, last_log_date: daysAgoKey(0), current_streak: 3 });
+    mockGetLatest.mockResolvedValue(ACTIVE);
+    mockCount.mockResolvedValue(3); // filled by savings auto-logs / failed POST
+    mockComplete.mockResolvedValue({ completed: true, restoredStreak: 9 } as never);
+
+    const res = await GET();
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(mockComplete).toHaveBeenCalledWith('user-1', ACTIVE, 3);
+    expect(mockUnlock).toHaveBeenCalledWith('user-1', ['comeback']);
+    // State change only — the card null-gates on non-active status
+    expect(body.challenge.status).toBe('completed');
+  });
+
+  it('skips creation when the lazy-expiry write failed (no expired-but-active resurrection)', async () => {
+    mockCreateClient.mockResolvedValue(makeSupabase() as never);
+    mockGetStreak.mockResolvedValue(STALE_STREAK); // would be eligible
+    mockGetLatest.mockResolvedValue({
+      ...ACTIVE,
+      expires_at: new Date(Date.now() - 1000).toISOString(),
+    });
+    mockMarkStatus.mockRejectedValue(new Error('blip'));
+
+    const res = await GET();
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(body.challenge).toBeNull();
   });
 });

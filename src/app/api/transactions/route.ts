@@ -429,8 +429,10 @@ export async function POST(request: NextRequest) {
       return null;
     });
 
-    // Story 15.4: active comeback challenge — concurrent, non-fatal
-    const comebackChallengePromise = getActiveChallenge(user.id).catch((err) => {
+    // Story 15.4: LATEST comeback challenge (any status) — concurrent,
+    // non-fatal. Any-status so a completed challenge can repair a lost
+    // Phoenix award (15-4 review: the only non-self-healing badge otherwise).
+    const comebackChallengePromise = getLatestChallenge(user.id).catch((err) => {
       logger.warn('Transactions', 'Comeback challenge fetch failed (non-fatal):', err);
       return null;
     });
@@ -462,17 +464,46 @@ export async function POST(request: NextRequest) {
     // hand: all-time tx count (cheap index-only count) + the just-advanced
     // streak. Score/goal/budget achievements are evaluated by the score GET
     // (which already has those inputs). Failures → warn + [] (degradation policy).
-    // Story 15.4: comeback completion first — its result feeds the 'comeback'
-    // achievement through the SAME evaluation (Phoenix toast rides the
-    // existing `achievements` wiring). Non-fatal per the degradation policy.
-    const comeback = await comebackChallengePromise
-      .then((challenge) =>
-        evaluateComebackCompletion(user.id, challenge, streakResult?.state ?? null)
-      )
-      .catch((err) => {
-        logger.warn('Transactions', 'Comeback completion failed (non-fatal):', err);
+    // Story 15.4: comeback lifecycle — all non-fatal per the degradation policy.
+    const latestChallenge = await comebackChallengePromise;
+
+    // Create-on-log (15-4 review MED): when the returning user's FIRST action
+    // is a log (quick-add on any page), recordLogActivity has just destroyed
+    // the stale row — but it handed us the PRE-advance snapshot. Anchor the
+    // window at this transaction's created_at so this log counts toward the 3.
+    let challengeForCompletion =
+      latestChallenge?.status === 'active' ? latestChallenge : null;
+    if (
+      !challengeForCompletion &&
+      streakResult?.previous &&
+      isEligibleForChallenge(streakResult.previous, latestChallenge, localDayKey(new Date()))
+    ) {
+      challengeForCompletion = await createChallenge(
+        user.id,
+        streakResult.previous.current_streak,
+        (transaction as { created_at?: string }).created_at
+      ).catch((err) => {
+        logger.warn('Transactions', 'Comeback creation failed (non-fatal):', err);
         return null;
       });
+    }
+
+    // Completion: restore-first inside the service (a restore failure leaves
+    // the challenge active and the next POST retries — never consumed-no-reward)
+    const comeback = await completeChallengeIfEarned(
+      user.id,
+      challengeForCompletion,
+      streakResult?.state.current_streak ?? 0
+    ).catch((err) => {
+      logger.warn('Transactions', 'Comeback completion failed (non-fatal):', err);
+      return null;
+    });
+
+    // Phoenix signal: this completion OR a previously-completed challenge
+    // whose award was lost to a transient failure (alreadyUnlocked filters
+    // re-reports — the badge self-heals like every other achievement)
+    const comebackCompleted =
+      comeback?.completed === true || latestChallenge?.status === 'completed';
 
     const achievements = await achievementPrereqsPromise
       .then((prereqs) =>
@@ -481,7 +512,7 @@ export async function POST(request: NextRequest) {
               prereqs,
               user.id,
               streakResult?.state ?? null,
-              comeback?.completed === true
+              comebackCompleted
             )
           : ([] as AchievementKey[])
       )
@@ -522,42 +553,13 @@ import { recordLogActivity } from '@/lib/services/streakService';
 import { evaluateAchievements } from '@/lib/ai/achievementEngine';
 import { ACHIEVEMENTS } from '@/lib/ai/achievementCatalog';
 import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
-import { restoredStreak } from '@/lib/ai/comebackEngine';
-import { restoreStreak } from '@/lib/services/streakService';
-import { countLogsSince, getActiveChallenge, markStatus } from '@/lib/services/comebackService';
-import type {
-  AchievementKey,
-  ComebackChallenge,
-  ComebackCompletion,
-  StreakState,
-} from '@/types/database.types';
-
-/**
- * Story 15.4: completes the active comeback challenge when the derived log
- * count reaches the target — marks it completed, restores the streak portion,
- * and reports the one-shot completion for the (uncached) POST envelope.
- * Returns null when there's nothing to complete. Caller treats as non-fatal.
- */
-async function evaluateComebackCompletion(
-  userId: string,
-  challenge: ComebackChallenge | null,
-  streak: StreakState | null
-): Promise<ComebackCompletion | null> {
-  if (!challenge || challenge.status !== 'active') return null;
-  if (new Date(challenge.expires_at).getTime() <= Date.now()) return null;
-
-  const loggedCount = await countLogsSince(userId, challenge.started_at);
-  if (loggedCount < challenge.target_count) return null;
-
-  // Mark first (idempotence: a concurrent completer loses the ONE active row
-  // transition benignly — restore + unlock are both idempotent anyway)
-  await markStatus(userId, challenge.id, 'completed');
-  const restored = await restoreStreak(
-    userId,
-    restoredStreak(challenge.previous_streak, streak?.current_streak ?? 0)
-  );
-  return { completed: true, restoredStreak: restored };
-}
+import { isEligibleForChallenge } from '@/lib/ai/comebackEngine';
+import {
+  completeChallengeIfEarned,
+  createChallenge,
+  getLatestChallenge,
+} from '@/lib/services/comebackService';
+import type { AchievementKey, StreakState } from '@/types/database.types';
 
 /**
  * Story 15.3: fetches the achievement-evaluation prerequisites (unlocked keys

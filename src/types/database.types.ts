@@ -1447,6 +1447,13 @@ export type StreakEvent = 'started' | 'extended' | 'same_day' | 'frozen' | 'rese
 export interface StreakAdvanceResult {
   state: StreakState;
   event: StreakEvent;
+  /**
+   * Story 15.4 (additive, set by streakService only): the row's state BEFORE
+   * this advance — the comeback snapshot when the user's first action after
+   * an absence is a log (the advance destroys the stale row otherwise).
+   * null before the first-ever log.
+   */
+  previous?: StreakState | null;
 }
 
 /** API response shape from GET /api/streaks */

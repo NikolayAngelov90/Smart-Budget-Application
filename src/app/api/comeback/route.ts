@@ -4,21 +4,28 @@
  * GET /api/comeback — the user's active challenge (+ derived progress), or
  * creates one when a 7+ day absence qualifies (create-on-read; the partial
  * unique index makes concurrent GETs race-safe). Lazy expiry — no cron.
+ * SELF-HEALS a target-reached challenge (15-4 review: savings-contribution
+ * auto-logs fill the count outside the POST path, and a transiently-failed
+ * completing POST must not strand a full progress bar) — state change only;
+ * the one-shot celebration still rides POST envelopes exclusively.
  * Challenge state is this endpoint's CORE: read failures return 500
- * (15-3 lesson — error-as-empty poisons the SWR cache).
+ * (error-as-empty poisons the SWR cache — 15-3 lesson).
  *
- * PATCH /api/comeback { action: 'dismiss' } — the ONLY client-driven
- * transition. Completion is server-derived in the tx POST (never trust
- * the client).
+ * PATCH /api/comeback { action: 'dismiss' } (zod-validated) — the ONLY
+ * client-driven transition. Completion is server-derived (never trust the
+ * client).
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { isEligibleForChallenge } from '@/lib/ai/comebackEngine';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import { getStreak } from '@/lib/services/streakService';
+import { unlockAchievements } from '@/lib/services/achievementService';
 import {
+  completeChallengeIfEarned,
   countLogsSince,
   createChallenge,
   getActiveChallenge,
@@ -30,6 +37,8 @@ import type { ComebackChallenge, ComebackResponse } from '@/types/database.types
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const patchSchema = z.object({ action: z.literal('dismiss') });
 
 export async function GET() {
   try {
@@ -55,11 +64,14 @@ export async function GET() {
     ]);
 
     let challenge: ComebackChallenge | null = null;
+    let expiryFailed = false;
 
     if (latest?.status === 'active') {
       if (new Date(latest.expires_at).getTime() <= now.getTime()) {
-        // Lazy expiry — best-effort; a failed write just retries next read
+        // Lazy expiry — on failure, DON'T create a replacement this request:
+        // the 23505 re-read would hand back this expired-but-active row (15-4)
         await markStatus(user.id, latest.id, 'expired').catch((error) => {
+          expiryFailed = true;
           logger.warn('ComebackAPI', 'lazy expiry failed (non-fatal):', error);
         });
       } else {
@@ -67,11 +79,36 @@ export async function GET() {
       }
     }
 
-    if (!challenge && isEligibleForChallenge(streak, latest, localDayKey(now))) {
+    if (
+      !challenge &&
+      !expiryFailed &&
+      isEligibleForChallenge(streak, latest, localDayKey(now))
+    ) {
       challenge = await createChallenge(user.id, streak!.current_streak);
     }
 
     const loggedCount = challenge ? await countLogsSince(user.id, challenge.started_at) : 0;
+
+    // Self-heal: target reached through a path that never evaluated completion
+    if (challenge && loggedCount >= challenge.target_count) {
+      const completion = await completeChallengeIfEarned(
+        user.id,
+        challenge,
+        streak?.current_streak ?? 0
+      ).catch((error) => {
+        logger.warn('ComebackAPI', 'self-heal completion failed (non-fatal):', error);
+        return null;
+      });
+      if (completion) {
+        // Award Phoenix idempotently (no toast here — GET responses are
+        // cacheable state; the badge appears in the gallery, and the next
+        // POST's latest-completed repair signal covers the toast path)
+        await unlockAchievements(user.id, ['comeback']).catch((error) => {
+          logger.warn('ComebackAPI', 'Phoenix unlock failed (retryable):', error);
+        });
+        challenge = { ...challenge, status: 'completed' };
+      }
+    }
 
     const response: ComebackResponse = { challenge, loggedCount };
     return NextResponse.json(response);
@@ -96,8 +133,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => null)) as { action?: string } | null;
-    if (body?.action !== 'dismiss') {
+    const parsed = patchSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
       return NextResponse.json({ error: { message: 'Invalid action' } }, { status: 400 });
     }
 

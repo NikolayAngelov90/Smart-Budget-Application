@@ -25,26 +25,37 @@ import { RESTORE_FRACTION } from '@/lib/ai/comebackEngine';
 export function ComebackChallengeCard() {
   const t = useTranslations('comeback');
   const { data, mutate } = useComeback();
-  const [dismissing, setDismissing] = useState(false);
+  // Optimistic hide keyed to the CHALLENGE id — a future challenge B must not
+  // inherit challenge A's dismissal in a long-lived tab (15-4 review)
+  const [dismissedId, setDismissedId] = useState<string | null>(null);
 
   const challenge = data?.challenge;
-  if (!challenge || challenge.status !== 'active' || dismissing) return null;
+  if (!challenge || challenge.status !== 'active' || challenge.id === dismissedId) return null;
+  // Never render an already-expired challenge as inviting (dashboard left
+  // open across expiry — the promise it shows would be void)
+  if (new Date(challenge.expires_at).getTime() <= Date.now()) return null;
 
   const loggedCount = Math.min(data?.loggedCount ?? 0, challenge.target_count);
   // The guaranteed restore floor — what completing brings back at minimum
   const restoreDays = Math.max(1, Math.floor(challenge.previous_streak * RESTORE_FRACTION));
 
   const handleDismiss = async () => {
-    setDismissing(true); // optimistic hide; state persists server-side
+    setDismissedId(challenge.id); // optimistic hide
     try {
-      await fetch('/api/comeback', {
+      const response = await fetch('/api/comeback', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'dismiss' }),
       });
+      if (!response.ok) {
+        // Server didn't dismiss (offline/500) — un-hide so the user can retry
+        setDismissedId(null);
+      }
+    } catch {
+      setDismissedId(null);
     } finally {
       mutate().catch(() => {
-        // Revalidation failure is non-fatal — the server row is dismissed
+        // Revalidation failure is non-fatal — server state reconciles on focus
       });
     }
   };

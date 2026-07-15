@@ -2,10 +2,11 @@
 -- One row per challenge; at most ONE active per user (partial unique index —
 -- concurrent create-on-read GETs race safely: loser gets 23505 and re-reads).
 -- Progress is DERIVED from transactions.created_at (never stored) — see story.
--- RLS: owner-only, (select auth.uid()) initplan form (035 baseline). UPDATE is
--- allowed (dismiss transition is user-driven; completion is server-derived but
--- rides the same auth-scoped client).
--- Date: 2026-07-13
+-- RLS: owner-only SELECT; ALL WRITES are SERVICE-ROLE only (15-4 review HIGH:
+-- INSERT/UPDATE grants let users forge instant-win challenges via PostgREST,
+-- farming restores + fake Phoenix badges — Epic-13 house pattern applies:
+-- writes service-role, RLS SELECT-only; routes authenticate then call the
+-- service). Date: 2026-07-13 (write-hardening 2026-07-14)
 
 CREATE TABLE IF NOT EXISTS comeback_challenges (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -26,16 +27,12 @@ ALTER TABLE comeback_challenges ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view their own comeback challenges" ON comeback_challenges;
 CREATE POLICY "Users can view their own comeback challenges"
   ON comeback_challenges FOR SELECT USING ((select auth.uid()) = user_id);
+-- No INSERT/UPDATE/DELETE policies: challenge state is server-derived only
 DROP POLICY IF EXISTS "Users can insert their own comeback challenges" ON comeback_challenges;
-CREATE POLICY "Users can insert their own comeback challenges"
-  ON comeback_challenges FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
 DROP POLICY IF EXISTS "Users can update their own comeback challenges" ON comeback_challenges;
-CREATE POLICY "Users can update their own comeback challenges"
-  ON comeback_challenges FOR UPDATE
-  USING ((select auth.uid()) = user_id)
-  WITH CHECK ((select auth.uid()) = user_id);
 
-GRANT SELECT, INSERT, UPDATE ON comeback_challenges TO authenticated;
+GRANT SELECT ON comeback_challenges TO authenticated;
+REVOKE INSERT, UPDATE, DELETE ON comeback_challenges FROM authenticated;
 GRANT ALL ON comeback_challenges TO service_role;
 
 -- Phoenix badge joins the achievement catalog (the 15-3 constraint-swap path)

@@ -30,6 +30,10 @@ describe('isEligibleForChallenge', () => {
     expect(isEligibleForChallenge(streak('2026-07-06', 0), null, TODAY)).toBe(false);
   });
 
+  it('a 1-day previous streak is enough (the 0-vs-1 boundary, both sides)', () => {
+    expect(isEligibleForChallenge(streak('2026-07-06', 1), null, TODAY)).toBe(true);
+  });
+
   it('gap edge: 6 days is not an absence, 7 is', () => {
     expect(isEligibleForChallenge(streak('2026-07-07'), null, TODAY)).toBe(false); // gap 6
     expect(isEligibleForChallenge(streak('2026-07-06'), null, TODAY)).toBe(true); // gap 7
