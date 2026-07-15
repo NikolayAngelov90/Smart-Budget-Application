@@ -29,6 +29,8 @@ export interface AchievementEvaluationInput {
   hasBudget?: boolean;
   /** Own, unexpired goals; undefined = signal unavailable */
   goals?: Goal[];
+  /** Story 15.4: true exactly when a comeback challenge just completed */
+  comebackCompleted?: boolean;
   /** Keys the user has already unlocked */
   alreadyUnlocked: Set<string>;
 }
@@ -68,6 +70,8 @@ function conditionFor(key: AchievementKey, input: AchievementEvaluationInput): b
       return score !== undefined && score >= SCORE_STEADY_MIN;
     case 'score_master':
       return score !== undefined && score >= SCORE_MASTER_MIN;
+    case 'comeback':
+      return input.comebackCompleted === true;
   }
 }
 

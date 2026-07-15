@@ -42,6 +42,8 @@ import { StreakBadge } from '@/components/dashboard/StreakBadge';
 import { STREAK_KEY } from '@/lib/hooks/useStreak';
 import { BudgetScoreRing } from '@/components/dashboard/BudgetScoreRing';
 import { SCORE_KEY } from '@/lib/hooks/useBudgetScore';
+import { ComebackChallengeCard } from '@/components/dashboard/ComebackChallengeCard';
+import { COMEBACK_KEY } from '@/lib/hooks/useComeback';
 import { advanceStreak, localDayKey } from '@/lib/ai/streakEngine';
 import type { StreakResponse } from '@/types/database.types';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
@@ -80,6 +82,7 @@ export default function DashboardPage() {
         mutate(BUDGETS_KEY, undefined, { revalidate: true }),
         mutate(STREAK_KEY, undefined, { revalidate: true }),
         mutate(SCORE_KEY, undefined, { revalidate: true }),
+        mutate(COMEBACK_KEY, undefined, { revalidate: true }),
       ]);
     }, [mutate])
   );
@@ -176,6 +179,10 @@ export default function DashboardPage() {
       <Box mb={{ base: 6, md: 8 }}>
         <DashboardStats />
       </Box>
+
+      {/* Story 15.4: comeback challenge — returning users see it first;
+          renders null unless a challenge is active (single mount, 15-6 gates) */}
+      <ComebackChallengeCard />
 
       {/* Story 15.2: Budget Score — single mount point (15-6 opt-out gates here);
           renders null until the user has scoreable data */}
@@ -296,6 +303,8 @@ export default function DashboardPage() {
             mutate(BUDGETS_KEY, undefined, { revalidate: true }),
             // Story 15.2 AC #4: the score updates after each transaction
             mutate(SCORE_KEY, undefined, { revalidate: true }),
+            // Story 15.4: challenge progress advances with each log
+            mutate(COMEBACK_KEY, undefined, { revalidate: true }),
           ]);
         }}
       />

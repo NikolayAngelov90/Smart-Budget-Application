@@ -1499,7 +1499,39 @@ export type AchievementKey =
   | 'first_goal'
   | 'goal_reached'
   | 'score_steady'
-  | 'score_master';
+  | 'score_master'
+  | 'comeback';
+
+/** Comeback challenge lifecycle (Story 15.4 / FR31) */
+export type ComebackStatus = 'active' | 'completed' | 'dismissed' | 'expired';
+
+/** A comeback challenge row (037) — progress is DERIVED, never stored */
+export interface ComebackChallenge {
+  id: string;
+  /** ISO timestamp the challenge was offered */
+  started_at: string;
+  /** ISO timestamp the week window closes */
+  expires_at: string;
+  /** Transactions to log within the window */
+  target_count: number;
+  /** The broken streak captured at challenge creation (restore source) */
+  previous_streak: number;
+  status: ComebackStatus;
+  completed_at: string | null;
+}
+
+/** API response shape from GET /api/comeback */
+export interface ComebackResponse {
+  challenge: ComebackChallenge | null;
+  /** Transactions logged since started_at (server-derived) */
+  loggedCount: number;
+}
+
+/** Story 15.4: completion payload riding the tx POST envelope (one-shot, uncached) */
+export interface ComebackCompletion {
+  completed: true;
+  restoredStreak: number;
+}
 
 /** An unlock row from the user_achievements table (036) */
 export interface UserAchievement {

@@ -22,7 +22,15 @@ jest.mock('@/lib/services/insightService', () => ({
 }));
 jest.mock('@/lib/ai/nudgeEngine', () => ({ evaluateNudge: jest.fn(() => null) }));
 jest.mock('@/lib/services/pushService', () => ({ sendPushToUser: jest.fn(), isWithinQuietHours: jest.fn(() => false) }));
-jest.mock('@/lib/services/streakService', () => ({ recordLogActivity: jest.fn() }));
+jest.mock('@/lib/services/streakService', () => ({
+  recordLogActivity: jest.fn(),
+  restoreStreak: jest.fn(),
+}));
+jest.mock('@/lib/services/comebackService', () => ({
+  getActiveChallenge: jest.fn().mockResolvedValue(null),
+  countLogsSince: jest.fn(),
+  markStatus: jest.fn(),
+}));
 jest.mock('@/lib/services/achievementService', () => ({
   getUnlocked: jest.fn().mockResolvedValue([]),
   unlockAchievements: jest.fn(),
@@ -33,6 +41,13 @@ import { POST } from '@/app/api/transactions/route';
 import { createClient } from '@/lib/supabase/server';
 import { recordLogActivity } from '@/lib/services/streakService';
 import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
+import { restoreStreak } from '@/lib/services/streakService';
+import { countLogsSince, getActiveChallenge, markStatus } from '@/lib/services/comebackService';
+
+const mockRestoreStreak = restoreStreak as jest.MockedFunction<typeof restoreStreak>;
+const mockGetActiveChallenge = getActiveChallenge as jest.MockedFunction<typeof getActiveChallenge>;
+const mockCountLogsSince = countLogsSince as jest.MockedFunction<typeof countLogsSince>;
+const mockMarkStatus = markStatus as jest.MockedFunction<typeof markStatus>;
 
 const mockGetUnlocked = getUnlocked as jest.MockedFunction<typeof getUnlocked>;
 const mockUnlockAchievements = unlockAchievements as jest.MockedFunction<typeof unlockAchievements>;
@@ -85,7 +100,18 @@ beforeEach(() => {
   mockUnlockAchievements.mockImplementation(async (_userId, keys) =>
     keys.map((achievement_key) => ({ achievement_key, unlocked_at: '2026-07-13T10:00:00Z' }))
   );
+  mockGetActiveChallenge.mockResolvedValue(null);
 });
+
+const ACTIVE_CHALLENGE = {
+  id: 'ch-1',
+  started_at: new Date(Date.now() - 86_400_000).toISOString(),
+  expires_at: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+  target_count: 3,
+  previous_streak: 12,
+  status: 'active' as const,
+  completed_at: null,
+};
 
 it('records logging activity for an INCOME transaction and returns the streak', async () => {
   mockCreateClient.mockResolvedValue(makeClient(INCOME_CAT) as never);
@@ -162,5 +188,53 @@ it('achievement evaluation failure is non-fatal: POST still 201 with achievement
 
   expect(res.status).toBe(201);
   expect(body.achievements).toEqual([]);
+  expect(body.data).toBeDefined();
+});
+
+it('completes the comeback challenge at target: restore + Phoenix + envelope (Story 15.4)', async () => {
+  mockGetActiveChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
+  mockCountLogsSince.mockResolvedValue(3); // post-insert count reaches target
+  mockRestoreStreak.mockResolvedValue(10); // floor(12/2)=6 + rebuilt 4 = 10
+  mockRecordLogActivity.mockResolvedValue({
+    state: { ...STREAK_STATE, current_streak: 4 },
+    event: 'extended',
+  });
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const body = await res.json();
+
+  expect(res.status).toBe(201);
+  expect(mockMarkStatus).toHaveBeenCalledWith('user-1', 'ch-1', 'completed');
+  // engine math: min(12, floor(12*0.5) + 4) = 10
+  expect(mockRestoreStreak).toHaveBeenCalledWith('user-1', 10);
+  expect(body.comeback).toEqual({ completed: true, restoredStreak: 10 });
+  // Phoenix rides the existing achievements wiring
+  expect(body.achievements).toContain('comeback');
+});
+
+it('below target: no completion, comeback null in envelope', async () => {
+  mockGetActiveChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
+  mockCountLogsSince.mockResolvedValue(2);
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const body = await res.json();
+
+  expect(body.comeback).toBeNull();
+  expect(mockMarkStatus).not.toHaveBeenCalled();
+  expect(mockRestoreStreak).not.toHaveBeenCalled();
+});
+
+it('comeback evaluation failure is non-fatal: POST still 201 with comeback null', async () => {
+  mockGetActiveChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
+  mockCountLogsSince.mockRejectedValue(new Error('boom'));
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const body = await res.json();
+
+  expect(res.status).toBe(201);
+  expect(body.comeback).toBeNull();
   expect(body.data).toBeDefined();
 });

@@ -24,6 +24,7 @@ export const ACHIEVEMENTS: ReadonlyArray<{ key: AchievementKey }> = [
   { key: 'goal_reached' },
   { key: 'score_steady' },
   { key: 'score_master' },
+  { key: 'comeback' },
 ];
 
 /** Fast validation set for service-layer key checks */

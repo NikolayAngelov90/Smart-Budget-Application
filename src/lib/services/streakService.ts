@@ -62,6 +62,38 @@ async function casUpdate(
 }
 
 /**
+ * Story 15.4: comeback restore — raises current_streak to `restored` (never
+ * lowers what the user rebuilt, never exceeds the longest-streak high-water
+ * mark so the 034 CHECK cannot trip). CAS-guarded on last_log_date; on a miss
+ * re-reads and retries once (a concurrent log only ever RAISES current, so
+ * recomputing against the fresh row stays correct). Returns the written
+ * current_streak, or the fresh row's value when no write was needed.
+ */
+export async function restoreStreak(userId: string, restored: number): Promise<number> {
+  const supabase = await createClient();
+
+  const apply = async (state: StreakState | null): Promise<number | null> => {
+    if (!state) return null;
+    const target = Math.min(state.longest_streak, Math.max(restored, state.current_streak));
+    if (target <= state.current_streak) return state.current_streak; // nothing to raise
+    const next: StreakState = { ...state, current_streak: target };
+    return (await casUpdate(supabase, userId, state.last_log_date, next)) ? target : null;
+  };
+
+  const first = await apply(await getStreak(userId));
+  if (first !== null) return first;
+
+  // CAS miss (concurrent log advanced the row) — re-read and retry once
+  const fresh = await getStreak(userId);
+  const second = await apply(fresh);
+  if (second !== null) return second;
+
+  // Still racing or no row: report the freshest truth without fabricating
+  const latest = await getStreak(userId);
+  return latest?.current_streak ?? 0;
+}
+
+/**
  * Applies one log day to the user's streak (idempotent per day) and persists
  * the result. Returns the advanced state + what happened.
  */

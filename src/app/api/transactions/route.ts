@@ -429,6 +429,12 @@ export async function POST(request: NextRequest) {
       return null;
     });
 
+    // Story 15.4: active comeback challenge — concurrent, non-fatal
+    const comebackChallengePromise = getActiveChallenge(user.id).catch((err) => {
+      logger.warn('Transactions', 'Comeback challenge fetch failed (non-fatal):', err);
+      return null;
+    });
+
     // Story 12.3: Evaluate nudge for expense transactions only
     let nudgePayload = null;
     if (body.type === 'expense') {
@@ -456,10 +462,27 @@ export async function POST(request: NextRequest) {
     // hand: all-time tx count (cheap index-only count) + the just-advanced
     // streak. Score/goal/budget achievements are evaluated by the score GET
     // (which already has those inputs). Failures → warn + [] (degradation policy).
+    // Story 15.4: comeback completion first — its result feeds the 'comeback'
+    // achievement through the SAME evaluation (Phoenix toast rides the
+    // existing `achievements` wiring). Non-fatal per the degradation policy.
+    const comeback = await comebackChallengePromise
+      .then((challenge) =>
+        evaluateComebackCompletion(user.id, challenge, streakResult?.state ?? null)
+      )
+      .catch((err) => {
+        logger.warn('Transactions', 'Comeback completion failed (non-fatal):', err);
+        return null;
+      });
+
     const achievements = await achievementPrereqsPromise
       .then((prereqs) =>
         prereqs
-          ? evaluateTransactionAchievements(prereqs, user.id, streakResult?.state ?? null)
+          ? evaluateTransactionAchievements(
+              prereqs,
+              user.id,
+              streakResult?.state ?? null,
+              comeback?.completed === true
+            )
           : ([] as AchievementKey[])
       )
       .catch((err) => {
@@ -473,6 +496,7 @@ export async function POST(request: NextRequest) {
         nudge: nudgePayload,
         streak: streakResult?.state ?? null,
         achievements,
+        comeback,
       },
       { status: 201 }
     );
@@ -498,7 +522,42 @@ import { recordLogActivity } from '@/lib/services/streakService';
 import { evaluateAchievements } from '@/lib/ai/achievementEngine';
 import { ACHIEVEMENTS } from '@/lib/ai/achievementCatalog';
 import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
-import type { AchievementKey, StreakState } from '@/types/database.types';
+import { restoredStreak } from '@/lib/ai/comebackEngine';
+import { restoreStreak } from '@/lib/services/streakService';
+import { countLogsSince, getActiveChallenge, markStatus } from '@/lib/services/comebackService';
+import type {
+  AchievementKey,
+  ComebackChallenge,
+  ComebackCompletion,
+  StreakState,
+} from '@/types/database.types';
+
+/**
+ * Story 15.4: completes the active comeback challenge when the derived log
+ * count reaches the target — marks it completed, restores the streak portion,
+ * and reports the one-shot completion for the (uncached) POST envelope.
+ * Returns null when there's nothing to complete. Caller treats as non-fatal.
+ */
+async function evaluateComebackCompletion(
+  userId: string,
+  challenge: ComebackChallenge | null,
+  streak: StreakState | null
+): Promise<ComebackCompletion | null> {
+  if (!challenge || challenge.status !== 'active') return null;
+  if (new Date(challenge.expires_at).getTime() <= Date.now()) return null;
+
+  const loggedCount = await countLogsSince(userId, challenge.started_at);
+  if (loggedCount < challenge.target_count) return null;
+
+  // Mark first (idempotence: a concurrent completer loses the ONE active row
+  // transition benignly — restore + unlock are both idempotent anyway)
+  await markStatus(userId, challenge.id, 'completed');
+  const restored = await restoreStreak(
+    userId,
+    restoredStreak(challenge.previous_streak, streak?.current_streak ?? 0)
+  );
+  return { completed: true, restoredStreak: restored };
+}
 
 /**
  * Story 15.3: fetches the achievement-evaluation prerequisites (unlocked keys
@@ -536,14 +595,16 @@ async function fetchAchievementPrereqs(
 async function evaluateTransactionAchievements(
   prereqs: { alreadyUnlocked: Set<string>; transactionCount: number | undefined },
   userId: string,
-  streak: StreakState | null
+  streak: StreakState | null,
+  comebackCompleted?: boolean
 ): Promise<AchievementKey[]> {
-  // All 10 badges earned → nothing left to evaluate, ever
+  // All badges earned → nothing left to evaluate, ever
   if (prereqs.alreadyUnlocked.size >= ACHIEVEMENTS.length) return [];
 
   const earned = evaluateAchievements({
     transactionCount: prereqs.transactionCount,
     streak,
+    comebackCompleted,
     alreadyUnlocked: prereqs.alreadyUnlocked,
   });
   if (earned.length === 0) return [];

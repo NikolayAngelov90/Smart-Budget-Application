@@ -8,6 +8,7 @@ import { Box, Flex, useBreakpointValue } from '@chakra-ui/react';
 import { useSWRConfig } from 'swr';
 import { STREAK_KEY } from '@/lib/hooks/useStreak';
 import { SCORE_KEY } from '@/lib/hooks/useBudgetScore';
+import { COMEBACK_KEY } from '@/lib/hooks/useComeback';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import FloatingActionButton from '@/components/common/FloatingActionButton';
@@ -88,6 +89,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     await Promise.all([
       mutate(STREAK_KEY, undefined, { revalidate: true }),
       mutate(SCORE_KEY, undefined, { revalidate: true }),
+      mutate(COMEBACK_KEY, undefined, { revalidate: true }),
     ]);
 
     console.log('[AppLayout] Dashboard data refresh complete!');

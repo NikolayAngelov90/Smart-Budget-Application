@@ -840,7 +840,8 @@
       "first_goal": "Goal Getter",
       "goal_reached": "Goal Crusher",
       "score_steady": "Steady Hands",
-      "score_master": "Budget Master"
+      "score_master": "Budget Master",
+      "comeback": "Phoenix"
     },
     "conditions": {
       "first_transaction": "Log your first transaction",
@@ -852,8 +853,16 @@
       "first_goal": "Create your first savings goal",
       "goal_reached": "Reach a savings goal",
       "score_steady": "Reach a Budget Score of 50",
-      "score_master": "Reach a Budget Score of 90"
+      "score_master": "Reach a Budget Score of 90",
+      "comeback": "Complete a comeback challenge"
     }
+  },
+  "comeback": {
+    "heading": "Welcome back! 🔥",
+    "body": "Log {target} transactions this week to reignite your streak.",
+    "progress": "{count} of {target} logged",
+    "restorePromise": "Finish to bring back {days, plural, one {1 day} other {# days}} of your streak.",
+    "dismiss": "Not now"
   },
   "whatIf": {
     "title": "\"What If\" Simulator",

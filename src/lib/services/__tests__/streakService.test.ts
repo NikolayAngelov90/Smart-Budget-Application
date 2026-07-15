@@ -12,7 +12,7 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 import { createClient } from '@/lib/supabase/server';
-import { getStreak, recordLogActivity } from '@/lib/services/streakService';
+import { getStreak, recordLogActivity, restoreStreak } from '@/lib/services/streakService';
 import type { StreakState } from '@/types/database.types';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -206,5 +206,69 @@ describe('recordLogActivity', () => {
     await expect(recordLogActivity('u-1', '2026-01-07')).rejects.toThrow(
       'Failed to update streak'
     );
+  });
+});
+
+describe('restoreStreak (Story 15.4)', () => {
+  it('raises current_streak to the restored value, CAS-guarded', async () => {
+    // STATE: current 3, longest 5 -> restore(4) -> target 4
+    const client = makeClient({
+      streaks: [
+        { data: STATE, error: null }, // getStreak
+        { data: [{ user_id: 'u-1' }], error: null }, // CAS update ok
+      ],
+    });
+    mockCreateClient.mockResolvedValue(client as never);
+
+    await expect(restoreStreak('u-1', 4)).resolves.toBe(4);
+    const updateChain = client.chains[1]!;
+    expect(updateChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ current_streak: 4 })
+    );
+    expect(updateChain.eq).toHaveBeenCalledWith('user_id', 'u-1');
+    expect(updateChain.eq).toHaveBeenCalledWith('last_log_date', '2026-01-06');
+  });
+
+  it('clamps the restore to longest_streak (034 CHECK safety)', async () => {
+    const client = makeClient({
+      streaks: [
+        { data: STATE, error: null }, // longest 5
+        { data: [{ user_id: 'u-1' }], error: null },
+      ],
+    });
+    mockCreateClient.mockResolvedValue(client as never);
+
+    await expect(restoreStreak('u-1', 50)).resolves.toBe(5);
+  });
+
+  it('never lowers what the user already rebuilt (no write needed)', async () => {
+    const client = makeClient({
+      streaks: [{ data: { ...STATE, current_streak: 4 }, error: null }],
+    });
+    mockCreateClient.mockResolvedValue(client as never);
+
+    await expect(restoreStreak('u-1', 2)).resolves.toBe(4);
+    expect(client.from).toHaveBeenCalledTimes(1); // read only
+  });
+
+  it('CAS miss re-reads and retries once against the fresh row', async () => {
+    const fresh = { ...STATE, current_streak: 2, last_log_date: '2026-01-07' };
+    const client = makeClient({
+      streaks: [
+        { data: STATE, error: null }, // stale read
+        { data: [], error: null }, // CAS miss
+        { data: fresh, error: null }, // re-read
+        { data: [{ user_id: 'u-1' }], error: null }, // retry ok
+      ],
+    });
+    mockCreateClient.mockResolvedValue(client as never);
+
+    await expect(restoreStreak('u-1', 4)).resolves.toBe(4);
+  });
+
+  it('no streak row: reports 0 without fabricating', async () => {
+    const client = makeClient({ streaks: [{ data: null, error: null }, { data: null, error: null }, { data: null, error: null }] });
+    mockCreateClient.mockResolvedValue(client as never);
+    await expect(restoreStreak('u-1', 4)).resolves.toBe(0);
   });
 });

@@ -39,8 +39,9 @@ export function isoWeekKey(date: Date): string {
   return `${getISOWeekYear(date)}-W${String(getISOWeek(date)).padStart(2, '0')}`;
 }
 
-/** Whole-day difference between two YYYY-MM-DD keys (round: DST-safe; 14-4 lesson) */
-function dayDiff(fromKey: string, toKey: string): number | null {
+/** Whole-day difference between two YYYY-MM-DD keys (round: DST-safe; 14-4 lesson).
+ *  Exported (additively, 15-4) for the comeback engine's inactivity-gap math. */
+export function dayDiff(fromKey: string, toKey: string): number | null {
   const from = parseLocalDate(fromKey);
   const to = parseLocalDate(toKey);
   if (!from || !to) return null;
