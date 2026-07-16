@@ -15,6 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { NotHouseholdMemberError } from '@/lib/services/householdService';
 import { logSavingsContribution } from '@/lib/services/savingsTransactionService';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { logger } from '@/lib/utils/logger';
 import { DEFAULT_CURRENCY } from '@/lib/utils/constants';
 import type {
@@ -138,7 +139,7 @@ export async function contributeToHouseholdGoal(
   // The goal must exist and be shared; the caller must belong to its household.
   const { data: goal, error: goalError } = await admin
     .from('goals')
-    .select('id, name, household_id')
+    .select('id, name, household_id, target_amount')
     .eq('id', goalId)
     .maybeSingle();
   if (goalError) {
@@ -201,5 +202,39 @@ export async function contributeToHouseholdGoal(
     logger.error('HouseholdGoalService', `goal update failed: ${updateError?.message}`);
     throw new Error('Failed to update goal total');
   }
+
+  // Story 15.5 (UX Journey 5): milestone crossed → push the OTHER members
+  // (the contributor sees the in-app celebration). Best-effort, never fails
+  // the contribution; the gate owns the 'household' toggle + quiet hours.
+  try {
+    const target = Number((goal as { target_amount?: number }).target_amount ?? 0);
+    if (target > 0) {
+      const beforePct = ((total - amount) / target) * 100;
+      const afterPct = (total / target) * 100;
+      // Same thresholds as the client goal celebration (milestones_celebrated)
+      const crossed = [25, 50, 75, 100].filter((m) => beforePct < m && afterPct >= m);
+      if (crossed.length > 0) {
+        const milestone = crossed[crossed.length - 1];
+        const { data: members } = await admin
+          .from('household_members')
+          .select('user_id')
+          .eq('household_id', goal.household_id)
+          .neq('user_id', userId);
+        await Promise.allSettled(
+          (members ?? []).map((m: { user_id: string }) =>
+            dispatchCategorizedPush(m.user_id, 'household', {
+              type: 'milestone',
+              title: `${milestone}% reached!`,
+              body: `"${goal.name}" just passed ${milestone}% of its target.`,
+              data: { url: '/household' },
+            })
+          )
+        );
+      }
+    }
+  } catch (pushError) {
+    logger.error('HouseholdGoalService', 'Milestone push failed (non-fatal):', pushError);
+  }
+
   return updated as Goal;
 }

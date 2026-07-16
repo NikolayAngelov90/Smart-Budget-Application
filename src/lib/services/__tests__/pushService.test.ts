@@ -8,11 +8,18 @@ jest.mock('web-push', () => ({
 }));
 
 jest.mock('@/lib/utils/logger', () => ({
-  logger: { info: jest.fn(), error: jest.fn() },
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
+jest.mock('@/lib/supabase/server', () => ({
+  createServiceRoleClient: jest.fn(),
 }));
 
 import webpush from 'web-push';
-import { isWithinQuietHours, sendPushToUser } from '../pushService';
+import { createServiceRoleClient } from '@/lib/supabase/server';
+import { dispatchCategorizedPush, isWithinQuietHours, sendPushToUser } from '../pushService';
+
+const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
 
 const mockSendNotification = webpush.sendNotification as jest.MockedFunction<typeof webpush.sendNotification>;
 
@@ -178,5 +185,110 @@ describe('sendPushToUser', () => {
     const supabase = makeSupabaseMock([sub1]);
     await sendPushToUser(supabase as never, 'user-1', payload);
     expect(mockSendNotification).not.toHaveBeenCalled();
+  });
+});
+
+// ============================================================================
+// dispatchCategorizedPush — Story 15.5 (the single gate: AC5)
+// ============================================================================
+
+describe('dispatchCategorizedPush', () => {
+  const OLD_ENV = process.env;
+  let hourSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env = {
+      ...OLD_ENV,
+      VAPID_SUBJECT: 'mailto:test@test.dev',
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'pub',
+      VAPID_PRIVATE_KEY: 'priv',
+    };
+    // Daytime by default (not quiet hours 22-8)
+    hourSpy = jest.spyOn(Date.prototype, 'getUTCHours').mockReturnValue(12);
+  });
+
+  afterEach(() => {
+    process.env = OLD_ENV;
+    hourSpy?.mockRestore();
+  });
+
+  function makeGateClient(preferences: Record<string, unknown> | null, prefsError: unknown = null) {
+    // Two tables hit: user_profiles (prefs) then push_subscriptions (send)
+    const from = jest.fn((table: string) => {
+      if (table === 'user_profiles') {
+        const q: Record<string, jest.Mock> = {};
+        q.select = jest.fn(() => q);
+        q.eq = jest.fn(() => q);
+        q.maybeSingle = jest.fn().mockResolvedValue({
+          data: preferences === null ? null : { preferences },
+          error: prefsError,
+        });
+        return q;
+      }
+      // push_subscriptions
+      const q: Record<string, jest.Mock> = {};
+      q.select = jest.fn(() => q);
+      q.eq = jest.fn(() => q);
+      (q as Record<string, unknown>).then = (resolve: (v: unknown) => unknown) =>
+        resolve({
+          data: [{ id: 's1', endpoint: 'https://e/1', p256dh: 'k', auth: 'a' }],
+          error: null,
+        });
+      return q;
+    });
+    return { from };
+  }
+
+  const payload = {
+    type: 'achievement' as const,
+    title: 'Achievement unlocked!',
+    body: 'First Step',
+    data: { url: '/settings' },
+  };
+
+  it('sends when the category is enabled (explicit flag)', async () => {
+    mockServiceClient.mockReturnValue(makeGateClient({ push_milestones_enabled: true }) as never);
+    await dispatchCategorizedPush('u-1', 'milestones', payload);
+    expect(mockSendNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT send when the category flag is off', async () => {
+    mockServiceClient.mockReturnValue(makeGateClient({ push_milestones_enabled: false }) as never);
+    await dispatchCategorizedPush('u-1', 'milestones', payload);
+    expect(mockSendNotification).not.toHaveBeenCalled();
+  });
+
+  it('defaults: milestones/household/digest ON, nudges/reengagement opt-in OFF', async () => {
+    mockServiceClient.mockReturnValue(makeGateClient({}) as never);
+    await dispatchCategorizedPush('u-1', 'milestones', payload);
+    await dispatchCategorizedPush('u-1', 'household', payload);
+    await dispatchCategorizedPush('u-1', 'digest', payload);
+    expect(mockSendNotification).toHaveBeenCalledTimes(3);
+
+    mockSendNotification.mockClear();
+    await dispatchCategorizedPush('u-1', 'nudges', payload);
+    await dispatchCategorizedPush('u-1', 'reengagement', payload);
+    expect(mockSendNotification).not.toHaveBeenCalled();
+  });
+
+  it('respects quiet hours for every category', async () => {
+    hourSpy.mockReturnValue(23); // inside default 22-8
+    mockServiceClient.mockReturnValue(makeGateClient({ push_milestones_enabled: true }) as never);
+    await dispatchCategorizedPush('u-1', 'milestones', payload);
+    expect(mockSendNotification).not.toHaveBeenCalled();
+  });
+
+  it('prefs read failure -> no send, never throws (unknowable != consent)', async () => {
+    mockServiceClient.mockReturnValue(makeGateClient(null, { message: 'boom' }) as never);
+    await expect(dispatchCategorizedPush('u-1', 'household', payload)).resolves.toBeUndefined();
+    expect(mockSendNotification).not.toHaveBeenCalled();
+  });
+
+  it('internal errors are swallowed (best-effort by policy)', async () => {
+    mockServiceClient.mockImplementation(() => {
+      throw new Error('no client');
+    });
+    await expect(dispatchCategorizedPush('u-1', 'digest', payload)).resolves.toBeUndefined();
   });
 });

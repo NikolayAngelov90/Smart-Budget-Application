@@ -71,6 +71,13 @@ export function usePushNotifications(): UsePushNotificationsResult {
 
   const subscribe = useCallback(async () => {
     if (!isSupported) return;
+    // Story 15.5 AC4: declined users are NEVER re-prompted. Browsers already
+    // no-op requestPermission when denied and the Settings button is disabled,
+    // but guard here too so no future code path can re-prompt.
+    if (permission === 'denied') {
+      setError('Notification permission denied');
+      return;
+    }
     setError(null);
     setIsLoading(true);
     try {
@@ -124,7 +131,7 @@ export function usePushNotifications(): UsePushNotificationsResult {
     } finally {
       setIsLoading(false);
     }
-  }, [isSupported]);
+  }, [isSupported, permission]);
 
   const unsubscribe = useCallback(async () => {
     if (!isSupported) return;

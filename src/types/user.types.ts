@@ -30,6 +30,18 @@ export interface UserPreferences {
   /** Opt-in for spending nudge push notifications (Story 12.3, default: false — opt-in only) */
   push_nudges_enabled?: boolean;
 
+  /** Achievement/milestone unlock pushes (Story 15.5, default: true for subscribed users) */
+  push_milestones_enabled?: boolean;
+
+  /** Household event pushes — invites, joins, shared-goal milestones (Story 15.5, default: true) */
+  push_household_enabled?: boolean;
+
+  /** Weekly digest ready pushes (Story 15.5, default: true for subscribed users) */
+  push_digest_enabled?: boolean;
+
+  /** Re-engagement pushes after 7 days of inactivity (Story 15.5, default: false — opt-in only) */
+  push_reengagement_enabled?: boolean;
+
   /** Quiet hours start — hour in UTC 0-23 (default: 22). No push sent during quiet window. */
   quiet_hours_start?: number;
 

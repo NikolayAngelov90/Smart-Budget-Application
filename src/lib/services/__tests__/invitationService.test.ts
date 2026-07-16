@@ -12,10 +12,10 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 // invitationService imports pushService (web-push) — mock it so tests don't load native deps.
-jest.mock('@/lib/services/pushService', () => ({ sendPushToUser: jest.fn() }));
+jest.mock('@/lib/services/pushService', () => ({ dispatchCategorizedPush: jest.fn() }));
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
-import { sendPushToUser } from '@/lib/services/pushService';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import {
   createInvitation,
   listInvitations,
@@ -33,7 +33,7 @@ import {
   AlreadyInHouseholdError,
 } from '@/lib/services/invitationService';
 
-const mockPush = sendPushToUser as jest.MockedFunction<typeof sendPushToUser>;
+const mockPush = dispatchCategorizedPush as jest.MockedFunction<typeof dispatchCategorizedPush>;
 
 const mockSrv = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
 
@@ -139,7 +139,8 @@ describe('createInvitation', () => {
     mockSrv.mockReturnValue(client as never);
     await createInvitation('user-1', 'a@x.com');
     expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush.mock.calls[0]![1]).toBe('invitee-9'); // userId
+    expect(mockPush.mock.calls[0]![0]).toBe('invitee-9'); // userId
+    expect(mockPush.mock.calls[0]![1]).toBe('household'); // category gate (15.5)
   });
 
   it('does not push when the invitee email is not registered (and never fails the invite)', async () => {
@@ -262,7 +263,7 @@ describe('acceptInvitation', () => {
     mockSrv.mockReturnValue(client as never);
     const result = await acceptInvitation('user-2', 'A@x.com', 'tok-1');
     expect(result).toEqual(HOUSEHOLD);
-    expect(mockPush).toHaveBeenCalledWith(expect.anything(), 'user-1', expect.objectContaining({ type: 'household_event' }));
+    expect(mockPush).toHaveBeenCalledWith('user-1', 'household', expect.objectContaining({ type: 'household_event' }));
   });
 
   it('still joins when the best-effort push fails', async () => {

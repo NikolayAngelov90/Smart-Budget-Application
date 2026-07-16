@@ -4,11 +4,11 @@
  */
 
 jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn(), createServiceRoleClient: jest.fn() }));
-jest.mock('@/lib/services/pushService', () => ({ sendPushToUser: jest.fn() }));
+jest.mock('@/lib/services/pushService', () => ({ dispatchCategorizedPush: jest.fn() }));
 jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
-import { sendPushToUser } from '@/lib/services/pushService';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import {
   listHouseholdMembers,
   removeMember,
@@ -19,7 +19,7 @@ import { NotHouseholdAdminError } from '@/lib/services/invitationService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
-const mockPush = sendPushToUser as jest.MockedFunction<typeof sendPushToUser>;
+const mockPush = dispatchCategorizedPush as jest.MockedFunction<typeof dispatchCategorizedPush>;
 
 interface AdminOpts {
   adminRow?: object | null;
@@ -81,7 +81,8 @@ describe('removeMember', () => {
     expect(client._categories.update).toHaveBeenCalledWith({ user_id: 'admin' });
     expect(client._goals.update).toHaveBeenCalledWith({ user_id: 'admin' });
     expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush.mock.calls[0]![1]).toBe('target');
+    expect(mockPush.mock.calls[0]![0]).toBe('target');
+    expect(mockPush.mock.calls[0]![1]).toBe('household'); // category gate (15.5)
   });
 });
 

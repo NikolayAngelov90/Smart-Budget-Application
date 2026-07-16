@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { ACHIEVEMENT_KEYS } from '@/lib/ai/achievementCatalog';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { logger } from '@/lib/utils/logger';
 import type { AchievementKey, UserAchievement } from '@/types/database.types';
 
@@ -66,5 +67,28 @@ export async function unlockAchievements(
     logger.error('AchievementService', `unlock failed: ${error.message}`);
     throw new Error('Failed to unlock achievements');
   }
-  return (data ?? []) as UserAchievement[];
+
+  const inserted = (data ?? []) as UserAchievement[];
+
+  // Story 15.5: ONE push per batch of truly-inserted unlocks — wiring the push
+  // here covers every unlock site (tx POST, score GET, comeback GET) with a
+  // single point, and idempotence guarantees no push for lost races. English
+  // server copy (nudge precedent); the gate owns the 'milestones' toggle +
+  // quiet hours. Fire-and-forget: never delays or fails the unlock.
+  if (inserted.length > 0) {
+    const body =
+      inserted.length === 1
+        ? 'You earned a new badge — see it in Settings.'
+        : `You earned ${inserted.length} new badges — see them in Settings.`;
+    void dispatchCategorizedPush(userId, 'milestones', {
+      type: 'achievement',
+      title: 'Achievement unlocked!',
+      body,
+      data: { url: '/settings' },
+    }).catch(() => {
+      // gate is already non-throwing; belt and braces
+    });
+  }
+
+  return inserted;
 }

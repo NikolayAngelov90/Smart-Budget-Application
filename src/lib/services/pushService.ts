@@ -10,6 +10,7 @@
 
 import webpush from 'web-push';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
 
 // Configure VAPID once at module init (env vars validated at runtime)
@@ -22,10 +23,79 @@ if (process.env.VAPID_SUBJECT && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && pro
 }
 
 export interface PushPayload {
-  type: 'nudge' | 'milestone' | 'reengagement' | 'household_event' | 'test';
+  type:
+    | 'nudge'
+    | 'milestone'
+    | 'reengagement'
+    | 'household_event'
+    | 'test'
+    // Story 15.5 (additive — the worker only reads title/body/data.url)
+    | 'achievement'
+    | 'digest'
+    | 'comeback';
   title: string;
   body: string;
   data?: { url?: string };
+}
+
+/** Story 15.5: per-category notification toggles (ADR-018 / FR33) */
+export type PushCategory = 'nudges' | 'milestones' | 'household' | 'digest' | 'reengagement';
+
+/**
+ * Category → preference flag + default. Opt-IN (false) for interruptive
+ * outreach (nudges, re-engagement); default ON for categories that are
+ * direct responses to the user's own/household activity — subscribing to
+ * push at all was the opt-in for those.
+ */
+const CATEGORY_PREFS: Record<PushCategory, { flag: string; defaultEnabled: boolean }> = {
+  nudges: { flag: 'push_nudges_enabled', defaultEnabled: false },
+  reengagement: { flag: 'push_reengagement_enabled', defaultEnabled: false },
+  milestones: { flag: 'push_milestones_enabled', defaultEnabled: true },
+  household: { flag: 'push_household_enabled', defaultEnabled: true },
+  digest: { flag: 'push_digest_enabled', defaultEnabled: true },
+};
+
+/**
+ * Story 15.5: THE single dispatch gate (AC5) — every push in the app goes
+ * through here. Enforces the recipient's per-category toggle and quiet hours
+ * exactly once, then delegates to sendPushToUser. Uses the service-role
+ * client internally: dispatch runs in server contexts (routes, services,
+ * crons) where the RECIPIENT may not be the session user, or there is no
+ * session at all. Never throws — pushes are best-effort by policy.
+ */
+export async function dispatchCategorizedPush(
+  userId: string,
+  category: PushCategory,
+  payload: PushPayload
+): Promise<void> {
+  try {
+    const supabase = createServiceRoleClient() as unknown as SupabaseClient;
+
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('preferences')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      // Unknowable preferences → don't push (never interrupt without consent)
+      logger.warn('PushService', `prefs read failed for ${userId} — push skipped:`, error);
+      return;
+    }
+
+    const prefs = (profile?.preferences ?? {}) as Record<string, unknown>;
+    const { flag, defaultEnabled } = CATEGORY_PREFS[category];
+    const enabled = (prefs[flag] as boolean | undefined) ?? defaultEnabled;
+    if (!enabled) return;
+
+    const quietStart = (prefs.quiet_hours_start as number | undefined) ?? 22;
+    const quietEnd = (prefs.quiet_hours_end as number | undefined) ?? 8;
+    if (isWithinQuietHours(quietStart, quietEnd)) return;
+
+    await sendPushToUser(supabase, userId, payload);
+  } catch (err) {
+    logger.warn('PushService', `dispatch failed for ${userId} (non-fatal):`, err);
+  }
 }
 
 /**

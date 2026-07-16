@@ -44,8 +44,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { checkAndTriggerForTransactionCount } from '@/lib/services/insightService';
 import { evaluateNudge } from '@/lib/ai/nudgeEngine';
-import { sendPushToUser, isWithinQuietHours } from '@/lib/services/pushService';
-import { createServiceRoleClient } from '@/lib/supabase/server';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { sanitizeSearchQuery } from '@/lib/utils/sanitize';
 import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '@/lib/utils/constants';
 import { logger } from '@/lib/utils/logger';
@@ -452,7 +451,7 @@ export async function POST(request: NextRequest) {
 
       // Async push dispatch if nudge fired — non-blocking
       if (nudgePayload) {
-        dispatchNudgePush(user.id, nudgePayload, supabase).catch((err) => {
+        dispatchNudgePush(user.id, nudgePayload).catch((err) => {
           logger.error('Transactions', 'Push dispatch failed (non-fatal):', err);
         });
       }
@@ -728,32 +727,9 @@ async function evaluateNudgeForTransaction(
  * Dispatches a Web Push notification for a nudge, respecting user preferences
  * and quiet hours. Non-blocking — caller must .catch() independently.
  */
-async function dispatchNudgePush(
-  userId: string,
-  nudge: NudgePayload,
-  supabase: SupabaseClient
-): Promise<void> {
-  // Fetch user push preferences
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('preferences')
-    .eq('id', userId)
-    .single();
-
-  const prefs = (profile?.preferences ?? {}) as {
-    push_nudges_enabled?: boolean;
-    quiet_hours_start?: number;
-    quiet_hours_end?: number;
-  };
-
-  if (!prefs.push_nudges_enabled) return;
-
-  const quietStart = prefs.quiet_hours_start ?? 22;
-  const quietEnd = prefs.quiet_hours_end ?? 8;
-  if (isWithinQuietHours(quietStart, quietEnd)) return;
-
-  const adminClient = createServiceRoleClient();
-  await sendPushToUser(adminClient, userId, {
+async function dispatchNudgePush(userId: string, nudge: NudgePayload): Promise<void> {
+  // Story 15.5: the central gate owns preference + quiet-hour checks (AC5)
+  await dispatchCategorizedPush(userId, 'nudges', {
     type: 'nudge',
     title: nudge.title,
     body: nudge.body,

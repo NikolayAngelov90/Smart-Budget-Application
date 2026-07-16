@@ -12,7 +12,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
-import { sendPushToUser } from '@/lib/services/pushService';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { NotHouseholdAdminError } from '@/lib/services/invitationService';
 import { logger } from '@/lib/utils/logger';
 import type { HouseholdMemberListEntry } from '@/types/database.types';
@@ -124,7 +124,8 @@ export async function removeMember(adminUserId: string, targetUserId: string): P
   try {
     const { data: household } = await admin.from('households').select('name').eq('id', householdId).maybeSingle();
     const householdName = (household as { name?: string } | null)?.name ?? 'a household';
-    await sendPushToUser(admin, targetUserId, {
+    // Story 15.5: through the central gate ('household' toggle + quiet hours)
+    await dispatchCategorizedPush(targetUserId, 'household', {
       type: 'household_event',
       title: 'Household access removed',
       body: `You've been removed from ${householdName}.`,

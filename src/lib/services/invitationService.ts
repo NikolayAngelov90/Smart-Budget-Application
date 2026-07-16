@@ -12,7 +12,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
-import { sendPushToUser } from '@/lib/services/pushService';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import type { Household, HouseholdInvitation, HouseholdInvitationWithState, MyInvitation } from '@/types/database.types';
 
 /** Caller is not an admin of any household (or not in one). → 403 */
@@ -178,11 +178,13 @@ async function notifyInviteeIfRegistered(
     .maybeSingle();
   const householdName = (household as { name?: string } | null)?.name ?? 'a household';
 
-  await sendPushToUser(admin, inviteeId as string, {
+  // Story 15.5: through the central gate — recipient's 'household' toggle +
+  // quiet hours now apply (was unconditional)
+  await dispatchCategorizedPush(inviteeId as string, 'household', {
     type: 'household_event',
     title: 'Household invitation',
     body: `You've been invited to join ${householdName}.`,
-    data: { url: '/settings' },
+    data: { url: '/household' },
   });
 }
 
@@ -389,11 +391,11 @@ export async function acceptInvitation(userId: string, userEmail: string, token:
   // Best-effort: notify the inviting admin. Never fail the join on push errors.
   if (inv.invited_by) {
     try {
-      await sendPushToUser(admin, inv.invited_by, {
+      await dispatchCategorizedPush(inv.invited_by, 'household', {
         type: 'household_event',
         title: 'New household member',
         body: `${userEmail} joined your household.`,
-        data: { url: '/settings' },
+        data: { url: '/household' },
       });
     } catch (pushError) {
       logger.error('InvitationService', 'Best-effort join notification failed:', pushError);

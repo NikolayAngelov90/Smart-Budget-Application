@@ -19,6 +19,7 @@ import { timingSafeEqual } from 'crypto';
 import { startOfWeek, subWeeks } from 'date-fns';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { generateDigestForUser } from '@/lib/services/digestService';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { logger } from '@/lib/utils/logger';
 
 export async function GET(request: NextRequest) {
@@ -105,6 +106,15 @@ export async function GET(request: NextRequest) {
           const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : 'EUR';
           await generateDigestForUser(user.id, weekStart, currency);
           digestsGenerated++;
+
+          // Story 15.5: heads-up push — the gate owns the 'digest' toggle +
+          // quiet hours; best-effort, never fails the generation
+          await dispatchCategorizedPush(user.id, 'digest', {
+            type: 'digest',
+            title: 'Your weekly digest is ready',
+            body: 'See how last week went and what to watch this week.',
+            data: { url: '/insights' },
+          });
 
           logger.info('WeeklyDigestCron', `Digest generated for user ${user.id}`);
         } catch (error) {

@@ -27,6 +27,9 @@ jest.mock('@/lib/supabase/server', () => ({
   createServiceRoleClient: jest.fn(),
 }));
 
+jest.mock('@/lib/services/pushService', () => ({
+  dispatchCategorizedPush: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('@/lib/services/digestService', () => ({
   generateDigestForUser: jest.fn(),
 }));
@@ -109,6 +112,27 @@ describe('GET /api/cron/weekly-digest', () => {
     expect(body.success).toBe(true);
     expect(body.digestsGenerated).toBe(2);
     expect(body.usersProcessed).toBe(2);
+  });
+
+  it('dispatches a digest-ready push through the category gate (Story 15.5)', async () => {
+    const { dispatchCategorizedPush } = jest.requireMock('@/lib/services/pushService') as {
+      dispatchCategorizedPush: jest.Mock;
+    };
+    const supabaseMock = {
+      from: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue({ data: [{ id: 'user-1', preferences: {} }], error: null }),
+    };
+    mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
+    mockGenerateDigest.mockResolvedValue(undefined);
+
+    await GET(makeRequest(CRON_SECRET));
+
+    expect(dispatchCategorizedPush).toHaveBeenCalledWith(
+      'user-1',
+      'digest',
+      expect.objectContaining({ type: 'digest', data: { url: '/insights' } })
+    );
   });
 
   it('passes user currency_format preference to generateDigestForUser', async () => {
