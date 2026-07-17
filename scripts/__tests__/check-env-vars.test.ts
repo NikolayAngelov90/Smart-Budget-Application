@@ -8,13 +8,18 @@ export {};
 const nodeFs = require('fs');
 const { checkEnvVars, REQUIRED_VARS, DEV_OPTIONAL } = require('../check-env-vars');
 
-// Mock fs.existsSync so checkEnvVars() doesn't load .env.local during tests
+// Mock fs.existsSync so checkEnvVars() loads NO env files during tests
+// (.env.local AND the pulled .vercel/.env.production.local)
 const originalExistsSync = nodeFs.existsSync;
 jest.spyOn(nodeFs, 'existsSync').mockImplementation((...args: unknown[]) => {
   const p = args[0] as string;
-  if (typeof p === 'string' && p.endsWith('.env.local')) return false;
+  if (typeof p === 'string' && (p.endsWith('.env.local') || p.endsWith('.env.production.local'))) {
+    return false;
+  }
   return originalExistsSync(...args);
 });
+
+const ALIAS_VARS = ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY'];
 
 describe('check-env-vars', () => {
   const originalEnv = process.env;
@@ -22,8 +27,9 @@ describe('check-env-vars', () => {
   beforeEach(() => {
     // Reset env to clean state
     process.env = { ...originalEnv };
-    // Remove all required vars to start fresh
+    // Remove all required vars (and their modern aliases) to start fresh
     REQUIRED_VARS.forEach((v: string) => delete process.env[v]);
+    ALIAS_VARS.forEach((v: string) => delete process.env[v]);
   });
 
   afterAll(() => {
@@ -48,8 +54,15 @@ describe('check-env-vars', () => {
       expect(REQUIRED_VARS).toContain('GITHUB_CLIENT_SECRET');
     });
 
-    it('has 10 required variables', () => {
-      expect(REQUIRED_VARS).toHaveLength(10);
+    it('includes the service key and VAPID vars (15-5 production surface)', () => {
+      expect(REQUIRED_VARS).toContain('SUPABASE_SERVICE_ROLE_KEY');
+      expect(REQUIRED_VARS).toContain('NEXT_PUBLIC_VAPID_PUBLIC_KEY');
+      expect(REQUIRED_VARS).toContain('VAPID_PRIVATE_KEY');
+      expect(REQUIRED_VARS).toContain('VAPID_SUBJECT');
+    });
+
+    it('has 14 required variables', () => {
+      expect(REQUIRED_VARS).toHaveLength(14);
     });
   });
 
@@ -131,6 +144,43 @@ describe('check-env-vars', () => {
       const result = checkEnvVars(true);
       expect(result.missing).toHaveLength(0);
       expect(result.warnings).toHaveLength(0);
+    });
+  });
+
+  describe('modern Supabase API key aliases', () => {
+    it('SUPABASE_SECRET_KEY satisfies the SUPABASE_SERVICE_ROLE_KEY requirement', () => {
+      REQUIRED_VARS.forEach((v: string) => {
+        process.env[v] = 'test-value';
+      });
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      process.env.SUPABASE_SECRET_KEY = 'sb_secret_test';
+
+      const result = checkEnvVars(true);
+      expect(result.missing).toHaveLength(0);
+      expect(result.present).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    });
+
+    it('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY satisfies the anon key requirement', () => {
+      REQUIRED_VARS.forEach((v: string) => {
+        process.env[v] = 'test-value';
+      });
+      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_test';
+
+      const result = checkEnvVars(true);
+      expect(result.missing).toHaveLength(0);
+      expect(result.present).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    });
+
+    it('an alias holding only a placeholder does not satisfy the requirement', () => {
+      REQUIRED_VARS.forEach((v: string) => {
+        process.env[v] = 'test-value';
+      });
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      process.env.SUPABASE_SECRET_KEY = 'your_supabase_secret_key';
+
+      const result = checkEnvVars(true);
+      expect(result.missing).toContain('SUPABASE_SERVICE_ROLE_KEY');
     });
   });
 });

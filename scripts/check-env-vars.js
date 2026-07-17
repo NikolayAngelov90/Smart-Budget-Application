@@ -18,6 +18,7 @@ const path = require('path');
 const REQUIRED_VARS = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
   'GITHUB_CLIENT_ID',
@@ -26,10 +27,21 @@ const REQUIRED_VARS = [
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
   'NEXT_PUBLIC_APP_URL',
+  'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
+  'VAPID_SUBJECT',
 ];
+
+// Modern Supabase API key names satisfy the legacy requirement: either name
+// present counts (publishable sb_publishable_... / secret sb_secret_...).
+const VAR_ALIASES = {
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'],
+  SUPABASE_SERVICE_ROLE_KEY: ['SUPABASE_SECRET_KEY'],
+};
 
 // Variables that are optional in development
 const DEV_OPTIONAL = [
+  'SUPABASE_SERVICE_ROLE_KEY',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
   'GITHUB_CLIENT_ID',
@@ -37,35 +49,58 @@ const DEV_OPTIONAL = [
   'CRON_SECRET',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
+  'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
+  'VAPID_SUBJECT',
 ];
 
-function checkEnvVars(strict = false) {
-  // Try to load .env.local if it exists
-  const envLocalPath = path.join(process.cwd(), '.env.local');
-  if (fs.existsSync(envLocalPath)) {
-    const envContent = fs.readFileSync(envLocalPath, 'utf-8');
-    envContent.split('\n').forEach((line) => {
-      const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith('#')) {
-        const eqIndex = trimmed.indexOf('=');
-        if (eqIndex > 0) {
-          const key = trimmed.substring(0, eqIndex).trim();
-          const value = trimmed.substring(eqIndex + 1).trim();
-          if (!process.env[key]) {
-            process.env[key] = value;
-          }
+// Env files to load (first-set wins; process.env always wins). The second is
+// what `vercel pull` writes in the CI deploy job — without it the deploy-time
+// check never saw the pulled production env at all.
+const ENV_FILES = ['.env.local', path.join('.vercel', '.env.production.local')];
+
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const envContent = fs.readFileSync(filePath, 'utf-8');
+  envContent.split('\n').forEach((line) => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex > 0) {
+        const key = trimmed.substring(0, eqIndex).trim();
+        let value = trimmed.substring(eqIndex + 1).trim();
+        // vercel pull quotes values; a quoted empty string must stay empty
+        if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+          value = value.slice(1, -1);
+        }
+        if (!process.env[key] && value) {
+          process.env[key] = value;
         }
       }
-    });
+    }
+  });
+}
+
+function checkEnvVars(strict = false) {
+  for (const file of ENV_FILES) {
+    loadEnvFile(path.join(process.cwd(), file));
   }
 
   const missing = [];
   const warnings = [];
   const present = [];
 
+  const resolve = (varName) => {
+    const names = [varName, ...(VAR_ALIASES[varName] || [])];
+    for (const name of names) {
+      const value = process.env[name];
+      if (value && !value.startsWith('your_')) return value;
+    }
+    return undefined;
+  };
+
   for (const varName of REQUIRED_VARS) {
-    const value = process.env[varName];
-    if (!value || value.startsWith('your_')) {
+    if (!resolve(varName)) {
       if (!strict && DEV_OPTIONAL.includes(varName)) {
         warnings.push(varName);
       } else {

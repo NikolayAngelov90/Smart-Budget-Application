@@ -63,8 +63,9 @@ console.log('='.repeat(40));
 
 let allPassed = true;
 
-// Check 1: Environment Variables
-runCheck('Environment variables', () => {
+// Check 1: Environment Variables — a failure here MUST fail the run (this
+// result was previously dropped, letting deploys pass with missing env)
+if (!runCheck('Environment variables', () => {
   const result = checkEnvVars(strictEnv);
   if (result.missing.length > 0) {
     return { status: 'fail', message: `Missing: ${result.missing.join(', ')}` };
@@ -73,7 +74,9 @@ runCheck('Environment variables', () => {
     return { status: 'warn', message: `${result.present.length}/${result.total} present (${result.warnings.length} optional in dev)` };
   }
   return { status: 'pass', message: `All ${result.total} required variables present` };
-});
+})) {
+  allPassed = false;
+}
 
 // Check 2: TypeScript Type Check
 if (!runCheck('Type check', () => {
