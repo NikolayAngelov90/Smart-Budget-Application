@@ -29,15 +29,22 @@ jest.mock('@/lib/utils/logger', () => ({
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { localDayKey } from '@/lib/ai/streakEngine';
+import { logger } from '@/lib/utils/logger';
 import { GET } from '../route';
 
 const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
 const mockDispatch = dispatchCategorizedPush as jest.MockedFunction<typeof dispatchCategorizedPush>;
 
-function makeClient(result: { data: unknown; error: unknown }) {
+// One thenable per .range() page — the route paginates until a short page
+function makeClient(pages: Array<{ data: unknown; error: unknown }>) {
   const q: Record<string, jest.Mock> = {};
-  for (const m of ['select', 'eq', 'limit']) q[m] = jest.fn(() => q);
-  (q as Record<string, unknown>).then = (resolve: (v: unknown) => unknown) => resolve(result);
+  for (const m of ['select', 'eq', 'order']) q[m] = jest.fn(() => q);
+  let call = 0;
+  q.range = jest.fn(() => {
+    const result = pages[Math.min(call, pages.length - 1)];
+    call++;
+    return Promise.resolve(result);
+  });
   return { from: jest.fn(() => q), chain: q };
 }
 
@@ -46,10 +53,16 @@ const req = (auth?: string) =>
 
 const OLD_ENV = process.env;
 
+// Computed ONCE before any GET runs — recomputing at assertion time can
+// disagree with the route's key when the test straddles midnight (review 15-5)
+const sevenAgo = new Date();
+sevenAgo.setDate(sevenAgo.getDate() - 7);
+const expectedDayKey = localDayKey(sevenAgo);
+
 beforeEach(() => {
   jest.clearAllMocks();
   process.env = { ...OLD_ENV, CRON_SECRET: 'shhh-secret-42' };
-  mockDispatch.mockResolvedValue(undefined);
+  mockDispatch.mockResolvedValue('sent');
 });
 
 afterEach(() => {
@@ -64,21 +77,18 @@ describe('GET /api/cron/reengagement-push', () => {
   });
 
   it('pushes exactly the day-7 users through the gate (opt-in enforced there)', async () => {
-    const client = makeClient({
-      data: [{ user_id: 'u-1' }, { user_id: 'u-2' }],
-      error: null,
-    });
+    const client = makeClient([
+      { data: [{ user_id: 'u-1' }, { user_id: 'u-2' }], error: null },
+    ]);
     mockServiceClient.mockReturnValue(client as never);
 
     const res = await GET(req('Bearer shhh-secret-42'));
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ success: true, usersFound: 2, dispatched: 2, errors: 0 });
+    expect(body).toEqual({ success: true, usersFound: 2, sent: 2, suppressed: 0, failed: 0 });
     // Scans for last_log_date EXACTLY 7 days ago — >= would push daily forever
-    const sevenAgo = new Date();
-    sevenAgo.setDate(sevenAgo.getDate() - 7);
-    expect(client.chain.eq).toHaveBeenCalledWith('last_log_date', localDayKey(sevenAgo));
+    expect(client.chain.eq).toHaveBeenCalledWith('last_log_date', expectedDayKey);
     expect(mockDispatch).toHaveBeenCalledWith(
       'u-1',
       'reengagement',
@@ -87,26 +97,68 @@ describe('GET /api/cron/reengagement-push', () => {
     expect(mockDispatch).toHaveBeenCalledTimes(2);
   });
 
-  it('per-user failures never abort the batch', async () => {
-    const client = makeClient({
-      data: [{ user_id: 'u-1' }, { user_id: 'u-2' }],
-      error: null,
-    });
+  it('counts gate outcomes truthfully (the gate never throws — outcomes ARE the telemetry)', async () => {
+    const client = makeClient([
+      {
+        data: [{ user_id: 'u-1' }, { user_id: 'u-2' }, { user_id: 'u-3' }],
+        error: null,
+      },
+    ]);
     mockServiceClient.mockReturnValue(client as never);
     mockDispatch
-      .mockRejectedValueOnce(new Error('endpoint gone'))
-      .mockResolvedValueOnce(undefined);
+      .mockResolvedValueOnce('sent')
+      .mockResolvedValueOnce('suppressed') // opted out or quiet hours
+      .mockResolvedValueOnce('failed'); // prefs unreadable / internal error
 
     const res = await GET(req('Bearer shhh-secret-42'));
     const body = await res.json();
     expect(res.status).toBe(200);
-    expect(body.success).toBe(true);
-    expect(body.errors).toBe(1);
+    expect(body).toEqual({ success: true, usersFound: 3, sent: 1, suppressed: 1, failed: 1 });
+  });
+
+  it('paginates past a full page instead of truncating the cohort', async () => {
+    const fullPage = Array.from({ length: 500 }, (_, i) => ({ user_id: `u-${i}` }));
+    const client = makeClient([
+      { data: fullPage, error: null },
+      { data: [{ user_id: 'u-500' }], error: null },
+    ]);
+    mockServiceClient.mockReturnValue(client as never);
+
+    const res = await GET(req('Bearer shhh-secret-42'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.usersFound).toBe(501);
+    expect(client.chain.range).toHaveBeenCalledTimes(2);
+    expect(client.chain.range).toHaveBeenNthCalledWith(1, 0, 499);
+    expect(client.chain.range).toHaveBeenNthCalledWith(2, 500, 999);
+    expect(mockDispatch).toHaveBeenCalledTimes(501);
+  });
+
+  it('warns when the cohort hits the hard cap (remainder is permanently skipped)', async () => {
+    const fullPage = Array.from({ length: 500 }, (_, i) => ({ user_id: `u-${i}` }));
+    // Every page full — the route stops at MAX_USERS (5000 = 10 pages)
+    const client = makeClient([{ data: fullPage, error: null }]);
+    mockServiceClient.mockReturnValue(client as never);
+
+    const res = await GET(req('Bearer shhh-secret-42'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.usersFound).toBe(5000);
+    expect(client.chain.range).toHaveBeenCalledTimes(10);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'ReengagementPushCron',
+      expect.stringContaining('cap')
+    );
   });
 
   it('500s when the streaks scan fails (never silently succeeds)', async () => {
-    mockServiceClient.mockReturnValue(makeClient({ data: null, error: { message: 'boom' } }) as never);
+    mockServiceClient.mockReturnValue(
+      makeClient([{ data: null, error: { message: 'boom' } }]) as never
+    );
     const res = await GET(req('Bearer shhh-secret-42'));
     expect(res.status).toBe(500);
+    expect(mockDispatch).not.toHaveBeenCalled();
   });
 });

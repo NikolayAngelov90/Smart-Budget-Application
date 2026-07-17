@@ -108,7 +108,11 @@ export async function GET(request: NextRequest) {
           digestsGenerated++;
 
           // Story 15.5: heads-up push — the gate owns the 'digest' toggle +
-          // quiet hours; best-effort, never fails the generation
+          // quiet hours; best-effort, never fails the generation. Documented
+          // decision (review 15-5): quiet hours SUPPRESS, never defer — a
+          // quiet window covering this cron's hour drops the digest push for
+          // good (the digest itself is still generated and visible in-app);
+          // defer/sent-marker design tracked in deferred-work.md.
           await dispatchCategorizedPush(user.id, 'digest', {
             type: 'digest',
             title: 'Your weekly digest is ready',

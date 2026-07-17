@@ -7,14 +7,22 @@
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
 }));
+// Without this mock the REAL gate runs inside unlockAchievements (15-5 review:
+// createServiceRoleClient is unmocked → the gate throws and swallows —
+// the batch push silently no-oped in this suite)
+jest.mock('@/lib/services/pushService', () => ({
+  dispatchCategorizedPush: jest.fn().mockResolvedValue('sent'),
+}));
 jest.mock('@/lib/utils/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
 import { createClient } from '@/lib/supabase/server';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockGate = dispatchCategorizedPush as jest.MockedFunction<typeof dispatchCategorizedPush>;
 
 interface ChainStub {
   select: jest.Mock;
@@ -96,5 +104,55 @@ describe('unlockAchievements', () => {
     await expect(unlockAchievements('u-1', ['first_transaction'])).rejects.toThrow(
       'Failed to unlock achievements'
     );
+    expect(mockGate).not.toHaveBeenCalled();
+  });
+});
+
+describe('unlockAchievements — batch push (Story 15.5)', () => {
+  it('pushes ONE milestone notification per inserted batch (singular body)', async () => {
+    const inserted = [{ achievement_key: 'week_streak', unlocked_at: '2026-07-13T10:00:00Z' }];
+    mockCreateClient.mockResolvedValue(makeClient({ data: inserted, error: null }) as never);
+
+    await unlockAchievements('u-1', ['week_streak']);
+
+    expect(mockGate).toHaveBeenCalledTimes(1);
+    expect(mockGate).toHaveBeenCalledWith('u-1', 'milestones', {
+      type: 'achievement',
+      title: 'Achievement unlocked!',
+      body: 'You earned a new badge — see it in Settings.',
+      data: { url: '/settings' },
+    });
+  });
+
+  it('a multi-unlock batch still pushes exactly once, with a plural body', async () => {
+    const inserted = [
+      { achievement_key: 'week_streak', unlocked_at: '2026-07-13T10:00:00Z' },
+      { achievement_key: 'month_streak', unlocked_at: '2026-07-13T10:00:00Z' },
+    ];
+    mockCreateClient.mockResolvedValue(makeClient({ data: inserted, error: null }) as never);
+
+    await unlockAchievements('u-1', ['week_streak', 'month_streak']);
+
+    expect(mockGate).toHaveBeenCalledTimes(1);
+    expect(mockGate).toHaveBeenCalledWith(
+      'u-1',
+      'milestones',
+      expect.objectContaining({ body: 'You earned 2 new badges — see them in Settings.' })
+    );
+  });
+
+  it('no push when nothing was actually inserted (lost race / duplicates)', async () => {
+    mockCreateClient.mockResolvedValue(makeClient({ data: [], error: null }) as never);
+    await unlockAchievements('u-1', ['first_transaction']);
+    expect(mockGate).not.toHaveBeenCalled();
+  });
+
+  it('the push is awaited but cannot fail the unlock (gate never throws by contract)', async () => {
+    // The gate resolves 'failed' instead of rejecting — unlock result unaffected
+    mockGate.mockResolvedValueOnce('failed');
+    const inserted = [{ achievement_key: 'week_streak', unlocked_at: '2026-07-13T10:00:00Z' }];
+    mockCreateClient.mockResolvedValue(makeClient({ data: inserted, error: null }) as never);
+
+    await expect(unlockAchievements('u-1', ['week_streak'])).resolves.toEqual(inserted);
   });
 });

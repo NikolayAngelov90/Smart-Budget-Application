@@ -247,48 +247,60 @@ describe('dispatchCategorizedPush', () => {
     data: { url: '/settings' },
   };
 
-  it('sends when the category is enabled (explicit flag)', async () => {
+  it("sends when the category is enabled (explicit flag) and returns 'sent'", async () => {
     mockServiceClient.mockReturnValue(makeGateClient({ push_milestones_enabled: true }) as never);
-    await dispatchCategorizedPush('u-1', 'milestones', payload);
+    await expect(dispatchCategorizedPush('u-1', 'milestones', payload)).resolves.toBe('sent');
     expect(mockSendNotification).toHaveBeenCalledTimes(1);
   });
 
-  it('does NOT send when the category flag is off', async () => {
+  it("does NOT send when the category flag is off and returns 'suppressed'", async () => {
     mockServiceClient.mockReturnValue(makeGateClient({ push_milestones_enabled: false }) as never);
-    await dispatchCategorizedPush('u-1', 'milestones', payload);
+    await expect(dispatchCategorizedPush('u-1', 'milestones', payload)).resolves.toBe('suppressed');
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 
   it('defaults: milestones/household/digest ON, nudges/reengagement opt-in OFF', async () => {
     mockServiceClient.mockReturnValue(makeGateClient({}) as never);
-    await dispatchCategorizedPush('u-1', 'milestones', payload);
-    await dispatchCategorizedPush('u-1', 'household', payload);
-    await dispatchCategorizedPush('u-1', 'digest', payload);
+    expect(await dispatchCategorizedPush('u-1', 'milestones', payload)).toBe('sent');
+    expect(await dispatchCategorizedPush('u-1', 'household', payload)).toBe('sent');
+    expect(await dispatchCategorizedPush('u-1', 'digest', payload)).toBe('sent');
     expect(mockSendNotification).toHaveBeenCalledTimes(3);
 
     mockSendNotification.mockClear();
-    await dispatchCategorizedPush('u-1', 'nudges', payload);
-    await dispatchCategorizedPush('u-1', 'reengagement', payload);
+    expect(await dispatchCategorizedPush('u-1', 'nudges', payload)).toBe('suppressed');
+    expect(await dispatchCategorizedPush('u-1', 'reengagement', payload)).toBe('suppressed');
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 
-  it('respects quiet hours for every category', async () => {
+  it('respects quiet hours for EVERY category', async () => {
     hourSpy.mockReturnValue(23); // inside default 22-8
-    mockServiceClient.mockReturnValue(makeGateClient({ push_milestones_enabled: true }) as never);
-    await dispatchCategorizedPush('u-1', 'milestones', payload);
+    // All flags explicitly ON so only quiet hours can suppress
+    mockServiceClient.mockReturnValue(
+      makeGateClient({
+        push_nudges_enabled: true,
+        push_milestones_enabled: true,
+        push_household_enabled: true,
+        push_digest_enabled: true,
+        push_reengagement_enabled: true,
+      }) as never
+    );
+    const categories = ['nudges', 'milestones', 'household', 'digest', 'reengagement'] as const;
+    for (const category of categories) {
+      expect(await dispatchCategorizedPush('u-1', category, payload)).toBe('suppressed');
+    }
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 
-  it('prefs read failure -> no send, never throws (unknowable != consent)', async () => {
+  it("prefs read failure -> no send, never throws, returns 'failed' (unknowable != consent)", async () => {
     mockServiceClient.mockReturnValue(makeGateClient(null, { message: 'boom' }) as never);
-    await expect(dispatchCategorizedPush('u-1', 'household', payload)).resolves.toBeUndefined();
+    await expect(dispatchCategorizedPush('u-1', 'household', payload)).resolves.toBe('failed');
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 
-  it('internal errors are swallowed (best-effort by policy)', async () => {
+  it("internal errors are swallowed and return 'failed' (best-effort by policy)", async () => {
     mockServiceClient.mockImplementation(() => {
       throw new Error('no client');
     });
-    await expect(dispatchCategorizedPush('u-1', 'digest', payload)).resolves.toBeUndefined();
+    await expect(dispatchCategorizedPush('u-1', 'digest', payload)).resolves.toBe('failed');
   });
 });

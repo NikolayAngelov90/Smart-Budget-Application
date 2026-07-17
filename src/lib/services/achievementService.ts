@@ -74,19 +74,19 @@ export async function unlockAchievements(
   // here covers every unlock site (tx POST, score GET, comeback GET) with a
   // single point, and idempotence guarantees no push for lost races. English
   // server copy (nudge precedent); the gate owns the 'milestones' toggle +
-  // quiet hours. Fire-and-forget: never delays or fails the unlock.
+  // quiet hours. AWAITED: on Vercel a fire-and-forget promise can be frozen
+  // mid-flight the moment the response is sent (review 15-5); the gate never
+  // throws, so awaiting cannot fail the unlock.
   if (inserted.length > 0) {
     const body =
       inserted.length === 1
         ? 'You earned a new badge — see it in Settings.'
         : `You earned ${inserted.length} new badges — see them in Settings.`;
-    void dispatchCategorizedPush(userId, 'milestones', {
+    await dispatchCategorizedPush(userId, 'milestones', {
       type: 'achievement',
       title: 'Achievement unlocked!',
       body,
       data: { url: '/settings' },
-    }).catch(() => {
-      // gate is already non-throwing; belt and braces
     });
   }
 

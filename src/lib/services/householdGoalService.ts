@@ -211,15 +211,26 @@ export async function contributeToHouseholdGoal(
     if (target > 0) {
       const beforePct = ((total - amount) / target) * 100;
       const afterPct = (total / target) * 100;
-      // Same thresholds as the client goal celebration (milestones_celebrated)
-      const crossed = [25, 50, 75, 100].filter((m) => beforePct < m && afterPct >= m);
+      // Same thresholds as the client goal celebration (milestones_celebrated).
+      // EPSILON on the before-side: float subtraction can re-derive 24.999…
+      // for a total that already sat exactly on a milestone and re-fire it.
+      // Known accepted gap: two CONCURRENT contributions whose post-insert
+      // SUMs both see the crossing can each push it — cosmetic, ms-window,
+      // pushes are best-effort (an atomic claim needs a sent-marker design).
+      const EPS = 1e-9;
+      const crossed = [25, 50, 75, 100].filter((m) => beforePct < m - EPS && afterPct >= m);
       if (crossed.length > 0) {
         const milestone = crossed[crossed.length - 1];
-        const { data: members } = await admin
+        const { data: members, error: rosterError } = await admin
           .from('household_members')
           .select('user_id')
           .eq('household_id', goal.household_id)
           .neq('user_id', userId);
+        if (rosterError) {
+          // Supabase returns errors as values — without this log a failed
+          // roster read would silently push no one
+          logger.warn('HouseholdGoalService', `milestone roster read failed: ${rosterError.message}`);
+        }
         await Promise.allSettled(
           (members ?? []).map((m: { user_id: string }) =>
             dispatchCategorizedPush(m.user_id, 'household', {

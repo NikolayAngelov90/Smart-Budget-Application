@@ -8,9 +8,20 @@
  * >= 7 would push daily forever.
  *
  * The category gate owns the per-user 'reengagement' toggle (opt-in, default
- * OFF) and quiet hours. Per-user failures never abort the batch.
+ * OFF) and quiet hours. The gate never throws, so per-user isolation holds by
+ * construction and the returned outcomes are the telemetry.
  *
- * Schedule: 0 10 * * * (10:00 UTC — awake hours). Secured with CRON_SECRET.
+ * Documented decisions (review 15-5):
+ * - Quiet hours SUPPRESS, never defer: a quiet window covering 10:00 UTC
+ *   drops that user's one-shot push permanently. Accepted for an opt-in
+ *   category; defer/sent-marker design tracked in deferred-work.md. Same
+ *   class: a missed cron day skips that day's cohort (equality scan).
+ * - Day-key frames are mixed: last_log_date is the USER-LOCAL day (clamped
+ *   ±1 by the tx route) while the target key is computed on a UTC server, so
+ *   perceived absence spans ~6–8 days across timezones and "awake hours" is
+ *   approximate at extreme offsets (UTC±12+). Exactly-once still holds.
+ *
+ * Schedule: 0 10 * * * (10:00 UTC). Secured with CRON_SECRET.
  */
 
 import { NextResponse } from 'next/server';
@@ -24,6 +35,12 @@ import { logger } from '@/lib/utils/logger';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const PAGE_SIZE = 500;
+// Safety valve, not an expected ceiling. If ever hit, the remainder of that
+// day's cohort is skipped for good (equality scan never retries) — the warn
+// below is the signal to raise the cap or shard the scan.
+const MAX_USERS = 5000;
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -45,52 +62,66 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Users whose last log was exactly 7 days ago
+    // 2. Users whose last log was exactly 7 days ago (paginated — a bare
+    //    .limit() would silently truncate the cohort)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const targetDayKey = localDayKey(sevenDaysAgo);
 
     const supabase = createServiceRoleClient() as unknown as SupabaseClient;
-    const { data: rows, error } = await supabase
-      .from('streaks')
-      .select('user_id')
-      .eq('last_log_date', targetDayKey)
-      .limit(500);
+    const users: Array<{ user_id: string }> = [];
+    for (let from = 0; from < MAX_USERS; from += PAGE_SIZE) {
+      const { data: rows, error } = await supabase
+        .from('streaks')
+        .select('user_id')
+        .eq('last_log_date', targetDayKey)
+        .order('user_id')
+        .range(from, from + PAGE_SIZE - 1);
 
-    if (error) {
-      logger.error('ReengagementPushCron', `streaks scan failed: ${error.message}`);
-      return NextResponse.json({ success: false, error: 'Scan failed' }, { status: 500 });
+      if (error) {
+        logger.error('ReengagementPushCron', `streaks scan failed: ${error.message}`);
+        return NextResponse.json({ success: false, error: 'Scan failed' }, { status: 500 });
+      }
+
+      const page = (rows ?? []) as Array<{ user_id: string }>;
+      users.push(...page);
+      if (page.length < PAGE_SIZE) break;
+    }
+    if (users.length >= MAX_USERS) {
+      logger.warn(
+        'ReengagementPushCron',
+        `day-7 cohort hit the ${MAX_USERS} cap — remainder permanently skipped`
+      );
     }
 
-    const users = (rows ?? []) as Array<{ user_id: string }>;
-
-    // 3. Dispatch through the gate (opt-in toggle + quiet hours enforced there).
-    //    allSettled: one user's failure never aborts the batch.
-    let dispatched = 0;
-    const results = await Promise.allSettled(
-      users.map(async (row) => {
-        await dispatchCategorizedPush(row.user_id, 'reengagement', {
+    // 3. Dispatch through the gate (opt-in toggle + quiet hours enforced
+    //    there). The gate never throws — outcomes are the honest telemetry.
+    const outcomes = await Promise.all(
+      users.map((row) =>
+        dispatchCategorizedPush(row.user_id, 'reengagement', {
           type: 'comeback',
           title: 'Your streak is waiting',
           body: "We saved your progress — log a transaction to pick up where you left off.",
           data: { url: '/dashboard' },
-        });
-        dispatched++;
-      })
+        })
+      )
     );
-    const errors = results.filter((r) => r.status === 'rejected').length;
+    const sent = outcomes.filter((o) => o === 'sent').length;
+    const suppressed = outcomes.filter((o) => o === 'suppressed').length;
+    const failed = outcomes.filter((o) => o === 'failed').length;
 
     const elapsedMs = Date.now() - startTime;
     logger.info(
       'ReengagementPushCron',
-      `Completed: ${users.length} day-7 users, ${dispatched} dispatched, ${errors} errors, ${elapsedMs}ms`
+      `Completed: ${users.length} day-7 users, ${sent} sent, ${suppressed} suppressed, ${failed} failed, ${elapsedMs}ms`
     );
 
     return NextResponse.json({
       success: true,
       usersFound: users.length,
-      dispatched,
-      errors,
+      sent,
+      suppressed,
+      failed,
     });
   } catch (error) {
     logger.error('ReengagementPushCron', 'Unexpected error:', error);

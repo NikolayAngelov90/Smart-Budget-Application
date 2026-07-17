@@ -11,10 +11,17 @@ import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
 describe('usePushNotifications — AC4 never re-prompt', () => {
   const originalNotification = (global as Record<string, unknown>).Notification;
   const originalSW = Object.getOwnPropertyDescriptor(global.navigator, 'serviceWorker');
+  const originalPushManager = Object.getOwnPropertyDescriptor(global, 'PushManager');
 
   afterEach(() => {
     (global as Record<string, unknown>).Notification = originalNotification;
     if (originalSW) Object.defineProperty(global.navigator, 'serviceWorker', originalSW);
+    // Without this, later suites inherit phantom push support (review 15-5)
+    if (originalPushManager) {
+      Object.defineProperty(global, 'PushManager', originalPushManager);
+    } else {
+      delete (global as Record<string, unknown>).PushManager;
+    }
     jest.restoreAllMocks();
   });
 

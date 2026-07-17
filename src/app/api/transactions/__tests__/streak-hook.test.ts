@@ -21,7 +21,7 @@ jest.mock('@/lib/services/insightService', () => ({
   checkAndTriggerForTransactionCount: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('@/lib/ai/nudgeEngine', () => ({ evaluateNudge: jest.fn(() => null) }));
-jest.mock('@/lib/services/pushService', () => ({ sendPushToUser: jest.fn(), isWithinQuietHours: jest.fn(() => false) }));
+jest.mock('@/lib/services/pushService', () => ({ dispatchCategorizedPush: jest.fn().mockResolvedValue('sent') }));
 jest.mock('@/lib/services/streakService', () => ({
   recordLogActivity: jest.fn(),
 }));
@@ -38,6 +38,8 @@ jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.f
 
 import { POST } from '@/app/api/transactions/route';
 import { createClient } from '@/lib/supabase/server';
+import { evaluateNudge } from '@/lib/ai/nudgeEngine';
+import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { recordLogActivity } from '@/lib/services/streakService';
 import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
 import {
@@ -261,6 +263,33 @@ it('create-on-log: a returning user whose FIRST action is a log still gets the c
   // Snapshot captured from the PRE-advance state; window anchored at the tx
   expect(mockCreateChallenge).toHaveBeenCalledWith('user-1', 12, undefined);
   expect(mockComplete).toHaveBeenCalled(); // evaluated against the new challenge
+});
+
+it("nudge push goes THROUGH the gate with category 'nudges' (Story 15.5 review — was untested)", async () => {
+  const mockEvaluateNudge = evaluateNudge as jest.MockedFunction<typeof evaluateNudge>;
+  const mockGate = dispatchCategorizedPush as jest.MockedFunction<typeof dispatchCategorizedPush>;
+  mockEvaluateNudge.mockReturnValueOnce({
+    title: 'Heads up on Snacks',
+    body: 'You are close to your usual monthly spend.',
+  } as never);
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const body = await res.json();
+
+  expect(res.status).toBe(201);
+  expect(body.nudge).toMatchObject({ title: 'Heads up on Snacks' });
+  // The gate owns the 'nudges' toggle + quiet hours — the route must never
+  // re-implement them (AC5); a stale mock here previously hid this wiring
+  expect(mockGate).toHaveBeenCalledWith(
+    'user-1',
+    'nudges',
+    expect.objectContaining({
+      type: 'nudge',
+      title: 'Heads up on Snacks',
+      data: { url: '/dashboard' },
+    })
+  );
 });
 
 it('Phoenix repair: a previously-completed challenge re-derives the signal (self-healing badge)', async () => {

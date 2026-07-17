@@ -56,18 +56,31 @@ const CATEGORY_PREFS: Record<PushCategory, { flag: string; defaultEnabled: boole
 };
 
 /**
+ * Dispatch outcome — the gate never throws, so telemetry reads the return:
+ * 'sent' = handed to web-push, 'suppressed' = toggle off or quiet hours,
+ * 'failed' = preferences unreadable or internal error.
+ */
+export type PushDispatchOutcome = 'sent' | 'suppressed' | 'failed';
+
+/**
  * Story 15.5: THE single dispatch gate (AC5) — every push in the app goes
  * through here. Enforces the recipient's per-category toggle and quiet hours
  * exactly once, then delegates to sendPushToUser. Uses the service-role
  * client internally: dispatch runs in server contexts (routes, services,
  * crons) where the RECIPIENT may not be the session user, or there is no
  * session at all. Never throws — pushes are best-effort by policy.
+ *
+ * Documented decision: quiet hours SUPPRESS, they never defer. For event
+ * pushes the next event retriggers; for one-shot fixed-time cron pushes
+ * (digest, re-engagement) a quiet window covering the cron hour drops that
+ * push permanently. Accepted trade-off — a defer/sent-marker design is
+ * tracked in deferred-work.md.
  */
 export async function dispatchCategorizedPush(
   userId: string,
   category: PushCategory,
   payload: PushPayload
-): Promise<void> {
+): Promise<PushDispatchOutcome> {
   try {
     const supabase = createServiceRoleClient() as unknown as SupabaseClient;
 
@@ -80,21 +93,23 @@ export async function dispatchCategorizedPush(
     if (error) {
       // Unknowable preferences → don't push (never interrupt without consent)
       logger.warn('PushService', `prefs read failed for ${userId} — push skipped:`, error);
-      return;
+      return 'failed';
     }
 
     const prefs = (profile?.preferences ?? {}) as Record<string, unknown>;
     const { flag, defaultEnabled } = CATEGORY_PREFS[category];
     const enabled = (prefs[flag] as boolean | undefined) ?? defaultEnabled;
-    if (!enabled) return;
+    if (!enabled) return 'suppressed';
 
     const quietStart = (prefs.quiet_hours_start as number | undefined) ?? 22;
     const quietEnd = (prefs.quiet_hours_end as number | undefined) ?? 8;
-    if (isWithinQuietHours(quietStart, quietEnd)) return;
+    if (isWithinQuietHours(quietStart, quietEnd)) return 'suppressed';
 
     await sendPushToUser(supabase, userId, payload);
+    return 'sent';
   } catch (err) {
     logger.warn('PushService', `dispatch failed for ${userId} (non-fatal):`, err);
+    return 'failed';
   }
 }
 

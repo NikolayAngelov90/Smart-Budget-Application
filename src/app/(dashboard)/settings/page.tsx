@@ -1051,62 +1051,62 @@ function NotificationsSection({
                 <FormHelperText>{t('spendingNudgesDescription')}</FormHelperText>
               </FormControl>
 
-              {/* Story 15.5: per-category toggles — shown once push is enabled */}
-              {isSubscribed && (
-                <>
-                  <FormControl>
-                    <HStack justify="space-between">
-                      <FormLabel mb={0}>{t('categoryMilestones')}</FormLabel>
-                      <Switch
-                        isChecked={pushMilestonesEnabled}
-                        onChange={(e) =>
-                          onUpdatePreferences('push_milestones_enabled', e.target.checked)
-                        }
-                      />
-                    </HStack>
-                    <FormHelperText>{t('categoryMilestonesDescription')}</FormHelperText>
-                  </FormControl>
+              {/* Story 15.5: per-category toggles. NOT gated on isSubscribed:
+                  the flags are per-ACCOUNT while isSubscribed is per-DEVICE —
+                  hiding them here would strand a user whose phone is
+                  subscribed but who opens Settings on an unsubscribed
+                  desktop (review 15-5). Same policy as the nudges toggle. */}
+              <FormControl>
+                <HStack justify="space-between">
+                  <FormLabel mb={0}>{t('categoryMilestones')}</FormLabel>
+                  <Switch
+                    isChecked={pushMilestonesEnabled}
+                    onChange={(e) =>
+                      onUpdatePreferences('push_milestones_enabled', e.target.checked)
+                    }
+                  />
+                </HStack>
+                <FormHelperText>{t('categoryMilestonesDescription')}</FormHelperText>
+              </FormControl>
 
-                  <FormControl>
-                    <HStack justify="space-between">
-                      <FormLabel mb={0}>{t('categoryHousehold')}</FormLabel>
-                      <Switch
-                        isChecked={pushHouseholdEnabled}
-                        onChange={(e) =>
-                          onUpdatePreferences('push_household_enabled', e.target.checked)
-                        }
-                      />
-                    </HStack>
-                    <FormHelperText>{t('categoryHouseholdDescription')}</FormHelperText>
-                  </FormControl>
+              <FormControl>
+                <HStack justify="space-between">
+                  <FormLabel mb={0}>{t('categoryHousehold')}</FormLabel>
+                  <Switch
+                    isChecked={pushHouseholdEnabled}
+                    onChange={(e) =>
+                      onUpdatePreferences('push_household_enabled', e.target.checked)
+                    }
+                  />
+                </HStack>
+                <FormHelperText>{t('categoryHouseholdDescription')}</FormHelperText>
+              </FormControl>
 
-                  <FormControl>
-                    <HStack justify="space-between">
-                      <FormLabel mb={0}>{t('categoryDigest')}</FormLabel>
-                      <Switch
-                        isChecked={pushDigestEnabled}
-                        onChange={(e) =>
-                          onUpdatePreferences('push_digest_enabled', e.target.checked)
-                        }
-                      />
-                    </HStack>
-                    <FormHelperText>{t('categoryDigestDescription')}</FormHelperText>
-                  </FormControl>
+              <FormControl>
+                <HStack justify="space-between">
+                  <FormLabel mb={0}>{t('categoryDigest')}</FormLabel>
+                  <Switch
+                    isChecked={pushDigestEnabled}
+                    onChange={(e) =>
+                      onUpdatePreferences('push_digest_enabled', e.target.checked)
+                    }
+                  />
+                </HStack>
+                <FormHelperText>{t('categoryDigestDescription')}</FormHelperText>
+              </FormControl>
 
-                  <FormControl>
-                    <HStack justify="space-between">
-                      <FormLabel mb={0}>{t('categoryReengagement')}</FormLabel>
-                      <Switch
-                        isChecked={pushReengagementEnabled}
-                        onChange={(e) =>
-                          onUpdatePreferences('push_reengagement_enabled', e.target.checked)
-                        }
-                      />
-                    </HStack>
-                    <FormHelperText>{t('categoryReengagementDescription')}</FormHelperText>
-                  </FormControl>
-                </>
-              )}
+              <FormControl>
+                <HStack justify="space-between">
+                  <FormLabel mb={0}>{t('categoryReengagement')}</FormLabel>
+                  <Switch
+                    isChecked={pushReengagementEnabled}
+                    onChange={(e) =>
+                      onUpdatePreferences('push_reengagement_enabled', e.target.checked)
+                    }
+                  />
+                </HStack>
+                <FormHelperText>{t('categoryReengagementDescription')}</FormHelperText>
+              </FormControl>
 
               {/* Quiet hours — always editable so users can configure before subscribing */}
               <FormControl>

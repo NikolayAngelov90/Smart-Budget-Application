@@ -22,7 +22,7 @@ jest.mock('@/lib/services/insightService', () => ({
   checkAndTriggerForTransactionCount: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('@/lib/ai/nudgeEngine', () => ({ evaluateNudge: jest.fn(() => null) }));
-jest.mock('@/lib/services/pushService', () => ({ sendPushToUser: jest.fn(), isWithinQuietHours: jest.fn(() => false) }));
+jest.mock('@/lib/services/pushService', () => ({ dispatchCategorizedPush: jest.fn().mockResolvedValue('sent') }));
 jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
 import { POST } from '@/app/api/transactions/route';
