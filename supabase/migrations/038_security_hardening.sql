@@ -38,9 +38,19 @@ begin;
 create schema if not exists private;
 grant usage on schema private to anon, authenticated, service_role;
 
-alter function public.is_household_member(uuid, uuid) set schema private;
-alter function public.is_household_admin(uuid, uuid) set schema private;
-alter function public.category_visibility(uuid) set schema private;
+-- Guarded so a manual re-run after the move is a no-op
+do $$
+begin
+  if to_regprocedure('public.is_household_member(uuid, uuid)') is not null then
+    alter function public.is_household_member(uuid, uuid) set schema private;
+  end if;
+  if to_regprocedure('public.is_household_admin(uuid, uuid)') is not null then
+    alter function public.is_household_admin(uuid, uuid) set schema private;
+  end if;
+  if to_regprocedure('public.category_visibility(uuid)') is not null then
+    alter function public.category_visibility(uuid) set schema private;
+  end if;
+end $$;
 
 -- The five RPCs get private on their search_path (belt for any future
 -- unqualified references) AND their bodies requalified: they call
@@ -113,18 +123,28 @@ revoke execute on function public.household_category_period_totals(uuid, date, d
 revoke execute on function public.household_contributions(uuid) from public, anon;
 revoke execute on function public.household_goal_breakdown(uuid) from public, anon;
 revoke execute on function public.household_members_list(uuid) from public, anon;
-revoke execute on function public.seed_user_categories(uuid) from public, anon;
 
 grant execute on function public.household_category_totals(uuid) to authenticated, service_role;
 grant execute on function public.household_category_period_totals(uuid, date, date) to authenticated, service_role;
 grant execute on function public.household_contributions(uuid) to authenticated, service_role;
 grant execute on function public.household_goal_breakdown(uuid) to authenticated, service_role;
 grant execute on function public.household_members_list(uuid) to authenticated, service_role;
-grant execute on function public.seed_user_categories(uuid) to authenticated, service_role;
+
+-- seed_user_categories exists in PROD only (pre-migration-era object, not in
+-- any file here) — the local CI stack replaying these migrations never
+-- creates it, so its statements must be existence-guarded.
+do $$
+begin
+  if to_regprocedure('public.seed_user_categories(uuid)') is not null then
+    revoke execute on function public.seed_user_categories(uuid) from public, anon;
+    grant execute on function public.seed_user_categories(uuid) to authenticated, service_role;
+  end if;
+end $$;
 
 -- 5) Storage: kill anonymous listing of the public bucket; avatars keep
 --    rendering via the public-object CDN URL (bypasses object RLS)
 drop policy if exists "Public read for profile pictures" on storage.objects;
+drop policy if exists "Users can read own pictures" on storage.objects;
 create policy "Users can read own pictures" on storage.objects
   for select to authenticated
   using (
