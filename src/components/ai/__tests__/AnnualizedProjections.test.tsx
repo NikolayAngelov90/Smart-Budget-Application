@@ -22,6 +22,12 @@ jest.mock('@/lib/hooks/useUserPreferences', () => ({
   useUserPreferences: jest.fn(),
 }));
 
+// Story 15.7: disclosure gate — default unlocked (fail-open); overridden per-test
+jest.mock('@/lib/hooks/useFeatureDisclosure', () => ({
+  useFeatureDisclosure: jest.fn(() => ({ isUnlocked: () => true })),
+  DISCLOSURE_KEY: '/api/feature-disclosure',
+}));
+
 jest.mock('next-intl', () => ({
   useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     const translations: Record<string, string> = {
@@ -42,12 +48,16 @@ jest.mock('next-intl', () => ({
 
 import { useAnnualizedProjections } from '@/lib/hooks/useAnnualizedProjections';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 
 const mockUseAnnualizedProjections = useAnnualizedProjections as jest.MockedFunction<
   typeof useAnnualizedProjections
 >;
 const mockUseUserPreferences = useUserPreferences as jest.MockedFunction<
   typeof useUserPreferences
+>;
+const mockUseFeatureDisclosure = useFeatureDisclosure as jest.MockedFunction<
+  typeof useFeatureDisclosure
 >;
 
 // ============================================================================
@@ -112,6 +122,13 @@ describe('AnnualizedProjections', () => {
     expect(screen.queryByRole('region', { name: /spending forecast/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(screen.queryByTestId('projections-skeleton')).not.toBeInTheDocument();
+  });
+
+  it('Story 15.7: returns null when the disclosure gate is LOCKED, even with data', () => {
+    mockUseFeatureDisclosure.mockReturnValueOnce({ isUnlocked: () => false } as never);
+    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({ hasEnoughData: true, isLoading: false }));
+    renderWithChakra(<AnnualizedProjections />);
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
 
   it('shows skeleton when isLoading is true', () => {

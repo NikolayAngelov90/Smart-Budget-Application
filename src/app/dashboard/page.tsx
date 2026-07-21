@@ -47,6 +47,7 @@ import { COMEBACK_KEY } from '@/lib/hooks/useComeback';
 import { advanceStreak, localDayKey } from '@/lib/ai/streakEngine';
 import type { StreakResponse } from '@/types/database.types';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
+import { FeatureIntroCard } from '@/components/dashboard/FeatureIntroCard';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
@@ -175,6 +176,11 @@ export default function DashboardPage() {
       <Box mb={{ base: 6, md: 8 }}>
         <ReengagementSummary />
       </Box>
+
+      {/* Story 15.7: feature-introduction announcement — single mount point,
+          renders null unless a usage threshold has newly been crossed. Carries
+          its own bottom margin so a non-pending user gets no phantom gap. */}
+      <FeatureIntroCard />
 
       {/* Story 11.1: First Transaction Prompt — shown when user has 0 transactions */}
       {hasNoTransactions && (

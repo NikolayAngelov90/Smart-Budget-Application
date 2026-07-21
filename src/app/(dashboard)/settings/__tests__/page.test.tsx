@@ -268,6 +268,42 @@ describe('Settings Page - PDF Export Integration Tests', () => {
       });
     });
 
+    describe('Show-all-features toggle (Story 15.7)', () => {
+      test('renders in Preferences, default OFF when the flag is absent', async () => {
+        customRender(<SettingsPage />);
+        await waitFor(() => {
+          expect(screen.getByLabelText('Show all features')).toBeInTheDocument();
+        });
+        expect((screen.getByLabelText('Show all features') as HTMLInputElement).checked).toBe(false);
+      });
+
+      test('toggling on PUTs { preferences: { disclosure_show_all: true } }', async () => {
+        (global.fetch as jest.Mock).mockImplementation((url: string) => {
+          if (url.includes('/api/user/profile')) {
+            return Promise.resolve(mockResponse({ data: mockUserProfile }));
+          }
+          return Promise.resolve(mockResponse({ data: [] }));
+        });
+
+        customRender(<SettingsPage />);
+        await waitFor(() => {
+          expect(screen.getByLabelText('Show all features')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByLabelText('Show all features'));
+
+        await waitFor(() => {
+          const putCalls = (global.fetch as jest.Mock).mock.calls.filter(
+            ([url, opts]: [string, RequestInit]) =>
+              url.includes('/api/user/profile') && opts?.method === 'PUT'
+          );
+          expect(putCalls.length).toBeGreaterThan(0);
+          const body = JSON.parse(putCalls[putCalls.length - 1][1].body as string);
+          expect(body.preferences.disclosure_show_all).toBe(true);
+        });
+      });
+    });
+
     test('renders Weekly Digest helper text', async () => {
       customRender(<SettingsPage />);
 

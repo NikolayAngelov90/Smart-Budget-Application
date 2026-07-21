@@ -25,6 +25,9 @@ jest.mock('@/lib/services/pushService', () => ({ dispatchCategorizedPush: jest.f
 jest.mock('@/lib/services/streakService', () => ({
   recordLogActivity: jest.fn(),
 }));
+jest.mock('@/lib/services/featureStateService', () => ({
+  recordFeatureActivity: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('@/lib/services/comebackService', () => ({
   getLatestChallenge: jest.fn().mockResolvedValue(null),
   createChallenge: jest.fn(),
@@ -41,6 +44,7 @@ import { createClient } from '@/lib/supabase/server';
 import { evaluateNudge } from '@/lib/ai/nudgeEngine';
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { recordLogActivity } from '@/lib/services/streakService';
+import { recordFeatureActivity } from '@/lib/services/featureStateService';
 import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';
 import {
   completeChallengeIfEarned,
@@ -57,6 +61,7 @@ const mockUnlockAchievements = unlockAchievements as jest.MockedFunction<typeof 
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockRecordLogActivity = recordLogActivity as jest.MockedFunction<typeof recordLogActivity>;
+const mockRecordFeatureActivity = recordFeatureActivity as jest.MockedFunction<typeof recordFeatureActivity>;
 
 const EXPENSE_CAT = { id: 'cat-e', name: 'Snacks', color: '#111111', type: 'expense', household_id: null };
 const INCOME_CAT = { id: 'cat-i', name: 'Salary', color: '#222222', type: 'income', household_id: null };
@@ -129,6 +134,28 @@ it('records logging activity for an INCOME transaction and returns the streak', 
     expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
   );
   expect(body.streak).toEqual(STREAK_STATE);
+});
+
+it('records feature-disclosure activity with the SAME resolved day key (Story 15.7)', async () => {
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+  await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+
+  expect(mockRecordFeatureActivity).toHaveBeenCalledWith(
+    'user-1',
+    expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+  );
+  // reuses the streak's day key — same first-call arg
+  expect(mockRecordFeatureActivity.mock.calls[0]?.[1]).toBe(mockRecordLogActivity.mock.calls[0]?.[1]);
+});
+
+it('feature-activity failure is non-fatal: POST still 201', async () => {
+  mockRecordFeatureActivity.mockRejectedValueOnce(new Error('feature_state table missing'));
+  mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
+
+  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const body = await res.json();
+  expect(res.status).toBe(201);
+  expect(body.data).toBeDefined();
 });
 
 it('records logging activity for an expense transaction too', async () => {

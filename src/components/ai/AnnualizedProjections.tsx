@@ -23,6 +23,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { useAnnualizedProjections } from '@/lib/hooks/useAnnualizedProjections';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 import { formatAmount } from '@/lib/utils/formatAmount';
 import type { CategoryProjection } from '@/types/database.types';
 
@@ -184,6 +185,11 @@ export function AnnualizedProjections() {
     useAnnualizedProjections();
   const { preferences } = useUserPreferences();
   const currency = preferences?.currency_format ?? '';
+  const { isUnlocked } = useFeatureDisclosure();
+
+  // Story 15.7: usage-threshold gate ON TOP of the data-gate (fail-open while
+  // loading so established users are unaffected)
+  if (!isUnlocked('projections')) return null;
 
   // Progressive disclosure: hide entirely until user has enough data
   if (!hasEnoughData && !isLoading) return null;

@@ -38,8 +38,16 @@ jest.mock('@/lib/hooks/useSubscriptions', () => ({
   useSubscriptions: jest.fn(),
 }));
 
+// Story 15.7: disclosure gate — default unlocked (fail-open); overridden per-test
+jest.mock('@/lib/hooks/useFeatureDisclosure', () => ({
+  useFeatureDisclosure: jest.fn(() => ({ isUnlocked: () => true })),
+  DISCLOSURE_KEY: '/api/feature-disclosure',
+}));
+
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
+import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 const mockUseSubscriptions = useSubscriptions as jest.MockedFunction<typeof useSubscriptions>;
+const mockUseFeatureDisclosure = useFeatureDisclosure as jest.MockedFunction<typeof useFeatureDisclosure>;
 
 // Mock fetch for status update calls
 global.fetch = jest.fn();
@@ -58,6 +66,19 @@ describe('SubscriptionGraveyard', () => {
   });
 
   describe('Progressive disclosure (AC #6, Task 7.7)', () => {
+    it('Story 15.7: renders nothing when the disclosure gate is LOCKED, even with history', () => {
+      mockUseFeatureDisclosure.mockReturnValueOnce({ isUnlocked: () => false } as never);
+      mockUseSubscriptions.mockReturnValue({
+        subscriptions: [],
+        hasHistory: true,
+        isLoading: false,
+        error: undefined,
+        mutate: mockMutate,
+      });
+      renderWithChakra(<SubscriptionGraveyard />);
+      expect(screen.queryByText('Subscription Graveyard')).not.toBeInTheDocument();
+    });
+
     it('renders nothing when user has no history and not loading', () => {
       mockUseSubscriptions.mockReturnValue({
         subscriptions: [],

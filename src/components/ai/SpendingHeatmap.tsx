@@ -30,6 +30,7 @@ import { useTranslations } from 'next-intl';
 import { HeatmapGrid } from './HeatmapGrid';
 import { useSpendingHeatmap } from '@/lib/hooks/useSpendingHeatmap';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 
 export function SpendingHeatmap() {
   const now = new Date();
@@ -41,8 +42,14 @@ export function SpendingHeatmap() {
   const router = useRouter();
   const { preferences } = useUserPreferences();
   const currency = preferences?.currency_format ?? '';
+  const { isUnlocked } = useFeatureDisclosure();
 
   const { data, hasEnoughData, isLoading } = useSpendingHeatmap(selectedYear, selectedMonth);
+
+  // Story 15.7: usage-threshold gate ON TOP of the data-gate — composes as
+  // hasData && (thresholdMet || showAll). isUnlocked fails open while loading,
+  // so an established user (already past threshold) never flashes hidden.
+  if (!isUnlocked('heatmap')) return null;
 
   // Progressive disclosure: hide entirely until user has enough data
   if (!hasEnoughData && !isLoading) return null;

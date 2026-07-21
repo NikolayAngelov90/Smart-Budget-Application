@@ -411,12 +411,20 @@ export async function POST(request: NextRequest) {
     // ±1 day of the server day (clock-skew/timezone window, anti-farming clamp);
     // otherwise fall back to the server day. Started BEFORE the nudge await so
     // both enrichments run concurrently (no extra serial round-trips).
-    const streakPromise = recordLogActivity(
-      user.id,
-      resolveLogDay(body.log_day, new Date())
-    ).catch((err) => {
+    const logDay = resolveLogDay(body.log_day, new Date());
+    const streakPromise = recordLogActivity(user.id, logDay).catch((err) => {
       logger.warn('Transactions', 'Streak recording failed (non-fatal):', err);
       return null;
+    });
+
+    // Story 15.7: progressive-disclosure usage tracking — +1 transaction and
+    // (on a new calendar day) +1 day_active. Non-fatal enrichment; reuses the
+    // SAME resolved day key as the streak. Does NOT ride the response envelope
+    // (state is read via GET /api/feature-disclosure). Concurrent with the
+    // streak/achievement enrichment; awaited before the return so Vercel does
+    // not freeze the function mid-write (15-5 fire-and-forget lesson).
+    const featureActivityPromise = recordFeatureActivity(user.id, logDay).catch((err) => {
+      logger.warn('Transactions', 'Feature activity recording failed (non-fatal):', err);
     });
 
     // Story 15.3: achievement prereqs (unlocked keys + tx count) don't depend
@@ -520,6 +528,9 @@ export async function POST(request: NextRequest) {
         return [] as AchievementKey[];
       });
 
+    // Ensure the disclosure write completes before the function may freeze
+    await featureActivityPromise;
+
     return NextResponse.json(
       {
         data: transaction,
@@ -549,6 +560,7 @@ import { fixedWindowMonthlyAverage, AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spend
 import { resolveBudget } from '@/lib/ai/budgetResolver';
 import { localDayKey, isValidDayKey } from '@/lib/ai/streakEngine';
 import { recordLogActivity } from '@/lib/services/streakService';
+import { recordFeatureActivity } from '@/lib/services/featureStateService';
 import { evaluateAchievements } from '@/lib/ai/achievementEngine';
 import { ACHIEVEMENTS } from '@/lib/ai/achievementCatalog';
 import { getUnlocked, unlockAchievements } from '@/lib/services/achievementService';

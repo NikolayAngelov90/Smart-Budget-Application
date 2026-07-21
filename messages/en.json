@@ -483,6 +483,8 @@
     "weeklyDigestDescription": "Receive a weekly summary of your spending every Monday",
     "gamificationToggle": "Gamification",
     "gamificationToggleDescription": "Streaks, Budget Score, badges, and challenges. Turning this off hides them but keeps your progress — you can turn it back on anytime.",
+    "showAllFeatures": "Show all features",
+    "showAllFeaturesDescription": "Reveal every feature now instead of unlocking them as you use the app.",
     "restartOnboarding": "Restart Onboarding (Coming Soon)",
     "preferencesUpdated": "Preferences updated!",
     "preferencesUpdateFailed": "Failed to update preferences",
@@ -891,6 +893,16 @@
     "goalEarlierDays": "You'd reach your {goal} goal about {days, plural, one {1 day} other {# days}} earlier",
     "reset": "Reset",
     "exploratoryDisclaimer": "Exploratory only — your budgets, transactions, and subscriptions are not changed."
+  },
+  "disclosure": {
+    "cardHeading": "New feature unlocked",
+    "introCta": "Check it out",
+    "introDismiss": "Got it",
+    "intro": {
+      "heatmap": "You've logged 30 transactions — check out your Spending Heatmap.",
+      "projections": "Two weeks of budgeting in — see your Budget Projections.",
+      "subscriptions": "Enough history to spot recurring bills — review your Subscriptions."
+    }
   },
   "projections": {
     "title": "Spending Forecast",

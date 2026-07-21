@@ -54,14 +54,25 @@ jest.mock('@/lib/hooks/useUserPreferences', () => ({
   useUserPreferences: jest.fn(),
 }));
 
+// Story 15.7: disclosure gate — default unlocked (fail-open) so existing
+// data-gate tests are unaffected; overridden per-test for the locked case
+jest.mock('@/lib/hooks/useFeatureDisclosure', () => ({
+  useFeatureDisclosure: jest.fn(() => ({ isUnlocked: () => true })),
+  DISCLOSURE_KEY: '/api/feature-disclosure',
+}));
+
 import { useSpendingHeatmap } from '@/lib/hooks/useSpendingHeatmap';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 
 const mockUseSpendingHeatmap = useSpendingHeatmap as jest.MockedFunction<
   typeof useSpendingHeatmap
 >;
 const mockUseUserPreferences = useUserPreferences as jest.MockedFunction<
   typeof useUserPreferences
+>;
+const mockUseFeatureDisclosure = useFeatureDisclosure as jest.MockedFunction<
+  typeof useFeatureDisclosure
 >;
 
 const renderWithChakra = (component: React.ReactElement) =>
@@ -97,6 +108,13 @@ describe('SpendingHeatmap', () => {
   // ── Progressive disclosure ──────────────────────────────────────────────
 
   describe('Progressive disclosure (AC #6)', () => {
+    it('Story 15.7: renders null when the disclosure gate is LOCKED, even with data', () => {
+      mockUseFeatureDisclosure.mockReturnValueOnce({ isUnlocked: () => false } as never);
+      setupDefaultMocks({ hasEnoughData: true });
+      renderWithChakra(<SpendingHeatmap />);
+      expect(screen.queryByRole('heading', { name: 'Spending Heatmap' })).not.toBeInTheDocument();
+    });
+
     it('renders null when hasEnoughData is false and not loading', () => {
       mockUseSpendingHeatmap.mockReturnValue({
         data: [],

@@ -299,6 +299,7 @@ export interface Database {
           transactions_count: number;
           days_active: number;
           features_unlocked: string[];
+          last_active_date: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -307,6 +308,7 @@ export interface Database {
           transactions_count?: number;
           days_active?: number;
           features_unlocked?: string[];
+          last_active_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -315,6 +317,7 @@ export interface Database {
           transactions_count?: number;
           days_active?: number;
           features_unlocked?: string[];
+          last_active_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1538,6 +1541,16 @@ export interface ComebackResponse {
 export interface ComebackCompletion {
   completed: true;
   restoredStreak: number;
+}
+
+/** Story 15.7: GET /api/feature-disclosure response (state, re-derivable) */
+export interface DisclosureResponse {
+  transactionsCount: number;
+  daysActive: number;
+  /** Features currently available to the user */
+  unlocked: string[];
+  /** Unlocked features not yet introduced (surfaced once each) */
+  pending: string[];
 }
 
 /** An unlock row from the user_achievements table (036) */

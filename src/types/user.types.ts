@@ -57,6 +57,13 @@ export interface UserPreferences {
    * everything (streaks, score, badges, challenges).
    */
   gamification_enabled?: boolean;
+
+  /**
+   * Progressive-disclosure escape hatch (Story 15.7, default: false). When
+   * true, all usage-gated features are revealed immediately regardless of
+   * thresholds (and intros are not forced).
+   */
+  disclosure_show_all?: boolean;
 }
 
 /**

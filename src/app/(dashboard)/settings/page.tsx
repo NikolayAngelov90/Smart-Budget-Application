@@ -51,6 +51,7 @@ import { format, subMonths } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import useSWR, { useSWRConfig } from 'swr';
 import { PROFILE_KEY, refreshProfile } from '@/hooks/useUserProfile';
+import { DISCLOSURE_KEY } from '@/lib/hooks/useFeatureDisclosure';
 import type { UserProfile } from '@/types/user.types';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { exportMonthlyReportToPDF, exportTransactionsToCSV } from '@/lib/services/exportService';
@@ -153,6 +154,7 @@ export default function SettingsPage() {
   );
   const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(true);
   const [gamificationEnabled, setGamificationEnabled] = useState(true);
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const language: SupportedLocale =
     typeof document !== 'undefined'
@@ -170,6 +172,7 @@ export default function SettingsPage() {
       setDateFormat(profile.preferences.date_format);
       setWeeklyDigestEnabled(profile.preferences.weekly_digest_enabled ?? true);
       setGamificationEnabled(profile.preferences.gamification_enabled ?? true);
+      setShowAllFeatures(profile.preferences.disclosure_show_all ?? false);
     }
   }, [profile]);
 
@@ -242,7 +245,7 @@ export default function SettingsPage() {
   };
 
   // AC-8.3.5, AC-8.3.6, AC-8.3.7: Update preferences
-  const handleUpdatePreferences = async (field: 'currency_format' | 'date_format' | 'weekly_digest_enabled' | 'gamification_enabled' | 'push_nudges_enabled' | 'push_milestones_enabled' | 'push_household_enabled' | 'push_digest_enabled' | 'push_reengagement_enabled' | 'quiet_hours_start' | 'quiet_hours_end', value: string | boolean | number) => {
+  const handleUpdatePreferences = async (field: 'currency_format' | 'date_format' | 'weekly_digest_enabled' | 'gamification_enabled' | 'disclosure_show_all' | 'push_nudges_enabled' | 'push_milestones_enabled' | 'push_household_enabled' | 'push_digest_enabled' | 'push_reengagement_enabled' | 'quiet_hours_start' | 'quiet_hours_end', value: string | boolean | number) => {
     if (!profile) return;
 
     try {
@@ -275,6 +278,13 @@ export default function SettingsPage() {
         setProfile(result.data);
         mutate(PROFILE_KEY, result.data, false);
         refreshProfile();
+      }
+
+      // Story 15.7: disclosure_show_all is consumed by the disclosure GET
+      // server-side, so revalidate that key on flip (the profile mutate above
+      // does not reach it).
+      if (field === 'disclosure_show_all') {
+        mutate(DISCLOSURE_KEY, undefined, { revalidate: true });
       }
 
       // AC-8.3.7: Success toast
@@ -805,6 +815,28 @@ export default function SettingsPage() {
                   </HStack>
                   <FormHelperText mt={0}>
                     {t('gamificationToggleDescription')}
+                  </FormHelperText>
+                </FormControl>
+
+                {/* Story 15.7: progressive-disclosure escape hatch — reveal all
+                    usage-gated features immediately. Revalidates DISCLOSURE_KEY
+                    on flip (the pref is read server-side by the disclosure GET). */}
+                <FormControl>
+                  <HStack mb={1}>
+                    <FormLabel htmlFor="show-all-features-toggle" mb="0">
+                      {t('showAllFeatures')}
+                    </FormLabel>
+                    <Switch
+                      id="show-all-features-toggle"
+                      isChecked={showAllFeatures}
+                      onChange={(e) => {
+                        setShowAllFeatures(e.target.checked);
+                        handleUpdatePreferences('disclosure_show_all', e.target.checked);
+                      }}
+                    />
+                  </HStack>
+                  <FormHelperText mt={0}>
+                    {t('showAllFeaturesDescription')}
                   </FormHelperText>
                 </FormControl>
 

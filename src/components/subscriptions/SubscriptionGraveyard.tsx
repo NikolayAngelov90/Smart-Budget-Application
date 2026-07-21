@@ -24,6 +24,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
+import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 import { SubscriptionItem } from './SubscriptionItem';
 
 /**
@@ -35,6 +36,7 @@ export function SubscriptionGraveyard() {
   const toast = useToast();
   const { subscriptions, hasHistory, isLoading, error, mutate } =
     useSubscriptions();
+  const { isUnlocked } = useFeatureDisclosure();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const handleUpdateStatus = useCallback(
@@ -72,6 +74,12 @@ export function SubscriptionGraveyard() {
     },
     [mutate, t, toast]
   );
+
+  // Story 15.7: usage-threshold gate ON TOP of the data-gate (fail-open while
+  // loading so established users are unaffected)
+  if (!isUnlocked('subscriptions')) {
+    return null;
+  }
 
   // Progressive disclosure: don't render if user doesn't have enough history
   if (!isLoading && !hasHistory) {
