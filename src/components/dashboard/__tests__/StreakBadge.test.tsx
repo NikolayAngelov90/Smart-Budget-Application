@@ -93,6 +93,15 @@ describe('StreakBadge', () => {
     expect(screen.queryByText(/streak/)).not.toBeInTheDocument();
   });
 
+  it('exposes a polite live region carrying the streak summary (Story 15.8, AC2)', () => {
+    mockUseStreak.mockReturnValue(hookResult({ data: { streak: makeStreak() } }));
+    const { container } = renderWithChakra(<StreakBadge />);
+    const live = container.querySelector('[aria-live="polite"]');
+    expect(live).not.toBeNull();
+    // the region announces the same summary the badge's aria-label carries
+    expect(live?.textContent).toMatch(/Logging streak: 7 days/);
+  });
+
   it('renders nothing while loading with no cached data', () => {
     mockUseStreak.mockReturnValue(hookResult({ isLoading: true }));
     renderWithChakra(<StreakBadge />);

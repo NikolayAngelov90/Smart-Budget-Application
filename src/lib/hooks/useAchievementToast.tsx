@@ -6,10 +6,13 @@
  * Returns a stable callback that fires celebration toasts for newly unlocked
  * achievement keys. UX feedback table: toast + badge icon, ~5s auto-dismiss;
  * Chakra's toast wrapper provides the polite live region (role="status" +
- * aria-atomic) around custom renders. KNOWN LIMITATION (15-3 review): the
- * toast's framer-motion slide-in does NOT honor prefers-reduced-motion —
- * Chakra v2 ships no reduced-motion branch for toasts and the task explicitly
- * authorized keeping the default over hand-rolling animation.
+ * aria-atomic) around custom renders — satisfies AC2 (achievements announced).
+ * KNOWN LIMITATION (15-3 review, accepted for 15-8 AC3): the toast's
+ * framer-motion slide-in does NOT honor prefers-reduced-motion — Chakra v2
+ * ships no reduced-motion branch for toasts. This DEGRADES GRACEFULLY per AC3:
+ * only the entrance animates; the content is fully readable and announced
+ * regardless, and nothing breaks. Hand-rolling toast motion was explicitly
+ * NOT authorized (15-3), so the platform default stands.
  * Gold = UX `gamification.achievement` token #D69E2E.
  *
  * Batch cap (15-3 review): more than MAX_INDIVIDUAL_TOASTS keys at once (the

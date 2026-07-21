@@ -50,6 +50,9 @@ export function FeatureIntroCard() {
     <Box
       as="section"
       aria-label={t('cardHeading')}
+      // Story 15.8 (AC2): announce the feature introduction when it appears
+      // (a usage threshold was just crossed) — persistent card, so polite.
+      aria-live="polite"
       bg="trustBlue.50"
       border="1px solid"
       borderColor="trustBlue.200"

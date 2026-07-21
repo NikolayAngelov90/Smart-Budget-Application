@@ -69,6 +69,9 @@ export function ComebackChallengeCard() {
     <Box
       as="section"
       aria-label={t('heading')}
+      // Story 15.8 (AC2): announce the challenge to screen readers when it
+      // appears (returning-user surface) — persistent card, so polite.
+      aria-live="polite"
       mb={{ base: 6, md: 8 }}
       p={5}
       borderWidth="2px"

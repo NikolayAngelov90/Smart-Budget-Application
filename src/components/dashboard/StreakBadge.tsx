@@ -62,43 +62,60 @@ export function StreakBadge() {
   })}. ${freezeStatus}`;
 
   return (
-    <Tooltip hasArrow label={`${t('longestLabel', { longest: streak.longest_streak })} · ${freezeStatus}`}>
-      {/* Focusable so keyboard/touch users can open the tooltip; the aria-label
-          carries the same information for screen readers */}
+    <>
+      <Tooltip hasArrow label={`${t('longestLabel', { longest: streak.longest_streak })} · ${freezeStatus}`}>
+        {/* Focusable so keyboard/touch users can open the tooltip; the aria-label
+            carries the same information for screen readers */}
+        <Box
+          as="section"
+          tabIndex={0}
+          aria-label={summary}
+          display="inline-flex"
+          alignItems="center"
+          px={3}
+          py={1.5}
+          bg="orange.50"
+          borderWidth="1px"
+          borderColor="orange.200"
+          borderRadius="full"
+          minH={{ base: '44px', md: '36px' }}
+          _focusVisible={{ boxShadow: 'outline' }}
+        >
+          <HStack spacing={2}>
+            <Text aria-hidden="true" fontSize="md" lineHeight="1">
+              🔥
+            </Text>
+            <Text fontSize="sm" fontWeight="semibold" color="orange.800" whiteSpace="nowrap">
+              {t('dayStreak', { days: streak.current_streak })}
+            </Text>
+            {streak.weekly_streak > 1 && (
+              <Text fontSize="xs" color="orange.700" whiteSpace="nowrap">
+                {t('weekStreak', { weeks: streak.weekly_streak })}
+              </Text>
+            )}
+            {freezeJustUsed && (
+              <Text fontSize="xs" color="blue.700" whiteSpace="nowrap">
+                ❄️ {t('freezeUsedShort')}
+              </Text>
+            )}
+          </HStack>
+        </Box>
+      </Tooltip>
+      {/* Story 15.8 (AC2): the badge's aria-label is read on FOCUS; this
+          visually-hidden polite region announces streak CHANGES (increment,
+          freeze) to screen readers without requiring focus. Mirrors the
+          BudgetScoreRing pattern; content present at mount is not announced,
+          only subsequent changes. */}
       <Box
-        as="section"
-        tabIndex={0}
-        aria-label={summary}
-        display="inline-flex"
-        alignItems="center"
-        px={3}
-        py={1.5}
-        bg="orange.50"
-        borderWidth="1px"
-        borderColor="orange.200"
-        borderRadius="full"
-        minH={{ base: '44px', md: '36px' }}
-        _focusVisible={{ boxShadow: 'outline' }}
+        aria-live="polite"
+        position="absolute"
+        w="1px"
+        h="1px"
+        overflow="hidden"
+        clipPath="inset(50%)"
       >
-        <HStack spacing={2}>
-          <Text aria-hidden="true" fontSize="md" lineHeight="1">
-            🔥
-          </Text>
-          <Text fontSize="sm" fontWeight="semibold" color="orange.800" whiteSpace="nowrap">
-            {t('dayStreak', { days: streak.current_streak })}
-          </Text>
-          {streak.weekly_streak > 1 && (
-            <Text fontSize="xs" color="orange.700" whiteSpace="nowrap">
-              {t('weekStreak', { weeks: streak.weekly_streak })}
-            </Text>
-          )}
-          {freezeJustUsed && (
-            <Text fontSize="xs" color="blue.700" whiteSpace="nowrap">
-              ❄️ {t('freezeUsedShort')}
-            </Text>
-          )}
-        </HStack>
+        {summary}
       </Box>
-    </Tooltip>
+    </>
   );
 }

@@ -65,6 +65,12 @@ describe('FeatureIntroCard', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('announces the intro via a polite live region when it appears (Story 15.8, AC2)', () => {
+    mockUse.mockReturnValue(hookResult({ pending: ['heatmap'] }));
+    const { container } = renderCard();
+    expect(container.querySelector('section[aria-live="polite"]')).not.toBeNull();
+  });
+
   it('dismiss calls acknowledge for the shown feature and optimistically hides it', () => {
     const acknowledge = jest.fn().mockResolvedValue(undefined);
     mockUse.mockReturnValue(hookResult({ pending: ['heatmap'], acknowledge }));

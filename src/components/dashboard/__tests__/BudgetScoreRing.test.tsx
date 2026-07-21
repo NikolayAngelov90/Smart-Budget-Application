@@ -8,7 +8,7 @@
  */
 
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ChakraProvider } from '@chakra-ui/react';
+import { ChakraProvider, usePrefersReducedMotion } from '@chakra-ui/react';
 import { BudgetScoreRing } from '@/components/dashboard/BudgetScoreRing';
 import { useBudgetScore } from '@/lib/hooks/useBudgetScore';
 import { useGamification } from '@/lib/hooks/useGamification';
@@ -17,6 +17,13 @@ import type { BudgetScore } from '@/types/database.types';
 jest.mock('@/lib/hooks/useBudgetScore', () => ({
   useBudgetScore: jest.fn(),
   SCORE_KEY: '/api/gamification/score',
+}));
+
+// Story 15.8 (AC3): partial mock so the reduced-motion preference is spy-able
+// while every other Chakra export (ChakraProvider, CircularProgress, …) stays real
+jest.mock('@chakra-ui/react', () => ({
+  ...jest.requireActual('@chakra-ui/react'),
+  usePrefersReducedMotion: jest.fn(() => false),
 }));
 
 // Story 15.6: the component (and useAchievementToast inside it) gates on the
@@ -52,6 +59,7 @@ jest.mock('next-intl', () => ({
 
 const mockUseBudgetScore = useBudgetScore as jest.MockedFunction<typeof useBudgetScore>;
 const mockUseGamification = useGamification as jest.MockedFunction<typeof useGamification>;
+const mockReducedMotion = usePrefersReducedMotion as jest.MockedFunction<typeof usePrefersReducedMotion>;
 
 const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
@@ -89,6 +97,19 @@ describe('BudgetScoreRing', () => {
     mockUseBudgetScore.mockReturnValue(hookResult({}));
     renderWithChakra(<BudgetScoreRing />);
     expect(screen.queryByText('72')).not.toBeInTheDocument();
+  });
+
+  it('consults prefers-reduced-motion so the level-up pulse can be suppressed (Story 15.8, AC3)', () => {
+    mockReducedMotion.mockReturnValue(true);
+    mockUseBudgetScore.mockReturnValue(
+      hookResult({ data: { hasData: true, budgetScore: makeScore() } })
+    );
+    renderWithChakra(<BudgetScoreRing />);
+    // the component reads the reduced-motion preference in its render path;
+    // the pulse is gated on `!prefersReducedMotion` (guarded in source)
+    expect(mockReducedMotion).toHaveBeenCalled();
+    expect(screen.getByText('72')).toBeInTheDocument();
+    mockReducedMotion.mockReturnValue(false);
   });
 
   it('opted out: no ring AND no achievement toast, even with score + newlyUnlocked present (Story 15.6)', () => {

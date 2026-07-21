@@ -12,6 +12,7 @@
  */
 
 import { Alert, AlertDescription, AlertIcon, AlertTitle, Box, CloseButton, Flex } from '@chakra-ui/react';
+import { useTranslations } from 'next-intl';
 import { FinancialDisclaimer } from '@/components/ai/FinancialDisclaimer';
 import type { NudgePayload } from '@/types/database.types';
 
@@ -21,13 +22,26 @@ interface SmartNudgeProps {
 }
 
 export function SmartNudge({ nudge, onDismiss }: SmartNudgeProps) {
+  const t = useTranslations('smartNudge');
+
   if (!nudge) return null;
 
   const status = nudge.severity === 'exceeded' ? 'warning' : 'info';
 
+  // Story 15.8 (AC2): role="status" (implies polite) — NOT role="alert", which
+  // forces an assertive, interruptive announcement inappropriate for a
+  // non-blocking coaching nudge. The role goes on the Alert itself to OVERRIDE
+  // Chakra's hardcoded default role="alert"; explicit aria-live="polite" for
+  // older SRs. (A wrapper role alone leaves the inner Alert's alert role live.)
   return (
-    <Box mb={4} role="alert" aria-live="polite">
-      <Alert status={status} borderRadius="md" alignItems="flex-start">
+    <Box mb={4}>
+      <Alert
+        status={status}
+        role="status"
+        aria-live="polite"
+        borderRadius="md"
+        alignItems="flex-start"
+      >
         <AlertIcon mt={1} />
         <Box flex="1">
           <AlertTitle>{nudge.title}</AlertTitle>
@@ -41,7 +55,7 @@ export function SmartNudge({ nudge, onDismiss }: SmartNudgeProps) {
           <CloseButton
             size="sm"
             onClick={onDismiss}
-            aria-label="Dismiss nudge"
+            aria-label={t('dismiss')}
           />
         </Flex>
       </Alert>

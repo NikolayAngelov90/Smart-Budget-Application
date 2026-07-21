@@ -89,6 +89,14 @@ describe('ComebackChallengeCard', () => {
     expect(screen.queryByText(/Welcome back/)).not.toBeInTheDocument();
   });
 
+  it('announces the challenge via a polite live region when it appears (Story 15.8, AC2)', () => {
+    mockUseComeback.mockReturnValue(
+      hookResult({ data: { challenge: CHALLENGE, loggedCount: 2 } })
+    );
+    const { container } = renderWithChakra(<ComebackChallengeCard />);
+    expect(container.querySelector('section[aria-live="polite"]')).not.toBeNull();
+  });
+
   it('shows the challenge, progress, and the guaranteed restore floor', () => {
     mockUseComeback.mockReturnValue(
       hookResult({ data: { challenge: CHALLENGE, loggedCount: 2 } })
