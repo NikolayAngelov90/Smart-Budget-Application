@@ -46,6 +46,22 @@ jest.mock('@/lib/hooks/useDashboardStats', () => ({
   useDashboardStats: jest.fn(() => ({ data: undefined })),
 }));
 jest.mock('@/lib/hooks/useBudgets', () => ({ BUDGETS_KEY: '/api/budgets' }));
+// Mock the gamification DATA hooks so the real StreakBadge/BudgetScoreRing/
+// ComebackChallengeCard render through the REAL useGamification gate but never
+// hit real SWR/fetch (Blind Hunter flakiness note). No data => they'd render
+// null anyway; the point is exercising the gate, not the data path.
+jest.mock('@/lib/hooks/useStreak', () => ({
+  useStreak: () => ({ data: undefined, error: undefined, isLoading: false, mutate: jest.fn() }),
+  STREAK_KEY: '/api/streaks',
+}));
+jest.mock('@/lib/hooks/useBudgetScore', () => ({
+  useBudgetScore: () => ({ data: undefined, error: undefined, isLoading: false, mutate: jest.fn() }),
+  SCORE_KEY: '/api/gamification/score',
+}));
+jest.mock('@/lib/hooks/useComeback', () => ({
+  useComeback: () => ({ data: undefined, error: undefined, isLoading: false, mutate: jest.fn() }),
+  COMEBACK_KEY: '/api/comeback',
+}));
 // THE gate input — the real useGamification + real gamification components run
 jest.mock('@/lib/hooks/useUserPreferences', () => ({
   useUserPreferences: jest.fn(),
@@ -90,6 +106,17 @@ describe('Dashboard with gamification OPTED OUT (Story 15.6, AC 2)', () => {
     expect(screen.getByTestId('category-chart')).toBeInTheDocument();
     expect(screen.getByTestId('trends-chart')).toBeInTheDocument();
     expect(screen.getByTestId('recent-transactions')).toBeInTheDocument();
+  });
+
+  it('gamification UI is ABSENT when opted out (real gate, real components)', () => {
+    mockUsePrefs.mockReturnValue(prefs(false));
+    renderPage();
+    // StreakBadge/BudgetScoreRing/ComebackChallengeCard render through the real
+    // useGamification gate -> null when opted out. None of their translation
+    // namespaces (streaks/score/comeback) should surface any text.
+    expect(screen.queryByText(/streak/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/budget score/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/welcome back/i)).not.toBeInTheDocument();
   });
 
   it('renders the same core surface when enabled (flag absent = default on)', () => {

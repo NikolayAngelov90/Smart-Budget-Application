@@ -34,11 +34,24 @@ describe('useGamification', () => {
     expect(result.current.enabled).toBe(true);
   });
 
-  it('defaults to enabled while the profile is still loading (preferences null)', () => {
+  it('HOLDS (disabled) while the profile is still loading — anti-flash (15-6 review)', () => {
+    // Failing open during the cold-cache window would flash gamification UI to
+    // an opted-out user and fire the score/comeback GETs before prefs resolve.
     mockUsePrefs.mockReturnValue({ preferences: null, isLoading: true, error: undefined });
     const { result } = renderHook(() => useGamification());
-    expect(result.current.enabled).toBe(true);
+    expect(result.current.enabled).toBe(false);
     expect(result.current.isLoading).toBe(true);
+  });
+
+  it('fails OPEN (enabled) on a resolved profile error — transient error must not hide gamification', () => {
+    // isLoading=false + preferences=null (error path) -> default ON for the majority
+    mockUsePrefs.mockReturnValue({
+      preferences: null,
+      isLoading: false,
+      error: new Error('profile fetch failed'),
+    });
+    const { result } = renderHook(() => useGamification());
+    expect(result.current.enabled).toBe(true);
   });
 
   it('disabled ONLY on an explicit false', () => {

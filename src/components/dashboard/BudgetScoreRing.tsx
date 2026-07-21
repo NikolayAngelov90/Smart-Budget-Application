@@ -71,9 +71,12 @@ const LEVEL_ORDER: BudgetScoreLevel[] = ['beginner', 'building', 'steady', 'stro
 
 export function BudgetScoreRing() {
   const t = useTranslations('score');
-  // Story 15.6: opt-out gate. useBudgetScore returns no data on a null key
-  // (so the effects below no-op) and useAchievementToast self-gates; the
-  // render return sits with the progressive-disclosure gate further down.
+  // Story 15.6: opt-out gate. NOTE useBudgetScore keeps previous data via
+  // keepPreviousData, so `data` is NOT cleared when the key flips to null on
+  // opt-out — the effects below still run against stale data. They are made
+  // safe by (a) the gated useAchievementToast (no-ops) and (b) the explicit
+  // `if (!enabled) return` guard inside the newlyUnlocked effect. The render
+  // return sits with the progressive-disclosure gate further down.
   const { enabled } = useGamification();
   const { data, mutate } = useBudgetScore();
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -89,6 +92,10 @@ export function BudgetScoreRing() {
   const toastedRef = useRef<unknown>(null);
   const newlyUnlocked = data?.newlyUnlocked;
   useEffect(() => {
+    // Story 15.6: opted out — neither toast nor scrub (the scrub mutate is a
+    // no-op on a null key anyway; the toast hook self-gates). Skipping keeps
+    // this effect from doing work against keepPreviousData's stale payload.
+    if (!enabled) return;
     if (!newlyUnlocked || newlyUnlocked.length === 0) return;
     if (toastedRef.current === newlyUnlocked) return;
     toastedRef.current = newlyUnlocked;
@@ -98,7 +105,7 @@ export function BudgetScoreRing() {
     }).catch(() => {
       // Cache rewrite failure is cosmetic — worst case the ref still guards this mount
     });
-  }, [newlyUnlocked, toastAchievements, mutate]);
+  }, [enabled, newlyUnlocked, toastAchievements, mutate]);
 
   // Level-up pulse: animate only when the level rises within this session
   const prevLevelRef = useRef<BudgetScoreLevel | null>(null);

@@ -30,9 +30,12 @@ export interface UseBudgetScoreResult {
 }
 
 export function useBudgetScore(): UseBudgetScoreResult {
-  // Story 15.6: null key while opted out — beyond hiding UI, this stops the
-  // score GET, which is ALSO a server-side achievement-evaluation point, so
-  // an opted-out browser stops triggering unlocks (and their pushes).
+  // Story 15.6: null key while opted out. Best-effort (the authoritative gate
+  // is the component null-return + the pushService suppression): the score GET
+  // is also a server-side achievement-evaluation point, so this reduces — but
+  // does not alone guarantee — opted-out browsers triggering it. Imperative
+  // revalidations (AppLayout quick-add, dashboard pull-to-refresh) are gated
+  // separately on the same pref so the reduction actually holds.
   const { enabled } = useGamification();
   const { data, error, isLoading, mutate } = useSWR<BudgetScoreResponse>(enabled ? SCORE_KEY : null, fetcher, {
     dedupingInterval: 5000,

@@ -80,11 +80,19 @@ export default function DashboardPage() {
         mutate('/api/values/spending', undefined, { revalidate: true }),
         mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
         mutate(BUDGETS_KEY, undefined, { revalidate: true }),
-        mutate(STREAK_KEY, undefined, { revalidate: true }),
-        mutate(SCORE_KEY, undefined, { revalidate: true }),
-        mutate(COMEBACK_KEY, undefined, { revalidate: true }),
+        // Story 15.6: skip the gamification revalidations when opted out — the
+        // null-key hooks don't subscribe, and firing these would trigger the
+        // score/comeback GETs (server achievement eval / create-on-read) from
+        // an opted-out browser. `?? true` matches the gate's opt-out default.
+        ...(preferences?.gamification_enabled ?? true
+          ? [
+              mutate(STREAK_KEY, undefined, { revalidate: true }),
+              mutate(SCORE_KEY, undefined, { revalidate: true }),
+              mutate(COMEBACK_KEY, undefined, { revalidate: true }),
+            ]
+          : []),
       ]);
-    }, [mutate])
+    }, [mutate, preferences?.gamification_enabled])
   );
 
   // Performance monitoring: Mark dashboard render start

@@ -32,8 +32,11 @@ export interface UseComebackResult {
 
 export function useComeback(): UseComebackResult {
   // Story 15.6: null key while opted out. The comeback GET is create-on-read
-  // (15-4), so this also stops opted-out browsers from creating challenges;
-  // the tx POST create-on-log path still runs (data continuity, card hidden).
+  // (15-4); the hook + the gated imperative revalidations (AppLayout, dashboard
+  // refresh) together reduce opted-out browsers creating challenges. The tx
+  // POST create-on-log path still runs by design (data continuity, card hidden)
+  // — so challenges may still be created; that is AC3-preserved accrual, not a
+  // leak (the card is gated).
   const { enabled } = useGamification();
   const { data, error, isLoading, mutate } = useSWR<ComebackResponse>(enabled ? COMEBACK_KEY : null, fetcher, {
     dedupingInterval: 5000,

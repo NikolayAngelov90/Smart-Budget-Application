@@ -101,12 +101,18 @@ export async function dispatchCategorizedPush(
     const enabled = (prefs[flag] as boolean | undefined) ?? defaultEnabled;
     if (!enabled) return 'suppressed';
 
-    // Story 15.6: achievement pushes are gamification surface — a user who
-    // opted out of gamification must not get "Achievement unlocked!" pushes.
-    // Scoped to payload TYPE, not the category: household shared-goal
-    // milestone pushes ride the same 'milestones' category but are
-    // collaboration features and stay governed by push_milestones_enabled.
-    if (payload.type === 'achievement' && prefs.gamification_enabled === false) {
+    // Story 15.6: gamification-surface pushes must not reach a user who opted
+    // out of gamification. Scoped to payload TYPE, not category:
+    //  - 'achievement' = "Achievement unlocked!" (milestones category)
+    //  - 'comeback'    = the reengagement cron's "Your streak is waiting"
+    //                    (reengagement category) — streak-flavored, so gated
+    // Deliberately NOT gated: 'milestone' (household shared-goal — a
+    // collaboration feature on the same 'milestones' category, governed only
+    // by push_milestones_enabled), 'nudge', 'digest', 'household_event'.
+    if (
+      (payload.type === 'achievement' || payload.type === 'comeback') &&
+      prefs.gamification_enabled === false
+    ) {
       return 'suppressed';
     }
 

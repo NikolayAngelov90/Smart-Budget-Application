@@ -9,6 +9,7 @@ import { useSWRConfig } from 'swr';
 import { STREAK_KEY } from '@/lib/hooks/useStreak';
 import { SCORE_KEY } from '@/lib/hooks/useBudgetScore';
 import { COMEBACK_KEY } from '@/lib/hooks/useComeback';
+import { useGamification } from '@/lib/hooks/useGamification';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import FloatingActionButton from '@/components/common/FloatingActionButton';
@@ -25,6 +26,8 @@ const SIDEBAR_COLLAPSE_KEY = 'sidebar-collapsed';
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { mutate } = useSWRConfig();
+  // Story 15.6: gate the gamification revalidations below on the opt-out pref
+  const { enabled: gamificationEnabled } = useGamification();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Responsive default: collapsed on tablet (md), expanded on desktop (lg)
@@ -85,12 +88,17 @@ export function AppLayout({ children }: AppLayoutProps) {
     );
 
     // Gamification keys (15-1/15-2): the quick-add is the primary mobile
-    // entry point — streak + score must update after each transaction too
-    await Promise.all([
-      mutate(STREAK_KEY, undefined, { revalidate: true }),
-      mutate(SCORE_KEY, undefined, { revalidate: true }),
-      mutate(COMEBACK_KEY, undefined, { revalidate: true }),
-    ]);
+    // entry point — streak + score must update after each transaction too.
+    // Story 15.6: skip for opted-out users — the null-key hooks don't
+    // subscribe and firing these triggers the score/comeback GETs (server
+    // achievement eval / create-on-read) from an opted-out browser.
+    if (gamificationEnabled) {
+      await Promise.all([
+        mutate(STREAK_KEY, undefined, { revalidate: true }),
+        mutate(SCORE_KEY, undefined, { revalidate: true }),
+        mutate(COMEBACK_KEY, undefined, { revalidate: true }),
+      ]);
+    }
 
     console.log('[AppLayout] Dashboard data refresh complete!');
   };

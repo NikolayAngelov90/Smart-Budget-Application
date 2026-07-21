@@ -304,6 +304,31 @@ describe('dispatchCategorizedPush', () => {
     await expect(dispatchCategorizedPush('u-1', 'milestones', payload)).resolves.toBe('sent');
   });
 
+  it("suppresses the reengagement COMEBACK push ('Your streak is waiting') when gamification is opted out (Story 15.6)", async () => {
+    mockServiceClient.mockReturnValue(
+      makeGateClient({ push_reengagement_enabled: true, gamification_enabled: false }) as never
+    );
+    const comebackPush = {
+      type: 'comeback' as const,
+      title: 'Your streak is waiting',
+      body: 'We saved your progress — log a transaction to pick up where you left off.',
+      data: { url: '/dashboard' },
+    };
+    await expect(dispatchCategorizedPush('u-1', 'reengagement', comebackPush)).resolves.toBe('suppressed');
+    expect(mockSendNotification).not.toHaveBeenCalled();
+  });
+
+  it('the comeback push still sends when the gamification flag is absent (default on)', async () => {
+    mockServiceClient.mockReturnValue(makeGateClient({ push_reengagement_enabled: true }) as never);
+    const comebackPush = {
+      type: 'comeback' as const,
+      title: 'Your streak is waiting',
+      body: 'x',
+      data: { url: '/dashboard' },
+    };
+    await expect(dispatchCategorizedPush('u-1', 'reengagement', comebackPush)).resolves.toBe('sent');
+  });
+
   it("non-achievement 'milestones' pushes (shared-goal milestone) are UNAFFECTED by the gamification flag", async () => {
     mockServiceClient.mockReturnValue(
       makeGateClient({ push_milestones_enabled: true, gamification_enabled: false }) as never
