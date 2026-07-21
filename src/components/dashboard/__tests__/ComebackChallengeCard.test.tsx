@@ -9,10 +9,17 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { ComebackChallengeCard } from '@/components/dashboard/ComebackChallengeCard';
 import { useComeback } from '@/lib/hooks/useComeback';
+import { useGamification } from '@/lib/hooks/useGamification';
 
 jest.mock('@/lib/hooks/useComeback', () => ({
   useComeback: jest.fn(),
   COMEBACK_KEY: '/api/comeback',
+}));
+
+// Story 15.6: the component gates on the master gamification toggle — mock it
+// explicitly (an unmocked useGamification would hit real SWR under jest)
+jest.mock('@/lib/hooks/useGamification', () => ({
+  useGamification: jest.fn(() => ({ enabled: true, isLoading: false })),
 }));
 
 jest.mock('next-intl', () => ({
@@ -29,13 +36,17 @@ jest.mock('next-intl', () => ({
 }));
 
 const mockUseComeback = useComeback as jest.MockedFunction<typeof useComeback>;
+const mockUseGamification = useGamification as jest.MockedFunction<typeof useGamification>;
 
 const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
+// CLOCK-RELATIVE (15-1 lesson): the card derives expiry against the real
+// Date.now(), so hardcoded timestamps rot — the original fixture expired on
+// 2026-07-20 and started failing the moment the suite ran after that date.
 const CHALLENGE = {
   id: 'ch-1',
-  started_at: '2026-07-13T08:00:00Z',
-  expires_at: '2026-07-20T08:00:00Z',
+  started_at: new Date(Date.now() - 86_400_000).toISOString(),
+  expires_at: new Date(Date.now() + 5 * 86_400_000).toISOString(),
   target_count: 3,
   previous_streak: 12,
   status: 'active' as const,
@@ -57,6 +68,13 @@ beforeEach(() => {
 });
 
 describe('ComebackChallengeCard', () => {
+  it('renders nothing when gamification is opted out — even with an active challenge (Story 15.6)', () => {
+    mockUseGamification.mockReturnValueOnce({ enabled: false, isLoading: false });
+    mockUseComeback.mockReturnValue(hookResult({ data: { challenge: CHALLENGE, loggedCount: 1 } }));
+    renderWithChakra(<ComebackChallengeCard />);
+    expect(screen.queryByText(/Welcome back/)).not.toBeInTheDocument();
+  });
+
   it('renders nothing without an active challenge', () => {
     mockUseComeback.mockReturnValue(hookResult({ data: { challenge: null, loggedCount: 0 } }));
     renderWithChakra(<ComebackChallengeCard />);

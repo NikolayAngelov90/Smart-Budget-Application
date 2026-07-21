@@ -152,6 +152,7 @@ export default function SettingsPage() {
     'MM/DD/YYYY'
   );
   const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(true);
+  const [gamificationEnabled, setGamificationEnabled] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const language: SupportedLocale =
     typeof document !== 'undefined'
@@ -168,6 +169,7 @@ export default function SettingsPage() {
       setCurrencyFormat(profile.preferences.currency_format);
       setDateFormat(profile.preferences.date_format);
       setWeeklyDigestEnabled(profile.preferences.weekly_digest_enabled ?? true);
+      setGamificationEnabled(profile.preferences.gamification_enabled ?? true);
     }
   }, [profile]);
 
@@ -240,7 +242,7 @@ export default function SettingsPage() {
   };
 
   // AC-8.3.5, AC-8.3.6, AC-8.3.7: Update preferences
-  const handleUpdatePreferences = async (field: 'currency_format' | 'date_format' | 'weekly_digest_enabled' | 'push_nudges_enabled' | 'push_milestones_enabled' | 'push_household_enabled' | 'push_digest_enabled' | 'push_reengagement_enabled' | 'quiet_hours_start' | 'quiet_hours_end', value: string | boolean | number) => {
+  const handleUpdatePreferences = async (field: 'currency_format' | 'date_format' | 'weekly_digest_enabled' | 'gamification_enabled' | 'push_nudges_enabled' | 'push_milestones_enabled' | 'push_household_enabled' | 'push_digest_enabled' | 'push_reengagement_enabled' | 'quiet_hours_start' | 'quiet_hours_end', value: string | boolean | number) => {
     if (!profile) return;
 
     try {
@@ -781,6 +783,28 @@ export default function SettingsPage() {
                   </HStack>
                   <FormHelperText mt={0}>
                     {t('weeklyDigestDescription')}
+                  </FormHelperText>
+                </FormControl>
+
+                {/* Story 15.6: master gamification opt-in/out. UI-only —
+                    handleUpdatePreferences scope-mutates PROFILE_KEY, the same
+                    SWR key useGamification reads, so the gate flips everywhere */}
+                <FormControl>
+                  <HStack mb={1}>
+                    <FormLabel htmlFor="gamification-toggle" mb="0">
+                      {t('gamificationToggle')}
+                    </FormLabel>
+                    <Switch
+                      id="gamification-toggle"
+                      isChecked={gamificationEnabled}
+                      onChange={(e) => {
+                        setGamificationEnabled(e.target.checked);
+                        handleUpdatePreferences('gamification_enabled', e.target.checked);
+                      }}
+                    />
+                  </HStack>
+                  <FormHelperText mt={0}>
+                    {t('gamificationToggleDescription')}
                   </FormHelperText>
                 </FormControl>
 

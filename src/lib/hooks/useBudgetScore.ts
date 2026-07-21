@@ -9,6 +9,7 @@
  */
 
 import useSWR, { type KeyedMutator } from 'swr';
+import { useGamification } from '@/lib/hooks/useGamification';
 import type { BudgetScoreResponse } from '@/types/database.types';
 
 export const SCORE_KEY = '/api/gamification/score';
@@ -29,7 +30,11 @@ export interface UseBudgetScoreResult {
 }
 
 export function useBudgetScore(): UseBudgetScoreResult {
-  const { data, error, isLoading, mutate } = useSWR<BudgetScoreResponse>(SCORE_KEY, fetcher, {
+  // Story 15.6: null key while opted out — beyond hiding UI, this stops the
+  // score GET, which is ALSO a server-side achievement-evaluation point, so
+  // an opted-out browser stops triggering unlocks (and their pushes).
+  const { enabled } = useGamification();
+  const { data, error, isLoading, mutate } = useSWR<BudgetScoreResponse>(enabled ? SCORE_KEY : null, fetcher, {
     dedupingInterval: 5000,
     revalidateOnFocus: true,
     keepPreviousData: true,

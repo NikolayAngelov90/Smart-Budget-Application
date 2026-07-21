@@ -8,6 +8,7 @@
 import { render, screen } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { StreakBadge } from '@/components/dashboard/StreakBadge';
+import { useGamification } from '@/lib/hooks/useGamification';
 import { useStreak } from '@/lib/hooks/useStreak';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import type { StreakState } from '@/types/database.types';
@@ -15,6 +16,12 @@ import type { StreakState } from '@/types/database.types';
 jest.mock('@/lib/hooks/useStreak', () => ({
   useStreak: jest.fn(),
   STREAK_KEY: '/api/streaks',
+}));
+
+// Story 15.6: the component gates on the master gamification toggle — mock it
+// explicitly (an unmocked useGamification would hit real SWR under jest)
+jest.mock('@/lib/hooks/useGamification', () => ({
+  useGamification: jest.fn(() => ({ enabled: true, isLoading: false })),
 }));
 
 jest.mock('next-intl', () => ({
@@ -35,6 +42,7 @@ jest.mock('next-intl', () => ({
 }));
 
 const mockUseStreak = useStreak as jest.MockedFunction<typeof useStreak>;
+const mockUseGamification = useGamification as jest.MockedFunction<typeof useGamification>;
 
 const renderWithChakra = (ui: React.ReactElement) =>
   render(<ChakraProvider>{ui}</ChakraProvider>);
@@ -70,6 +78,14 @@ const hookResult = (overrides: Partial<ReturnType<typeof useStreak>>) =>
 
 describe('StreakBadge', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('renders nothing when gamification is opted out — even with a live streak (Story 15.6)', () => {
+    mockUseGamification.mockReturnValueOnce({ enabled: false, isLoading: false });
+    mockUseStreak.mockReturnValue(hookResult({ data: { streak: makeStreak() } }));
+    renderWithChakra(<StreakBadge />);
+    // Chakra renders hidden env spans — query for content, never emptiness (15-1)
+    expect(screen.queryByText(/streak/i)).not.toBeInTheDocument();
+  });
 
   it('renders nothing before the first log (progressive disclosure)', () => {
     mockUseStreak.mockReturnValue(hookResult({ data: { streak: null } }));

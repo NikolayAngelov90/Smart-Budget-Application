@@ -291,6 +291,33 @@ describe('dispatchCategorizedPush', () => {
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 
+  it("suppresses ACHIEVEMENT pushes when gamification is opted out (Story 15.6)", async () => {
+    mockServiceClient.mockReturnValue(
+      makeGateClient({ push_milestones_enabled: true, gamification_enabled: false }) as never
+    );
+    await expect(dispatchCategorizedPush('u-1', 'milestones', payload)).resolves.toBe('suppressed');
+    expect(mockSendNotification).not.toHaveBeenCalled();
+  });
+
+  it('achievement pushes still send when the gamification flag is absent (default on)', async () => {
+    mockServiceClient.mockReturnValue(makeGateClient({ push_milestones_enabled: true }) as never);
+    await expect(dispatchCategorizedPush('u-1', 'milestones', payload)).resolves.toBe('sent');
+  });
+
+  it("non-achievement 'milestones' pushes (shared-goal milestone) are UNAFFECTED by the gamification flag", async () => {
+    mockServiceClient.mockReturnValue(
+      makeGateClient({ push_milestones_enabled: true, gamification_enabled: false }) as never
+    );
+    const goalMilestone = {
+      type: 'milestone' as const,
+      title: '50% reached!',
+      body: '"Vacation" just passed 50% of its target.',
+      data: { url: '/household' },
+    };
+    await expect(dispatchCategorizedPush('u-1', 'milestones', goalMilestone)).resolves.toBe('sent');
+    expect(mockSendNotification).toHaveBeenCalledTimes(1);
+  });
+
   it("prefs read failure -> no send, never throws, returns 'failed' (unknowable != consent)", async () => {
     mockServiceClient.mockReturnValue(makeGateClient(null, { message: 'boom' }) as never);
     await expect(dispatchCategorizedPush('u-1', 'household', payload)).resolves.toBe('failed');

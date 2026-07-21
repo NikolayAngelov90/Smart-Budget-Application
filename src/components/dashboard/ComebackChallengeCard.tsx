@@ -20,14 +20,19 @@ import {
 } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { useComeback } from '@/lib/hooks/useComeback';
+import { useGamification } from '@/lib/hooks/useGamification';
 import { RESTORE_FRACTION } from '@/lib/ai/comebackEngine';
 
 export function ComebackChallengeCard() {
   const t = useTranslations('comeback');
+  const { enabled } = useGamification();
   const { data, mutate } = useComeback();
   // Optimistic hide keyed to the CHALLENGE id — a future challenge B must not
   // inherit challenge A's dismissal in a long-lived tab (15-4 review)
   const [dismissedId, setDismissedId] = useState<string | null>(null);
+
+  // Story 15.6: master opt-out hides all gamification UI
+  if (!enabled) return null;
 
   const challenge = data?.challenge;
   if (!challenge || challenge.status !== 'active' || challenge.id === dismissedId) return null;

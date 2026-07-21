@@ -68,10 +68,13 @@ function makeClient(results: Result[]) {
   return { from, chains };
 }
 
+// CLOCK-RELATIVE (15-1 lesson): completion checks expiry against the real
+// Date.now() — the original hardcoded expires_at (2026-07-20) rotted the day
+// the calendar passed it and the "restores BEFORE marking" tests went red.
 const ROW = {
   id: 'ch-1',
-  started_at: '2026-07-13T08:00:00Z',
-  expires_at: '2026-07-20T08:00:00Z',
+  started_at: new Date(Date.now() - 86_400_000).toISOString(),
+  expires_at: new Date(Date.now() + 5 * 86_400_000).toISOString(),
   target_count: 3,
   previous_streak: 12,
   status: 'active',

@@ -12,11 +12,18 @@ import { format } from 'date-fns';
 import { ChakraProvider } from '@chakra-ui/react';
 import { AchievementsSection } from '@/components/settings/AchievementsSection';
 import { useAchievements } from '@/lib/hooks/useAchievements';
+import { useGamification } from '@/lib/hooks/useGamification';
 import { ACHIEVEMENTS } from '@/lib/ai/achievementCatalog';
 
 jest.mock('@/lib/hooks/useAchievements', () => ({
   useAchievements: jest.fn(),
   ACHIEVEMENTS_KEY: '/api/achievements',
+}));
+
+// Story 15.6: the component gates on the master gamification toggle — mock it
+// explicitly (an unmocked useGamification would hit real SWR under jest)
+jest.mock('@/lib/hooks/useGamification', () => ({
+  useGamification: jest.fn(() => ({ enabled: true, isLoading: false })),
 }));
 
 jest.mock('next-intl', () => ({
@@ -30,6 +37,7 @@ jest.mock('next-intl', () => ({
 }));
 
 const mockUseAchievements = useAchievements as jest.MockedFunction<typeof useAchievements>;
+const mockUseGamification = useGamification as jest.MockedFunction<typeof useGamification>;
 
 const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
@@ -44,6 +52,23 @@ const hookResult = (overrides: Partial<ReturnType<typeof useAchievements>>) =>
 
 describe('AchievementsSection', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('renders nothing when gamification is opted out — unlocks preserved, gallery hidden (Story 15.6)', () => {
+    mockUseGamification.mockReturnValueOnce({ enabled: false, isLoading: false });
+    mockUseAchievements.mockReturnValue(
+      hookResult({
+        data: {
+          achievements: [
+            { achievement_key: 'first_transaction', unlocked_at: '2026-07-01T10:00:00Z' },
+          ],
+        },
+      })
+    );
+    renderWithChakra(<AchievementsSection />);
+    // Chakra renders hidden env spans — query for content, never emptiness (15-1)
+    expect(screen.queryByText('Achievements')).not.toBeInTheDocument();
+    expect(screen.queryByText('names.first_transaction')).not.toBeInTheDocument();
+  });
 
   it('renders ALL catalog tiles even with no data (locked gallery is the motivation)', () => {
     mockUseAchievements.mockReturnValue(hookResult({}));

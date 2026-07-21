@@ -9,6 +9,7 @@
  */
 
 import useSWR, { type KeyedMutator } from 'swr';
+import { useGamification } from '@/lib/hooks/useGamification';
 import type { StreakResponse } from '@/types/database.types';
 
 export const STREAK_KEY = '/api/streaks';
@@ -30,7 +31,12 @@ export interface UseStreakResult {
 }
 
 export function useStreak(): UseStreakResult {
-  const { data, error, isLoading, mutate } = useSWR<StreakResponse>(STREAK_KEY, fetcher, {
+  // Story 15.6: gating INSIDE the hook covers every consumer at one point —
+  // a null key means no fetch and no cache write while opted out. Scoped
+  // mutates of STREAK_KEY elsewhere (dashboard/AppLayout onSuccess) become
+  // harmless no-ops for the unmounted key.
+  const { enabled } = useGamification();
+  const { data, error, isLoading, mutate } = useSWR<StreakResponse>(enabled ? STREAK_KEY : null, fetcher, {
     dedupingInterval: 5000,
     revalidateOnFocus: true,
     keepPreviousData: true,

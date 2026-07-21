@@ -10,6 +10,7 @@
  */
 
 import useSWR, { type KeyedMutator } from 'swr';
+import { useGamification } from '@/lib/hooks/useGamification';
 import type { ComebackResponse } from '@/types/database.types';
 
 export const COMEBACK_KEY = '/api/comeback';
@@ -30,7 +31,11 @@ export interface UseComebackResult {
 }
 
 export function useComeback(): UseComebackResult {
-  const { data, error, isLoading, mutate } = useSWR<ComebackResponse>(COMEBACK_KEY, fetcher, {
+  // Story 15.6: null key while opted out. The comeback GET is create-on-read
+  // (15-4), so this also stops opted-out browsers from creating challenges;
+  // the tx POST create-on-log path still runs (data continuity, card hidden).
+  const { enabled } = useGamification();
+  const { data, error, isLoading, mutate } = useSWR<ComebackResponse>(enabled ? COMEBACK_KEY : null, fetcher, {
     dedupingInterval: 5000,
     revalidateOnFocus: true,
     keepPreviousData: true,

@@ -101,6 +101,15 @@ export async function dispatchCategorizedPush(
     const enabled = (prefs[flag] as boolean | undefined) ?? defaultEnabled;
     if (!enabled) return 'suppressed';
 
+    // Story 15.6: achievement pushes are gamification surface — a user who
+    // opted out of gamification must not get "Achievement unlocked!" pushes.
+    // Scoped to payload TYPE, not the category: household shared-goal
+    // milestone pushes ride the same 'milestones' category but are
+    // collaboration features and stay governed by push_milestones_enabled.
+    if (payload.type === 'achievement' && prefs.gamification_enabled === false) {
+      return 'suppressed';
+    }
+
     const quietStart = (prefs.quiet_hours_start as number | undefined) ?? 22;
     const quietEnd = (prefs.quiet_hours_end as number | undefined) ?? 8;
     if (isWithinQuietHours(quietStart, quietEnd)) return 'suppressed';

@@ -211,6 +211,63 @@ describe('Settings Page - PDF Export Integration Tests', () => {
       });
     });
 
+    describe('Gamification master toggle (Story 15.6)', () => {
+      test('renders in Preferences, default ON when the flag is absent', async () => {
+        customRender(<SettingsPage />);
+
+        await waitFor(() => {
+          expect(screen.getByLabelText('Gamification')).toBeInTheDocument();
+        });
+        expect((screen.getByLabelText('Gamification') as HTMLInputElement).checked).toBe(true);
+      });
+
+      test('renders OFF when profile has gamification_enabled: false', async () => {
+        const optedOut = {
+          ...mockUserProfile,
+          preferences: { ...mockUserProfile.preferences, gamification_enabled: false },
+        };
+        (global.fetch as jest.Mock).mockImplementation((url: string) => {
+          if (url.includes('/api/user/profile')) {
+            return Promise.resolve(mockResponse({ data: optedOut }));
+          }
+          return Promise.resolve(mockResponse({ data: [] }));
+        });
+
+        customRender(<SettingsPage />);
+
+        await waitFor(() => {
+          expect((screen.getByLabelText('Gamification') as HTMLInputElement).checked).toBe(false);
+        });
+      });
+
+      test('toggling off PUTs { preferences: { gamification_enabled: false } }', async () => {
+        (global.fetch as jest.Mock).mockImplementation((url: string) => {
+          if (url.includes('/api/user/profile')) {
+            return Promise.resolve(mockResponse({ data: mockUserProfile }));
+          }
+          return Promise.resolve(mockResponse({ data: [] }));
+        });
+
+        customRender(<SettingsPage />);
+
+        await waitFor(() => {
+          expect(screen.getByLabelText('Gamification')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByLabelText('Gamification'));
+
+        await waitFor(() => {
+          const putCalls = (global.fetch as jest.Mock).mock.calls.filter(
+            ([url, opts]: [string, RequestInit]) =>
+              url.includes('/api/user/profile') && opts?.method === 'PUT'
+          );
+          expect(putCalls.length).toBeGreaterThan(0);
+          const body = JSON.parse(putCalls[putCalls.length - 1][1].body as string);
+          expect(body.preferences.gamification_enabled).toBe(false);
+        });
+      });
+    });
+
     test('renders Weekly Digest helper text', async () => {
       customRender(<SettingsPage />);
 

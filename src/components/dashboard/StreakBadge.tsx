@@ -12,6 +12,7 @@
 
 import { Box, HStack, Text, Tooltip } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
+import { useGamification } from '@/lib/hooks/useGamification';
 import { useStreak } from '@/lib/hooks/useStreak';
 import {
   isFreezeAvailable,
@@ -23,7 +24,12 @@ import {
 
 export function StreakBadge() {
   const t = useTranslations('streaks');
+  const { enabled } = useGamification();
   const { data } = useStreak();
+
+  // Story 15.6: master opt-out hides all gamification UI (data keeps accruing
+  // server-side, so opting back in restores the streak intact)
+  if (!enabled) return null;
 
   // Progressive disclosure: nothing until the first log creates streak state.
   // Errors stay quiet — keepPreviousData holds the last known streak.

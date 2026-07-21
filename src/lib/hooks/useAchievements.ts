@@ -10,6 +10,7 @@
  */
 
 import useSWR, { type KeyedMutator } from 'swr';
+import { useGamification } from '@/lib/hooks/useGamification';
 import type { AchievementsResponse } from '@/types/database.types';
 
 export const ACHIEVEMENTS_KEY = '/api/achievements';
@@ -30,8 +31,10 @@ export interface UseAchievementsResult {
 }
 
 export function useAchievements(): UseAchievementsResult {
+  // Story 15.6: null key while opted out — no fetch, no cache write
+  const { enabled } = useGamification();
   const { data, error, isLoading, mutate } = useSWR<AchievementsResponse>(
-    ACHIEVEMENTS_KEY,
+    enabled ? ACHIEVEMENTS_KEY : null,
     fetcher,
     {
       dedupingInterval: 5000,

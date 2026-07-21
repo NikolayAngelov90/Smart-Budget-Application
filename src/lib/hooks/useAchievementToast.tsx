@@ -20,6 +20,7 @@
 import { useCallback } from 'react';
 import { Box, HStack, Text, useToast } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
+import { useGamification } from '@/lib/hooks/useGamification';
 import type { AchievementKey } from '@/types/database.types';
 
 const ACHIEVEMENT_GOLD = '#D69E2E';
@@ -28,9 +29,13 @@ const MAX_INDIVIDUAL_TOASTS = 3;
 export function useAchievementToast(): (keys: AchievementKey[] | undefined) => void {
   const toast = useToast();
   const t = useTranslations('achievements');
+  // Story 15.6: single gating point for BOTH call sites (TransactionEntryModal
+  // + BudgetScoreRing) — opted-out users get no achievement celebrations
+  const { enabled } = useGamification();
 
   return useCallback(
     (keys) => {
+      if (!enabled) return;
       if (!keys || keys.length === 0) return;
 
       if (keys.length > MAX_INDIVIDUAL_TOASTS) {
@@ -107,6 +112,6 @@ export function useAchievementToast(): (keys: AchievementKey[] | undefined) => v
         });
       }
     },
-    [toast, t]
+    [toast, t, enabled]
   );
 }

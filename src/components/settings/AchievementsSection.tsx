@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { bg } from 'date-fns/locale';
 import { ACHIEVEMENTS } from '@/lib/ai/achievementCatalog';
 import { useAchievements } from '@/lib/hooks/useAchievements';
+import { useGamification } from '@/lib/hooks/useGamification';
 import type { UserAchievement } from '@/types/database.types';
 
 const ACHIEVEMENT_GOLD = '#D69E2E';
@@ -25,7 +26,12 @@ export function AchievementsSection() {
   // Locale-aware unlock dates — "Отключено на Jul 1, 2026" is not a sentence (15-3 review)
   const locale = useLocale();
   const dateLocale = locale === 'bg' ? bg : undefined;
+  const { enabled } = useGamification();
   const { data } = useAchievements();
+
+  // Story 15.6: master opt-out hides the gallery (unlocks are preserved and
+  // reappear the moment the user opts back in)
+  if (!enabled) return null;
 
   const unlockedByKey = new Map<string, UserAchievement>(
     (data?.achievements ?? []).map((a) => [a.achievement_key, a])

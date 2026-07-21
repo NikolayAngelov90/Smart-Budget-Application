@@ -50,6 +50,13 @@ export interface UserPreferences {
 
   /** ISO timestamp the user last dismissed the welcome-back summary (Story 12.6) */
   reengagement_dismissed_at?: string;
+
+  /**
+   * Master gamification toggle (Story 15.6, default: true — opt-out model).
+   * UI-only gate: server-side accrual continues so opting back in restores
+   * everything (streaks, score, badges, challenges).
+   */
+  gamification_enabled?: boolean;
 }
 
 /**

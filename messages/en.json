@@ -481,6 +481,8 @@
     "onboardingTutorial": "Onboarding Tutorial",
     "weeklyDigest": "Weekly Digest",
     "weeklyDigestDescription": "Receive a weekly summary of your spending every Monday",
+    "gamificationToggle": "Gamification",
+    "gamificationToggleDescription": "Streaks, Budget Score, badges, and challenges. Turning this off hides them but keeps your progress — you can turn it back on anytime.",
     "restartOnboarding": "Restart Onboarding (Coming Soon)",
     "preferencesUpdated": "Preferences updated!",
     "preferencesUpdateFailed": "Failed to update preferences",

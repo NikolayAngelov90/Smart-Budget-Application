@@ -11,11 +11,18 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { BudgetScoreRing } from '@/components/dashboard/BudgetScoreRing';
 import { useBudgetScore } from '@/lib/hooks/useBudgetScore';
+import { useGamification } from '@/lib/hooks/useGamification';
 import type { BudgetScore } from '@/types/database.types';
 
 jest.mock('@/lib/hooks/useBudgetScore', () => ({
   useBudgetScore: jest.fn(),
   SCORE_KEY: '/api/gamification/score',
+}));
+
+// Story 15.6: the component (and useAchievementToast inside it) gates on the
+// master toggle — mock explicitly so no real SWR runs under jest
+jest.mock('@/lib/hooks/useGamification', () => ({
+  useGamification: jest.fn(() => ({ enabled: true, isLoading: false })),
 }));
 
 jest.mock('next-intl', () => ({
@@ -44,6 +51,7 @@ jest.mock('next-intl', () => ({
 }));
 
 const mockUseBudgetScore = useBudgetScore as jest.MockedFunction<typeof useBudgetScore>;
+const mockUseGamification = useGamification as jest.MockedFunction<typeof useGamification>;
 
 const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
@@ -70,12 +78,38 @@ const hookResult = (overrides: Partial<ReturnType<typeof useBudgetScore>>) =>
   }) as ReturnType<typeof useBudgetScore>;
 
 describe('BudgetScoreRing', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Re-assert the enabled default: a disabled test's mockReturnValue would
+    // otherwise leak into subsequent tests (clearAllMocks keeps return values)
+    mockUseGamification.mockReturnValue({ enabled: true, isLoading: false });
+  });
 
   it('renders nothing without data (progressive disclosure)', () => {
     mockUseBudgetScore.mockReturnValue(hookResult({}));
     renderWithChakra(<BudgetScoreRing />);
     expect(screen.queryByText('72')).not.toBeInTheDocument();
+  });
+
+  it('opted out: no ring AND no achievement toast, even with score + newlyUnlocked present (Story 15.6)', () => {
+    // Gate disabled for the whole render lifecycle (effects included)
+    mockUseGamification.mockReturnValue({ enabled: false, isLoading: false });
+    mockUseBudgetScore.mockReturnValue(
+      hookResult({
+        data: {
+          hasData: true,
+          budgetScore: makeScore(),
+          newlyUnlocked: ['week_streak'],
+        } as never,
+        // The newlyUnlocked scrub effect calls mutate(...).catch — must be thenable
+        mutate: jest.fn().mockResolvedValue(undefined),
+      })
+    );
+    renderWithChakra(<BudgetScoreRing />);
+
+    expect(screen.queryByText('72')).not.toBeInTheDocument();
+    // The newlyUnlocked effect runs but the gated toast hook must no-op
+    expect(screen.queryByText('toastTitle')).not.toBeInTheDocument();
   });
 
   it('renders nothing when hasData is false', () => {

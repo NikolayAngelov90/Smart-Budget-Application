@@ -35,6 +35,7 @@ import { keyframes } from '@emotion/react';
 import { useTranslations } from 'next-intl';
 import { useBudgetScore } from '@/lib/hooks/useBudgetScore';
 import { useAchievementToast } from '@/lib/hooks/useAchievementToast';
+import { useGamification } from '@/lib/hooks/useGamification';
 import type { BudgetScoreLevel, ScoreFactor } from '@/types/database.types';
 
 const LEVEL_COLOR: Record<BudgetScoreLevel, string> = {
@@ -70,6 +71,10 @@ const LEVEL_ORDER: BudgetScoreLevel[] = ['beginner', 'building', 'steady', 'stro
 
 export function BudgetScoreRing() {
   const t = useTranslations('score');
+  // Story 15.6: opt-out gate. useBudgetScore returns no data on a null key
+  // (so the effects below no-op) and useAchievementToast self-gates; the
+  // render return sits with the progressive-disclosure gate further down.
+  const { enabled } = useGamification();
   const { data, mutate } = useBudgetScore();
   const prefersReducedMotion = usePrefersReducedMotion();
   const toastAchievements = useAchievementToast();
@@ -113,6 +118,10 @@ export function BudgetScoreRing() {
     // would stick true forever, swallowing every future level-up pulse.
     setJustLeveledUp(false);
   }, [level]);
+
+  // Story 15.6: master opt-out hides the ring (score keeps computing
+  // server-side on demand — opting back in shows it again immediately)
+  if (!enabled) return null;
 
   // Progressive disclosure: nothing until the user has scoreable data.
   // keepPreviousData holds the last known score through transient errors.
