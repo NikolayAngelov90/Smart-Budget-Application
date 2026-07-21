@@ -51,15 +51,17 @@ describe('FeatureIntroCard', () => {
     expect(screen.queryByText('New feature unlocked')).not.toBeInTheDocument();
   });
 
-  it('shows the single highest-priority pending intro (subscriptions@50 over heatmap@30)', () => {
+  it('shows the single highest-priority pending intro by CATALOG order (heatmap before subscriptions)', () => {
     mockUse.mockReturnValue(hookResult({ pending: ['heatmap', 'subscriptions'] }));
     renderCard();
+    // catalog order is heatmap, projections, subscriptions — heatmap wins (NOT
+    // subscriptions, which raw-threshold ranking would have picked at 50>30)
     expect(
-      screen.getByText('Enough history to spot recurring bills — review your Subscriptions.')
+      screen.getByText("You've logged 30 transactions — check out your Spending Heatmap.")
     ).toBeInTheDocument();
-    // only ONE intro at a time — the heatmap copy is not shown
+    // only ONE intro at a time
     expect(
-      screen.queryByText("You've logged 30 transactions — check out your Spending Heatmap.")
+      screen.queryByText('Enough history to spot recurring bills — review your Subscriptions.')
     ).not.toBeInTheDocument();
   });
 

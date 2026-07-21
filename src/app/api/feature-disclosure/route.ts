@@ -33,11 +33,18 @@ export async function GET() {
     // AND wrongly lock features the user earned).
     const state = await getFeatureState(user.id);
 
-    const { data: profile } = await supabase
+    // The show-all pref is a core input too: a swallowed error here would let
+    // showAll default to false and return an all-locked state as a cacheable
+    // 200 — the exact cache-poisoning the degradation policy forbids. 500 on
+    // failure so the SWR cache holds the last good value (keepPreviousData).
+    const { data: profile, error: prefsError } = await supabase
       .from('user_profiles')
       .select('preferences')
       .eq('id', user.id)
       .maybeSingle();
+    if (prefsError) {
+      throw new Error(`preferences read failed: ${prefsError.message}`);
+    }
     const prefs = (profile?.preferences ?? {}) as Record<string, unknown>;
     const showAll = prefs.disclosure_show_all === true;
 

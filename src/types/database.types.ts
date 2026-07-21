@@ -935,6 +935,13 @@ export interface Database {
         };
         Returns: void;
       };
+      // Story 15.7: atomic feature-activity increment (migration 040)
+      record_feature_activity: {
+        Args: {
+          p_today: string;
+        };
+        Returns: void;
+      };
       // Story 13.4: aggregate totals for shared + category_only categories (private excluded)
       household_category_totals: {
         Args: {

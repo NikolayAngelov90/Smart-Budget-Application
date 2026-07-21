@@ -17,17 +17,15 @@ import { useTranslations } from 'next-intl';
 import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 import { FEATURE_DISCLOSURE, type FeatureKey } from '@/lib/ai/disclosureCatalog';
 
-/** Highest requirement value first; deterministic catalog-order tiebreak. */
+/**
+ * Picks the highest-priority pending intro by CATALOG (onboarding) order —
+ * not by requirement.value, which mixes incompatible metrics (14 days vs 30/50
+ * transactions) and would always rank projections last just because 14 < 30.
+ */
 function pickIntro(pending: FeatureKey[]): FeatureKey | null {
   if (pending.length === 0) return null;
   const catalogOrder = Object.keys(FEATURE_DISCLOSURE) as FeatureKey[];
-  return (
-    [...pending].sort((a, b) => {
-      const diff =
-        FEATURE_DISCLOSURE[b].requirement.value - FEATURE_DISCLOSURE[a].requirement.value;
-      return diff !== 0 ? diff : catalogOrder.indexOf(a) - catalogOrder.indexOf(b);
-    })[0] ?? null
-  );
+  return catalogOrder.find((k) => pending.includes(k)) ?? null;
 }
 
 export function FeatureIntroCard() {

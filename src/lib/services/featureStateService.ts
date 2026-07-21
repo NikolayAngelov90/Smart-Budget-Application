@@ -72,8 +72,13 @@ export async function getFeatureState(userId: string): Promise<FeatureState> {
 
 /**
  * Records one unit of activity: +1 transaction always, +1 day_active only when
- * this is a NEW calendar day of activity (last_active_date < todayKey). ENRICH-
- * MENT — callers wrap in .catch; never throws into the transaction path.
+ * this is a NEW calendar day (last_active_date < todayKey). ENRICHMENT —
+ * callers wrap in .catch; never throws into the transaction path.
+ *
+ * Delegates to the atomic record_feature_activity RPC (migration 040): a single
+ * UPSERT-increment, so concurrent tx POSTs can't lose increments (15-7 review),
+ * and GREATEST() keeps last_active_date forward-only so a backdated log (the
+ * ±1 resolveLogDay clamp) can't re-open a "new day" and farm days_active.
  *
  * days_active is a logging-days proxy: it counts days the user logged, not raw
  * app-opens (a user who never logs has no meaningful "active day" for feature
@@ -85,19 +90,8 @@ export async function recordFeatureActivity(
   userId: string,
   todayKey: string
 ): Promise<void> {
-  const state = await getFeatureState(userId);
-
-  const isNewDay = state.last_active_date == null || state.last_active_date < todayKey;
-
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('user_feature_state')
-    .update({
-      transactions_count: state.transactions_count + 1,
-      days_active: state.days_active + (isNewDay ? 1 : 0),
-      last_active_date: todayKey,
-    })
-    .eq('user_id', userId);
+  const { error } = await supabase.rpc('record_feature_activity', { p_today: todayKey });
 
   if (error) {
     logger.error('FeatureStateService', `record failed: ${error.message}`);

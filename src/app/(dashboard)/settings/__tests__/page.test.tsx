@@ -17,6 +17,21 @@ jest.mock('@chakra-ui/react', () => ({
   useToast: () => mockToast,
 }));
 
+// Story 15.7: spy the scoped mutate so the show-all test can assert the
+// DISCLOSURE_KEY revalidation. Delegate to the REAL useSWRConfig (so useSWR
+// keeps its cache/subscribe/config) and only swap `mutate` for the spy.
+// (mock-prefixed name is hoist-safe for jest.mock.)
+const mockSwrMutate = jest.fn();
+jest.mock('swr', () => {
+  const actual = jest.requireActual('swr');
+  return {
+    __esModule: true,
+    ...actual,
+    default: actual.default, // preserve the useSWR default export through the mock
+    useSWRConfig: () => ({ ...actual.useSWRConfig(), mutate: mockSwrMutate }),
+  };
+});
+
 // Mock the export service
 jest.mock('@/lib/services/exportService', () => ({
   exportMonthlyReportToPDF: jest.fn(),
@@ -277,7 +292,8 @@ describe('Settings Page - PDF Export Integration Tests', () => {
         expect((screen.getByLabelText('Show all features') as HTMLInputElement).checked).toBe(false);
       });
 
-      test('toggling on PUTs { preferences: { disclosure_show_all: true } }', async () => {
+      test('toggling on PUTs { preferences: { disclosure_show_all: true } } AND revalidates DISCLOSURE_KEY', async () => {
+        mockSwrMutate.mockClear();
         (global.fetch as jest.Mock).mockImplementation((url: string) => {
           if (url.includes('/api/user/profile')) {
             return Promise.resolve(mockResponse({ data: mockUserProfile }));
@@ -300,6 +316,16 @@ describe('Settings Page - PDF Export Integration Tests', () => {
           expect(putCalls.length).toBeGreaterThan(0);
           const body = JSON.parse(putCalls[putCalls.length - 1][1].body as string);
           expect(body.preferences.disclosure_show_all).toBe(true);
+        });
+
+        // The disclosure GET reads this pref server-side, so the key must be
+        // revalidated on flip (15-7 review LOW-1)
+        await waitFor(() => {
+          expect(mockSwrMutate).toHaveBeenCalledWith(
+            '/api/feature-disclosure',
+            undefined,
+            { revalidate: true }
+          );
         });
       });
     });

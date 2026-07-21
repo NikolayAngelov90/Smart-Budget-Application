@@ -44,13 +44,18 @@ export async function POST(request: NextRequest) {
 
     await acknowledgeFeature(user.id, parsed.data.feature);
 
-    // Recompute from fresh state so the client cache matches the server
+    // Recompute from fresh state so the client cache matches the server.
+    // The prefs read is a core input — 500 on failure (never cache an
+    // all-locked state as a 200; the ack already persisted).
     const state = await getFeatureState(user.id);
-    const { data: profile } = await supabase
+    const { data: profile, error: prefsError } = await supabase
       .from('user_profiles')
       .select('preferences')
       .eq('id', user.id)
       .maybeSingle();
+    if (prefsError) {
+      throw new Error(`preferences read failed: ${prefsError.message}`);
+    }
     const prefs = (profile?.preferences ?? {}) as Record<string, unknown>;
     const showAll = prefs.disclosure_show_all === true;
     const { unlocked, pending } = computeDisclosure(state, showAll);

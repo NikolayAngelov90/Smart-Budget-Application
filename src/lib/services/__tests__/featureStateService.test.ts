@@ -24,8 +24,11 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
  * Builds a mock Supabase client. `selectResult` feeds the select().eq().maybeSingle()
  * read; captures the insert/update payloads + the eq filter args.
  */
-function makeClient(selectResult: { data: unknown; error: unknown }) {
-  const captured: { insert?: unknown; update?: unknown; eqArgs: unknown[][] } = { eqArgs: [] };
+function makeClient(
+  selectResult: { data: unknown; error: unknown },
+  rpcResult: { error: unknown } = { error: null }
+) {
+  const captured: { insert?: unknown; update?: unknown; eqArgs: unknown[][]; rpc?: [string, unknown] } = { eqArgs: [] };
 
   const selectChain: Record<string, jest.Mock> = {
     maybeSingle: jest.fn().mockResolvedValue(selectResult),
@@ -55,7 +58,12 @@ function makeClient(selectResult: { data: unknown; error: unknown }) {
     }),
   }));
 
-  return { client: { from }, captured };
+  const rpc = jest.fn((name: string, params: unknown) => {
+    captured.rpc = [name, params];
+    return Promise.resolve(rpcResult);
+  });
+
+  return { client: { from, rpc }, captured };
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -97,49 +105,25 @@ describe('getFeatureState', () => {
 });
 
 describe('recordFeatureActivity', () => {
-  it('increments tx AND days_active on a NEW day (last_active_date < today)', async () => {
-    const { client, captured } = makeClient({
-      data: { transactions_count: 5, days_active: 2, features_unlocked: [], last_active_date: '2026-07-20' },
-      error: null,
-    });
+  // 15-7 review: the increment/day/date logic now lives in the atomic
+  // record_feature_activity RPC (migration 040) — race-free + forward-only
+  // date. The service just forwards the day key; the arithmetic is DB-tested.
+  it('delegates to the atomic RPC with the day key (no read-modify-write)', async () => {
+    const { client, captured } = makeClient({ data: null, error: null });
     mockCreateClient.mockResolvedValue(client as never);
 
     await recordFeatureActivity('u-1', '2026-07-21');
-    expect(captured.update).toEqual({
-      transactions_count: 6,
-      days_active: 3,
-      last_active_date: '2026-07-21',
-    });
+    expect(captured.rpc).toEqual(['record_feature_activity', { p_today: '2026-07-21' }]);
+    // must NOT do the old non-atomic read-then-update
+    expect(captured.update).toBeUndefined();
   });
 
-  it('increments tx but NOT days_active on the SAME day', async () => {
-    const { client, captured } = makeClient({
-      data: { transactions_count: 5, days_active: 2, features_unlocked: [], last_active_date: '2026-07-21' },
-      error: null,
-    });
+  it('throws a friendly error when the RPC fails (enrichment caller catches)', async () => {
+    const { client } = makeClient({ data: null, error: null }, { error: { message: 'rpc boom' } });
     mockCreateClient.mockResolvedValue(client as never);
-
-    await recordFeatureActivity('u-1', '2026-07-21');
-    expect(captured.update).toEqual({
-      transactions_count: 6,
-      days_active: 2, // unchanged — same day
-      last_active_date: '2026-07-21',
-    });
-  });
-
-  it('counts the first-ever day (last_active_date null)', async () => {
-    const { client, captured } = makeClient({
-      data: { transactions_count: 0, days_active: 0, features_unlocked: [], last_active_date: null },
-      error: null,
-    });
-    mockCreateClient.mockResolvedValue(client as never);
-
-    await recordFeatureActivity('u-1', '2026-07-21');
-    expect(captured.update).toEqual({
-      transactions_count: 1,
-      days_active: 1,
-      last_active_date: '2026-07-21',
-    });
+    await expect(recordFeatureActivity('u-1', '2026-07-21')).rejects.toThrow(
+      'Failed to record feature activity'
+    );
   });
 });
 

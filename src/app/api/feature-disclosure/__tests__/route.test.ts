@@ -31,9 +31,16 @@ import { GET } from '../route';
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockGetFeatureState = getFeatureState as jest.MockedFunction<typeof getFeatureState>;
 
-function makeClient(user: { id: string } | null, prefs: Record<string, unknown> = {}) {
+function makeClient(
+  user: { id: string } | null,
+  prefs: Record<string, unknown> = {},
+  prefsError: unknown = null
+) {
   const profileChain: Record<string, jest.Mock> = {
-    maybeSingle: jest.fn().mockResolvedValue({ data: { preferences: prefs }, error: null }),
+    maybeSingle: jest.fn().mockResolvedValue({
+      data: prefsError ? null : { preferences: prefs },
+      error: prefsError,
+    }),
   };
   profileChain.select = jest.fn(() => profileChain);
   profileChain.eq = jest.fn(() => profileChain);
@@ -93,6 +100,18 @@ describe('GET /api/feature-disclosure', () => {
   it('500s on a core-state read failure (never error-as-empty — would poison the SWR cache)', async () => {
     mockCreateClient.mockResolvedValue(makeClient({ id: 'u-1' }) as never);
     mockGetFeatureState.mockRejectedValue(new Error('db down'));
+    const res = await GET();
+    expect(res.status).toBe(500);
+  });
+
+  it('500s on a PREFS read failure — never caches an all-locked state for a show-all user (15-7 review)', async () => {
+    mockCreateClient.mockResolvedValue(makeClient({ id: 'u-1' }, {}, { message: 'prefs down' }) as never);
+    mockGetFeatureState.mockResolvedValue({
+      transactions_count: 0,
+      days_active: 0,
+      features_unlocked: [],
+      last_active_date: null,
+    });
     const res = await GET();
     expect(res.status).toBe(500);
   });
