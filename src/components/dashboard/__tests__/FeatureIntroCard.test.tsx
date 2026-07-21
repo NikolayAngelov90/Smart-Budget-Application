@@ -65,10 +65,14 @@ describe('FeatureIntroCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('announces the intro via a polite live region when it appears (Story 15.8, AC2)', () => {
+  it('is a labelled, navigable section — NOT a whole-card live region (Story 15.8 review)', () => {
     mockUse.mockReturnValue(hookResult({ pending: ['heatmap'] }));
     const { container } = renderCard();
-    expect(container.querySelector('section[aria-live="polite"]')).not.toBeNull();
+    // discoverable via section landmark + aria-label + heading
+    expect(container.querySelector('section[aria-label]')).not.toBeNull();
+    expect(screen.getByRole('heading')).toBeInTheDocument();
+    // no whole-card aria-live (would over-announce on internal state changes)
+    expect(container.querySelector('[aria-live]')).toBeNull();
   });
 
   it('dismiss calls acknowledge for the shown feature and optimistically hides it', () => {

@@ -69,9 +69,10 @@ export function ComebackChallengeCard() {
     <Box
       as="section"
       aria-label={t('heading')}
-      // Story 15.8 (AC2): announce the challenge to screen readers when it
-      // appears (returning-user surface) — persistent card, so polite.
-      aria-live="polite"
+      // Story 15.8: a persistent card is discoverable via its section landmark
+      // + heading + keyboard-navigable controls — NOT an aria-live surface. An
+      // aria-live on the whole card mounts with its content (doesn't announce
+      // on appear) AND re-announces on every progress update (15-8 review).
       mb={{ base: 6, md: 8 }}
       p={5}
       borderWidth="2px"

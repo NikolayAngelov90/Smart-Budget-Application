@@ -99,14 +99,17 @@ describe('BudgetScoreRing', () => {
     expect(screen.queryByText('72')).not.toBeInTheDocument();
   });
 
-  it('consults prefers-reduced-motion so the level-up pulse can be suppressed (Story 15.8, AC3)', () => {
+  it('consults prefers-reduced-motion in the render path (Story 15.8, AC3)', () => {
+    // Honest claim (15-8 review): this asserts the preference is CONSULTED, not
+    // that the pulse is suppressed — the pulse only renders on a level-up
+    // transition (justLeveledUp), which is false at initial mount, so the
+    // suppression gate (`justLeveledUp && !prefersReducedMotion`,
+    // BudgetScoreRing.tsx) is verified by inspection, not exercised here.
     mockReducedMotion.mockReturnValue(true);
     mockUseBudgetScore.mockReturnValue(
       hookResult({ data: { hasData: true, budgetScore: makeScore() } })
     );
     renderWithChakra(<BudgetScoreRing />);
-    // the component reads the reduced-motion preference in its render path;
-    // the pulse is gated on `!prefersReducedMotion` (guarded in source)
     expect(mockReducedMotion).toHaveBeenCalled();
     expect(screen.getByText('72')).toBeInTheDocument();
     mockReducedMotion.mockReturnValue(false);

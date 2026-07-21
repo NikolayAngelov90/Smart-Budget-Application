@@ -50,9 +50,10 @@ export function FeatureIntroCard() {
     <Box
       as="section"
       aria-label={t('cardHeading')}
-      // Story 15.8 (AC2): announce the feature introduction when it appears
-      // (a usage threshold was just crossed) — persistent card, so polite.
-      aria-live="polite"
+      // Story 15.8: a persistent card is discoverable via its section landmark
+      // + heading + keyboard-navigable controls — NOT an aria-live surface
+      // (a whole-card live region mounts with its content and over-announces
+      // on internal updates; 15-8 review).
       bg="trustBlue.50"
       border="1px solid"
       borderColor="trustBlue.200"

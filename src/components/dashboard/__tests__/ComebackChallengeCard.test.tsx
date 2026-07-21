@@ -89,12 +89,17 @@ describe('ComebackChallengeCard', () => {
     expect(screen.queryByText(/Welcome back/)).not.toBeInTheDocument();
   });
 
-  it('announces the challenge via a polite live region when it appears (Story 15.8, AC2)', () => {
+  it('is a labelled, navigable section — NOT a whole-card live region (Story 15.8 review)', () => {
     mockUseComeback.mockReturnValue(
       hookResult({ data: { challenge: CHALLENGE, loggedCount: 2 } })
     );
     const { container } = renderWithChakra(<ComebackChallengeCard />);
-    expect(container.querySelector('section[aria-live="polite"]')).not.toBeNull();
+    // discoverable via section landmark + aria-label + heading (h2)
+    const section = container.querySelector('section[aria-label]');
+    expect(section).not.toBeNull();
+    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
+    // a whole-card aria-live would over-announce the progress bar on each log
+    expect(container.querySelector('[aria-live]')).toBeNull();
   });
 
   it('shows the challenge, progress, and the guaranteed restore floor', () => {
