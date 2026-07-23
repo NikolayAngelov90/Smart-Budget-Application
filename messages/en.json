@@ -318,6 +318,8 @@
     "emptyTitle": "Your transactions will appear here",
     "emptyDescription": "Add your first income or expense to see it here.",
     "noMatchDescription": "No transactions match these filters. Try adjusting or clearing them.",
+    "moreDetails": "More details",
+    "fewerDetails": "Fewer details",
     "failedToLoadRetry": "Failed to load transactions. Please try again.",
     "undo": "Undo",
     "transactionRestored": "Transaction restored",

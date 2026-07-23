@@ -55,6 +55,7 @@ import {
   Textarea,
   VStack,
   HStack,
+  Flex,
   useToast,
   useBreakpointValue,
   Box,
@@ -62,7 +63,9 @@ import {
   Spinner,
   Tooltip,
   Checkbox,
+  Collapse,
 } from '@chakra-ui/react';
+import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 import { format, subDays } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import { CategoryMenu } from '@/components/categories/CategoryMenu';
@@ -178,6 +181,11 @@ export default function TransactionEntryModal({
   const { status: allowanceStatus } = useAllowance();
   const [useAllowanceTag, setUseAllowanceTag] = useState(false);
 
+  // Story 16.2: secondary fields (date/notes) collapse behind "More details";
+  // edit mode opens them by default since the user is likely changing one.
+  const [showDetails, setShowDetails] = useState(false);
+  const detailsOpen = showDetails || mode === 'edit';
+
   const {
     register,
     handleSubmit,
@@ -207,6 +215,21 @@ export default function TransactionEntryModal({
     !!allowanceStatus?.allowance &&
     !!selectedCategory &&
     !selectedCategory.household_id;
+
+  // Story 16.2: one-tap quick-pick chips = recently-used first, then most-used,
+  // capped at 6 — the fast path; the full CategoryMenu covers the long tail.
+  const quickCategories = (() => {
+    const quick: Category[] = [...recentCategories];
+    const seen = new Set(quick.map((c) => c.id));
+    for (const c of [...categories].sort((a, b) => (b.usage_count ?? 0) - (a.usage_count ?? 0))) {
+      if (quick.length >= 6) break;
+      if (!seen.has(c.id)) {
+        quick.push(c);
+        seen.add(c.id);
+      }
+    }
+    return quick;
+  })();
 
   // Auto-format amount to 2 decimal places on blur
   const handleAmountBlur = () => {
@@ -279,6 +302,7 @@ export default function TransactionEntryModal({
       setSelectedCurrency(preferredCurrency);
       setExchangeRate(null);
       setUseAllowanceTag(false);
+      setShowDetails(false);
     }
   }, [isOpen, mode, transaction, reset, preferredCurrency]);
 
@@ -423,6 +447,7 @@ export default function TransactionEntryModal({
         setSelectedCurrency(preferredCurrency);
         setExchangeRate(null);
         setUseAllowanceTag(false);
+      setShowDetails(false);
       }
 
       // AC-10.8.6: Haptic feedback on successful transaction save
@@ -458,31 +483,46 @@ export default function TransactionEntryModal({
         {/* Story 12.3: Spending nudge banner — shown when transaction triggers a threshold */}
         <SmartNudge nudge={nudge} onDismiss={() => { dismissNudge(); onClose(); }} />
 
-        {/* Amount Field */}
+        {/* Amount — the hero of the composer (Story 16.2) */}
         <FormControl isInvalid={!!errors.amount} isRequired>
-          <FormLabel htmlFor="amount">{t('amount')}</FormLabel>
-          <Input
-            id="amount"
-            type="text"
-            inputMode="decimal"
-            pattern="^\d+(\.\d{1,2})?$"
-            placeholder="0.00"
-            size="lg"
-            fontSize="2xl"
-            fontWeight="semibold"
-            textAlign="right"
-            autoComplete="off"
-            autoCorrect="off"
-            autoFocus
-            {...register('amount')}
-            onBlur={handleAmountBlur}
-            _focus={{
-              borderColor: 'blue.600',
-              boxShadow: '0 0 0 1px blue.600',
-            }}
-          />
+          <Flex align="center" justify="center" gap={1.5} minH="76px">
+            <Text
+              fontFamily="heading"
+              fontSize={{ base: '2xl', md: '3xl' }}
+              fontWeight={600}
+              color="fg.muted"
+              lineHeight={1}
+            >
+              {enabledCurrencies.find((c) => c.code === selectedCurrency)?.symbol ?? ''}
+            </Text>
+            <Input
+              id="amount"
+              type="text"
+              inputMode="decimal"
+              pattern="^\d+(\.\d{1,2})?$"
+              placeholder="0.00"
+              aria-label={t('amount')}
+              autoComplete="off"
+              autoCorrect="off"
+              autoFocus
+              {...register('amount')}
+              onBlur={handleAmountBlur}
+              variant="unstyled"
+              className="tnum"
+              fontFamily="heading"
+              fontSize={{ base: '5xl', md: '6xl' }}
+              fontWeight={700}
+              letterSpacing="tight"
+              textAlign="center"
+              w="full"
+              maxW="260px"
+              color="fg"
+              lineHeight={1}
+              sx={{ '::placeholder': { color: 'paper.300' } }}
+            />
+          </Flex>
           {errors.amount && (
-            <FormErrorMessage>{errors.amount.message}</FormErrorMessage>
+            <FormErrorMessage justifyContent="center">{errors.amount.message}</FormErrorMessage>
           )}
         </FormControl>
 
@@ -497,7 +537,6 @@ export default function TransactionEntryModal({
                   flex={1}
                   size="sm"
                   variant={selectedCurrency === curr.code ? 'solid' : 'outline'}
-                  colorScheme={selectedCurrency === curr.code ? 'blue' : 'gray'}
                   onClick={() => {
                     setSelectedCurrency(curr.code);
                     setValue('currency', curr.code);
@@ -509,56 +548,104 @@ export default function TransactionEntryModal({
               ))}
             </HStack>
             {exchangeRate && selectedCurrency !== preferredCurrency && (
-              <Text fontSize="xs" color="blue.600" mt={1}>
+              <Text fontSize="xs" color="accent" mt={1}>
                 1 {selectedCurrency} = {exchangeRate.toFixed(4)} {preferredCurrency}
               </Text>
             )}
           </FormControl>
         )}
 
-        {/* Transaction Type Toggle */}
+        {/* Transaction Type — segmented control (Story 16.2) */}
         <FormControl>
-          <FormLabel htmlFor="type">{t('type')}</FormLabel>
-          <HStack spacing={2}>
+          <HStack spacing={1} p={1} bg="surface.sunken" borderRadius="xl" role="group" aria-label={t('type')}>
             <Button
               flex={1}
-              variant={transactionType === 'expense' ? 'solid' : 'outline'}
-              colorScheme={transactionType === 'expense' ? 'red' : 'gray'}
+              variant="unstyled"
+              h="44px"
+              borderRadius="lg"
+              fontWeight={600}
+              bg={transactionType === 'expense' ? 'expense' : 'transparent'}
+              color={transactionType === 'expense' ? 'white' : 'fg.muted'}
+              _hover={transactionType === 'expense' ? {} : { color: 'fg' }}
               onClick={() => setValue('type', 'expense', { shouldValidate: true })}
-              minH="48px"
+              aria-pressed={transactionType === 'expense'}
             >
               {t('expense')}
             </Button>
             <Button
               flex={1}
-              variant={transactionType === 'income' ? 'solid' : 'outline'}
-              colorScheme={transactionType === 'income' ? 'green' : 'gray'}
+              variant="unstyled"
+              h="44px"
+              borderRadius="lg"
+              fontWeight={600}
+              bg={transactionType === 'income' ? 'income' : 'transparent'}
+              color={transactionType === 'income' ? 'white' : 'fg.muted'}
+              _hover={transactionType === 'income' ? {} : { color: 'fg' }}
               onClick={() => setValue('type', 'income', { shouldValidate: true })}
-              minH="48px"
+              aria-pressed={transactionType === 'income'}
             >
               {t('income')}
             </Button>
           </HStack>
         </FormControl>
 
-        {/* Category Dropdown */}
+        {/* Category — quick-pick chips (fast path) + full menu (Story 16.2) */}
         <FormControl isInvalid={!!errors.category_id} isRequired>
-          <FormLabel htmlFor="category_id">{t('category')}</FormLabel>
+          <FormLabel htmlFor="category_id" fontSize="sm" color="fg.muted">{t('category')}</FormLabel>
           {isLoadingCategories ? (
             <Box display="flex" alignItems="center" justifyContent="center" py={4}>
-              <Spinner size="md" color="blue.600" />
-              <Text ml={3}>{tCommon('loading')}</Text>
+              <Spinner size="md" color="accent" />
+              <Text ml={3} color="fg.muted">{tCommon('loading')}</Text>
             </Box>
           ) : (
-            <CategoryMenu
-              categories={categories}
-              value={watch('category_id')}
-              onChange={(categoryId) => setValue('category_id', categoryId, { shouldValidate: true })}
-              placeholder={t('selectCategory')}
-              isInvalid={!!errors.category_id}
-              size="lg"
-              recentCategories={recentCategories}
-            />
+            <VStack align="stretch" spacing={2}>
+              {quickCategories.length > 0 && (
+                <Flex
+                  gap={2}
+                  overflowX="auto"
+                  pb={1}
+                  sx={{ scrollbarWidth: 'none', '::-webkit-scrollbar': { display: 'none' } }}
+                >
+                  {quickCategories.map((cat) => {
+                    const active = selectedCategoryId === cat.id;
+                    return (
+                      <Button
+                        key={cat.id}
+                        variant="unstyled"
+                        h="40px"
+                        minH="40px"
+                        px={3}
+                        flexShrink={0}
+                        display="inline-flex"
+                        alignItems="center"
+                        borderRadius="full"
+                        borderWidth="1px"
+                        borderColor={active ? 'accent' : 'border'}
+                        bg={active ? 'accent.subtle' : 'surface'}
+                        onClick={() => setValue('category_id', cat.id, { shouldValidate: true })}
+                        aria-pressed={active}
+                      >
+                        <HStack spacing={2}>
+                          <Box w="9px" h="9px" borderRadius="full" bg={cat.color} flexShrink={0} />
+                          <Text fontSize="sm" fontWeight={active ? 600 : 500} color="fg" whiteSpace="nowrap">
+                            {cat.name}
+                          </Text>
+                        </HStack>
+                      </Button>
+                    );
+                  })}
+                </Flex>
+              )}
+              <CategoryMenu
+                categories={categories}
+                value={watch('category_id')}
+                onChange={(categoryId) => setValue('category_id', categoryId, { shouldValidate: true })}
+                placeholder={t('selectCategory')}
+                isInvalid={!!errors.category_id}
+                size="lg"
+                recentCategories={recentCategories}
+              />
+            </VStack>
           )}
           {errors.category_id && (
             <FormErrorMessage>{errors.category_id.message}</FormErrorMessage>
@@ -575,12 +662,27 @@ export default function TransactionEntryModal({
             >
               <Text fontSize="sm">{t('countTowardAllowance')}</Text>
             </Checkbox>
-            <Text fontSize="xs" color="gray.500" mt={1} ml={6}>
+            <Text fontSize="xs" color="fg.subtle" mt={1} ml={6}>
               {t('allowancePrivacyHint')}
             </Text>
           </FormControl>
         )}
 
+        {/* Story 16.2: secondary fields (date/notes) behind a "More details" disclosure */}
+        <Button
+          variant="ghost"
+          size="sm"
+          alignSelf="flex-start"
+          px={0}
+          color="fg.muted"
+          onClick={() => setShowDetails((v) => !v)}
+          rightIcon={detailsOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          aria-expanded={detailsOpen}
+        >
+          {detailsOpen ? t('fewerDetails') : t('moreDetails')}
+        </Button>
+        <Collapse in={detailsOpen} animateOpacity>
+          <VStack align="stretch" spacing={5}>
         {/* Date Picker with Quick Options */}
         <FormControl isInvalid={!!errors.date} isRequired>
           <FormLabel htmlFor="date">{t('date')}</FormLabel>
@@ -602,8 +704,8 @@ export default function TransactionEntryModal({
             max={format(new Date(), 'yyyy-MM-dd')}
             {...register('date')}
             _focus={{
-              borderColor: 'blue.600',
-              boxShadow: '0 0 0 1px blue.600',
+              borderColor: 'accent',
+              boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
             }}
           />
           {errors.date && <FormErrorMessage>{errors.date.message}</FormErrorMessage>}
@@ -620,15 +722,17 @@ export default function TransactionEntryModal({
             maxLength={100}
             {...register('notes')}
             _focus={{
-              borderColor: 'blue.600',
-              boxShadow: '0 0 0 1px blue.600',
+              borderColor: 'accent',
+              boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
             }}
           />
           {errors.notes && <FormErrorMessage>{errors.notes.message}</FormErrorMessage>}
-          <Text fontSize="xs" color="gray.500" mt={1}>
+          <Text fontSize="xs" color="fg.subtle" mt={1}>
             {t('maxCharacters', { max: 100 })}
           </Text>
         </FormControl>
+          </VStack>
+        </Collapse>
       </VStack>
 
       {/* Action buttons rendered inline for both Modal and Drawer */}
@@ -648,10 +752,10 @@ export default function TransactionEntryModal({
         >
           <Button
             type="submit"
-            bg="blue.600"
+            bg="accent"
             color="white"
-            _hover={{ bg: isOnline ? 'blue.700' : 'blue.600' }}
-            _active={{ bg: isOnline ? 'blue.700' : 'blue.600' }}
+            _hover={{ bg: isOnline ? 'accent.emphasis' : 'accent' }}
+            _active={{ bg: isOnline ? 'evergreen.700' : 'accent' }}
             isLoading={isSubmitting}
             isDisabled={!isValid || isSubmitting || !isOnline}
             loadingText="Saving..."
@@ -673,7 +777,7 @@ export default function TransactionEntryModal({
         <DrawerContent borderTopRadius="xl" maxH="95vh">
           {/* Drag handle indicator */}
           <Box pt={3} pb={1} display="flex" justifyContent="center">
-            <Box w="40px" h="4px" bg="gray.300" borderRadius="full" />
+            <Box w="40px" h="4px" bg="border.strong" borderRadius="full" />
           </Box>
           <DrawerHeader borderBottomWidth="1px" py={3}>
             {mode === 'edit' ? t('editTransaction') : t('addTransaction')}
