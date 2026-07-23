@@ -261,6 +261,15 @@ function TransactionsContent() {
     }
   );
 
+  // Review-fix (16-1): if the current page becomes empty (e.g. after deleting the
+  // last row on page ≥2) snap back to page 1 — otherwise the first-run empty
+  // state would render even though earlier pages still have transactions.
+  useEffect(() => {
+    if (transactionsResponse && transactionsResponse.data.length === 0 && currentPage > 1) {
+      setCurrentPage(1);
+    }
+  }, [transactionsResponse, currentPage]);
+
   // Fetch categories for filter dropdown
   // Note: Different pages use different fetchers, so cache might be:
   // - Array: [...] (from FilterBreadcrumbs)
@@ -872,13 +881,13 @@ function TransactionsContent() {
 
               {/* Search Input — always visible */}
               <Box>
-                <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
+                <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
                   {tCommon('search')}
                 </Text>
                 <HStack>
                   <InputGroup>
                     <InputLeftElement pointerEvents="none">
-                      <SearchIcon color="gray.400" />
+                      <SearchIcon color="fg.subtle" />
                     </InputLeftElement>
                     <Input
                       placeholder={t('searchPlaceholder')}
@@ -959,7 +968,7 @@ function TransactionsContent() {
                 yesterdayLabel: t('groupYesterday'),
                 locale: dateLocale,
               }).map((group) => (
-                <Box as="section" key={group.key}>
+                <Box key={group.key}>
                   {/* Date header — Today / Yesterday / weekday · date */}
                   <Text
                     fontSize="2xs"
@@ -1047,13 +1056,14 @@ function TransactionsContent() {
         transaction={editingTransaction}
       />
 
-      {/* Create Transaction Modal — opened from the empty-state CTA (Story 16.1) */}
+      {/* Create Transaction Modal — opened from the empty-state CTA (Story 16.1).
+          onSuccess only revalidates; the modal owns its own close logic (it stays
+          open when a SmartNudge fires), so we must NOT force-close here. */}
       <TransactionEntryModal
         isOpen={isCreateModalOpen}
         onClose={onCreateModalClose}
         onSuccess={() => {
           mutate();
-          onCreateModalClose();
         }}
         mode="create"
       />
@@ -1072,7 +1082,7 @@ function TransactionsContent() {
 
             <AlertDialogBody>
               {t('deleteConfirmBody')}
-              <Text mt={2} fontSize="sm" color="gray.600">
+              <Text mt={2} fontSize="sm" color="fg.muted">
                 {t('undoHint')}
               </Text>
             </AlertDialogBody>
@@ -1118,7 +1128,7 @@ function TransactionsContent() {
                 hasStripe
                 isAnimated
               />
-              <Text fontSize="sm" color="gray.600" textAlign="center">
+              <Text fontSize="sm" color="fg.muted" textAlign="center">
                 {t('percentComplete', { percent: exportProgress })}
               </Text>
             </VStack>

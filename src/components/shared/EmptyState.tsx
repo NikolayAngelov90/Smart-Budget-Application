@@ -29,7 +29,15 @@ export function EmptyState({ icon, title, description, cta }: EmptyStateProps) {
       <Center>
         <VStack spacing={3} maxW="380px" textAlign="center">
           {icon && (
-            <Center w="56px" h="56px" borderRadius="full" bg="accent.subtle" fontSize="2xl" mb={1}>
+            <Center
+              aria-hidden
+              w="56px"
+              h="56px"
+              borderRadius="full"
+              bg="accent.subtle"
+              fontSize="2xl"
+              mb={1}
+            >
               {icon}
             </Center>
           )}

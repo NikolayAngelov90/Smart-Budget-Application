@@ -46,4 +46,14 @@ describe('groupTransactionsByDate', () => {
       groupTransactionsByDate([], { todayLabel: 'Today', yesterdayLabel: 'Yesterday', now })
     ).toEqual([]);
   });
+
+  it('does not throw on a malformed date — falls back to the raw key', () => {
+    const groups = groupTransactionsByDate([mk('a', 'not-a-date')], {
+      todayLabel: 'Today',
+      yesterdayLabel: 'Yesterday',
+      now,
+    });
+    expect(groups[0]!.label).toBe('not-a-date');
+    expect(groups[0]!.items.map((t) => t.id)).toEqual(['a']);
+  });
 });

@@ -31,9 +31,12 @@ describe('TransactionRow', () => {
     expect(screen.getByText('-€42.00')).toBeInTheDocument();
   });
 
-  it('names the amount with the localized type so meaning is not colour-only', () => {
+  it('announces the localized type (visually hidden) so meaning is not colour-only', () => {
     renderRow();
-    expect(screen.getByLabelText('Expense -€42.00')).toBeInTheDocument();
+    // The type is a visually-hidden text node next to the visible amount —
+    // an aria-label on the <p> amount would be ignored by screen readers.
+    expect(screen.getByText('Expense')).toBeInTheDocument();
+    expect(screen.getByText('-€42.00')).toBeInTheDocument();
   });
 
   it('shows a converted equivalent when provided', () => {

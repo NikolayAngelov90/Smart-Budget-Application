@@ -1,6 +1,6 @@
 'use client';
 
-import { Flex, HStack, IconButton, Text, VStack, Box } from '@chakra-ui/react';
+import { Flex, HStack, IconButton, Text, VStack, Box, VisuallyHidden } from '@chakra-ui/react';
 import { EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { CategoryBadge } from '@/components/categories/CategoryBadge';
 
@@ -58,7 +58,7 @@ export function TransactionRow({
       _hover={{ bg: 'surface.hover' }}
       transition="background 0.15s ease"
     >
-      <Box flex={1} minW={0}>
+      <Box flex={1} minW={0} overflow="hidden">
         <CategoryBadge category={category} variant="dot" size="md" />
         {notes && (
           <Text fontSize="sm" color="fg.muted" noOfLines={1} mt={0.5}>
@@ -88,6 +88,9 @@ export function TransactionRow({
       </HStack>
 
       <VStack align="flex-end" spacing={0} flexShrink={0}>
+        {/* Visually-hidden type so screen readers announce "Income/Expense"
+            reliably — aria-label on a <p> (Text) is name-prohibited and dropped. */}
+        <VisuallyHidden>{typeLabel}</VisuallyHidden>
         <Text
           className="tnum"
           fontFamily="heading"
@@ -95,7 +98,6 @@ export function TransactionRow({
           fontWeight={600}
           color={amountColor}
           whiteSpace="nowrap"
-          aria-label={`${typeLabel} ${amountFormatted}`}
         >
           {amountFormatted}
         </Text>

@@ -11,7 +11,7 @@
  * timezones (project rule).
  */
 
-import { format, subDays, parseISO } from 'date-fns';
+import { format, subDays, parseISO, isValid } from 'date-fns';
 import type { Locale } from 'date-fns';
 
 export interface DateGroup<T> {
@@ -51,7 +51,12 @@ export function groupTransactionsByDate<T extends { date: string }>(
       } else if (key === yesterdayKey) {
         label = yesterdayLabel;
       } else {
-        label = format(parseISO(key), 'EEEE, d MMM', locale ? { locale } : undefined);
+        // Defensive: a malformed date string must not throw and crash the whole
+        // list — fall back to the raw key. (Real data is a Postgres DATE column.)
+        const parsed = parseISO(key);
+        label = isValid(parsed)
+          ? format(parsed, 'EEEE, d MMM', locale ? { locale } : undefined)
+          : key;
       }
       group = { key, label, items: [] };
       index.set(key, group);

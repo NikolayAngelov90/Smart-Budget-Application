@@ -143,7 +143,7 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
           color="white"
           minH="48px"
           minW="48px"
-          _hover={{ bg: 'clay.600' }}
+          _hover={{ bg: 'clay.700' }}
           onClick={handleDeleteTap}
         />
       </Box>
