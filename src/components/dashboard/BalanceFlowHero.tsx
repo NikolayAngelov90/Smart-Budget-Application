@@ -17,7 +17,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Box, Flex, HStack, Skeleton, Text, VStack } from '@chakra-ui/react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { format } from 'date-fns';
-import { useTranslations } from 'next-intl';
+import { bg } from 'date-fns/locale';
+import { useLocale, useTranslations } from 'next-intl';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -88,6 +89,8 @@ function FlowStat({ label, amount, color, align = 'start', emphasis = false }: F
 
 export function BalanceFlowHero() {
   const t = useTranslations('dashboard');
+  const locale = useLocale();
+  const dateLocale = locale === 'bg' ? bg : undefined;
   const reduce = useReducedMotion();
   const { preferences } = useUserPreferences();
   const currencyCode = preferences?.currency_format;
@@ -153,7 +156,7 @@ export function BalanceFlowHero() {
           {name ? `${greeting}, ${name}` : greeting}
         </Text>
         <Text fontSize="xs" color="fg.subtle" fontWeight="medium">
-          {format(new Date(), 'EEE, d MMM')}
+          {format(new Date(), 'EEE, d MMM', dateLocale ? { locale: dateLocale } : undefined)}
         </Text>
       </Flex>
 
