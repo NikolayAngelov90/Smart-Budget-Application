@@ -16,6 +16,7 @@ import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import { AccountSheet } from './AccountSheet';
+import { BrandMark } from './BrandMark';
 import type { User } from '@supabase/supabase-js';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
@@ -71,27 +72,38 @@ export function Header() {
   return (
     <Box
       as="header"
-      bg="trustBlue.500"
-      color="white"
+      // Quiet Ledger: a light header floating over the warm-paper canvas — the
+      // full-bleed banking bar is gone. A hairline + translucent blur give it
+      // just enough presence without shouting.
+      bg="rgba(246,245,242,0.82)"
+      color="fg"
+      sx={{
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        '@supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px)))': {
+          backgroundColor: 'canvas',
+        },
+      }}
       // Story UX-1: fill the Dynamic Island / status-bar region and push content below it.
       pt={{ base: 'calc(0.75rem + env(safe-area-inset-top))', md: 3 }}
       pb={3}
       pl="calc(1rem + env(safe-area-inset-left))"
       pr="calc(1rem + env(safe-area-inset-right))"
-      boxShadow="sm"
+      borderBottomWidth="1px"
+      borderColor="border"
       position="sticky"
       top={0}
       zIndex={10}
     >
       <Flex align="center" maxW="container.xl" mx="auto" justify="space-between">
-        {/* Left side: app title (no hamburger — bottom tab bar is the sole mobile nav) */}
-        <Heading as="h1" size="md" fontWeight="bold">
-          Smart Budget
+        {/* Left: brand mark (no hamburger — bottom tab bar is the sole mobile nav) */}
+        <Heading as="h1" size="md" fontWeight="semibold" m={0}>
+          <BrandMark />
         </Heading>
 
         {/* Right side: Sync Status + account avatar → bottom-sheet */}
         {user && (
-          <HStack spacing={4}>
+          <HStack spacing={{ base: 2, sm: 3 }}>
             <Box display={{ base: 'none', sm: 'flex' }}>
               <SyncStatusIndicator compact />
             </Box>
@@ -99,15 +111,16 @@ export function Header() {
               aria-label={t('userMenu')}
               onClick={onOpen}
               variant="ghost"
-              color="white"
-              _hover={{ bg: 'whiteAlpha.200' }}
-              _active={{ bg: 'whiteAlpha.300' }}
+              borderRadius="full"
+              _hover={{ bg: 'surface.hover' }}
+              _active={{ bg: 'surface.sunken' }}
               icon={
                 <Avatar
                   size="sm"
                   name={displayName}
                   src={profile?.profile_picture_url || undefined}
-                  bg="whiteAlpha.300"
+                  bg="accent"
+                  color="white"
                 />
               }
             />

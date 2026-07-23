@@ -46,23 +46,23 @@ export function AccountSheet({
   return (
     <Drawer isOpen={isOpen} onClose={onClose} placement="bottom">
       <DrawerOverlay />
-      <DrawerContent borderTopRadius="16px" pb="env(safe-area-inset-bottom)">
+      <DrawerContent borderTopRadius="26px" pb="env(safe-area-inset-bottom)" bg="surface">
         {/* Drag-handle affordance */}
         <Flex justify="center" pt={2} pb={1}>
-          <Box w="36px" h="4px" borderRadius="full" bg="gray.300" />
+          <Box w="36px" h="4px" borderRadius="full" bg="border.strong" />
         </Flex>
         <DrawerBody px={4} pb={4}>
           <VStack align="stretch" spacing={1}>
             {/* Identity */}
             <Flex align="center" gap={3} py={3}>
-              <Avatar size="md" name={displayName} src={avatarUrl} bg="trustBlue.500" color="white" />
+              <Avatar size="md" name={displayName} src={avatarUrl} bg="accent" color="white" />
               <Box minW={0}>
                 <Text fontWeight="semibold" noOfLines={1}>{displayName}</Text>
-                <Text fontSize="sm" color="gray.500" noOfLines={1}>{email}</Text>
+                <Text fontSize="sm" color="fg.muted" noOfLines={1}>{email}</Text>
               </Box>
             </Flex>
 
-            <Box borderTopWidth="1px" borderColor="gray.200" my={1} />
+            <Box borderTopWidth="1px" borderColor="border" my={1} />
 
             {/* Account / Settings */}
             <Flex
@@ -73,11 +73,11 @@ export function AccountSheet({
               gap={3}
               py={3}
               px={2}
-              borderRadius="md"
+              borderRadius="lg"
               minH="48px"
-              _hover={{ bg: 'gray.50' }}
+              _hover={{ bg: 'surface.hover' }}
             >
-              <Icon as={SettingsIcon} color="gray.600" boxSize={5} />
+              <Icon as={SettingsIcon} color="fg.muted" boxSize={5} />
               <Text>{t('accountSettings')}</Text>
             </Flex>
 

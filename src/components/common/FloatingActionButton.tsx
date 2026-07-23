@@ -67,32 +67,28 @@ export default function FloatingActionButton({
         h="60px"
         minW="60px"
         minH="60px"
-        // Trust Blue theme colors
-        bg="#2b6cb0"
+        // Quiet Ledger: evergreen squircle, matching the mobile bottom-nav Add tab.
+        bg="accent"
         color="white"
-        // Border radius (circular)
-        borderRadius="full"
-        // Shadow for elevation
-        boxShadow="0 4px 12px rgba(43, 108, 176, 0.4)"
+        borderRadius="20px"
+        boxShadow="accent"
         // Hover state
         _hover={{
-          bg: isOnline ? '#2c5282' : '#2b6cb0',
-          transform: isOnline ? 'scale(1.05)' : 'none',
-          boxShadow: isOnline ? '0 6px 16px rgba(43, 108, 176, 0.5)' : '0 4px 12px rgba(43, 108, 176, 0.4)',
+          bg: isOnline ? 'accent.emphasis' : 'accent',
+          transform: isOnline ? 'translateY(-2px) scale(1.04)' : 'none',
+          boxShadow: isOnline ? 'lg' : 'accent',
         }}
         // Active state
         _active={{
-          bg: isOnline ? '#2c5282' : '#2b6cb0',
-          transform: isOnline ? 'scale(0.98)' : 'none',
-          boxShadow: isOnline ? '0 2px 8px rgba(43, 108, 176, 0.3)' : '0 4px 12px rgba(43, 108, 176, 0.4)',
+          bg: isOnline ? 'evergreen.700' : 'accent',
+          transform: isOnline ? 'scale(0.97)' : 'none',
         }}
         // Focus state (keyboard accessibility)
-        _focus={{
-          outline: '2px solid #4299e1',
-          outlineOffset: '2px',
+        _focusVisible={{
+          boxShadow: 'focus',
         }}
         // Smooth transitions
-        transition="all 0.2s ease-in-out"
+        transition="all 0.18s cubic-bezier(0.4, 0, 0.2, 1)"
         // Accessibility
         role="button"
         tabIndex={0}

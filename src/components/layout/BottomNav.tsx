@@ -54,19 +54,19 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
       left={0}
       right={0}
       zIndex={100}
-      // Story UX-1: translucent blurred bar for a native iOS feel; solid-white
+      // Story UX-1: translucent blurred bar for a native iOS feel; solid-surface
       // fallback where backdrop-filter is unsupported (DESIGN.md).
-      bg="rgba(255,255,255,0.82)"
+      bg="rgba(255,255,255,0.85)"
       sx={{
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        '@supports not ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)))': {
-          backgroundColor: 'white',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        '@supports not ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px)))': {
+          backgroundColor: 'surface',
         },
       }}
       borderTopWidth="1px"
-      borderTopColor="gray.200"
-      boxShadow="0 -2px 12px rgba(0,0,0,0.05)"
+      borderTopColor="border"
+      boxShadow="0 -8px 24px -12px rgba(26,28,26,0.12)"
       // iOS safe areas. In standalone (Home Screen) mode the bottom inset is ~34px,
       // which lifts the icons noticeably; reclaim most of it while keeping clearance
       // above the home-indicator pill. Browser mode (inset 0) keeps a small 4px gap.
@@ -97,14 +97,14 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
               justifyContent="center"
               minH="48px"
               minW="48px"
-              color={isActive ? 'trustBlue.500' : 'gray.500'}
-              _hover={{ color: 'trustBlue.400' }}
+              color={isActive ? 'accent' : 'fg.subtle'}
+              _hover={{ color: 'accent' }}
               aria-current={isActive ? 'page' : undefined}
               aria-label={t(tab.key)}
             >
-              <VStack spacing={0.5}>
+              <VStack spacing={1}>
                 <Box as={tab.icon} boxSize={5} />
-                <Text fontSize="10px" fontWeight={isActive ? 'semibold' : 'normal'} lineHeight={1}>
+                <Text fontSize="2xs" fontWeight={isActive ? 'semibold' : 'medium'} lineHeight={1} letterSpacing="tight">
                   {t(tab.key)}
                 </Text>
               </VStack>
@@ -124,21 +124,23 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
         >
           <IconButton
             aria-label="Add transaction"
-            icon={<AddIcon />}
+            icon={<AddIcon boxSize={4} />}
             onClick={onAddClick}
-            borderRadius="full"
-            w="52px"
-            h="52px"
-            minW="52px"
-            minH="52px"
-            bg="trustBlue.500"
+            // A soft evergreen squircle — the app's signature action, distinct
+            // from a generic round FAB.
+            borderRadius="18px"
+            w="54px"
+            h="54px"
+            minW="54px"
+            minH="54px"
+            bg="accent"
             color="white"
-            boxShadow="0 4px 12px rgba(43, 108, 176, 0.45)"
-            _hover={{ bg: 'trustBlue.600', transform: 'scale(1.05)' }}
-            _active={{ bg: 'trustBlue.700', transform: 'scale(0.97)' }}
-            transition="all 0.15s ease"
+            boxShadow="accent"
+            _hover={{ bg: 'accent.emphasis', transform: 'translateY(-1px) scale(1.04)' }}
+            _active={{ bg: 'evergreen.700', transform: 'scale(0.96)' }}
+            transition="all 0.16s cubic-bezier(0.4, 0, 0.2, 1)"
           />
-          <Text fontSize="10px" color="trustBlue.500" fontWeight="semibold" mt="2px" lineHeight={1}>
+          <Text fontSize="2xs" color="accent" fontWeight="semibold" mt="3px" lineHeight={1} letterSpacing="tight">
             {t('add')}
           </Text>
         </Flex>
@@ -158,14 +160,14 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
               justifyContent="center"
               minH="48px"
               minW="48px"
-              color={isActive ? 'trustBlue.500' : 'gray.500'}
-              _hover={{ color: 'trustBlue.400' }}
+              color={isActive ? 'accent' : 'fg.subtle'}
+              _hover={{ color: 'accent' }}
               aria-current={isActive ? 'page' : undefined}
               aria-label={t(tab.key)}
             >
-              <VStack spacing={0.5}>
+              <VStack spacing={1}>
                 <Box as={tab.icon} boxSize={5} />
-                <Text fontSize="10px" fontWeight={isActive ? 'semibold' : 'normal'} lineHeight={1}>
+                <Text fontSize="2xs" fontWeight={isActive ? 'semibold' : 'medium'} lineHeight={1} letterSpacing="tight">
                   {t(tab.key)}
                 </Text>
               </VStack>
