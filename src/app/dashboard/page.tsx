@@ -14,14 +14,16 @@
  */
 
 import { useEffect, useCallback, useState } from 'react';
-import { Box, Heading, Text, VStack, Grid, Flex, Spinner } from '@chakra-ui/react';
+import { Box, Heading, Grid, Flex, Spinner, Button, Divider, VisuallyHidden } from '@chakra-ui/react';
+import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
 // useSWRConfig().mutate is scoped to the app's localStorage cache provider —
 // the module-level `mutate` export binds to SWR's DEFAULT cache and never
 // reaches the hooks (proven in the 15-1 review; the revalidations below were
 // silently inert with the global import).
 import { useSWRConfig } from 'swr';
-import { DashboardStats } from '@/components/dashboard/DashboardStats';
+import { BalanceFlowHero } from '@/components/dashboard/BalanceFlowHero';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import { AIBudgetCoach } from '@/components/dashboard/AIBudgetCoach';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { CategorySpendingChart } from '@/components/dashboard/CategorySpendingChart';
@@ -58,6 +60,9 @@ export default function DashboardPage() {
   const { preferences } = useUserPreferences();
   const { data: stats } = useDashboardStats(undefined, preferences?.currency_format);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  // Progressive disclosure: the advanced forecast/projection tail is collapsed
+  // by default so the dashboard stays scannable (FR / brief §5E, §9).
+  const [showAhead, setShowAhead] = useState(false);
 
   // Story 11.1: Show FirstTransactionPrompt when user has no transactions
   const hasNoTransactions = stats && stats.income.current === 0 && stats.expenses.current === 0 && stats.balance === 0;
@@ -142,35 +147,31 @@ export default function DashboardPage() {
   });
 
   return (
-    <Box ref={dashboardRef} maxW="1200px" mx="auto" w="full">
+    <Box ref={dashboardRef} maxW="1120px" mx="auto" w="full">
+      {/* Single semantic page title for screen readers — the visible page
+          identity is carried by the personalized greeting inside the hero. */}
+      <VisuallyHidden>
+        <Heading as="h1">{t('title')}</Heading>
+      </VisuallyHidden>
+
       {/* AC-10.8.4: Pull-to-refresh indicator */}
       {isRefreshing && (
         <Flex justify="center" py={3}>
-          <Spinner size="sm" color="trustBlue.500" />
+          <Spinner size="sm" color="accent" />
         </Flex>
       )}
-      <VStack align="start" spacing={{ base: 4, md: 6 }} mb={{ base: 6, md: 8 }}>
-        <Flex
-          w="full"
-          justify="space-between"
-          align="center"
-          gap={3}
-          flexWrap="wrap"
-        >
-          <Heading
-            as="h1"
-            fontSize={{ base: '2rem', lg: '2.5rem' }}
-            color="gray.800"
-          >
-            {t('title')}
-          </Heading>
-          {/* Story 15.1: logging streak — single mount point (15-6 opt-out gates here) */}
-          <StreakBadge />
-        </Flex>
-        <Text fontSize={{ base: '0.875rem', lg: '1rem' }} color="gray.600">
-          {t('subtitle')}
-        </Text>
-      </VStack>
+
+      {/* Signature hero: greeting + total balance + this-month flow bar.
+          Replaces the old page title + 4-up StatCard grid (Story 5.2). */}
+      <Box mb={{ base: 4, md: 5 }}>
+        <BalanceFlowHero />
+      </Box>
+
+      {/* Story 15.1: logging streak — single mount point (15-6 opt-out gates here).
+          Sits as a compact chip under the hero. */}
+      <Flex justify="flex-end" mb={{ base: 5, md: 6 }} minH="1px">
+        <StreakBadge />
+      </Flex>
 
       {/* Welcome-back summary - Story 12.6 (progressive disclosure: returning lapsed users) */}
       <Box mb={{ base: 6, md: 8 }}>
@@ -189,11 +190,6 @@ export default function DashboardPage() {
         </Box>
       )}
 
-      {/* Financial Summary Cards - Story 5.2 */}
-      <Box mb={{ base: 6, md: 8 }}>
-        <DashboardStats />
-      </Box>
-
       {/* Story 15.4: comeback challenge — returning users see it first;
           renders null unless a challenge is active (single mount, 15-6 gates) */}
       <ComebackChallengeCard />
@@ -206,86 +202,106 @@ export default function DashboardPage() {
           carries its own bottom margin so zero-budget users get no phantom gap) */}
       <BudgetHealthCard />
 
-      {/* AI Budget Coach - Story 6.2 */}
+      {/* AI Budget Coach - Story 6.2 (self-titled card) */}
       <AIBudgetCoach />
 
-      {/* Charts Grid - Story 5.8: Responsive layout for charts */}
-      <Grid
-        templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }}
-        gap={{ base: 6, md: 8 }}
-        mb={{ base: 6, md: 8 }}
-      >
-        {/* Category Spending Chart - Story 5.3 */}
-        <Box>
-          <Heading
-            as="h2"
-            fontSize={{ base: '1.25rem', lg: '1.5rem' }}
-            mb={4}
-            color="gray.700"
-          >
-            {t('spendingByCategory')}
-          </Heading>
-          <CategorySpendingChart chartType="donut" height={300} />
-        </Box>
+      {/* ── Where it's going ──────────────────────────────────────────────── */}
+      <Box as="section" mb={{ base: 8, md: 10 }}>
+        <SectionHeader eyebrow={t('thisMonth')} title={t('sectionWhereGoing')} />
+        <Grid
+          templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }}
+          gap={{ base: 5, md: 6 }}
+        >
+          {/* Category Spending Chart - Story 5.3 */}
+          <Box>
+            <Heading as="h3" fontSize="md" fontWeight={600} mb={3} color="fg.muted">
+              {t('spendingByCategory')}
+            </Heading>
+            <CategorySpendingChart chartType="donut" height={300} />
+          </Box>
 
-        {/* Spending Trends Chart - Story 5.4 */}
-        <Box>
-          <Heading
-            as="h2"
-            fontSize={{ base: '1.25rem', lg: '1.5rem' }}
-            mb={4}
-            color="gray.700"
-          >
-            {t('spendingTrends')}
-          </Heading>
-          <SpendingTrendsChart months={6} height={300} />
-        </Box>
-      </Grid>
+          {/* Spending Trends Chart - Story 5.4 */}
+          <Box>
+            <Heading as="h3" fontSize="md" fontWeight={600} mb={3} color="fg.muted">
+              {t('spendingTrends')}
+            </Heading>
+            <SpendingTrendsChart months={6} height={300} />
+          </Box>
+        </Grid>
+      </Box>
 
-      {/* Recent Transactions — latest activity at a glance */}
+      {/* Recent Transactions — latest activity at a glance (self-titled card) */}
       <Box mb={{ base: 6, md: 8 }}>
         <RecentTransactions />
       </Box>
 
-      {/* Month-over-Month Comparison - Story 5.5 */}
+      {/* Month-over-Month Comparison - Story 5.5 (self-titled card) */}
       <Box mb={{ base: 6, md: 8 }}>
         <MonthOverMonth />
       </Box>
 
-      {/* Spending by Value - Story 14.2 (progressive disclosure: renders null if no values plan) */}
-      <Box mb={{ base: 6, md: 8 }}>
-        <ValuesSpendingCard />
-      </Box>
+      {/* ── Looking ahead — advanced forecasts, collapsed by default ───────────
+          Progressive disclosure: gated to users who have transactions (a brand-new
+          user has no forecast data, so we never show an empty "Show more"). */}
+      {!hasNoTransactions && (
+        <Box as="section" mb={{ base: 6, md: 8 }}>
+          <Divider mb={{ base: 6, md: 8 }} />
+          <SectionHeader
+            eyebrow={t('sectionAheadHint')}
+            title={t('sectionAhead')}
+            action={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAhead((v) => !v)}
+                rightIcon={showAhead ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                aria-expanded={showAhead}
+              >
+                {showAhead ? t('showLess') : t('showMore')}
+              </Button>
+            }
+          />
 
-      {/* Spending Heatmap - Story 11.3 (progressive disclosure: renders null if <7 days of data) */}
-      <Box mb={{ base: 6, md: 8 }}>
-        <SpendingHeatmap />
-      </Box>
+          {showAhead && (
+            <Box>
+              {/* Spending by Value - Story 14.2 (renders null if no values plan) */}
+              <Box mb={{ base: 6, md: 8 }}>
+                <ValuesSpendingCard />
+              </Box>
 
-      {/* Annualized Spending Projections - Story 11.4 (progressive disclosure: renders null if <1 complete past month) */}
-      <Box mb={{ base: 6, md: 8 }}>
-        <AnnualizedProjections />
-      </Box>
+              {/* Spending Heatmap - Story 11.3 (renders null if <7 days of data) */}
+              <Box mb={{ base: 6, md: 8 }}>
+                <SpendingHeatmap />
+              </Box>
 
-      {/* End-of-Month Budget Forecast - Story 12.2 (progressive disclosure) */}
-      <Box mb={{ base: 6, md: 8 }}>
-        <BudgetForecast />
-      </Box>
+              {/* Annualized Spending Projections - Story 11.4 */}
+              <Box mb={{ base: 6, md: 8 }}>
+                <AnnualizedProjections />
+              </Box>
 
-      {/* 30-Day Budget Recovery Plan - Story 12.4 (progressive disclosure) */}
-      <Box mb={{ base: 6, md: 8 }}>
-        <RecoveryPlan />
-      </Box>
+              {/* End-of-Month Budget Forecast - Story 12.2 */}
+              <Box mb={{ base: 6, md: 8 }}>
+                <BudgetForecast />
+              </Box>
 
-      {/* Seasonal Spending Outlook - Story 12.5 (progressive disclosure) */}
-      <Box mb={{ base: 6, md: 8 }}>
-        <SeasonalAwareness />
-      </Box>
+              {/* 30-Day Budget Recovery Plan - Story 12.4 */}
+              <Box mb={{ base: 6, md: 8 }}>
+                <RecoveryPlan />
+              </Box>
 
-      {/* Weekly Digest - Story 11.7 (progressive disclosure: renders null if no digest yet) */}
-      <Box mb={{ base: 6, md: 8 }}>
-        <WeeklyDigestCard />
-      </Box>
+              {/* Seasonal Spending Outlook - Story 12.5 */}
+              <Box mb={{ base: 6, md: 8 }}>
+                <SeasonalAwareness />
+              </Box>
+
+              {/* Weekly Digest - Story 11.7 (renders null if no digest yet) */}
+              <Box mb={{ base: 6, md: 8 }}>
+                <WeeklyDigestCard />
+              </Box>
+            </Box>
+          )}
+        </Box>
+      )}
 
       {/* Story 11.1: Transaction Entry Modal triggered from FirstTransactionPrompt */}
       <TransactionEntryModal

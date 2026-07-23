@@ -14,7 +14,7 @@ import DashboardPage from '@/app/dashboard/page';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 
 // Core children → stubs (their own suites cover them)
-jest.mock('@/components/dashboard/DashboardStats', () => ({ DashboardStats: () => <div data-testid="dashboard-stats" /> }));
+jest.mock('@/components/dashboard/BalanceFlowHero', () => ({ BalanceFlowHero: () => <div data-testid="balance-hero" /> }));
 jest.mock('@/components/dashboard/AIBudgetCoach', () => ({ AIBudgetCoach: () => <div data-testid="ai-coach" /> }));
 jest.mock('@/components/dashboard/CategorySpendingChart', () => ({ CategorySpendingChart: () => <div data-testid="category-chart" /> }));
 jest.mock('@/components/dashboard/SpendingTrendsChart', () => ({ SpendingTrendsChart: () => <div data-testid="trends-chart" /> }));
@@ -101,7 +101,7 @@ describe('Dashboard with gamification OPTED OUT (Story 15.6, AC 2)', () => {
     renderPage();
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-    expect(screen.getByTestId('dashboard-stats')).toBeInTheDocument();
+    expect(screen.getByTestId('balance-hero')).toBeInTheDocument();
     expect(screen.getByTestId('ai-coach')).toBeInTheDocument();
     expect(screen.getByTestId('category-chart')).toBeInTheDocument();
     expect(screen.getByTestId('trends-chart')).toBeInTheDocument();
@@ -123,7 +123,7 @@ describe('Dashboard with gamification OPTED OUT (Story 15.6, AC 2)', () => {
     mockUsePrefs.mockReturnValue(prefs(undefined));
     renderPage();
 
-    expect(screen.getByTestId('dashboard-stats')).toBeInTheDocument();
+    expect(screen.getByTestId('balance-hero')).toBeInTheDocument();
     expect(screen.getByTestId('recent-transactions')).toBeInTheDocument();
   });
 });
