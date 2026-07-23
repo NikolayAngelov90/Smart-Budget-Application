@@ -120,7 +120,9 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
   }, [snapBack, onEdit]);
 
   return (
-    <Box position="relative" overflow="hidden" borderRadius="md">
+    // Flush (no radius): rows sit on a shared surface Card and are separated by
+    // hairlines (Story 16.1) — the group Card clips the corners.
+    <Box position="relative" overflow="hidden">
       {/* Delete action (behind row on the right side, revealed by swiping left) */}
       <Box
         position="absolute"
@@ -131,19 +133,17 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
         display="flex"
         alignItems="center"
         justifyContent="center"
-        bg="red.500"
-        borderRadius="md"
+        bg="expense"
         aria-label="Delete action"
       >
         <IconButton
           aria-label="Delete transaction"
           icon={<DeleteIcon />}
-          colorScheme="red"
           variant="ghost"
           color="white"
           minH="48px"
           minW="48px"
-          _hover={{ bg: 'red.600' }}
+          _hover={{ bg: 'clay.600' }}
           onClick={handleDeleteTap}
         />
       </Box>
@@ -158,29 +158,28 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
         display="flex"
         alignItems="center"
         justifyContent="center"
-        bg="blue.500"
-        borderRadius="md"
+        bg="accent"
         aria-label="Edit action"
       >
         <IconButton
           aria-label="Edit transaction"
           icon={<EditIcon />}
-          colorScheme="blue"
           variant="ghost"
           color="white"
           minH="48px"
           minW="48px"
-          _hover={{ bg: 'blue.600' }}
+          _hover={{ bg: 'accent.emphasis' }}
           onClick={handleEditTap}
         />
       </Box>
 
-      {/* The actual row content (slides left/right on swipe) */}
+      {/* The actual row content (slides left/right on swipe) — opaque surface so
+          the action panels stay hidden until revealed. */}
       <Box
         ref={rowRef}
         position="relative"
         zIndex={1}
-        bg="white"
+        bg="surface"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
