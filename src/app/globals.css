@@ -10,14 +10,17 @@ body {
   overflow-x: hidden;
 }
 
-/* iOS standalone PWA: the fixed bottom tab bar's `bottom: 0` lands at the
-   safe-area boundary, so the home-indicator strip below it is painted by the
-   page canvas. `body` carries the soft canvas tint for content, but the root
-   canvas must be white so that strip matches the (white) tab bar instead of
-   showing a grey gap. White here is invisible in the browser/desktop (body
-   covers the viewport) and only shows through in the standalone safe area. */
+/* Quiet Ledger: the root canvas is warm paper. This paints the iOS standalone
+   safe-area strip (below the fixed bottom nav) and prevents a white flash before
+   the Chakra/Emotion global styles hydrate. Kept in sync with theme `canvas`. */
 html {
-  background-color: #ffffff;
+  background-color: #f6f5f2;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -30,4 +33,18 @@ a {
 [data-scroll-container='true'] {
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Accessibility: honor a user's reduced-motion preference app-wide. Redesign
+   motion (count-ups, flow-bar fills, card reveals) is layered on top of this
+   baseline, and individual Framer Motion components also short-circuit. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
