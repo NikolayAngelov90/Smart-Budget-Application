@@ -168,8 +168,9 @@ export default function DashboardPage() {
       </Box>
 
       {/* Story 15.1: logging streak — single mount point (15-6 opt-out gates here).
-          Sits as a compact chip under the hero. */}
-      <Flex justify="flex-end" mb={{ base: 5, md: 6 }} minH="1px">
+          Sits as a compact chip under the hero. Small margin keeps the phantom
+          gap minimal when the badge self-hides (opted out / no streak). */}
+      <Flex justify="flex-end" mb={{ base: 2, md: 3 }}>
         <StreakBadge />
       </Flex>
 

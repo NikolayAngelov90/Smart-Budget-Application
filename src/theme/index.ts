@@ -36,7 +36,9 @@ const theme = extendTheme({
 
       'fg': { default: 'ink', _dark: 'paper.50' },
       'fg.muted': { default: 'paper.600', _dark: 'paper.400' },
-      'fg.subtle': { default: 'paper.500', _dark: 'paper.500' },
+      // Darkened from paper.500 so small "subtle" text (hero date, inactive
+      // nav labels) clears WCAG AA 4.5:1 on the warm canvas (~5:1).
+      'fg.subtle': { default: '#6E6A60', _dark: 'paper.400' },
       'fg.onAccent': { default: 'white', _dark: 'white' },
 
       'border': { default: 'paper.200', _dark: 'paper.800' },
