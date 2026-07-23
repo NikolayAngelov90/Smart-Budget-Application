@@ -6,6 +6,13 @@ on:
   push:
     branches: [main]
 
+# The benchmark + preview steps post PR comments (github.rest.issues.createComment),
+# which needs write scope. Without this the default read-only token 403s and fails
+# the whole Tests job even when type-check/lint/tests/build all pass.
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   test:
     name: Run Tests (${{ matrix.node-version }})
@@ -136,6 +143,9 @@ jobs:
 
       - name: Post benchmark results as PR comment
         if: github.event_name == 'pull_request'
+        # Posting the perf comment is a non-essential side effect — never let it
+        # fail the code-health check that gates merges.
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

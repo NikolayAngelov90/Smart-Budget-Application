@@ -51,24 +51,27 @@ import {
   ModalHeader,
   ModalBody,
   Progress,
+  Divider,
 } from '@chakra-ui/react';
-import { CloseIcon, SearchIcon, EditIcon, DeleteIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon } from '@chakra-ui/icons';
+import { CloseIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { bg } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
-import { CategoryBadge } from '@/components/categories/CategoryBadge';
 import { FilterBreadcrumbs } from '@/components/transactions/FilterBreadcrumbs';
 import { PaginationControls, DEFAULT_PAGE_SIZE, LOCAL_STORAGE_KEY } from '@/components/transactions/PaginationControls';
 import { SwipeableRow } from '@/components/transactions/SwipeableRow';
+import { TransactionRow } from '@/components/transactions/TransactionRow';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { groupTransactionsByDate } from '@/lib/utils/groupTransactionsByDate';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { createClient } from '@/lib/supabase/client';
 import { exportTransactionsToCSV } from '@/lib/services/exportService'; // Story 8.1
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
-import { formatTransactionDate } from '@/lib/utils/dateFormatter';
 import { formatCurrencyWithSign } from '@/lib/utils/currency';
 import { getEnabledCurrencies } from '@/lib/config/currencies';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 // Types
 interface Category {
@@ -115,9 +118,12 @@ function TransactionsContent() {
   // Get URL search params for drill-down navigation (Story 5.5)
   const searchParams = useSearchParams();
 
-  // Get user preferences for date formatting (Story 8.3)
+  // Get user preferences (currency formatting; Story 8.3)
   const { preferences } = useUserPreferences();
-  const dateFormat = preferences?.date_format || 'MM/DD/YYYY';
+
+  // Locale for the date-group headers (Story 16.1)
+  const locale = useLocale();
+  const dateLocale = locale === 'bg' ? bg : undefined;
 
   // Filter state
   const [startDate, setStartDate] = useState('');
@@ -134,6 +140,9 @@ function TransactionsContent() {
   // Edit modal state
   const { isOpen: isEditModalOpen, onOpen: onEditModalOpen, onClose: onEditModalClose } = useDisclosure();
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  // Create modal state — opened from the empty-state CTA (Story 16.1)
+  const { isOpen: isCreateModalOpen, onOpen: onCreateModalOpen, onClose: onCreateModalClose } = useDisclosure();
 
   // Delete confirmation state
   const { isOpen: isDeleteAlertOpen, onOpen: onDeleteAlertOpen, onClose: onDeleteAlertClose } = useDisclosure();
@@ -251,6 +260,15 @@ function TransactionsContent() {
       focusThrottleInterval: 5000, // Throttle focus revalidation (5 seconds)
     }
   );
+
+  // Review-fix (16-1): if the current page becomes empty (e.g. after deleting the
+  // last row on page ≥2) snap back to page 1 — otherwise the first-run empty
+  // state would render even though earlier pages still have transactions.
+  useEffect(() => {
+    if (transactionsResponse && transactionsResponse.data.length === 0 && currentPage > 1) {
+      setCurrentPage(1);
+    }
+  }, [transactionsResponse, currentPage]);
 
   // Fetch categories for filter dropdown
   // Note: Different pages use different fetchers, so cache might be:
@@ -437,14 +455,14 @@ function TransactionsContent() {
         isClosable: true,
         position: 'bottom',
         render: ({ onClose }) => (
-          <Box p={4} bg="green.500" borderRadius="md" color="white">
+          <Box p={4} bg="income" borderRadius="lg" color="white">
             <HStack justify="space-between">
               <Text>{t('deletedSuccess')}</Text>
               <Button
                 size="sm"
                 variant="solid"
                 bg="white"
-                color="green.500"
+                color="income"
                 onClick={async (e) => {
                   e.preventDefault();
                   isUndone = true;
@@ -626,7 +644,8 @@ function TransactionsContent() {
     const signedAmount = type === 'expense' ? -amount : amount;
     const txCurrency = transactionCurrency || currencyCode;
     const formatted = formatCurrencyWithSign(signedAmount, true, undefined, txCurrency);
-    const color = type === 'income' ? 'green.500' : 'red.500';
+    // Quiet Ledger semantic tokens (evergreen income / clay expense).
+    const color = type === 'income' ? 'income' : 'expense';
 
     // Show converted equivalent if currency differs from preferred (AC-10.6.6)
     let convertedText: string | null = null;
@@ -641,54 +660,61 @@ function TransactionsContent() {
     return { formatted, color, convertedText };
   };
 
-  // Render loading skeletons
+  // Render loading skeletons — mirrors the grouped-row shape (Story 16.1)
   const renderSkeletons = () => (
-    <VStack spacing={4} w="full">
-      {[...Array(5)].map((_, index) => (
-        <Card key={index} w="full">
-          <CardBody>
-            <HStack justify="space-between">
+    <Box>
+      <Skeleton height="12px" width="90px" mb={2} ml={1} borderRadius="full" />
+      <Box
+        bg="surface"
+        borderWidth="1px"
+        borderColor="border"
+        borderRadius="xl"
+        overflow="hidden"
+        boxShadow="sm"
+      >
+        {[...Array(5)].map((_, index) => (
+          <Box key={index}>
+            {index > 0 && <Divider borderColor="border" />}
+            <Flex align="center" gap={3} px={{ base: 4, md: 5 }} py={3} minH="60px">
               <VStack align="start" spacing={2} flex={1}>
-                <HStack>
-                  <Skeleton height="20px" width="80px" />
-                  <Skeleton height="20px" width="100px" />
-                </HStack>
-                <SkeletonText noOfLines={1} width="200px" />
+                <Skeleton height="16px" width="120px" />
+                <SkeletonText noOfLines={1} width="160px" />
               </VStack>
-              <Skeleton height="24px" width="100px" />
-            </HStack>
-          </CardBody>
-        </Card>
-      ))}
-    </VStack>
+              <Skeleton height="20px" width="80px" />
+            </Flex>
+          </Box>
+        ))}
+      </Box>
+    </Box>
   );
 
-  // Render empty state
+  // Render empty state — distinct guidance for filtered-empty vs. no-data.
   const renderEmptyState = () => {
-    const hasFilters = hasActiveFilters;
-    const message = hasFilters
-      ? t('noTransactionsFiltered')
-      : t('noTransactions');
-
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon="🔎"
+          title={t('noTransactionsFiltered')}
+          description={t('noMatchDescription')}
+          cta={
+            <Button variant="soft" onClick={handleClearFilters}>
+              {t('clearAllFilters')}
+            </Button>
+          }
+        />
+      );
+    }
     return (
-      <Box
-        textAlign="center"
-        py={16}
-        px={6}
-        bg="gray.50"
-        borderRadius="lg"
-        border="1px"
-        borderColor="gray.200"
-      >
-        <Text fontSize="xl" color="gray.600" mb={4}>
-          {message}
-        </Text>
-        {!hasFilters && (
-          <Text fontSize="sm" color="gray.500">
-            {t('clickToAdd')}
-          </Text>
-        )}
-      </Box>
+      <EmptyState
+        icon="🪙"
+        title={t('emptyTitle')}
+        description={t('emptyDescription')}
+        cta={
+          <Button variant="solid" onClick={onCreateModalOpen}>
+            {t('addTransaction')}
+          </Button>
+        }
+      />
     );
   };
 
@@ -703,13 +729,12 @@ function TransactionsContent() {
           gap={{ base: 3, sm: 0 }}
           mb={6}
         >
-          <Heading as="h1" size="xl" color="gray.800">
+          <Heading as="h1" size="xl" color="fg" letterSpacing="tight">
             {t('title')}
           </Heading>
           {/* Story 8.1: Export to CSV Button */}
           <Button
             leftIcon={<DownloadIcon />}
-            colorScheme="blue"
             variant="outline"
             onClick={handleExportCSV}
             size={{ base: 'sm', md: 'md' }}
@@ -723,15 +748,15 @@ function TransactionsContent() {
         {/* Offline Indicator Banner (Task 6) */}
         {!isOnline && (
           <Box
-            bg="orange.100"
-            border="1px"
-            borderColor="orange.300"
-            borderRadius="md"
+            bg="warning.subtle"
+            borderWidth="1px"
+            borderColor="amber.300"
+            borderRadius="lg"
             p={3}
             mb={4}
           >
             <HStack>
-              <Text fontSize="sm" fontWeight="medium" color="orange.800">
+              <Text fontSize="sm" fontWeight="medium" color="warning.fg">
                 {t('offlineBanner')}
               </Text>
             </HStack>
@@ -748,13 +773,12 @@ function TransactionsContent() {
                   onClick={onToggleMobileFilters}
                   variant="outline"
                   size="sm"
-                  colorScheme="blue"
                   rightIcon={mobileFiltersOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
                   aria-expanded={mobileFiltersOpen}
                 >
                   {t('filters')}
                   {activeFilterCount > 0 && (
-                    <Badge ml={2} colorScheme="blue" borderRadius="full" px={2}>
+                    <Badge ml={2} bg="accent.subtle" color="accent" borderRadius="full" px={2}>
                       {activeFilterCount}
                     </Badge>
                   )}
@@ -772,7 +796,7 @@ function TransactionsContent() {
               <SimpleGrid columns={{ base: 1, md: 2, lg: 5 }} spacing={4}>
                 {/* Date Range Filters */}
                 <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
+                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
                     {t('startDate')}
                   </Text>
                   <Input
@@ -785,7 +809,7 @@ function TransactionsContent() {
                 </Box>
 
                 <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
+                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
                     {t('endDate')}
                   </Text>
                   <Input
@@ -799,7 +823,7 @@ function TransactionsContent() {
 
                 {/* Category Filter */}
                 <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
+                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
                     {t('category')}
                   </Text>
                   <Select
@@ -818,7 +842,7 @@ function TransactionsContent() {
 
                 {/* Type Filter */}
                 <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
+                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
                     {t('type')}
                   </Text>
                   <Select
@@ -836,7 +860,7 @@ function TransactionsContent() {
 
                 {/* Story 10-6: Currency Filter (AC-10.6.7) */}
                 <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
+                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
                     {t('currency')}
                   </Text>
                   <Select
@@ -857,13 +881,13 @@ function TransactionsContent() {
 
               {/* Search Input — always visible */}
               <Box>
-                <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
+                <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
                   {tCommon('search')}
                 </Text>
                 <HStack>
                   <InputGroup>
                     <InputLeftElement pointerEvents="none">
-                      <SearchIcon color="gray.400" />
+                      <SearchIcon color="fg.subtle" />
                     </InputLeftElement>
                     <Input
                       placeholder={t('searchPlaceholder')}
@@ -907,7 +931,7 @@ function TransactionsContent() {
         {/* AC-10.8.4: Pull-to-refresh indicator */}
         {isRefreshing && (
           <Flex justify="center" py={3}>
-            <Spinner size="sm" color="trustBlue.500" />
+            <Spinner size="sm" color="accent" />
           </Flex>
         )}
 
@@ -920,12 +944,12 @@ function TransactionsContent() {
             textAlign="center"
             py={8}
             px={6}
-            bg="red.50"
-            borderRadius="lg"
-            border="1px"
-            borderColor="red.200"
+            bg="expense.subtle"
+            borderRadius="xl"
+            borderWidth="1px"
+            borderColor="expense"
           >
-            <Text color="red.600">{t('failedToLoadRetry')}</Text>
+            <Text color="expense" fontWeight="medium">{t('failedToLoadRetry')}</Text>
           </Box>
         )}
 
@@ -938,113 +962,70 @@ function TransactionsContent() {
           !transactionsError &&
           transactionsResponse &&
           transactionsResponse.data.length > 0 && (
-            <VStack spacing={4} align="stretch">
-              {transactionsResponse.data.map((transaction) => {
-                const { formatted, color, convertedText } = formatAmount(
-                  transaction.amount,
-                  transaction.type,
-                  transaction.currency,
-                  transaction.exchange_rate
-                );
-
-                return (
-                  // AC-10.8.3: Swipeable row — swipe left=Delete, swipe right=Edit
-                  <SwipeableRow
-                    key={transaction.id}
-                    onDelete={() => handleDelete(transaction)}
-                    onEdit={() => handleEdit(transaction)}
+            <VStack spacing={{ base: 6, md: 7 }} align="stretch">
+              {groupTransactionsByDate(transactionsResponse.data, {
+                todayLabel: t('groupToday'),
+                yesterdayLabel: t('groupYesterday'),
+                locale: dateLocale,
+              }).map((group) => (
+                <Box key={group.key}>
+                  {/* Date header — Today / Yesterday / weekday · date */}
+                  <Text
+                    fontSize="2xs"
+                    fontWeight="semibold"
+                    letterSpacing="wider"
+                    textTransform="uppercase"
+                    color="fg.muted"
+                    mb={2}
+                    ml={1}
                   >
-                    <Card
-                      _hover={{ shadow: 'md' }}
-                      transition="all 0.2s"
-                      borderRadius="md"
-                    >
-                      <CardBody>
-                        <Flex
-                          direction={{ base: 'column', md: 'row' }}
-                          justify="space-between"
-                          align={{ base: 'flex-start', md: 'center' }}
-                          gap={{ base: 3, md: 4 }}
-                        >
-                          {/* Left: Date, Category, Notes */}
-                          <VStack align="flex-start" spacing={1} flex={1}>
-                            <HStack spacing={3}>
-                              <Text fontSize="sm" fontWeight="semibold" color="gray.700">
-                                {formatTransactionDate(transaction.date, dateFormat)}
-                              </Text>
-                              <Badge
-                                colorScheme={
-                                  transaction.type === 'income' ? 'green' : 'red'
-                                }
-                                fontSize="xs"
-                              >
-                                {transaction.type}
-                              </Badge>
-                            </HStack>
+                    {group.label}
+                  </Text>
 
-                            <CategoryBadge
+                  {/* The group's rows share one calm surface, split by hairlines. */}
+                  <Box
+                    bg="surface"
+                    borderWidth="1px"
+                    borderColor="border"
+                    borderRadius="xl"
+                    overflow="hidden"
+                    boxShadow="sm"
+                  >
+                    {group.items.map((transaction, i) => {
+                      const { formatted, convertedText } = formatAmount(
+                        transaction.amount,
+                        transaction.type,
+                        transaction.currency,
+                        transaction.exchange_rate
+                      );
+
+                      return (
+                        <Box key={transaction.id}>
+                          {i > 0 && <Divider borderColor="border" />}
+                          {/* AC-10.8.3: swipe left=Delete, swipe right=Edit (mobile) */}
+                          <SwipeableRow
+                            onDelete={() => handleDelete(transaction)}
+                            onEdit={() => handleEdit(transaction)}
+                          >
+                            <TransactionRow
                               category={transaction.category}
-                              variant="dot"
-                              size="md"
+                              type={transaction.type}
+                              notes={transaction.notes}
+                              amountFormatted={formatted}
+                              convertedText={convertedText}
+                              typeLabel={t(transaction.type)}
+                              editLabel={t('editTransactionAriaLabel')}
+                              deleteLabel={t('deleteTransactionAriaLabel')}
+                              onEdit={() => handleEdit(transaction)}
+                              onDelete={() => handleDelete(transaction)}
                             />
-
-                            {transaction.notes && (
-                              <Text fontSize="sm" color="gray.600">
-                                {transaction.notes}
-                              </Text>
-                            )}
-                          </VStack>
-
-                          {/* Middle: Action Buttons (desktop only — mobile uses swipe) */}
-                          <HStack spacing={2} display={{ base: 'none', md: 'flex' }}>
-                            <IconButton
-                              aria-label={t('editTransactionAriaLabel')}
-                              icon={<EditIcon />}
-                              size="sm"
-                              variant="ghost"
-                              colorScheme="blue"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(transaction);
-                              }}
-                              _hover={{ bg: 'blue.50' }}
-                            />
-                            <IconButton
-                              aria-label={t('deleteTransactionAriaLabel')}
-                              icon={<DeleteIcon />}
-                              size="sm"
-                              variant="ghost"
-                              colorScheme="red"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(transaction);
-                              }}
-                              _hover={{ bg: 'red.50' }}
-                            />
-                          </HStack>
-
-                          {/* Right: Amount */}
-                          <VStack align="flex-end" spacing={0}>
-                            <Text
-                              fontSize={{ base: 'xl', md: '2xl' }}
-                              fontWeight="bold"
-                              color={color}
-                              whiteSpace="nowrap"
-                            >
-                              {formatted}
-                            </Text>
-                            {convertedText && (
-                              <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
-                                {convertedText}
-                              </Text>
-                            )}
-                          </VStack>
-                        </Flex>
-                      </CardBody>
-                    </Card>
-                  </SwipeableRow>
-                );
-              })}
+                          </SwipeableRow>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                </Box>
+              ))}
             </VStack>
           )}
 
@@ -1075,6 +1056,18 @@ function TransactionsContent() {
         transaction={editingTransaction}
       />
 
+      {/* Create Transaction Modal — opened from the empty-state CTA (Story 16.1).
+          onSuccess only revalidates; the modal owns its own close logic (it stays
+          open when a SmartNudge fires), so we must NOT force-close here. */}
+      <TransactionEntryModal
+        isOpen={isCreateModalOpen}
+        onClose={onCreateModalClose}
+        onSuccess={() => {
+          mutate();
+        }}
+        mode="create"
+      />
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog
         isOpen={isDeleteAlertOpen}
@@ -1089,7 +1082,7 @@ function TransactionsContent() {
 
             <AlertDialogBody>
               {t('deleteConfirmBody')}
-              <Text mt={2} fontSize="sm" color="gray.600">
+              <Text mt={2} fontSize="sm" color="fg.muted">
                 {t('undoHint')}
               </Text>
             </AlertDialogBody>
@@ -1131,11 +1124,11 @@ function TransactionsContent() {
               <Progress
                 value={exportProgress}
                 size="lg"
-                colorScheme="blue"
+                colorScheme="brand"
                 hasStripe
                 isAnimated
               />
-              <Text fontSize="sm" color="gray.600" textAlign="center">
+              <Text fontSize="sm" color="fg.muted" textAlign="center">
                 {t('percentComplete', { percent: exportProgress })}
               </Text>
             </VStack>
@@ -1167,15 +1160,23 @@ export default function TransactionsPage() {
                 </VStack>
               </CardBody>
             </Card>
-            <VStack spacing={4} w="full">
+            <Box
+              bg="surface"
+              borderWidth="1px"
+              borderColor="border"
+              borderRadius="xl"
+              overflow="hidden"
+              boxShadow="sm"
+            >
               {[...Array(5)].map((_, index) => (
-                <Card key={index} w="full">
-                  <CardBody>
-                    <Skeleton height="80px" />
-                  </CardBody>
-                </Card>
+                <Box key={index}>
+                  {index > 0 && <Divider borderColor="border" />}
+                  <Box px={{ base: 4, md: 5 }} py={3} minH="60px">
+                    <Skeleton height="40px" />
+                  </Box>
+                </Box>
               ))}
-            </VStack>
+            </Box>
           </Container>
         </AppLayout>
       }

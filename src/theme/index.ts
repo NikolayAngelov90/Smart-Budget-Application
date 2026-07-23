@@ -51,7 +51,10 @@ const theme = extendTheme({
       // Finance semantics.
       'income': { default: 'evergreen.500', _dark: 'evergreen.300' },
       'income.subtle': { default: 'evergreen.50', _dark: 'rgba(11,94,74,0.22)' },
-      'expense': { default: 'clay.500', _dark: 'clay.300' },
+      // clay.600 (not .500) so expense amount TEXT at body sizes clears AA 4.5:1
+      // on white (~5.4:1); clay.500 was ~4.3:1. Affects transaction rows + the
+      // dashboard "Out" figure.
+      'expense': { default: 'clay.600', _dark: 'clay.300' },
       'expense.subtle': { default: 'clay.50', _dark: 'rgba(196,89,58,0.20)' },
       'warning.fg': { default: 'amber.600', _dark: 'amber.300' },
       'warning.subtle': { default: 'amber.50', _dark: 'rgba(201,134,42,0.18)' },
