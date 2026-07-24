@@ -391,6 +391,7 @@
     "loading": "Loading categories...",
     "failedToLoad": "Failed to load categories. Please try again.",
     "noCategories": "No categories found.",
+    "spentThisMonth": "Spent this month",
     "default": "Default",
     "sharedLabel": "Shared",
     "shareWithHousehold": "Share",

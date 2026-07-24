@@ -42,10 +42,12 @@ interface BudgetEditorProps {
   onChanged: () => void;
 }
 
+// Quiet Ledger: budget health on-brand — evergreen (on track), amber (warning),
+// clay (over). Not banking-alarm green/orange/red.
 const STATUS_COLOR: Record<BudgetSummary['status'], string> = {
-  ok: 'green',
-  warning: 'orange',
-  over: 'red',
+  ok: 'evergreen',
+  warning: 'amber',
+  over: 'clay',
 };
 
 export function BudgetEditor({
@@ -186,7 +188,6 @@ export function BudgetEditor({
             )}
             <Button
               size="xs"
-              colorScheme="blue"
               onClick={handleSave}
               isLoading={isSaving}
               minH={{ base: '44px', md: '32px' }}
@@ -204,7 +205,7 @@ export function BudgetEditor({
     return (
       <Box mt={2}>
         {editorPopover(
-          <Button size="xs" variant="ghost" colorScheme="blue" onClick={openEditor} minH={{ base: '44px', md: '32px' }}>
+          <Button size="xs" variant="ghost" onClick={openEditor} minH={{ base: '44px', md: '32px' }}>
             {t('setBudget')}
           </Button>
         )}
@@ -217,14 +218,14 @@ export function BudgetEditor({
   return (
     <Box mt={3}>
       <Flex justify="space-between" align="center" mb={1} gap={2}>
-        <Text fontSize="xs" color="gray.600">
+        <Text fontSize="xs" color="fg.muted">
           {t('spentOfLimit', {
             spent: formatCurrency(budget.spent, undefined, currencyCode),
             limit: formatCurrency(budget.limit_amount, undefined, currencyCode),
           })}
         </Text>
         {editorPopover(
-          <Button size="xs" variant="ghost" colorScheme="blue" onClick={openEditor} minH={{ base: '44px', md: '32px' }}>
+          <Button size="xs" variant="ghost" onClick={openEditor} minH={{ base: '44px', md: '32px' }}>
             {t('edit')}
           </Button>
         )}
@@ -237,7 +238,7 @@ export function BudgetEditor({
         aria-label={t('progressAriaLabel', { name: categoryName, pct: budget.pct_used })}
       />
       {budget.status === 'over' && (
-        <Text fontSize="xs" color="red.600" mt={1}>
+        <Text fontSize="xs" color="expense" mt={1}>
           {t('overBy', {
             amount: formatCurrency(Math.abs(budget.remaining), undefined, currencyCode),
           })}
