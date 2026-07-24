@@ -810,14 +810,21 @@ export default function TransactionEntryModal({
     return (
       <Drawer isOpen={isOpen} onClose={onClose} placement="bottom" size="full">
         <DrawerOverlay />
-        <DrawerContent borderTopRadius="xl" maxH="95vh">
-          {/* Drag handle indicator */}
-          <Box pt={3} pb={1} display="flex" justifyContent="center">
+        <DrawerContent borderTopRadius="xl" maxH="95vh" bg="surface">
+          {/* Drag handle — inset below the iPhone Dynamic Island / status bar so
+              the header and fields never collide with the system status bar. */}
+          <Box
+            pt="calc(env(safe-area-inset-top) + 0.5rem)"
+            pb={1}
+            display="flex"
+            justifyContent="center"
+          >
             <Box w="40px" h="4px" bg="border.strong" borderRadius="full" />
           </Box>
           <DrawerHeader borderBottomWidth="1px" py={3}>
             {mode === 'edit' ? t('editTransaction') : t('addTransaction')}
-            <DrawerCloseButton />
+            {/* Absolutely-positioned close button needs its own safe-area offset. */}
+            <DrawerCloseButton top="calc(env(safe-area-inset-top) + 0.75rem)" />
           </DrawerHeader>
           <DrawerBody overflowY="auto" pb="env(safe-area-inset-bottom)">
             {formContent}
