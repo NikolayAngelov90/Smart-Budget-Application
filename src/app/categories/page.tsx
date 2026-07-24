@@ -57,6 +57,8 @@ import { BudgetEditor } from '@/components/categories/BudgetEditor';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useBudgets } from '@/lib/hooks/useBudgets';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
+import { formatCurrency } from '@/lib/utils/currency';
+import { EmptyState } from '@/components/shared/EmptyState';
 import type { BudgetSummary } from '@/types/database.types';
 import type { Category } from '@/types/category.types';
 
@@ -96,6 +98,14 @@ export default function CategoriesPage() {
   const currencyCode = preferences?.currency_format || 'EUR';
   const budgetByCategory = new Map<string, BudgetSummary>(
     (budgetsData?.budgets ?? []).map((b) => [b.category_id, b])
+  );
+
+  // Story 16.3: current-month spend per category (expenses) for the card caption.
+  const { data: spendingData } = useSWR('/api/dashboard/spending-by-category', fetcher);
+  const spentByCategory = new Map<string, number>(
+    ((spendingData?.categories ?? []) as Array<{ category_id: string; amount: number }>).map(
+      (c) => [c.category_id, c.amount]
+    )
   );
   // Until budgets load, hide the editor: a "Set budget" affordance over an unseen
   // existing limit invites a silent overwrite.
@@ -251,10 +261,11 @@ export default function CategoriesPage() {
         <VStack align="stretch" spacing={6}>
           {/* Header */}
           <HStack justify="space-between">
-            <Heading size="lg">{t('manageCategories')}</Heading>
+            <Heading size="lg" color="fg" fontFamily="heading" letterSpacing="tight">
+              {t('manageCategories')}
+            </Heading>
             <Button
               leftIcon={<AddIcon />}
-              colorScheme="blue"
               onClick={onOpen}
               aria-label={t('addCategory')}
             >
@@ -265,7 +276,7 @@ export default function CategoriesPage() {
           {/* Filter Tabs */}
           <Tabs
             variant="soft-rounded"
-            colorScheme="blue"
+            colorScheme="brand"
             onChange={(index) => {
               const types: Array<'all' | 'income' | 'expense'> = ['all', 'expense', 'income'];
               setSelectedType(types[index] ?? 'all');
@@ -288,6 +299,7 @@ export default function CategoriesPage() {
                   canShare={canShare}
                   onToggleShare={handleToggleShare}
                   budgetByCategory={budgetByCategory}
+                  spentByCategory={spentByCategory}
                   budgetsReady={budgetsReady}
                   currencyCode={currencyCode}
                   onBudgetChanged={handleBudgetChanged}
@@ -303,6 +315,7 @@ export default function CategoriesPage() {
                   canShare={canShare}
                   onToggleShare={handleToggleShare}
                   budgetByCategory={budgetByCategory}
+                  spentByCategory={spentByCategory}
                   budgetsReady={budgetsReady}
                   currencyCode={currencyCode}
                   onBudgetChanged={handleBudgetChanged}
@@ -318,6 +331,7 @@ export default function CategoriesPage() {
                   canShare={canShare}
                   onToggleShare={handleToggleShare}
                   budgetByCategory={budgetByCategory}
+                  spentByCategory={spentByCategory}
                   budgetsReady={budgetsReady}
                   currencyCode={currencyCode}
                   onBudgetChanged={handleBudgetChanged}
@@ -360,6 +374,7 @@ interface CategoryListProps {
   canShare: boolean;
   onToggleShare: (category: Category) => void;
   budgetByCategory: Map<string, BudgetSummary>;
+  spentByCategory: Map<string, number>;
   budgetsReady: boolean;
   currencyCode: string;
   onBudgetChanged: () => void;
@@ -374,6 +389,7 @@ function CategoryList({
   canShare,
   onToggleShare,
   budgetByCategory,
+  spentByCategory,
   budgetsReady,
   currencyCode,
   onBudgetChanged,
@@ -383,8 +399,8 @@ function CategoryList({
   if (isLoading) {
     return (
       <Box textAlign="center" py={10}>
-        <Spinner size="lg" color="blue.500" />
-        <Text mt={4} color="gray.600">
+        <Spinner size="lg" color="accent" />
+        <Text mt={4} color="fg.muted">
           {t('loading')}
         </Text>
       </Box>
@@ -394,15 +410,15 @@ function CategoryList({
   if (error) {
     return (
       <Box textAlign="center" py={10}>
-        <Text color="red.500">{t('failedToLoad')}</Text>
+        <Text color="expense" fontWeight="medium">{t('failedToLoad')}</Text>
       </Box>
     );
   }
 
   if (categories.length === 0) {
     return (
-      <Box textAlign="center" py={10}>
-        <Text color="gray.500">{t('noCategories')}</Text>
+      <Box mt={4}>
+        <EmptyState icon="🏷️" title={t('noCategories')} />
       </Box>
     );
   }
@@ -427,6 +443,7 @@ function CategoryList({
           canShare={canShare}
           onToggleShare={onToggleShare}
           budget={budgetByCategory.get(category.id) ?? null}
+          spent={spentByCategory.get(category.id)}
           budgetsReady={budgetsReady}
           currencyCode={currencyCode}
           onBudgetChanged={onBudgetChanged}
@@ -443,6 +460,7 @@ interface CategoryCardProps {
   canShare: boolean;
   onToggleShare: (category: Category) => void;
   budget: BudgetSummary | null;
+  spent?: number;
   budgetsReady: boolean;
   currencyCode: string;
   onBudgetChanged: () => void;
@@ -455,6 +473,7 @@ function CategoryCard({
   canShare,
   onToggleShare,
   budget,
+  spent,
   budgetsReady,
   currencyCode,
   onBudgetChanged,
@@ -470,11 +489,11 @@ function CategoryCard({
   return (
     <Box
       p={4}
-      border="1px"
-      borderColor="gray.200"
-      borderRadius="md"
-      bg="white"
-      _hover={{ boxShadow: 'md', borderColor: 'gray.300' }}
+      borderWidth="1px"
+      borderColor="border"
+      borderRadius="xl"
+      bg="surface"
+      _hover={{ boxShadow: 'md', borderColor: 'border.strong' }}
       transition="all 0.2s"
       position="relative"
       onMouseEnter={() => setIsHovered(true)}
@@ -487,18 +506,19 @@ function CategoryCard({
 
           <HStack spacing={1} flexWrap="wrap">
             <Badge
-              colorScheme={category.type === 'income' ? 'green' : 'red'}
+              bg={category.type === 'income' ? 'income.subtle' : 'expense.subtle'}
+              color={category.type === 'income' ? 'income' : 'expense'}
               fontSize="xs"
             >
-              {category.type}
+              {category.type === 'income' ? t('income') : t('expense')}
             </Badge>
             {category.is_predefined && (
-              <Badge colorScheme="gray" fontSize="xs">
+              <Badge bg="surface.sunken" color="fg.muted" fontSize="xs">
                 {t('default')}
               </Badge>
             )}
             {isShared && (
-              <Badge colorScheme="blue" fontSize="xs">
+              <Badge bg="accent.subtle" color="accent" fontSize="xs">
                 {t('sharedLabel')}
               </Badge>
             )}
@@ -517,7 +537,6 @@ function CategoryCard({
               <Button
                 size="xs"
                 variant={isShared ? 'solid' : 'outline'}
-                colorScheme="blue"
                 onClick={() => onToggleShare(category)}
               >
                 {isShared ? t('stopSharing') : t('shareWithHousehold')}
@@ -530,7 +549,6 @@ function CategoryCard({
                   icon={<EditIcon />}
                   size="sm"
                   variant="ghost"
-                  colorScheme="blue"
                   onClick={() => onEdit(category)}
                 />
                 <IconButton
@@ -538,7 +556,8 @@ function CategoryCard({
                   icon={<DeleteIcon />}
                   size="sm"
                   variant="ghost"
-                  colorScheme="red"
+                  color="expense"
+                  _hover={{ bg: 'expense.subtle' }}
                   onClick={() => onDelete(category)}
                 />
               </>
@@ -546,6 +565,25 @@ function CategoryCard({
           </HStack>
         )}
       </HStack>
+
+      {/* Story 16.3: current-month spend on expense cards without a set budget
+          (budgeted cards show spend-vs-budget via BudgetEditor below). */}
+      {category.type === 'expense' && !budget && (
+        <HStack mt={3} justify="space-between">
+          <Text
+            fontSize="2xs"
+            color="fg.subtle"
+            textTransform="uppercase"
+            letterSpacing="wide"
+            fontWeight="semibold"
+          >
+            {t('spentThisMonth')}
+          </Text>
+          <Text className="tnum" fontFamily="heading" fontWeight={600} color="expense" fontSize="sm">
+            {formatCurrency(spent ?? 0, undefined, currencyCode)}
+          </Text>
+        </HStack>
+      )}
 
       {/* ADR-025: monthly budget progress + set/edit/clear (own expense categories) */}
       {canBudget && (
