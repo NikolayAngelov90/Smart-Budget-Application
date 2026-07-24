@@ -117,3 +117,9 @@ supabase/.temp/
 *.egg
 .mypy_cache/
 
+# Playwright MCP browser artifacts (screenshots, snapshots, console logs)
+.playwright-mcp/
+
+# Local design-prompt doc (kept local, not part of the tracked docs set)
+docs/SMART_BUDGET_FRONTEND_REDESIGN_PROMPT.md
+
