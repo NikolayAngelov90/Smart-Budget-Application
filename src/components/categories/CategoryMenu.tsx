@@ -94,21 +94,22 @@ export function CategoryMenu({
         textAlign="left"
         fontWeight="normal"
         isDisabled={isDisabled}
-        borderColor={isInvalid ? 'red.500' : 'gray.200'}
+        borderColor={isInvalid ? 'expense' : 'border'}
         borderWidth="1px"
+        borderRadius="lg"
         _hover={{
-          borderColor: isInvalid ? 'red.500' : '#2b6cb0',
+          borderColor: isInvalid ? 'expense' : 'accent',
         }}
         _focus={{
-          borderColor: '#2b6cb0',
-          boxShadow: '0 0 0 1px #2b6cb0',
+          borderColor: 'accent',
+          boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
         }}
-        bg="white"
+        bg="surface"
       >
         {selectedCategory ? (
           <CategoryBadge category={selectedCategory} variant="dot" size="sm" />
         ) : (
-          <Text color="gray.500">{placeholder}</Text>
+          <Text color="fg.subtle">{placeholder}</Text>
         )}
       </MenuButton>
 
@@ -116,14 +117,14 @@ export function CategoryMenu({
         {/* Recently-Used Categories Section */}
         {hasRecentCategories && (
           <>
-            <MenuGroup title={t('recentlyUsed')} fontSize="xs" color="gray.600">
+            <MenuGroup title={t('recentlyUsed')} fontSize="xs" color="fg.muted">
               {recentCategories.map((category) => (
                 <MenuItem
                   key={category.id}
                   onClick={() => onChange(category.id)}
-                  _hover={{ bg: 'blue.50' }}
-                  _focus={{ bg: 'blue.100' }}
-                  bg={value === category.id ? 'blue.50' : 'transparent'}
+                  _hover={{ bg: 'accent.subtle' }}
+                  _focus={{ bg: 'evergreen.100' }}
+                  bg={value === category.id ? 'accent.subtle' : 'transparent'}
                   minH="44px" // Touch-friendly height (WCAG AAA)
                 >
                   <CategoryBadge category={category} variant="dot" size="sm" />
@@ -138,15 +139,15 @@ export function CategoryMenu({
         <MenuGroup
           title={hasRecentCategories ? t('allCategories') : t('categories')}
           fontSize="xs"
-          color="gray.600"
+          color="fg.muted"
         >
           {sortedCategories.map((category) => (
             <MenuItem
               key={category.id}
               onClick={() => onChange(category.id)}
-              _hover={{ bg: 'blue.50' }}
-              _focus={{ bg: 'blue.100' }}
-              bg={value === category.id ? 'blue.50' : 'transparent'}
+              _hover={{ bg: 'accent.subtle' }}
+              _focus={{ bg: 'evergreen.100' }}
+              bg={value === category.id ? 'accent.subtle' : 'transparent'}
               minH="44px" // Touch-friendly height
             >
               <CategoryBadge category={category} variant="dot" size="sm" />
@@ -157,7 +158,7 @@ export function CategoryMenu({
         {/* Empty State */}
         {categories.length === 0 && (
           <Box p={4} textAlign="center">
-            <Text fontSize="sm" color="gray.500">
+            <Text fontSize="sm" color="fg.subtle">
               {t('noCategoriesAvailable')}
             </Text>
           </Box>
