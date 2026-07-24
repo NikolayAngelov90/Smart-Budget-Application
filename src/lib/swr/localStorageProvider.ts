@@ -116,12 +116,64 @@ export function clearSWRCache(): void {
 }
 
 /**
- * SWR localStorage provider
- * Returns a Map-like object that persists data in localStorage
+ * Read the persisted SWR entries from localStorage.
+ *
+ * Returns the `[key, state]` pairs (state is SWR's stored cache value, i.e.
+ * `{ data, ... }`). Runs the cache-version invalidation first so a shape bump
+ * wipes stale entries. Call this AFTER mount (see `Providers`) and seed the
+ * live cache with `mutate`, rather than preloading the provider map — preloading
+ * makes the first client render differ from the server (React #418) and forced
+ * the old provider-swap-after-mount that orphaned in-flight requests.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function loadPersistedEntries(): Array<[string, any]> {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  // Invalidate stale cache when the version changes (e.g., data shape updates).
+  try {
+    const storedVersion = localStorage.getItem(CACHE_VERSION_KEY);
+    if (storedVersion !== String(CACHE_VERSION)) {
+      clearSWRCache();
+      localStorage.setItem(CACHE_VERSION_KEY, String(CACHE_VERSION));
+      return [];
+    }
+  } catch {
+    return [];
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const entries: Array<[string, any]> = [];
+  try {
+    const metadata = getCacheMetadata();
+    metadata.keys.forEach((key) => {
+      try {
+        const item = localStorage.getItem(`${CACHE_KEY_PREFIX}-${key}`);
+        if (item) {
+          entries.push([key, JSON.parse(item)]);
+        }
+      } catch (error) {
+        console.warn(`Failed to load cached item ${key}:`, error);
+      }
+    });
+  } catch (error) {
+    console.error('Failed to read SWR cache from localStorage:', error);
+  }
+  return entries;
+}
+
+/**
+ * SWR localStorage provider — a persistent Map.
+ *
+ * The map starts EMPTY (no synchronous preload) so the first client render
+ * matches the server, letting this provider be attached from the very first
+ * render (a stable cache, never swapped). Fresh writes are persisted to
+ * localStorage; the persisted data is re-seeded after mount via
+ * `loadPersistedEntries` + `mutate` (see `Providers`).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function localStorageProvider(): Map<string, any> {
-  // Initialize cache map from localStorage
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const map = new Map<string, any>();
 
@@ -130,44 +182,25 @@ export function localStorageProvider(): Map<string, any> {
     return map;
   }
 
-  // Invalidate stale cache when version changes (e.g., data shape updates)
-  try {
-    const storedVersion = localStorage.getItem(CACHE_VERSION_KEY);
-    if (storedVersion !== String(CACHE_VERSION)) {
-      clearSWRCache();
-      localStorage.setItem(CACHE_VERSION_KEY, String(CACHE_VERSION));
-    }
-  } catch {
-    // Ignore — fresh start
-  }
-
-  try {
-    const metadata = getCacheMetadata();
-
-    // Load cached items from localStorage
-    metadata.keys.forEach((key) => {
-      try {
-        const item = localStorage.getItem(`${CACHE_KEY_PREFIX}-${key}`);
-        if (item) {
-          map.set(key, JSON.parse(item));
-        }
-      } catch (error) {
-        console.warn(`Failed to load cached item ${key}:`, error);
-      }
-    });
-
-    // Update cache timestamp
-    metadata.cacheTimestamp = Date.now();
-    updateCacheMetadata(metadata);
-  } catch (error) {
-    console.error('Failed to initialize SWR cache from localStorage:', error);
-  }
-
   // Override Map.set to persist to localStorage
   const originalSet = map.set.bind(map);
   map.set = (key: string, value: unknown) => {
     // If not in browser environment, just use in-memory map
     if (typeof window === 'undefined') {
+      return originalSet(key, value);
+    }
+
+    // Only PERSIST states that actually carry data. SWR writes transient
+    // loading/error states (data === undefined) constantly; persisting those
+    // would overwrite good cached data with an empty state — clobbering it before
+    // the post-mount hydration can read it — and would also cache error-as-empty
+    // (which poisons the cache). Such states still update the in-memory map.
+    const hasData =
+      typeof value === 'object' &&
+      value !== null &&
+      'data' in value &&
+      (value as { data?: unknown }).data !== undefined;
+    if (!hasData) {
       return originalSet(key, value);
     }
 
