@@ -36,7 +36,8 @@ import {
   AbsoluteCenter,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { FaGoogle, FaGithub } from 'react-icons/fa';
+import { FaGithub } from 'react-icons/fa';
+import { FcGoogle } from 'react-icons/fc';
 import { createClient } from '@/lib/supabase/client';
 
 /**
@@ -185,12 +186,12 @@ export default function LoginPage() {
           <Heading
             as="h1"
             size={{ base: 'xl', md: '2xl' }}
-            color="gray.900"
+            color="fg"
             fontWeight="bold"
           >
             Welcome back
           </Heading>
-          <Text color="gray.600" fontSize={{ base: 'sm', md: 'md' }}>
+          <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
             Sign in to continue managing your finances
           </Text>
         </VStack>
@@ -200,10 +201,10 @@ export default function LoginPage() {
           <Button
             size="lg"
             variant="outline"
-            leftIcon={<FaGoogle />}
+            leftIcon={<FcGoogle />}
             onClick={() => handleSocialLogin('google')}
-            borderColor="gray.300"
-            _hover={{ bg: 'gray.50', borderColor: '#2b6cb0' }}
+            borderColor="border.strong"
+            _hover={{ bg: 'surface.hover', borderColor: 'accent' }}
             minH="44px"
             fontWeight="medium"
             aria-label="Continue with Google"
@@ -215,8 +216,8 @@ export default function LoginPage() {
             variant="outline"
             leftIcon={<FaGithub />}
             onClick={() => handleSocialLogin('github')}
-            borderColor="gray.300"
-            _hover={{ bg: 'gray.50', borderColor: '#2b6cb0' }}
+            borderColor="border.strong"
+            _hover={{ bg: 'surface.hover', borderColor: 'accent' }}
             minH="44px"
             fontWeight="medium"
             aria-label="Continue with GitHub"
@@ -228,8 +229,8 @@ export default function LoginPage() {
         {/* Divider with "or" text */}
         <Box position="relative" padding="4">
           <Divider />
-          <AbsoluteCenter bg="gray.50" px="4">
-            <Text fontSize="sm" color="gray.500" fontWeight="medium">
+          <AbsoluteCenter bg="canvas" px="4">
+            <Text fontSize="sm" color="fg.subtle" fontWeight="medium">
               or continue with email
             </Text>
           </AbsoluteCenter>
@@ -239,12 +240,12 @@ export default function LoginPage() {
         <Box
           as="form"
           onSubmit={handleSubmit}
-          bg="white"
+          bg="surface"
           p={{ base: '6', md: '8' }}
-          borderRadius="lg"
+          borderRadius="xl"
           boxShadow="lg"
           border="1px"
-          borderColor="gray.200"
+          borderColor="border"
         >
           <VStack spacing={5} align="stretch">
             {/* Email Field */}
@@ -265,8 +266,8 @@ export default function LoginPage() {
                 aria-describedby={errors.email ? 'email-error' : undefined}
                 autoComplete="email"
                 _focus={{
-                  borderColor: '#2b6cb0',
-                  boxShadow: '0 0 0 1px #2b6cb0',
+                  borderColor: 'accent',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                 }}
               />
               {errors.email && (
@@ -296,8 +297,8 @@ export default function LoginPage() {
                   }
                   autoComplete="current-password"
                   _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
+                    borderColor: 'accent',
+                    boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                   }}
                 />
                 <InputRightElement>
@@ -326,7 +327,7 @@ export default function LoginPage() {
             <Box display="flex" justifyContent="flex-end" alignItems="center">
               <Link
                 href="/forgot-password"
-                style={{ color: '#2b6cb0', fontSize: '14px', fontWeight: '600' }}
+                style={{ color: '#0B5E4A', fontSize: '14px', fontWeight: '600' }}
               >
                 Forgot password?
               </Link>
@@ -336,11 +337,11 @@ export default function LoginPage() {
             <Button
               type="submit"
               size="lg"
-              bg="#2b6cb0"
+              bg="accent"
               color="white"
-              _hover={{ bg: '#2c5282' }}
-              _active={{ bg: '#2c5282' }}
-              _disabled={{ bg: 'gray.300', cursor: 'not-allowed' }}
+              _hover={{ bg: 'accent.emphasis' }}
+              _active={{ bg: 'evergreen.700' }}
+              _disabled={{ bg: 'border.strong', cursor: 'not-allowed' }}
               isLoading={isLoading}
               loadingText="Signing in..."
               isDisabled={!email || !password}
@@ -355,9 +356,9 @@ export default function LoginPage() {
         </Box>
 
         {/* Signup Link */}
-        <Text textAlign="center" fontSize="sm" color="gray.600">
+        <Text textAlign="center" fontSize="sm" color="fg.muted">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" style={{ color: '#2b6cb0', fontWeight: '600' }}>
+          <Link href="/signup" style={{ color: '#0B5E4A', fontWeight: '600' }}>
             Sign up
           </Link>
         </Text>

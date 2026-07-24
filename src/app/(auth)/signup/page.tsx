@@ -41,7 +41,8 @@ import {
   AbsoluteCenter,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { FaGoogle, FaGithub } from 'react-icons/fa';
+import { FaGithub } from 'react-icons/fa';
+import { FcGoogle } from 'react-icons/fc';
 import { createClient } from '@/lib/supabase/client';
 
 // Zod validation schema
@@ -233,12 +234,12 @@ export default function SignupPage() {
           <Heading
             as="h1"
             size={{ base: 'xl', md: '2xl' }}
-            color="gray.900"
+            color="fg"
             fontWeight="bold"
           >
             Create your account
           </Heading>
-          <Text color="gray.600" fontSize={{ base: 'sm', md: 'md' }}>
+          <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
             Start managing your finances with confidence
           </Text>
         </VStack>
@@ -248,10 +249,10 @@ export default function SignupPage() {
           <Button
             size="lg"
             variant="outline"
-            leftIcon={<FaGoogle />}
+            leftIcon={<FcGoogle />}
             onClick={() => handleSocialLogin('google')}
-            borderColor="gray.300"
-            _hover={{ bg: 'gray.50', borderColor: '#2b6cb0' }}
+            borderColor="border.strong"
+            _hover={{ bg: 'surface.hover', borderColor: 'accent' }}
             minH="44px"
             fontWeight="medium"
             aria-label="Continue with Google"
@@ -263,8 +264,8 @@ export default function SignupPage() {
             variant="outline"
             leftIcon={<FaGithub />}
             onClick={() => handleSocialLogin('github')}
-            borderColor="gray.300"
-            _hover={{ bg: 'gray.50', borderColor: '#2b6cb0' }}
+            borderColor="border.strong"
+            _hover={{ bg: 'surface.hover', borderColor: 'accent' }}
             minH="44px"
             fontWeight="medium"
             aria-label="Continue with GitHub"
@@ -276,8 +277,8 @@ export default function SignupPage() {
         {/* Divider with "or" text */}
         <Box position="relative" padding="4">
           <Divider />
-          <AbsoluteCenter bg="gray.50" px="4">
-            <Text fontSize="sm" color="gray.500" fontWeight="medium">
+          <AbsoluteCenter bg="canvas" px="4">
+            <Text fontSize="sm" color="fg.subtle" fontWeight="medium">
               or continue with email
             </Text>
           </AbsoluteCenter>
@@ -287,12 +288,12 @@ export default function SignupPage() {
         <Box
           as="form"
           onSubmit={handleSubmit(onSubmit)}
-          bg="white"
+          bg="surface"
           p={{ base: '6', md: '8' }}
           borderRadius="lg"
           boxShadow="lg"
           border="1px"
-          borderColor="gray.200"
+          borderColor="border"
         >
           <VStack spacing={5} align="stretch">
             {/* Email Field */}
@@ -312,8 +313,8 @@ export default function SignupPage() {
                 aria-describedby={errors.email ? 'email-error' : undefined}
                 autoComplete="email"
                 _focus={{
-                  borderColor: '#2b6cb0',
-                  boxShadow: '0 0 0 1px #2b6cb0',
+                  borderColor: 'accent',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                 }}
               />
               {errors.email && (
@@ -340,8 +341,8 @@ export default function SignupPage() {
                   aria-describedby={errors.password ? 'password-error' : 'password-strength'}
                   autoComplete="new-password"
                   _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
+                    borderColor: 'accent',
+                    boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                   }}
                 />
                 <InputRightElement>
@@ -384,7 +385,7 @@ export default function SignupPage() {
                 </FormErrorMessage>
               )}
 
-              <Text fontSize="xs" color="gray.500" mt={1}>
+              <Text fontSize="xs" color="fg.subtle" mt={1}>
                 Min 8 characters, 1 uppercase, 1 number, 1 special character
               </Text>
             </FormControl>
@@ -408,8 +409,8 @@ export default function SignupPage() {
                   }
                   autoComplete="new-password"
                   _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
+                    borderColor: 'accent',
+                    boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                   }}
                 />
                 <InputRightElement>
@@ -436,10 +437,10 @@ export default function SignupPage() {
             <Button
               type="submit"
               size="lg"
-              bg="#2b6cb0"
+              bg="accent"
               color="white"
-              _hover={{ bg: '#2c5282' }}
-              _active={{ bg: '#2c5282' }}
+              _hover={{ bg: 'accent.emphasis' }}
+              _active={{ bg: 'evergreen.700' }}
               isLoading={isLoading}
               loadingText="Creating account..."
               isDisabled={!isValid || isLoading}
@@ -454,9 +455,9 @@ export default function SignupPage() {
         </Box>
 
         {/* Login Link */}
-        <Text textAlign="center" fontSize="sm" color="gray.600">
+        <Text textAlign="center" fontSize="sm" color="fg.muted">
           Already have an account?{' '}
-          <Link href="/login" style={{ color: '#2b6cb0', fontWeight: '600' }}>
+          <Link href="/login" style={{ color: '#0B5E4A', fontWeight: '600' }}>
             Sign in
           </Link>
         </Text>
