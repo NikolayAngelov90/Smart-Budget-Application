@@ -429,8 +429,8 @@ function CategoryList({
       templateColumns={{
         base: '1fr',
         sm: 'repeat(2, 1fr)',
-        md: 'repeat(3, 1fr)',
-        lg: 'repeat(4, 1fr)',
+        lg: 'repeat(3, 1fr)',
+        xl: 'repeat(4, 1fr)',
       }}
       gap={4}
       mt={4}
@@ -511,11 +511,9 @@ function CategoryCard({
             >
               {category.type === 'income' ? t('income') : t('expense')}
             </Badge>
-            {category.is_predefined && (
-              <Badge bg="surface.sunken" color="fg.muted" fontSize="xs">
-                {t('default')}
-              </Badge>
-            )}
+            {/* No "Default" badge: with every seeded category predefined it printed on
+                each card (pure noise) and wrapped the badge row on narrow desktops.
+                Predefined vs custom is already signalled by the absence of edit/delete. */}
             {isShared && (
               <Badge bg="accent.subtle" color="accent" fontSize="xs">
                 {t('sharedLabel')}
