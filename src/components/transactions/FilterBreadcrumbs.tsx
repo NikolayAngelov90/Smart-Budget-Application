@@ -32,19 +32,26 @@ interface Category {
   type: 'income' | 'expense';
 }
 
+interface CategoriesResponse {
+  data: Category[];
+}
+
 /**
- * Fetcher function for SWR
- * Extracts the 'data' array from the API response
+ * Fetcher for SWR.
+ *
+ * IMPORTANT: the SWR key `/api/categories` is SHARED with the Categories page,
+ * ValuesPlanSection and the Transactions page. SWR caches by key regardless of
+ * the fetcher, and the other consumers store/read the full `{ data: [...] }`
+ * object. Returning the bare array here previously poisoned that shared cache,
+ * so after visiting Transactions the Categories page read `data.data` off an
+ * array and rendered "No categories found". Keep the `{ data }` shape.
  */
-async function fetcher(url: string): Promise<Category[]> {
+async function fetcher(url: string): Promise<CategoriesResponse> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Failed to fetch categories');
   }
-  const json = await response.json();
-  // API returns { data: [...], recent: [...], count: number }
-  // We only need the data array
-  return json.data || [];
+  return response.json(); // { data: [...], recent: [...], count: number }
 }
 
 /**
@@ -60,8 +67,8 @@ export function FilterBreadcrumbs() {
   const categoryId = searchParams.get('category');
   const month = searchParams.get('month');
 
-  // Fetch categories for name lookup
-  const { data: categories } = useSWR<Category[]>('/api/categories', fetcher);
+  // Fetch categories for name lookup (shared `{ data }` shape — see fetcher note)
+  const { data } = useSWR<CategoriesResponse>('/api/categories', fetcher);
 
   // If no filters active, don't render breadcrumbs
   if (!categoryId && !month) {
@@ -70,7 +77,7 @@ export function FilterBreadcrumbs() {
 
   // Find category by ID
   const category = categoryId
-    ? categories?.find((c) => c.id === categoryId)
+    ? data?.data?.find((c) => c.id === categoryId)
     : null;
 
   // Format month display

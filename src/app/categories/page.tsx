@@ -106,7 +106,10 @@ export default function CategoriesPage() {
     globalMutate('/api/dashboard/budget-forecast', undefined, { revalidate: true });
   };
 
-  const categories: Category[] = data?.data || [];
+  // Defensive: the `/api/categories` SWR key is shared and was historically
+  // cached in two shapes (bare array vs `{ data }`). Tolerate both so a stale
+  // localStorage cache can't blank the page (see FilterBreadcrumbs fetcher note).
+  const categories: Category[] = Array.isArray(data) ? data : (data?.data ?? []);
 
   // Story 13.5 follow-up: share / un-share any of the user's own categories (incl. default).
   const handleToggleShare = async (category: Category) => {
