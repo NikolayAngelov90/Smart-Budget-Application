@@ -29,7 +29,7 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -181,10 +181,10 @@ export default function TransactionEntryModal({
   const { status: allowanceStatus } = useAllowance();
   const [useAllowanceTag, setUseAllowanceTag] = useState(false);
 
-  // Story 16.2: secondary fields (date/notes) collapse behind "More details";
-  // edit mode opens them by default since the user is likely changing one.
+  // Story 16.2: secondary fields (date/notes) collapse behind "More details".
+  // Edit mode seeds this open (below); `detailsOpen` is computed after the form
+  // is set up so it can also auto-reveal on a hidden-field error.
   const [showDetails, setShowDetails] = useState(false);
-  const detailsOpen = showDetails || mode === 'edit';
 
   const {
     register,
@@ -206,6 +206,10 @@ export default function TransactionEntryModal({
   const amountValue = watch('amount');
   const selectedCategoryId = watch('category_id');
 
+  // Drive the "More details" disclosure from showDetails (so the toggle works in
+  // edit mode too), and auto-reveal when a hidden secondary field is invalid.
+  const detailsOpen = showDetails || !!errors.date || !!errors.notes;
+
   // Story 13.6: the allowance toggle is offered only for a NEW personal (non-shared) expense
   // when the user has an allowance configured.
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
@@ -218,8 +222,8 @@ export default function TransactionEntryModal({
 
   // Story 16.2: one-tap quick-pick chips = recently-used first, then most-used,
   // capped at 6 — the fast path; the full CategoryMenu covers the long tail.
-  const quickCategories = (() => {
-    const quick: Category[] = [...recentCategories];
+  const quickCategories = useMemo(() => {
+    const quick: Category[] = recentCategories.slice(0, 6);
     const seen = new Set(quick.map((c) => c.id));
     for (const c of [...categories].sort((a, b) => (b.usage_count ?? 0) - (a.usage_count ?? 0))) {
       if (quick.length >= 6) break;
@@ -228,8 +232,8 @@ export default function TransactionEntryModal({
         seen.add(c.id);
       }
     }
-    return quick;
-  })();
+    return quick.slice(0, 6);
+  }, [recentCategories, categories]);
 
   // Auto-format amount to 2 decimal places on blur
   const handleAmountBlur = () => {
@@ -289,6 +293,7 @@ export default function TransactionEntryModal({
       });
       setSelectedCurrency(transaction.currency || preferredCurrency);
       setExchangeRate(transaction.exchange_rate ?? null);
+      setShowDetails(true); // edit: secondary fields open by default
     } else if (isOpen && mode === 'create') {
       // Reset to default values for create mode
       reset({
@@ -508,6 +513,7 @@ export default function TransactionEntryModal({
               {...register('amount')}
               onBlur={handleAmountBlur}
               variant="unstyled"
+              _focusVisible={{ boxShadow: 'focus', borderRadius: 'lg' }}
               className="tnum"
               fontFamily="heading"
               fontSize={{ base: '5xl', md: '6xl' }}
@@ -567,7 +573,11 @@ export default function TransactionEntryModal({
               bg={transactionType === 'expense' ? 'expense' : 'transparent'}
               color={transactionType === 'expense' ? 'white' : 'fg.muted'}
               _hover={transactionType === 'expense' ? {} : { color: 'fg' }}
-              onClick={() => setValue('type', 'expense', { shouldValidate: true })}
+              _focusVisible={{ boxShadow: 'focus' }}
+              onClick={() => {
+                setValue('type', 'expense', { shouldValidate: true });
+                setValue('category_id', '', { shouldValidate: true });
+              }}
               aria-pressed={transactionType === 'expense'}
             >
               {t('expense')}
@@ -581,7 +591,11 @@ export default function TransactionEntryModal({
               bg={transactionType === 'income' ? 'income' : 'transparent'}
               color={transactionType === 'income' ? 'white' : 'fg.muted'}
               _hover={transactionType === 'income' ? {} : { color: 'fg' }}
-              onClick={() => setValue('type', 'income', { shouldValidate: true })}
+              _focusVisible={{ boxShadow: 'focus' }}
+              onClick={() => {
+                setValue('type', 'income', { shouldValidate: true });
+                setValue('category_id', '', { shouldValidate: true });
+              }}
               aria-pressed={transactionType === 'income'}
             >
               {t('income')}
@@ -612,8 +626,8 @@ export default function TransactionEntryModal({
                       <Button
                         key={cat.id}
                         variant="unstyled"
-                        h="40px"
-                        minH="40px"
+                        h="44px"
+                        minH="44px"
                         px={3}
                         flexShrink={0}
                         display="inline-flex"
@@ -622,12 +636,21 @@ export default function TransactionEntryModal({
                         borderWidth="1px"
                         borderColor={active ? 'accent' : 'border'}
                         bg={active ? 'accent.subtle' : 'surface'}
+                        _focusVisible={{ boxShadow: 'focus' }}
                         onClick={() => setValue('category_id', cat.id, { shouldValidate: true })}
                         aria-pressed={active}
                       >
                         <HStack spacing={2}>
                           <Box w="9px" h="9px" borderRadius="full" bg={cat.color} flexShrink={0} />
-                          <Text fontSize="sm" fontWeight={active ? 600 : 500} color="fg" whiteSpace="nowrap">
+                          <Text
+                            fontSize="sm"
+                            fontWeight={active ? 600 : 500}
+                            color="fg"
+                            whiteSpace="nowrap"
+                            maxW="140px"
+                            overflow="hidden"
+                            textOverflow="ellipsis"
+                          >
                             {cat.name}
                           </Text>
                         </HStack>
@@ -658,7 +681,7 @@ export default function TransactionEntryModal({
             <Checkbox
               isChecked={useAllowanceTag}
               onChange={(e) => setUseAllowanceTag(e.target.checked)}
-              colorScheme="blue"
+              colorScheme="brand"
             >
               <Text fontSize="sm">{t('countTowardAllowance')}</Text>
             </Checkbox>
@@ -735,8 +758,21 @@ export default function TransactionEntryModal({
         </Collapse>
       </VStack>
 
-      {/* Action buttons rendered inline for both Modal and Drawer */}
-      <Box mt={6} display="flex" justifyContent="flex-end" gap={3} pb={isMobile ? 4 : 0}>
+      {/* Action buttons — pinned to the sheet foot so Save is always thumb-reachable
+          even with "More details" expanded (Story 16.2 review). */}
+      <Box
+        mt={6}
+        display="flex"
+        justifyContent="flex-end"
+        gap={3}
+        position="sticky"
+        bottom={0}
+        bg="surface"
+        borderTopWidth="1px"
+        borderColor="border"
+        pt={3}
+        pb={isMobile ? 4 : 0}
+      >
         <Button
           variant="ghost"
           onClick={onClose}
