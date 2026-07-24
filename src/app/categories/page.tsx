@@ -103,9 +103,10 @@ export default function CategoriesPage() {
   // Story 16.3: current-month spend per category (expenses) for the card caption.
   const { data: spendingData } = useSWR('/api/dashboard/spending-by-category', fetcher);
   const spentByCategory = new Map<string, number>(
-    ((spendingData?.categories ?? []) as Array<{ category_id: string; amount: number }>).map(
-      (c) => [c.category_id, c.amount]
-    )
+    (Array.isArray(spendingData?.categories)
+      ? (spendingData.categories as Array<{ category_id: string; amount: number }>)
+      : []
+    ).map((c) => [c.category_id, c.amount])
   );
   // Until budgets load, hide the editor: a "Set budget" affordance over an unseen
   // existing limit invites a silent overwrite.
@@ -479,7 +480,6 @@ function CategoryCard({
   onBudgetChanged,
 }: CategoryCardProps) {
   const t = useTranslations('categories');
-  const [isHovered, setIsHovered] = useState(false);
   const isShared = !!category.household_id;
   // You can share/un-share your OWN categories (predefined included) when in a household.
   const showShareToggle = canShare && category.isOwn !== false;
@@ -496,8 +496,7 @@ function CategoryCard({
       _hover={{ boxShadow: 'md', borderColor: 'border.strong' }}
       transition="all 0.2s"
       position="relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      sx={{ '&:hover .cat-actions, &:focus-within .cat-actions': { opacity: 1 } }}
     >
       <HStack spacing={3} justify="space-between">
         {/* Category Badge with colored background */}
@@ -528,8 +527,9 @@ function CategoryCard({
         {/* Actions: share toggle (any own category, incl. default) + edit/delete (custom only) */}
         {(showShareToggle || !category.is_predefined) && (
           <HStack
+            className="cat-actions"
             spacing={1}
-            opacity={{ base: 1, md: isHovered ? 1 : 0 }}
+            opacity={{ base: 1, md: 0 }}
             transition="opacity 0.2s"
             flexShrink={0}
           >
@@ -537,6 +537,7 @@ function CategoryCard({
               <Button
                 size="xs"
                 variant={isShared ? 'solid' : 'outline'}
+                minH={{ base: '44px', md: '28px' }}
                 onClick={() => onToggleShare(category)}
               >
                 {isShared ? t('stopSharing') : t('shareWithHousehold')}
@@ -549,6 +550,8 @@ function CategoryCard({
                   icon={<EditIcon />}
                   size="sm"
                   variant="ghost"
+                  minW={{ base: '44px', md: '32px' }}
+                  minH={{ base: '44px', md: '32px' }}
                   onClick={() => onEdit(category)}
                 />
                 <IconButton
@@ -557,6 +560,8 @@ function CategoryCard({
                   size="sm"
                   variant="ghost"
                   color="expense"
+                  minW={{ base: '44px', md: '32px' }}
+                  minH={{ base: '44px', md: '32px' }}
                   _hover={{ bg: 'expense.subtle' }}
                   onClick={() => onDelete(category)}
                 />
@@ -566,24 +571,38 @@ function CategoryCard({
         )}
       </HStack>
 
-      {/* Story 16.3: current-month spend on expense cards without a set budget
-          (budgeted cards show spend-vs-budget via BudgetEditor below). */}
-      {category.type === 'expense' && !budget && (
-        <HStack mt={3} justify="space-between">
-          <Text
-            fontSize="2xs"
-            color="fg.subtle"
-            textTransform="uppercase"
-            letterSpacing="wide"
-            fontWeight="semibold"
-          >
-            {t('spentThisMonth')}
-          </Text>
-          <Text className="tnum" fontFamily="heading" fontWeight={600} color="expense" fontSize="sm">
-            {formatCurrency(spent ?? 0, undefined, currencyCode)}
-          </Text>
-        </HStack>
-      )}
+      {/* Story 16.3: current-month spend on OWN expense cards without a set budget
+          (budgeted cards show spend-vs-budget via BudgetEditor below). Only render
+          when spend is actually known — the endpoint omits categories with no spend,
+          so `undefined` means "loading / errored / nothing spent"; showing €0.00
+          there would zero-fill an unknowable value (degradation policy). */}
+      {category.type === 'expense' &&
+        category.isOwn !== false &&
+        !budget &&
+        spent !== undefined && (
+          <HStack mt={3} justify="space-between" spacing={2}>
+            <Text
+              fontSize="2xs"
+              color="fg.subtle"
+              textTransform="uppercase"
+              letterSpacing="wide"
+              fontWeight="semibold"
+              noOfLines={1}
+            >
+              {t('spentThisMonth')}
+            </Text>
+            <Text
+              className="tnum"
+              fontFamily="heading"
+              fontWeight={600}
+              color="expense"
+              fontSize="sm"
+              flexShrink={0}
+            >
+              {formatCurrency(spent, undefined, currencyCode)}
+            </Text>
+          </HStack>
+        )}
 
       {/* ADR-025: monthly budget progress + set/edit/clear (own expense categories) */}
       {canBudget && (
