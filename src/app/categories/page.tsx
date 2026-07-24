@@ -424,13 +424,18 @@ function CategoryList({
     );
   }
 
+  // Grid tracks use minmax(0, 1fr), NOT bare `1fr`: a `1fr` track's min is
+  // `auto` (min-content), so a card with wide content (long name + type + shared
+  // badges, e.g. Bulgarian) grows its track and blows the whole grid past its
+  // container, clipping the last column off the right edge. The 0 minimum lets
+  // each column shrink to its fair share; content wraps/truncates in the card.
   return (
     <Grid
       templateColumns={{
         base: '1fr',
-        sm: 'repeat(2, 1fr)',
-        lg: 'repeat(3, 1fr)',
-        xl: 'repeat(4, 1fr)',
+        sm: 'repeat(2, minmax(0, 1fr))',
+        lg: 'repeat(3, minmax(0, 1fr))',
+        xl: 'repeat(4, minmax(0, 1fr))',
       }}
       gap={4}
       mt={4}
@@ -498,9 +503,11 @@ function CategoryCard({
       position="relative"
       sx={{ '&:hover .cat-actions, &:focus-within .cat-actions': { opacity: 1 } }}
     >
-      <HStack spacing={3} justify="space-between">
-        {/* Category Badge with colored background */}
-        <HStack spacing={2} flex={1} minW={0} flexWrap="wrap">
+      <HStack spacing={3} justify="space-between" align="flex-start">
+        {/* Name pill on its OWN row, then the type/shared badges below — a single
+            wrap row made the badges sit inline on short-named cards but stack under
+            on long-named ones (ragged). Stacking keeps every card consistent. */}
+        <VStack spacing={2} align="flex-start" flex={1} minW={0}>
           <CategoryBadge category={category} variant="badge" size="md" />
 
           <HStack spacing={1} flexWrap="wrap">
@@ -520,7 +527,7 @@ function CategoryCard({
               </Badge>
             )}
           </HStack>
-        </HStack>
+        </VStack>
 
         {/* Actions: share toggle (any own category, incl. default) + edit/delete (custom only) */}
         {(showShareToggle || !category.is_predefined) && (
@@ -586,6 +593,7 @@ function CategoryCard({
               letterSpacing="wide"
               fontWeight="semibold"
               noOfLines={1}
+              minW={0}
             >
               {t('spentThisMonth')}
             </Text>
