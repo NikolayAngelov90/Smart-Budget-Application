@@ -208,7 +208,11 @@
     "settings": "Настройки",
     "add": "Добави",
     "expandSidebar": "Разгъни странично меню",
-    "collapseSidebar": "Свий странично меню"
+    "collapseSidebar": "Свий странично меню",
+    "more": "Още",
+    "manage": "Управление",
+    "addCategory": "Добави категория",
+    "addGoal": "Добави цел"
   },
   "dashboard": {
     "title": "Табло",

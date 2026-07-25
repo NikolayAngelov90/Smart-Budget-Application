@@ -9,15 +9,16 @@
  * AC-10.8.5: All touch targets are minimum 48×48px.
  */
 
+import { useState } from 'react';
 import { Box, Flex, VStack, Text, IconButton } from '@chakra-ui/react';
-import { ViewIcon, EditIcon, AddIcon, InfoIcon } from '@chakra-ui/icons';
+import { ViewIcon, EditIcon, AddIcon, InfoIcon, HamburgerIcon } from '@chakra-ui/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { ComponentType } from 'react';
-import { HouseholdIcon } from '@/components/icons/HouseholdIcon';
+import { MoreSheet } from './MoreSheet';
 
-type NavKey = 'dashboard' | 'transactions' | 'household' | 'insights';
+type NavKey = 'dashboard' | 'transactions' | 'insights';
 
 interface NavTab {
   key: NavKey;
@@ -25,15 +26,19 @@ interface NavTab {
   icon: ComponentType;
 }
 
-// 4 labelled tabs + the centre "Add" (2 on each side). Settings is reached from the
-// header account menu (avatar → Account Settings), not the bottom bar.
+// 3 labelled tabs + the centre "Add" + a "More" tab. Dashboard/Transactions on the
+// left, the centre Add (new transaction), then Insights + More on the right. More
+// opens a sheet with the secondary destinations (Categories, Goals, Household,
+// Settings) so they're one tap away instead of buried under Settings.
 const NAV_TABS: NavTab[] = [
   { key: 'dashboard', href: '/dashboard', icon: ViewIcon },
   { key: 'transactions', href: '/transactions', icon: EditIcon },
   // "Add" center tab is rendered separately (between index 1 and 2)
-  { key: 'household', href: '/household', icon: HouseholdIcon },
   { key: 'insights', href: '/insights', icon: InfoIcon },
 ];
+
+// Paths that live inside the "More" sheet — keep the More tab highlighted while on them.
+const MORE_PATHS = ['/categories', '/goals', '/household', '/settings'];
 
 interface BottomNavProps {
   /** Called when the center "Add" tab is tapped — opens the transaction modal. */
@@ -43,6 +48,8 @@ interface BottomNavProps {
 export function BottomNav({ onAddClick }: BottomNavProps) {
   const pathname = usePathname();
   const t = useTranslations('navigation');
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const isMoreActive = MORE_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
   return (
     <Box
@@ -145,7 +152,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
           </Text>
         </Flex>
 
-        {/* Right two tabs */}
+        {/* Right: Insights tab */}
         {NAV_TABS.slice(2).map((tab) => {
           const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/');
           return (
@@ -174,7 +181,40 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
             </Box>
           );
         })}
+
+        {/* "More" tab → opens the secondary-destinations sheet */}
+        <Box
+          as="button"
+          type="button"
+          onClick={() => setIsMoreOpen(true)}
+          flex={1}
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          minH="48px"
+          minW="48px"
+          color={isMoreActive || isMoreOpen ? 'accent' : 'fg.subtle'}
+          _hover={{ color: 'accent' }}
+          aria-haspopup="dialog"
+          aria-expanded={isMoreOpen}
+          aria-label={t('more')}
+        >
+          <VStack spacing={1}>
+            <Box as={HamburgerIcon} boxSize={5} />
+            <Text
+              fontSize="2xs"
+              fontWeight={isMoreActive ? 'semibold' : 'medium'}
+              lineHeight={1}
+              letterSpacing="tight"
+            >
+              {t('more')}
+            </Text>
+          </VStack>
+        </Box>
       </Flex>
+
+      <MoreSheet isOpen={isMoreOpen} onClose={() => setIsMoreOpen(false)} />
     </Box>
   );
 }

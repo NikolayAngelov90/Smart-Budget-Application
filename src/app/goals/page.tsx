@@ -11,7 +11,7 @@
  * - Skeleton loading during data fetch
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -38,6 +38,15 @@ export default function GoalsPage() {
   const currency = preferences?.currency_format ?? '';
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // Mobile "More" sheet deep-link: `/goals?new=1` (the sheet's inline "+") opens
+  // the create form on arrival, then strips the param so a refresh won't reopen it.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === '1') {
+      onOpen();
+      window.history.replaceState(null, '', '/goals');
+    }
+  }, [onOpen]);
 
   // M4: stable identity prevents GoalCard's milestone useEffect from re-running on every parent render
   const handleMutate = useCallback(() => void mutate(), [mutate]);
