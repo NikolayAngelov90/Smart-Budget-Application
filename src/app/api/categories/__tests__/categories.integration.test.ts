@@ -379,23 +379,16 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
   describe('DELETE /api/categories/[id] — delete category', () => {
     const params = Promise.resolve({ id: catId });
 
-    test('deletes category after orphaning linked transactions', async () => {
+    test('deletes an unused category directly (no reassignment)', async () => {
       // Fetch category
       mockQuery.single.mockResolvedValueOnce({
-        data: { id: catId, name: 'My Category', is_predefined: false },
+        data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
         error: null,
       });
-
-      // Count transactions (3 exist)
+      // Count transactions = 0
       mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({ count: 3, error: null }).then(resolve)
+        Promise.resolve({ count: 0, error: null }).then(resolve)
       );
-
-      // Orphan transactions (update)
-      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({ data: null, error: null }).then(resolve)
-      );
-
       // Delete category
       mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
         Promise.resolve({ data: null, error: null }).then(resolve)
@@ -410,7 +403,94 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
+      expect(mockQuery.update).not.toHaveBeenCalled(); // no reassignment
       expect(mockQuery.delete).toHaveBeenCalled();
+    });
+
+    test('asks for reassignment (409) when the category is in use and no target is given', async () => {
+      mockQuery.single.mockResolvedValueOnce({
+        data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
+        error: null,
+      });
+      // 3 transactions reference it
+      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
+        Promise.resolve({ count: 3, error: null }).then(resolve)
+      );
+
+      const request = createMockRequest(
+        `http://localhost:3000/api/categories/${catId}`,
+        'DELETE'
+      );
+      const response = await DELETE(request, { params });
+      const data = await response.json();
+
+      expect(response.status).toBe(409);
+      expect(data.requiresReassign).toBe(true);
+      expect(data.transactionCount).toBe(3);
+      expect(mockQuery.delete).not.toHaveBeenCalled();
+    });
+
+    test('reassigns transactions to a same-type target, then deletes', async () => {
+      mockQuery.single.mockResolvedValueOnce({
+        data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
+        error: null,
+      });
+      // 3 transactions
+      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
+        Promise.resolve({ count: 3, error: null }).then(resolve)
+      );
+      // Validate target — same type
+      mockQuery.single.mockResolvedValueOnce({
+        data: { id: 'target-cat', type: 'expense' },
+        error: null,
+      });
+      // Reassign update
+      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
+        Promise.resolve({ data: null, error: null }).then(resolve)
+      );
+      // Delete category
+      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
+        Promise.resolve({ data: null, error: null }).then(resolve)
+      );
+
+      const request = createMockRequest(
+        `http://localhost:3000/api/categories/${catId}`,
+        'DELETE',
+        { reassignTo: 'target-cat' }
+      );
+      const response = await DELETE(request, { params });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(mockQuery.update).toHaveBeenCalledWith({ category_id: 'target-cat' });
+      expect(mockQuery.delete).toHaveBeenCalled();
+    });
+
+    test('rejects reassignment to a different-type category (400)', async () => {
+      mockQuery.single.mockResolvedValueOnce({
+        data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
+        error: null,
+      });
+      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
+        Promise.resolve({ count: 3, error: null }).then(resolve)
+      );
+      // Target is income — a type mismatch
+      mockQuery.single.mockResolvedValueOnce({
+        data: { id: 'income-cat', type: 'income' },
+        error: null,
+      });
+
+      const request = createMockRequest(
+        `http://localhost:3000/api/categories/${catId}`,
+        'DELETE',
+        { reassignTo: 'income-cat' }
+      );
+      const response = await DELETE(request, { params });
+
+      expect(response.status).toBe(400);
+      expect(mockQuery.update).not.toHaveBeenCalled();
+      expect(mockQuery.delete).not.toHaveBeenCalled();
     });
 
     test('returns 403 when trying to delete a predefined category', async () => {

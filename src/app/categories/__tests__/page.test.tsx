@@ -17,7 +17,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { SWRConfig } from 'swr';
 import type { Category } from '@/types/category.types';
@@ -185,5 +185,60 @@ describe('Categories page — "?new=1" quick-add deep-link (mobile More sheet)',
 
     await screen.findAllByText('Groceries');
     expect(screen.queryByText('category-modal-open')).not.toBeInTheDocument();
+  });
+});
+
+describe('Categories page — delete with reassignment (in-use category)', () => {
+  it('prompts to reassign transactions on 409, then deletes with the chosen target', async () => {
+    // A custom (deletable) expense category + a predefined expense category to move into.
+    mockCategories = [
+      cat({ id: 'c1', name: 'Coffee', type: 'expense', is_predefined: false }),
+      cat({ id: 'c2', name: 'Dining', type: 'expense', is_predefined: true }),
+    ];
+
+    const deleteCalls: Array<{ reassignTo?: string }> = [];
+    global.fetch = jest.fn((url: string, options?: RequestInit) => {
+      if (options?.method === 'DELETE') {
+        const body = JSON.parse((options.body as string) || '{}');
+        deleteCalls.push(body);
+        if (body.reassignTo) {
+          return Promise.resolve({ ok: true, status: 200, json: async () => ({ success: true }) });
+        }
+        // First attempt: the category is in use → ask for a target.
+        return Promise.resolve({
+          ok: false,
+          status: 409,
+          json: async () => ({ error: 'Category has transactions', requiresReassign: true, transactionCount: 3 }),
+        });
+      }
+      const b = url.includes('/api/dashboard/spending-by-category')
+        ? { categories: mockSpendRows }
+        : { data: mockCategories };
+      return Promise.resolve({ ok: true, json: async () => b });
+    }) as jest.Mock;
+
+    renderPage();
+    await screen.findAllByText('Coffee');
+
+    // Open the delete confirm for Coffee (custom card has a delete button).
+    fireEvent.click(screen.getAllByRole('button', { name: 'deleteCategoryAriaLabel' })[0]!);
+    // First confirm attempt.
+    fireEvent.click(await screen.findByRole('button', { name: 'deleteAnyway' }));
+
+    // 409 → the dialog switches to reassign mode with a same-type picker.
+    expect(await screen.findByText('reassignPrompt')).toBeInTheDocument();
+    const select = screen.getByRole('combobox');
+    // Only same-type OTHER categories are offered (Dining), never Coffee itself.
+    expect(screen.getByRole('option', { name: 'Dining' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Coffee' })).not.toBeInTheDocument();
+
+    // Choose the target and move+delete.
+    fireEvent.change(select, { target: { value: 'c2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'moveAndDelete' }));
+
+    // Two-phase delete: first with no target (→409), then with the chosen target.
+    await waitFor(() => expect(deleteCalls).toEqual([{}, { reassignTo: 'c2' }]));
+    // On success the dialog closes (the reassign prompt is gone).
+    await waitFor(() => expect(screen.queryByText('reassignPrompt')).not.toBeInTheDocument());
   });
 });
