@@ -415,7 +415,11 @@
     "deletedSuccessNamed": "Category '{name}' deleted successfully",
     "recentlyUsed": "Recently Used",
     "categories": "Categories",
-    "noCategoriesAvailable": "No categories available"
+    "noCategoriesAvailable": "No categories available",
+    "reassignPrompt": "\"{name}\" has {count} transaction(s). Move them to another category, then delete it:",
+    "reassignPlaceholder": "Choose a category",
+    "reassignNoTarget": "This category has {count} transaction(s), but there is no other category of the same type to move them to. Create one first.",
+    "moveAndDelete": "Move & delete"
   },
   "insights": {
     "title": "Insights",

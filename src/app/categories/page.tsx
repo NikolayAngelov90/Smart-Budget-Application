@@ -31,6 +31,7 @@ import {
   Text,
   Badge,
   Grid,
+  Select,
   Spinner,
   useDisclosure,
   useToast,
@@ -86,6 +87,10 @@ export default function CategoriesPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Reassign-then-delete: when the category is in use the server answers 409 and
+  // we switch the dialog to "move its N transactions to <target>" mode.
+  const [reassignCount, setReassignCount] = useState<number | null>(null);
+  const [reassignTarget, setReassignTarget] = useState<string>('');
 
   // Mobile "More" sheet deep-link: `/categories?new=1` (the sheet's inline "+")
   // opens the create modal on arrival, then strips the param so a refresh won't
@@ -111,7 +116,7 @@ export default function CategoriesPage() {
   );
 
   // Story 16.3: current-month spend per category (expenses) for the card caption.
-  const { data: spendingData } = useSWR('/api/dashboard/spending-by-category', fetcher);
+  const { data: spendingData, mutate: mutateSpending } = useSWR('/api/dashboard/spending-by-category', fetcher);
   const spentByCategory = new Map<string, number>(
     (Array.isArray(spendingData?.categories)
       ? (spendingData.categories as Array<{ category_id: string; amount: number }>)
@@ -210,6 +215,8 @@ export default function CategoriesPage() {
 
   const handleDeleteClick = (category: Category) => {
     setCategoryToDelete(category);
+    setReassignCount(null);
+    setReassignTarget('');
     onDeleteOpen();
   };
 
@@ -221,14 +228,28 @@ export default function CategoriesPage() {
     try {
       const response = await fetch(`/api/categories/${categoryToDelete.id}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        // Once a target has been chosen, send it; the first attempt sends none.
+        body: JSON.stringify(reassignTarget ? { reassignTo: reassignTarget } : {}),
       });
 
+      // 409 = the category is in use; switch the dialog to reassign mode.
+      if (response.status === 409) {
+        const result = await response.json().catch(() => ({}));
+        if (result.requiresReassign) {
+          setReassignCount(result.transactionCount ?? 0);
+          setIsDeleting(false);
+          return;
+        }
+      }
+
       if (!response.ok) {
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
         throw new Error(result.error || 'Failed to delete category');
       }
 
-      // Optimistic UI update
+      // Optimistic list update; refresh spend + budgets since reassigning moved
+      // transactions to the target and the deleted category's budget cascaded away.
       mutate(
         {
           data: categories.filter((cat) => cat.id !== categoryToDelete.id),
@@ -236,6 +257,8 @@ export default function CategoriesPage() {
         },
         false
       );
+      mutateSpending();
+      mutateBudgets();
 
       toast({
         title: t('deletedSuccessNamed', { name: categoryToDelete.name }),
@@ -245,6 +268,8 @@ export default function CategoriesPage() {
       });
 
       setCategoryToDelete(null);
+      setReassignCount(null);
+      setReassignTarget('');
       onDeleteClose();
     } catch (error) {
       console.error('Delete category error:', error);
@@ -368,6 +393,13 @@ export default function CategoriesPage() {
               onConfirm={handleDeleteConfirm}
               category={categoryToDelete}
               isDeleting={isDeleting}
+              reassignCount={reassignCount}
+              reassignTarget={reassignTarget}
+              onSelectTarget={setReassignTarget}
+              // Same-type categories the transactions can move to (never the one being deleted).
+              reassignOptions={categories.filter(
+                (c) => c.type === categoryToDelete.type && c.id !== categoryToDelete.id
+              )}
             />
           )}
         </VStack>
@@ -640,6 +672,12 @@ interface DeleteConfirmationModalProps {
   onConfirm: () => void;
   category: Category;
   isDeleting: boolean;
+  /** Non-null once the server reports the category is in use — switches to reassign mode. */
+  reassignCount: number | null;
+  reassignTarget: string;
+  onSelectTarget: (id: string) => void;
+  /** Same-type categories the transactions can be moved to. */
+  reassignOptions: Category[];
 }
 
 function DeleteConfirmationModal({
@@ -648,10 +686,19 @@ function DeleteConfirmationModal({
   onConfirm,
   category,
   isDeleting,
+  reassignCount,
+  reassignTarget,
+  onSelectTarget,
+  reassignOptions,
 }: DeleteConfirmationModalProps) {
   const t = useTranslations('categories');
   const tCommon = useTranslations('common');
   const cancelRef = React.useRef<HTMLButtonElement>(null);
+
+  const inUse = reassignCount !== null;
+  const noTarget = inUse && reassignOptions.length === 0;
+  // In reassign mode the delete can only proceed once a target is chosen.
+  const confirmDisabled = inUse && (noTarget || !reassignTarget);
 
   return (
     <AlertDialog
@@ -667,25 +714,56 @@ function DeleteConfirmationModal({
           </AlertDialogHeader>
 
           <AlertDialogBody>
-            {t('deleteConfirmMessage', { name: category.name })}
-            <br />
-            <br />
-            {t('deleteConfirmWarning')}
+            {!inUse && (
+              <>
+                {t('deleteConfirmMessage', { name: category.name })}
+                <br />
+                <br />
+                {t('deleteConfirmWarning')}
+              </>
+            )}
+
+            {inUse && noTarget && (
+              <Text>{t('reassignNoTarget', { count: reassignCount })}</Text>
+            )}
+
+            {inUse && !noTarget && (
+              <>
+                <Text mb={3}>
+                  {t('reassignPrompt', { name: category.name, count: reassignCount })}
+                </Text>
+                <Select
+                  placeholder={t('reassignPlaceholder')}
+                  value={reassignTarget}
+                  onChange={(e) => onSelectTarget(e.target.value)}
+                  aria-label={t('reassignPlaceholder')}
+                >
+                  {reassignOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </>
+            )}
           </AlertDialogBody>
 
           <AlertDialogFooter>
             <Button ref={cancelRef} onClick={onClose} isDisabled={isDeleting}>
               {tCommon('cancel')}
             </Button>
-            <Button
-              colorScheme="red"
-              onClick={onConfirm}
-              ml={3}
-              isLoading={isDeleting}
-              loadingText={t('deleting')}
-            >
-              {t('deleteAnyway')}
-            </Button>
+            {!noTarget && (
+              <Button
+                colorScheme="red"
+                onClick={onConfirm}
+                ml={3}
+                isLoading={isDeleting}
+                loadingText={t('deleting')}
+                isDisabled={confirmDisabled}
+              >
+                {inUse ? t('moveAndDelete') : t('deleteAnyway')}
+              </Button>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialogOverlay>

@@ -415,7 +415,11 @@
     "deletedSuccessNamed": "Категория '{name}' е изтрита успешно",
     "recentlyUsed": "Наскоро използвани",
     "categories": "Категории",
-    "noCategoriesAvailable": "Няма налични категории"
+    "noCategoriesAvailable": "Няма налични категории",
+    "reassignPrompt": "„{name}“ има {count} транзакция(и). Преместете ги в друга категория, след което я изтрийте:",
+    "reassignPlaceholder": "Изберете категория",
+    "reassignNoTarget": "Тази категория има {count} транзакция(и), но няма друга категория от същия тип, към която да ги преместите. Първо създайте такава.",
+    "moveAndDelete": "Премести и изтрий"
   },
   "insights": {
     "title": "Прегледи",

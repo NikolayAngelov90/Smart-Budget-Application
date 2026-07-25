@@ -147,8 +147,15 @@ export async function PUT(
 
 /**
  * DELETE /api/categories/:id
- * Delete custom category
- * Note: Transactions with deleted category will have category_id set to null
+ * Delete a custom category.
+ *
+ * `transactions.category_id` is `NOT NULL` (migration 001), so a category that
+ * still has transactions cannot simply be removed — its transactions must be
+ * REASSIGNED to another category of the same type first. The client sends the
+ * chosen target as `{ reassignTo }`; if the category is in use and no target is
+ * given, we answer 409 `{ requiresReassign, transactionCount }` so the UI can
+ * prompt for one. (category_budgets + value_categories cascade on delete;
+ * wishlist_items are SET NULL.)
  */
 export async function DELETE(
   request: NextRequest,
@@ -167,10 +174,21 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Optional reassign target (DELETE may carry a small JSON body).
+    let reassignTo: string | null = null;
+    try {
+      const body = await request.json();
+      if (body && typeof body.reassignTo === 'string' && body.reassignTo) {
+        reassignTo = body.reassignTo;
+      }
+    } catch {
+      // No body — a delete for a category with no transactions.
+    }
+
     // Story 13.5: RLS scopes visibility (own OR shared-in-household); members can delete shared.
     const { data: category, error: fetchError } = await supabase
       .from('categories')
-      .select('id, name, is_predefined')
+      .select('id, name, is_predefined, type')
       .eq('id', id)
       .single();
 
@@ -200,17 +218,56 @@ export async function DELETE(
       );
     }
 
-    // If transactions exist, set their category_id to null (orphan them)
+    // In use → reassign the transactions to a same-type category before deleting.
     if (transactionCount && transactionCount > 0) {
-      const { error: updateError } = await supabase
+      if (!reassignTo) {
+        return NextResponse.json(
+          {
+            error: 'Category has transactions',
+            requiresReassign: true,
+            transactionCount,
+          },
+          { status: 409 }
+        );
+      }
+
+      if (reassignTo === id) {
+        return NextResponse.json(
+          { error: 'Cannot reassign transactions to the category being deleted' },
+          { status: 400 }
+        );
+      }
+
+      // Validate the target: accessible (RLS-scoped select) and the same type,
+      // so income/expense transactions never land on a mismatched category.
+      const { data: target, error: targetError } = await supabase
+        .from('categories')
+        .select('id, type')
+        .eq('id', reassignTo)
+        .single();
+
+      if (targetError || !target) {
+        return NextResponse.json(
+          { error: 'Target category not found' },
+          { status: 400 }
+        );
+      }
+      if (target.type !== category.type) {
+        return NextResponse.json(
+          { error: 'Target category must be the same type' },
+          { status: 400 }
+        );
+      }
+
+      const { error: reassignError } = await supabase
         .from('transactions')
-        .update({ category_id: null } as Record<string, unknown>)
+        .update({ category_id: reassignTo })
         .eq('category_id', id);
 
-      if (updateError) {
-        logger.error('Categories', 'Error orphaning transactions:', updateError);
+      if (reassignError) {
+        logger.error('Categories', 'Error reassigning transactions:', reassignError);
         return NextResponse.json(
-          { error: 'Failed to update transactions' },
+          { error: 'Failed to reassign transactions' },
           { status: 500 }
         );
       }
