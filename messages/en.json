@@ -208,7 +208,11 @@
     "settings": "Settings",
     "add": "Add",
     "expandSidebar": "Expand sidebar",
-    "collapseSidebar": "Collapse sidebar"
+    "collapseSidebar": "Collapse sidebar",
+    "more": "More",
+    "manage": "Manage",
+    "addCategory": "Add category",
+    "addGoal": "Add goal"
   },
   "dashboard": {
     "title": "Dashboard",

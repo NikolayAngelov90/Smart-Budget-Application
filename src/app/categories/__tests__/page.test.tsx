@@ -27,7 +27,11 @@ jest.mock('next-intl', () => ({ useTranslations: () => (key: string) => key }));
 jest.mock('@/components/layout/AppLayout', () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-jest.mock('@/components/categories/CategoryModal', () => ({ CategoryModal: () => null }));
+jest.mock('@/components/categories/CategoryModal', () => ({
+  // Render a marker only when opened, so the ?new=1 deep-link test can assert it.
+  CategoryModal: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? <div>category-modal-open</div> : null,
+}));
 
 let mockHousehold: { household: unknown };
 jest.mock('@/lib/hooks/useHousehold', () => ({ useHousehold: () => mockHousehold }));
@@ -153,5 +157,33 @@ describe('Categories page — Story 16-3 spend caption', () => {
     expect(screen.getAllByText('overBy').length).toBeGreaterThan(0);
     // …and the plain "spent this month" caption is suppressed (no double display).
     expect(screen.queryAllByText('spentThisMonth')).toHaveLength(0);
+  });
+});
+
+describe('Categories page — "?new=1" quick-add deep-link (mobile More sheet)', () => {
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('opens the create modal on arrival and strips the ?new=1 param', async () => {
+    mockCategories = [cat({ id: 'c1', name: 'Groceries', type: 'expense' })];
+    window.history.replaceState(null, '', '/categories?new=1');
+
+    renderPage();
+
+    // The create modal opens from the deep-link…
+    expect(await screen.findByText('category-modal-open')).toBeInTheDocument();
+    // …and the param is stripped so a refresh won't reopen it.
+    expect(window.location.search).toBe('');
+  });
+
+  it('does NOT open the create modal on a normal visit', async () => {
+    mockCategories = [cat({ id: 'c1', name: 'Groceries', type: 'expense' })];
+    window.history.replaceState(null, '', '/categories');
+
+    renderPage();
+
+    await screen.findAllByText('Groceries');
+    expect(screen.queryByText('category-modal-open')).not.toBeInTheDocument();
   });
 });

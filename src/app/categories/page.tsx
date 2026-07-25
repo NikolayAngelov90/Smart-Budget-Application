@@ -20,7 +20,7 @@
  * - SWR for data fetching and cache management
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -86,6 +86,16 @@ export default function CategoriesPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Mobile "More" sheet deep-link: `/categories?new=1` (the sheet's inline "+")
+  // opens the create modal on arrival, then strips the param so a refresh won't
+  // reopen it. Read from window (not useSearchParams) to avoid a Suspense boundary.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === '1') {
+      onOpen();
+      window.history.replaceState(null, '', '/categories');
+    }
+  }, [onOpen]);
 
   // Fetch categories with SWR
   const { data, error, isLoading, mutate } = useSWR('/api/categories', fetcher);

@@ -40,15 +40,35 @@ describe('BottomNav', () => {
     mockUsePathname.mockReturnValue('/dashboard');
   });
 
-  it('renders all tab areas (Dashboard, Transactions, Add, Household, Insights)', () => {
+  it('renders the tab areas (Dashboard, Transactions, Add, Insights, More)', () => {
     renderWithChakra(<BottomNav onAddClick={onAddClick} />);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Transactions')).toBeInTheDocument();
     expect(screen.getByText('Add')).toBeInTheDocument();
-    expect(screen.getByText('Household')).toBeInTheDocument();
     expect(screen.getByText('Insights')).toBeInTheDocument();
+    expect(screen.getByText('More')).toBeInTheDocument();
+    // Household + Settings now live inside the More sheet (closed by default).
+    expect(screen.queryByText('Household')).not.toBeInTheDocument();
     expect(screen.queryByText('Settings')).not.toBeInTheDocument();
+  });
+
+  it('opens the More sheet with the secondary destinations when tapped', () => {
+    renderWithChakra(<BottomNav onAddClick={onAddClick} />);
+
+    // Sheet is closed initially — its destinations are not shown.
+    expect(screen.queryByRole('link', { name: /^categories$/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^more$/i }));
+
+    // Categories, Goals, Household, Settings are now reachable.
+    expect(screen.getByRole('link', { name: /^categories$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^goals$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^household$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^settings$/i })).toBeInTheDocument();
+    // Inline quick-add affordances for Categories + Goals.
+    expect(screen.getByRole('link', { name: /add category/i })).toHaveAttribute('href', '/categories?new=1');
+    expect(screen.getByRole('link', { name: /add goal/i })).toHaveAttribute('href', '/goals?new=1');
   });
 
   it('calls onAddClick when the Add button is tapped', () => {
@@ -92,12 +112,13 @@ describe('BottomNav', () => {
     expect(transactionsLink).toHaveAttribute('aria-current', 'page');
   });
 
-  it('renders all navigation tab links as accessible links', () => {
+  it('renders the primary navigation tab links as accessible links', () => {
     renderWithChakra(<BottomNav onAddClick={onAddClick} />);
 
     expect(screen.getByRole('link', { name: /^dashboard$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^transactions$/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /^household$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^insights$/i })).toBeInTheDocument();
+    // "More" is a button (opens a sheet), not a link.
+    expect(screen.getByRole('button', { name: /^more$/i })).toBeInTheDocument();
   });
 });
