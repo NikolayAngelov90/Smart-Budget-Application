@@ -23,6 +23,7 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ArrowUpIcon,
 } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
 import type { Insight, InsightMetadata } from '@/types/database.types';
@@ -30,6 +31,7 @@ import { InsightErrorBoundary } from './InsightErrorBoundary';
 import { trackInsightViewed } from '@/lib/services/analyticsService';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency } from '@/lib/utils/currency';
+import { getInsightToneTokens } from '@/lib/utils/insightGroups';
 
 interface AIInsightCardProps {
   insight: Insight;
@@ -39,49 +41,35 @@ interface AIInsightCardProps {
   expandable?: boolean;
   children?: ReactNode; // Metadata content to display when expanded
   onOpenModal?: () => void; // For mobile: trigger detail modal
+  /** "lead" = the spotlight card at the top of the page (Story 16.4, AC2). */
+  variant?: 'default' | 'lead';
 }
 
-// Color scheme mapping based on insight type
-const getColorScheme = (type: string): string => {
-  const colorMap: Record<string, string> = {
-    spending_increase: 'orange',
-    budget_recommendation: 'blue',
-    unusual_expense: 'red',
-    positive_reinforcement: 'green',
-  };
-  return colorMap[type] || 'gray';
-};
-
-// Icon mapping based on insight type
+/**
+ * Icon per insight type. Story 16.4: covers all SIX enum values — the Epic-12
+ * types (`spending_anomaly`, `new_high_spend_category`) previously fell through
+ * to a generic info icon.
+ */
 const getIcon = (type: string) => {
   const iconMap: Record<string, JSX.Element> = {
     spending_increase: <WarningIcon boxSize={5} />,
     budget_recommendation: <InfoIcon boxSize={5} />,
     unusual_expense: <WarningTwoIcon boxSize={5} />,
     positive_reinforcement: <CheckCircleIcon boxSize={5} />,
+    spending_anomaly: <WarningTwoIcon boxSize={5} />,
+    new_high_spend_category: <ArrowUpIcon boxSize={5} />,
   };
   return iconMap[type] || <InfoIcon boxSize={5} />;
 };
 
-// Priority label key mapping
+/**
+ * Priority is only surfaced when it carries meaning. A badge on every card
+ * ("Priority 1 - Info") was noise that competed with the insight itself, so
+ * only critical/high are labelled.
+ */
 const priorityLabelKeys: Record<number, string> = {
   5: 'priorityCritical',
   4: 'priorityHigh',
-  3: 'priorityMedium',
-  2: 'priorityLow',
-  1: 'priorityInfo',
-};
-
-// Priority badge color scheme
-const getPriorityColorScheme = (priority: number): string => {
-  const colors: Record<number, string> = {
-    5: 'red',
-    4: 'orange',
-    3: 'yellow',
-    2: 'green',
-    1: 'gray',
-  };
-  return colors[priority] || 'gray';
 };
 
 export function AIInsightCard({
@@ -92,6 +80,7 @@ export function AIInsightCard({
   expandable = false,
   children,
   onOpenModal,
+  variant = 'default',
 }: AIInsightCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isMobile = useBreakpointValue({ base: true, md: false });
@@ -175,11 +164,14 @@ export function AIInsightCard({
 
   const { title: localizedTitle, description: localizedDescription } = getLocalizedText();
 
-  const colorScheme = getColorScheme(insight.type);
+  // Story 16.4: colour comes from the shared taxonomy (semantic tokens), not a
+  // per-component Chakra colour scheme.
+  const { fg: toneFg, subtle: toneSubtle } = getInsightToneTokens(insight.type);
   const icon = getIcon(insight.type);
-  const priorityLabelKey = priorityLabelKeys[insight.priority] || 'priorityUnknown';
-  const priorityLabel = t(priorityLabelKey);
-  const priorityColorScheme = getPriorityColorScheme(insight.priority);
+  const isLead = variant === 'lead';
+  // Only critical/high get a badge — see priorityLabelKeys.
+  const priorityLabelKey = priorityLabelKeys[insight.priority];
+  const priorityLabel = priorityLabelKey ? t(priorityLabelKey) : null;
 
   const handleAction = () => {
     if (isDismissed && onUndismiss) {
@@ -207,8 +199,8 @@ export function AIInsightCard({
 
   return (
     <Card
-      borderLeft="4px"
-      borderColor={isDismissed ? 'gray.300' : `${colorScheme}.500`}
+      borderLeft={isLead ? '6px' : '4px'}
+      borderColor={isDismissed ? 'border' : toneFg}
       position="relative"
       _hover={{
         shadow: 'md',
@@ -218,10 +210,11 @@ export function AIInsightCard({
       minH="44px"
       w="full"
       opacity={isDismissed ? 0.6 : 1}
-      bg={isDismissed ? 'gray.50' : 'white'}
-      filter={isDismissed ? 'grayscale(50%)' : 'none'}
+      bg={isDismissed ? 'surface.sunken' : 'surface'}
+      // The lead card carries a little more presence than the stream below it.
+      boxShadow={isLead && !isDismissed ? 'md' : undefined}
     >
-      <CardBody p={{ base: 4, md: 5 }}>
+      <CardBody p={isLead ? { base: 5, md: 7 } : { base: 4, md: 5 }}>
         {/* Dismiss/Undismiss button */}
         <IconButton
           aria-label={isDismissed ? t('restoreInsight') : t('dismissInsight')}
@@ -234,8 +227,10 @@ export function AIInsightCard({
           onClick={handleAction}
           minH="44px"
           minW="44px"
+          color="fg.muted"
           _hover={{
-            bg: isDismissed ? 'green.50' : `${colorScheme}.50`,
+            bg: isDismissed ? 'income.subtle' : 'surface.hover',
+            color: isDismissed ? 'income' : 'fg',
           }}
           title={isDismissed ? t('undismiss') : t('dismiss')}
         />
@@ -243,7 +238,8 @@ export function AIInsightCard({
         {/* Dismissed badge */}
         {isDismissed && (
           <Badge
-            colorScheme="gray"
+            bg="surface.sunken"
+            color="fg.muted"
             position="absolute"
             top={2}
             right={14}
@@ -255,31 +251,34 @@ export function AIInsightCard({
 
         {/* Content */}
         <VStack align="start" spacing={3} pr={10}>
-          {/* Icon and Priority Badge */}
+          {/* Icon + (only meaningful) priority label */}
           <HStack spacing={3} w="full">
-            <Flex
-              color={`${colorScheme}.500`}
-              alignItems="center"
-              justifyContent="center"
-            >
+            <Flex color={toneFg} alignItems="center" justifyContent="center">
               {icon}
             </Flex>
-            <Badge
-              colorScheme={priorityColorScheme}
-              fontSize={{ base: 'xs', md: 'sm' }}
-              px={2}
-              py={1}
-              borderRadius="md"
-            >
-              {t('priority', { priority: insight.priority })} - {priorityLabel}
-            </Badge>
+            {priorityLabel && (
+              <Badge
+                bg={toneSubtle}
+                color={toneFg}
+                fontSize="2xs"
+                px={2}
+                py={1}
+                borderRadius="md"
+                textTransform="uppercase"
+                letterSpacing="wide"
+              >
+                {priorityLabel}
+              </Badge>
+            )}
           </HStack>
 
           {/* Title */}
           <Text
-            fontWeight="bold"
-            fontSize={{ base: 'md', md: 'lg' }}
-            color="gray.800"
+            fontWeight={isLead ? 700 : 'bold'}
+            fontFamily={isLead ? 'heading' : undefined}
+            fontSize={isLead ? { base: 'lg', md: '2xl' } : { base: 'md', md: 'lg' }}
+            letterSpacing={isLead ? 'tight' : undefined}
+            color="fg"
             lineHeight="shorter"
           >
             {localizedTitle}
@@ -287,8 +286,8 @@ export function AIInsightCard({
 
           {/* Description */}
           <Text
-            fontSize={{ base: 'sm', md: 'md' }}
-            color="gray.600"
+            fontSize={isLead ? { base: 'sm', md: 'lg' } : { base: 'sm', md: 'md' }}
+            color="fg.muted"
             lineHeight="base"
           >
             {localizedDescription}
@@ -299,7 +298,8 @@ export function AIInsightCard({
             <Button
               size="sm"
               variant="ghost"
-              colorScheme={colorScheme}
+              color="accent"
+              _hover={{ bg: 'accent.subtle' }}
               onClick={handleSeeDetails}
               rightIcon={
                 isMobile ? undefined : isExpanded ? (
@@ -329,7 +329,7 @@ export function AIInsightCard({
                 mt={4}
                 pt={4}
                 borderTop="1px"
-                borderColor="gray.200"
+                borderColor="border"
                 w="full"
               >
                 <InsightErrorBoundary>

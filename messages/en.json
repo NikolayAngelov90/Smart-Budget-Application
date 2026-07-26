@@ -480,7 +480,14 @@
     "unusual_expense_title": "Unusual {categoryName} expense: {amount}",
     "unusual_expense_desc": "We noticed an unusual {categoryName} expense of {amount} - much higher than your typical {typical}. You might want to review this transaction to make sure everything looks right.",
     "positive_reinforcement_title": "Great job on {categoryName}!",
-    "positive_reinforcement_desc": "{categoryName}: you're {percent}% under budget this month, saving {savings}. Keep up the excellent work!"
+    "positive_reinforcement_desc": "{categoryName}: you're {percent}% under budget this month, saving {savings}. Keep up the excellent work!",
+    "leadInsight": "Start here",
+    "groupAttention": "Needs attention",
+    "groupChanged": "What changed",
+    "groupRecommend": "Recommendations",
+    "groupProgress": "Progress",
+    "loading": "Loading insights…",
+    "refreshing": "Refreshing…"
   },
   "settings": {
     "title": "Settings",

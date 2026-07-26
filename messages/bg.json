@@ -480,7 +480,14 @@
     "unusual_expense_title": "Необичаен разход за {categoryName}: {amount}",
     "unusual_expense_desc": "Забелязахме необичаен разход за {categoryName} от {amount} — значително по-висок от типичния ви {typical}. Може би искате да прегледате тази транзакция, за да се уверите, че всичко е наред.",
     "positive_reinforcement_title": "Браво за {categoryName}!",
-    "positive_reinforcement_desc": "{categoryName}: тази месец сте с {percent}% под бюджета, спестявайки {savings}. Продължавайте в същия дух!"
+    "positive_reinforcement_desc": "{categoryName}: тази месец сте с {percent}% под бюджета, спестявайки {savings}. Продължавайте в същия дух!",
+    "leadInsight": "Започнете оттук",
+    "groupAttention": "Изисква внимание",
+    "groupChanged": "Какво се промени",
+    "groupRecommend": "Препоръки",
+    "groupProgress": "Напредък",
+    "loading": "Зареждане на прегледи…",
+    "refreshing": "Обновяване…"
   },
   "settings": {
     "title": "Настройки",

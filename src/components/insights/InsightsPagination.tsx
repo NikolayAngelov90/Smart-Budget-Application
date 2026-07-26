@@ -106,7 +106,7 @@ export function InsightsPagination({
           {pageNumbers.map((page, index) => {
             if (page === '...') {
               return (
-                <Text key={`ellipsis-${index}`} px={2} color="gray.500">
+                <Text key={`ellipsis-${index}`} px={2} color="fg.subtle">
                   ...
                 </Text>
               );

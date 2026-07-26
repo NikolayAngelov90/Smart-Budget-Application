@@ -84,7 +84,7 @@ export function InsightDetailModal({
           </HStack>
           <Text
             fontSize="sm"
-            color="gray.600"
+            color="fg.muted"
             fontWeight="normal"
             mt={2}
             lineHeight="base"

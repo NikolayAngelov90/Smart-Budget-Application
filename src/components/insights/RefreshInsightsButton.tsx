@@ -19,6 +19,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button, useToast } from '@chakra-ui/react';
 import { RepeatIcon } from '@chakra-ui/icons';
 import { mutate } from 'swr';
@@ -46,7 +47,7 @@ interface RefreshInsightsButtonProps {
 }
 
 export function RefreshInsightsButton({
-  buttonText = 'Refresh Insights',
+  buttonText,
   size = 'md',
   variant = 'outline',
   onRefreshComplete,
@@ -54,6 +55,9 @@ export function RefreshInsightsButton({
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(null);
   const toast = useToast();
+  // Story 16.4: the label was a hardcoded English default, so it stayed
+  // "Refresh Insights" in the Bulgarian UI.
+  const t = useTranslations('insights');
 
   const handleRefresh = async () => {
     // Prevent double-clicks (client-side check, 2 seconds)
@@ -153,13 +157,13 @@ export function RefreshInsightsButton({
       leftIcon={<RepeatIcon />}
       onClick={handleRefresh}
       isLoading={isLoading}
-      loadingText="Refreshing..."
+      loadingText={t('refreshing')}
       size={size}
       variant={variant}
-      colorScheme="blue"
-      aria-label="Refresh insights"
+      colorScheme="brand"
+      aria-label={t('refresh')}
     >
-      {buttonText}
+      {buttonText ?? t('refresh')}
     </Button>
   );
 }

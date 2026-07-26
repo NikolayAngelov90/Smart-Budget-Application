@@ -275,10 +275,17 @@ export function InsightsPageContent() {
             w="full"
           >
             <Box flex="1">
-              <Heading as="h1" size={{ base: 'xl', md: '2xl' }} mb={2}>
+              <Heading
+                as="h1"
+                size={{ base: 'xl', md: '2xl' }}
+                mb={2}
+                color="fg"
+                fontFamily="heading"
+                letterSpacing="tight"
+              >
                 {t('pageTitle')}
               </Heading>
-              <Text color="gray.600" fontSize={{ base: 'md', md: 'lg' }} mb={2}>
+              <Text color="fg.muted" fontSize={{ base: 'md', md: 'lg' }} mb={2}>
                 {t('pageSubtitle')}
               </Text>
               {/* FR39: Financial advice disclaimer */}
