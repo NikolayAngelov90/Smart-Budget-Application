@@ -94,7 +94,7 @@ export function StreakBadge() {
               </Text>
             )}
             {freezeJustUsed && (
-              <Text fontSize="xs" color="blue.700" whiteSpace="nowrap">
+              <Text fontSize="xs" color="accent" whiteSpace="nowrap">
                 ❄️ {t('freezeUsedShort')}
               </Text>
             )}

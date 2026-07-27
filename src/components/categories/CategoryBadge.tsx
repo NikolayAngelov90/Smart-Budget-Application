@@ -109,7 +109,7 @@ export function CategoryBadge({
           flexShrink={0}
           // Add border for better visibility of light colors
           border="1px solid"
-          borderColor="gray.200"
+          borderColor="border"
           aria-label={`${category.name} color indicator`}
         />
         <Text fontSize={dimensions.fontSize} fontWeight="normal" lineHeight="short">
@@ -118,7 +118,7 @@ export function CategoryBadge({
         {showType && (
           <Text
             fontSize="xs"
-            color="gray.500"
+            color="fg.subtle"
             fontStyle="italic"
           >
             ({category.type})
@@ -144,7 +144,7 @@ export function CategoryBadge({
         fontWeight="medium"
         // Add border for light colors to improve contrast
         border="1px solid"
-        borderColor="gray.200"
+        borderColor="border"
       >
         {category.name}
         {showType && ` (${category.type})`}
@@ -167,7 +167,7 @@ export function CategoryBadge({
           {category.name}
         </Text>
         {showType && (
-          <Text fontSize="xs" color="gray.600" mt={0.5}>
+          <Text fontSize="xs" color="fg.muted" mt={0.5}>
             {category.type}
           </Text>
         )}

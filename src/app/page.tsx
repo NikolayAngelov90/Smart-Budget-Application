@@ -215,11 +215,11 @@ export default function Home() {
         <Heading as="h1" size="2xl" textAlign="center" color="trustBlue.500">
           Smart Budget Application
         </Heading>
-        <Text fontSize="xl" textAlign="center" color="gray.600">
+        <Text fontSize="xl" textAlign="center" color="fg.muted">
           AI-powered personal finance tracker with smart insights
         </Text>
         {loading ? (
-          <Text color="gray.500">Loading...</Text>
+          <Text color="fg.subtle">Loading...</Text>
         ) : (
           <HStack spacing={4}>
             <Button as={Link} href="/login" colorScheme="trustBlue" size="lg">

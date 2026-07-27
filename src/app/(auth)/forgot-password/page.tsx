@@ -109,35 +109,35 @@ export default function ForgotPasswordPage() {
             <Heading
               as="h1"
               size={{ base: 'xl', md: '2xl' }}
-              color="gray.900"
+              color="fg"
               fontWeight="bold"
             >
               Check your email
             </Heading>
-            <Text color="gray.600" fontSize={{ base: 'sm', md: 'md' }}>
+            <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
               We&apos;ve sent a password reset link to <strong>{email}</strong>
             </Text>
           </VStack>
 
           {/* Instructions */}
           <Box
-            bg="white"
+            bg="surface"
             p={{ base: '6', md: '8' }}
             borderRadius="lg"
             boxShadow="lg"
             border="1px"
-            borderColor="gray.200"
+            borderColor="border"
           >
             <VStack spacing={4} align="stretch">
-              <Text color="gray.700" fontSize="sm">
+              <Text color="fg" fontSize="sm">
                 Click the link in the email to reset your password. The link will expire in
                 1 hour for security reasons.
               </Text>
-              <Text color="gray.600" fontSize="sm">
+              <Text color="fg.muted" fontSize="sm">
                 Didn&apos;t receive the email? Check your spam folder or{' '}
                 <Button
                   variant="link"
-                  color="#2b6cb0"
+                  color="accent"
                   fontSize="sm"
                   fontWeight="600"
                   onClick={() => setEmailSent(false)}
@@ -150,9 +150,9 @@ export default function ForgotPasswordPage() {
           </Box>
 
           {/* Back to Login Link */}
-          <Text textAlign="center" fontSize="sm" color="gray.600">
+          <Text textAlign="center" fontSize="sm" color="fg.muted">
             Remember your password?{' '}
-            <Link href="/login" style={{ color: '#2b6cb0', fontWeight: '600' }}>
+            <Link href="/login" style={{ color: 'var(--chakra-colors-accent)', fontWeight: '600' }}>
               Back to login
             </Link>
           </Text>
@@ -170,12 +170,12 @@ export default function ForgotPasswordPage() {
           <Heading
             as="h1"
             size={{ base: 'xl', md: '2xl' }}
-            color="gray.900"
+            color="fg"
             fontWeight="bold"
           >
             Forgot password?
           </Heading>
-          <Text color="gray.600" fontSize={{ base: 'sm', md: 'md' }}>
+          <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
             Enter your email and we&apos;ll send you a reset link
           </Text>
         </VStack>
@@ -184,12 +184,12 @@ export default function ForgotPasswordPage() {
         <Box
           as="form"
           onSubmit={handleSubmit}
-          bg="white"
+          bg="surface"
           p={{ base: '6', md: '8' }}
           borderRadius="lg"
           boxShadow="lg"
           border="1px"
-          borderColor="gray.200"
+          borderColor="border"
         >
           <VStack spacing={5} align="stretch">
             {/* Email Field */}
@@ -210,12 +210,12 @@ export default function ForgotPasswordPage() {
                 aria-describedby={errors.email ? 'email-error' : undefined}
                 autoComplete="email"
                 _focus={{
-                  borderColor: '#2b6cb0',
-                  boxShadow: '0 0 0 1px #2b6cb0',
+                  borderColor: 'accent',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                 }}
               />
               {errors.email && (
-                <FormErrorMessage id="email-error" color="red.500" fontSize="sm">
+                <FormErrorMessage id="email-error" color="expense" fontSize="sm">
                   {errors.email}
                 </FormErrorMessage>
               )}
@@ -225,11 +225,11 @@ export default function ForgotPasswordPage() {
             <Button
               type="submit"
               size="lg"
-              bg="#2b6cb0"
+              bg="accent"
               color="white"
               _hover={{ bg: '#2c5282' }}
               _active={{ bg: '#2c5282' }}
-              _disabled={{ bg: 'gray.300', cursor: 'not-allowed' }}
+              _disabled={{ bg: 'border.strong', cursor: 'not-allowed' }}
               isLoading={isLoading}
               loadingText="Sending link..."
               isDisabled={!email}
@@ -244,9 +244,9 @@ export default function ForgotPasswordPage() {
         </Box>
 
         {/* Back to Login Link */}
-        <Text textAlign="center" fontSize="sm" color="gray.600">
+        <Text textAlign="center" fontSize="sm" color="fg.muted">
           Remember your password?{' '}
-          <Link href="/login" style={{ color: '#2b6cb0', fontWeight: '600' }}>
+          <Link href="/login" style={{ color: 'var(--chakra-colors-accent)', fontWeight: '600' }}>
             Back to login
           </Link>
         </Text>

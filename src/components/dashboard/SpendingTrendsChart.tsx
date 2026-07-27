@@ -37,6 +37,7 @@ import { useTrends, MonthlyTrendData } from '@/lib/hooks/useTrends';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency } from '@/lib/utils/currency';
+import { useChartColors } from '@/lib/hooks/useChartColors';
 
 /**
  * Component props
@@ -70,6 +71,9 @@ export function SpendingTrendsChart({
   const { preferences } = useUserPreferences();
   const router = useRouter();
   const currencyCode = preferences?.currency_format;
+  // Mode-aware palette — recharts takes raw colour strings, so light-mode hex
+  // would be unreadable on the dark canvas.
+  const chart = useChartColors();
 
   /**
    * Custom tooltip component for line chart
@@ -94,20 +98,20 @@ export function SpendingTrendsChart({
 
       return (
         <Box
-          bg="white"
+          bg="surface"
           p={3}
           borderRadius="md"
           boxShadow="lg"
           borderWidth="1px"
-          borderColor="gray.200"
+          borderColor="border"
         >
           <Text fontWeight="bold" fontSize="sm" mb={2}>
             {tooltipData.month}
           </Text>
-          <Text fontSize="sm" color="green.600" mb={1}>
+          <Text fontSize="sm" color="income" mb={1}>
             Income: {formatCurrency(Number(income), undefined, currencyCode)}
           </Text>
-          <Text fontSize="sm" color="red.600">
+          <Text fontSize="sm" color="expense">
             Expenses: {formatCurrency(Number(expenses), undefined, currencyCode)}
           </Text>
         </Box>
@@ -139,7 +143,7 @@ export function SpendingTrendsChart({
   // Loading state
   if (isLoading) {
     return (
-      <Box p={6} bg="white" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="gray.200">
+      <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
         <Skeleton height="32px" width="220px" mb={4} />
         <Skeleton height={`${height}px`} borderRadius="md" />
       </Box>
@@ -171,15 +175,15 @@ export function SpendingTrendsChart({
         justify="center"
         minH={`${height}px`}
         borderWidth="1px"
-        borderColor="gray.200"
+        borderColor="border"
         borderRadius="md"
-        bg="gray.50"
+        bg="surface.sunken"
       >
-        <Icon as={MdShowChart} boxSize={12} color="gray.400" mb={3} />
-        <Text fontSize="lg" fontWeight="medium" color="gray.600">
+        <Icon as={MdShowChart} boxSize={12} color="fg.subtle" mb={3} />
+        <Text fontSize="lg" fontWeight="medium" color="fg.muted">
           Add transactions to see trends
         </Text>
-        <Text fontSize="sm" color="gray.500" mt={1}>
+        <Text fontSize="sm" color="fg.subtle" mt={1}>
           Your spending patterns will appear here
         </Text>
       </Flex>
@@ -197,15 +201,15 @@ export function SpendingTrendsChart({
         justify="center"
         minH={`${height}px`}
         borderWidth="1px"
-        borderColor="gray.200"
+        borderColor="border"
         borderRadius="md"
-        bg="gray.50"
+        bg="surface.sunken"
       >
-        <Icon as={MdShowChart} boxSize={12} color="gray.400" mb={3} />
-        <Text fontSize="lg" fontWeight="medium" color="gray.600">
+        <Icon as={MdShowChart} boxSize={12} color="fg.subtle" mb={3} />
+        <Text fontSize="lg" fontWeight="medium" color="fg.muted">
           Add transactions to see trends
         </Text>
-        <Text fontSize="sm" color="gray.500" mt={1}>
+        <Text fontSize="sm" color="fg.subtle" mt={1}>
           Your spending patterns will appear here
         </Text>
       </Flex>
@@ -228,18 +232,18 @@ export function SpendingTrendsChart({
           tabIndex={0}
           aria-label="Spending trends chart. Click on a data point to view transactions for that month."
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
           <XAxis
             dataKey="month"
-            stroke="#718096"
-            tick={{ fill: '#4A5568', fontSize: 12 }}
+            stroke={chart.axis}
+            tick={{ fill: chart.tick, fontSize: 12 }}
           />
           <YAxis
-            stroke="#718096"
-            tick={{ fill: '#4A5568', fontSize: 12 }}
+            stroke={chart.axis}
+            tick={{ fill: chart.tick, fontSize: 12 }}
             tickFormatter={(value) => formatCurrency(value, undefined, currencyCode)}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#CBD5E0', strokeWidth: 2 }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: chart.cursor, strokeWidth: 2 }} />
           <Legend
             verticalAlign="bottom"
             height={36}
@@ -250,9 +254,9 @@ export function SpendingTrendsChart({
             type="monotone"
             dataKey="income"
             name="Income"
-            stroke="#38A169"
+            stroke={chart.income}
             strokeWidth={2}
-            dot={{ fill: '#38A169', r: 4, cursor: 'pointer' }}
+            dot={{ fill: chart.income, r: 4, cursor: 'pointer' }}
             activeDot={{ r: 6, cursor: 'pointer' }}
             cursor="pointer"
           />
@@ -260,9 +264,9 @@ export function SpendingTrendsChart({
             type="monotone"
             dataKey="expenses"
             name="Expenses"
-            stroke="#E53E3E"
+            stroke={chart.expense}
             strokeWidth={2}
-            dot={{ fill: '#E53E3E', r: 4, cursor: 'pointer' }}
+            dot={{ fill: chart.expense, r: 4, cursor: 'pointer' }}
             activeDot={{ r: 6, cursor: 'pointer' }}
             cursor="pointer"
           />

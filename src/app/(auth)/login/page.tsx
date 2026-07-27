@@ -271,7 +271,7 @@ export default function LoginPage() {
                 }}
               />
               {errors.email && (
-                <FormErrorMessage id="email-error" color="red.500" fontSize="sm">
+                <FormErrorMessage id="email-error" color="expense" fontSize="sm">
                   {errors.email}
                 </FormErrorMessage>
               )}
@@ -315,7 +315,7 @@ export default function LoginPage() {
               {errors.password && (
                 <FormErrorMessage
                   id="password-error"
-                  color="red.500"
+                  color="expense"
                   fontSize="sm"
                 >
                   {errors.password}

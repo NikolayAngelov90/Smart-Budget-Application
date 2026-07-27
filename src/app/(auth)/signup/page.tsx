@@ -82,10 +82,10 @@ function calculatePasswordStrength(password: string): {
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
   if (score <= 2)
-    return { score: 33, label: 'Weak', color: 'red.500' };
+    return { score: 33, label: 'Weak', color: 'expense' };
   if (score === 3 || score === 4)
     return { score: 66, label: 'Medium', color: 'orange.400' };
-  return { score: 100, label: 'Strong', color: 'green.500' };
+  return { score: 100, label: 'Strong', color: 'income' };
 }
 
 export default function SignupPage() {
@@ -99,7 +99,7 @@ export default function SignupPage() {
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
     label: '',
-    color: 'gray.200',
+    color: 'surface.sunken',
   });
 
   const {
@@ -120,7 +120,7 @@ export default function SignupPage() {
       const strength = calculatePasswordStrength(password);
       setPasswordStrength(strength);
     } else {
-      setPasswordStrength({ score: 0, label: '', color: 'gray.200' });
+      setPasswordStrength({ score: 0, label: '', color: 'surface.sunken' });
     }
   }, [password]);
 
@@ -318,7 +318,7 @@ export default function SignupPage() {
                 }}
               />
               {errors.email && (
-                <FormErrorMessage id="email-error" color="red.500" fontSize="sm">
+                <FormErrorMessage id="email-error" color="expense" fontSize="sm">
                   {errors.email.message}
                 </FormErrorMessage>
               )}
@@ -380,7 +380,7 @@ export default function SignupPage() {
               )}
 
               {errors.password && (
-                <FormErrorMessage id="password-error" color="red.500" fontSize="sm">
+                <FormErrorMessage id="password-error" color="expense" fontSize="sm">
                   {errors.password.message}
                 </FormErrorMessage>
               )}
@@ -427,7 +427,7 @@ export default function SignupPage() {
                 </InputRightElement>
               </InputGroup>
               {errors.confirmPassword && (
-                <FormErrorMessage id="confirm-password-error" color="red.500" fontSize="sm">
+                <FormErrorMessage id="confirm-password-error" color="expense" fontSize="sm">
                   {errors.confirmPassword.message}
                 </FormErrorMessage>
               )}

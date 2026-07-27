@@ -299,7 +299,7 @@ export function ActiveDevicesSection() {
         <CardBody>
           <VStack align="stretch" spacing={4}>
             <Heading size="md">{t('title')}</Heading>
-            <Text color="gray.600">No active sessions found.</Text>
+            <Text color="fg.muted">No active sessions found.</Text>
           </VStack>
         </CardBody>
       </Card>
@@ -312,12 +312,12 @@ export function ActiveDevicesSection() {
         <CardBody>
           <VStack align="stretch" spacing={4}>
             <Heading size="md">{t('title')}</Heading>
-            <Text color="gray.600" fontSize="sm">
+            <Text color="fg.muted" fontSize="sm">
               Manage devices logged into your account. You can rename devices or revoke access
               to log them out remotely.
             </Text>
 
-            <VStack align="stretch" spacing={3} divider={<Box borderBottom="1px" borderColor="gray.200" />}>
+            <VStack align="stretch" spacing={3} divider={<Box borderBottom="1px" borderColor="border" />}>
               {sessions.map((session) => {
                 const isCurrent = isCurrentSession(session);
                 const DeviceIcon = getDeviceIcon(session.device_type);
@@ -328,9 +328,9 @@ export function ActiveDevicesSection() {
                     {/* Device Icon */}
                     <Box
                       p={2}
-                      bg={isCurrent ? 'blue.50' : 'gray.50'}
+                      bg={isCurrent ? 'accent.subtle' : 'surface.sunken'}
                       borderRadius="md"
-                      color={isCurrent ? 'blue.500' : 'gray.500'}
+                      color={isCurrent ? 'accent' : 'fg.subtle'}
                     >
                       <Box as={DeviceIcon} boxSize={5} />
                     </Box>
@@ -371,7 +371,7 @@ export function ActiveDevicesSection() {
                           <>
                             <Text fontWeight="medium">{session.device_name}</Text>
                             {isCurrent && (
-                              <Badge colorScheme="blue" fontSize="xs">
+                              <Badge colorScheme="brand" fontSize="xs">
                                 {t('currentDevice')}
                               </Badge>
                             )}
@@ -386,7 +386,7 @@ export function ActiveDevicesSection() {
                         )}
                       </HStack>
 
-                      <HStack spacing={2} color="gray.500" fontSize="sm">
+                      <HStack spacing={2} color="fg.subtle" fontSize="sm">
                         <Text>{session.browser || 'Unknown browser'}</Text>
                         <Text>•</Text>
                         {/* AC-9.6.4: Last active timestamp */}

@@ -39,7 +39,7 @@ export function AchievementsSection() {
 
   return (
     <Box as="section" aria-label={t('heading')}>
-      <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700" mb={4}>
+      <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg" mb={4}>
         {t('heading')}
       </Heading>
       <SimpleGrid columns={{ base: 2, md: 3, lg: 4 }} spacing={4}>
@@ -59,22 +59,22 @@ export function AchievementsSection() {
               p={3}
               borderWidth="2px"
               borderRadius="lg"
-              borderColor={unlock ? ACHIEVEMENT_GOLD : 'gray.200'}
-              bg={unlock ? 'yellow.50' : 'gray.50'}
+              borderColor={unlock ? ACHIEVEMENT_GOLD : 'surface.sunken'}
+              bg={unlock ? 'achievement.surface' : 'surface.sunken'}
               opacity={unlock ? 1 : 0.75}
               aria-label={unlockedLabel ? `${name}, ${unlockedLabel}` : `${name}, ${t('locked')}`}
             >
               <Text aria-hidden="true" fontSize="2xl" lineHeight="1" filter={unlock ? undefined : 'grayscale(1)'}>
                 🏅
               </Text>
-              <Text fontSize="sm" fontWeight={600} color={unlock ? 'gray.800' : 'gray.600'}>
+              <Text fontSize="sm" fontWeight={600} color={unlock ? 'fg' : 'fg.muted'}>
                 {name}
               </Text>
-              <Text fontSize="xs" color="gray.600">
+              <Text fontSize="xs" color="fg.muted">
                 {t(`conditions.${key}`)}
               </Text>
               {unlockedLabel ? (
-                <Badge bg={ACHIEVEMENT_GOLD} color="white" borderRadius="full" px={2} fontSize="0.65rem">
+                <Badge bg={ACHIEVEMENT_GOLD} color="paper.900" borderRadius="full" px={2} fontSize="0.65rem">
                   {unlockedLabel}
                 </Badge>
               ) : (

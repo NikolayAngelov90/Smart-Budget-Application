@@ -52,17 +52,17 @@ export function StatCard({
   // Determine trend type for arrow direction
   const trendType = trend >= 0 ? 'increase' : 'decrease';
   const trendIsGood = trendIsPositiveGood ? trend >= 0 : trend <= 0;
-  const trendColor = trendIsGood ? 'green.500' : 'red.500';
+  const trendColor = trendIsGood ? 'income' : 'expense';
 
   if (isLoading) {
     return (
       <Box
         p={{ base: 4, md: 6 }}
-        bg="white"
+        bg="surface"
         borderRadius="lg"
         boxShadow="sm"
         borderWidth="1px"
-        borderColor="gray.200"
+        borderColor="border"
       >
         <Skeleton height="20px" width="120px" mb={3} />
         <Skeleton height="48px" width="180px" mb={2} />
@@ -74,11 +74,11 @@ export function StatCard({
   return (
     <Box
       p={{ base: 4, md: 6 }}
-      bg="white"
+      bg="surface"
       borderRadius="lg"
       boxShadow="sm"
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border"
       transition="all 0.2s"
       _hover={{
         boxShadow: 'md',
@@ -92,7 +92,7 @@ export function StatCard({
           gap={2}
           fontSize={{ base: '0.75rem', md: '0.875rem' }}
           fontWeight="medium"
-          color="gray.600"
+          color="fg.muted"
           mb={2}
         >
           {icon && <ChakraIcon as={() => icon} boxSize={4} />}
@@ -102,14 +102,14 @@ export function StatCard({
         <StatNumber
           fontSize={{ base: '1.75rem', md: '2rem', lg: '2.5rem', xl: '3rem' }}
           fontWeight="bold"
-          color={colorScheme === 'green' ? 'green.600' : 'red.600'}
+          color={colorScheme === 'green' ? 'income' : 'expense'}
           lineHeight="1.2"
           mb={2}
         >
           {value}
         </StatNumber>
 
-        <StatHelpText fontSize={{ base: '0.75rem', md: '0.875rem' }} color="gray.600" mb={0}>
+        <StatHelpText fontSize={{ base: '0.75rem', md: '0.875rem' }} color="fg.muted" mb={0}>
           {showTrend && <StatArrow type={trendType} color={trendColor} />}
           {showTrend ? `${Math.abs(trend).toFixed(1)}% ${trendLabel}` : trendLabel}
         </StatHelpText>

@@ -63,10 +63,10 @@ export function FeatureIntroCard() {
     >
       <Flex justify="space-between" align="flex-start" gap={3} flexWrap="wrap">
         <Box>
-          <Heading as="h3" size="sm" color="gray.800" mb={1}>
+          <Heading as="h3" size="sm" color="fg" mb={1}>
             {t('cardHeading')}
           </Heading>
-          <Text color="gray.700" fontSize="sm">
+          <Text color="fg" fontSize="sm">
             {t(`intro.${feature}`)}
           </Text>
         </Box>
@@ -74,8 +74,8 @@ export function FeatureIntroCard() {
           <ChakraLink
             as={NextLink}
             href={url}
-            bg="#2b6cb0"
-            color="white"
+            bg="accent"
+            color="fg.onAccent"
             _hover={{ bg: '#2c5282', textDecoration: 'none' }}
             borderRadius="md"
             px={4}

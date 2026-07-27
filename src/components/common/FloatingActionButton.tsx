@@ -69,7 +69,7 @@ export default function FloatingActionButton({
         minH="60px"
         // Quiet Ledger: evergreen squircle, matching the mobile bottom-nav Add tab.
         bg="accent"
-        color="white"
+        color="fg.onAccent"
         borderRadius="20px"
         boxShadow="accent"
         // Hover state

@@ -561,7 +561,12 @@
     "saving": "Saving...",
     "generatingPdf": "Generating PDF...",
     "generatingCsv": "Generating CSV...",
-    "failedToLoadProfile": "Failed to load profile. Please refresh the page."
+    "failedToLoadProfile": "Failed to load profile. Please refresh the page.",
+    "appearanceHeading": "Appearance",
+    "appearanceDescription": "Choose how Smart Budget looks. System follows your device setting.",
+    "appearanceLight": "Light",
+    "appearanceDark": "Dark",
+    "appearanceSystem": "System"
   },
   "onboarding": {
     "welcome": "Welcome to Smart Budget!",

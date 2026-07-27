@@ -45,7 +45,7 @@ export function FinancialDisclaimer({ variant = 'compact' }: FinancialDisclaimer
   return (
     <Text
       fontSize="xs"
-      color="gray.500"
+      color="fg.subtle"
       fontStyle="italic"
       role="note"
       aria-label={t('compact')}

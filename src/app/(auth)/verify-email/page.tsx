@@ -16,26 +16,26 @@ export default function VerifyEmailPage() {
     <Container maxW="md" py={{ base: '12', md: '24' }} px={{ base: '4', md: '8' }}>
       <VStack spacing={8} align="stretch" textAlign="center">
         <Box>
-          <CheckCircleIcon boxSize={16} color="green.500" mb={4} />
-          <Heading as="h1" size="xl" color="gray.900" mb={4}>
+          <CheckCircleIcon boxSize={16} color="income" mb={4} />
+          <Heading as="h1" size="xl" color="fg" mb={4}>
             Check your email
           </Heading>
-          <Text color="gray.600" fontSize="md" mb={2}>
+          <Text color="fg.muted" fontSize="md" mb={2}>
             We've sent you a verification email. Click the link in the email to activate your account.
           </Text>
-          <Text color="gray.500" fontSize="sm">
+          <Text color="fg.subtle" fontSize="sm">
             The email should arrive within 15 minutes. Don't forget to check your spam folder!
           </Text>
         </Box>
 
         <Box
-          bg="blue.50"
+          bg="accent.subtle"
           p={6}
           borderRadius="md"
           border="1px"
-          borderColor="blue.200"
+          borderColor="accent"
         >
-          <Text fontSize="sm" color="gray.700">
+          <Text fontSize="sm" color="fg">
             <strong>What's next?</strong>
             <br />
             1. Check your inbox for a verification email
@@ -50,7 +50,7 @@ export default function VerifyEmailPage() {
           as={Link}
           href="/login"
           size="lg"
-          bg="#2b6cb0"
+          bg="accent"
           color="white"
           _hover={{ bg: '#2c5282' }}
           minH="44px"
@@ -58,9 +58,9 @@ export default function VerifyEmailPage() {
           Go to Login
         </Button>
 
-        <Text fontSize="sm" color="gray.500">
+        <Text fontSize="sm" color="fg.subtle">
           Didn't receive an email?{' '}
-          <Link href="/signup" style={{ color: '#2b6cb0', fontWeight: '600' }}>
+          <Link href="/signup" style={{ color: 'var(--chakra-colors-accent)', fontWeight: '600' }}>
             Try signing up again
           </Link>
         </Text>

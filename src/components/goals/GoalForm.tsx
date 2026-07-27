@@ -188,7 +188,7 @@ export function GoalForm({ isOpen, onClose, onSuccess, existingGoal }: GoalFormP
             </Button>
             <Button
               type="submit"
-              colorScheme="blue"
+              colorScheme="brand"
               isLoading={isSubmitting}
             >
               {t('save')}

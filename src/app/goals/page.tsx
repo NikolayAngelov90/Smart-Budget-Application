@@ -61,10 +61,10 @@ export default function GoalsPage() {
       <Box maxW="1200px" mx="auto" p={{ base: 4, md: 6 }}>
         {/* Page header */}
         <Flex justify="space-between" align="center" mb={6} flexWrap="wrap" gap={3}>
-          <Heading as="h1" fontSize={{ base: '1.5rem', lg: '2rem' }} color="gray.700">
+          <Heading as="h1" fontSize={{ base: '1.5rem', lg: '2rem' }} color="fg">
             {t('title')}
           </Heading>
-          <Button colorScheme="blue" onClick={onOpen}>
+          <Button colorScheme="brand" onClick={onOpen}>
             {t('createGoal')}
           </Button>
         </Flex>
@@ -81,13 +81,13 @@ export default function GoalsPage() {
         {/* Empty state */}
         {!isLoading && goals.length === 0 && (
           <VStack py={16} spacing={4} align="center">
-            <Text color="gray.500" fontSize="lg" fontWeight="medium">
+            <Text color="fg.subtle" fontSize="lg" fontWeight="medium">
               {t('emptyState')}
             </Text>
-            <Text color="gray.400" fontSize="sm">
+            <Text color="fg.subtle" fontSize="sm">
               {t('emptyStateSubtitle')}
             </Text>
-            <Button colorScheme="blue" onClick={onOpen}>
+            <Button colorScheme="brand" onClick={onOpen}>
               {t('createGoal')}
             </Button>
           </VStack>

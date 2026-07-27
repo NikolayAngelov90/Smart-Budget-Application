@@ -35,13 +35,19 @@ import type { DailySpendingEntry, IntensityLevel } from '@/types/database.types'
 // CONSTANTS
 // ============================================================================
 
-/** 5-level color intensity scale: 0 = no spending, 4 = peak spending (Trust Blue) */
+/**
+ * 5-level intensity scale: 0 = no spending, 4 = peak spending.
+ *
+ * SEMANTIC TOKENS, not hex — the scale has to invert for dark mode, and the old
+ * hard-coded values were still the pre-redesign Trust Blue (`#2b6cb0`), which
+ * both clashed with the evergreen identity and vanished on a dark canvas.
+ */
 export const HEATMAP_COLORS: Record<IntensityLevel, string> = {
-  0: '#f7fafc', // No spending — Chakra gray.50
-  1: '#bee3f8', // Low (~0-25% of max) — Chakra blue.100
-  2: '#63b3ed', // Medium-low (~25-50%) — Chakra blue.300
-  3: '#4299e1', // Medium-high (~50-75%) — Chakra blue.400
-  4: '#2b6cb0', // High (~75-100%) — Trust Blue (brand primary)
+  0: 'heat.0', // No spending
+  1: 'heat.1', // Low (~0-25% of max)
+  2: 'heat.2', // Medium-low (~25-50%)
+  3: 'heat.3', // Medium-high (~50-75%)
+  4: 'heat.4', // High (~75-100%)
 };
 
 // ============================================================================
@@ -150,7 +156,7 @@ export function HeatmapGrid({
           <Tbody>
             {entries.length === 0 ? (
               <Tr>
-                <Td colSpan={3} textAlign="center" color="gray.500">
+                <Td colSpan={3} textAlign="center" color="fg.subtle">
                   {t('noSpending')}
                 </Td>
               </Tr>
@@ -213,7 +219,7 @@ export function HeatmapGrid({
               role="columnheader"
               textAlign="center"
               fontSize="xs"
-              color="gray.500"
+              color="fg.subtle"
               fontWeight="medium"
               py={1}
             >
@@ -284,7 +290,7 @@ export function HeatmapGrid({
                     bg={bgColor}
                     borderRadius="sm"
                     border="1px solid"
-                    borderColor="gray.100"
+                    borderColor="border"
                     cursor={isClickable ? 'pointer' : 'default'}
                     _hover={isClickable ? { opacity: 0.8, borderColor: 'trustBlue.300' } : {}}
                     _focus={{

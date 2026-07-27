@@ -21,7 +21,7 @@ function TrendIndicator({ row }: { row: ValueSpendRow }) {
   const t = useTranslations('values');
   if (row.trendDirection === 'up') {
     return (
-      <HStack spacing={1} color="red.500">
+      <HStack spacing={1} color="expense">
         <TriangleUpIcon boxSize={2.5} />
         <Text fontSize="xs">{t('trendUp', { pct: row.trendPct })}</Text>
       </HStack>
@@ -29,14 +29,14 @@ function TrendIndicator({ row }: { row: ValueSpendRow }) {
   }
   if (row.trendDirection === 'down') {
     return (
-      <HStack spacing={1} color="green.500">
+      <HStack spacing={1} color="income">
         <TriangleDownIcon boxSize={2.5} />
         <Text fontSize="xs">{t('trendDown', { pct: row.trendPct })}</Text>
       </HStack>
     );
   }
   return (
-    <HStack spacing={1} color="gray.400">
+    <HStack spacing={1} color="fg.subtle">
       <MinusIcon boxSize={2} />
       <Text fontSize="xs">{t('trendFlat')}</Text>
     </HStack>
@@ -57,10 +57,10 @@ export function ValuesSpendingCard() {
       <CardBody>
         <VStack align="stretch" spacing={4}>
           <Box>
-            <Heading as="h2" size="md" color="gray.700">
+            <Heading as="h2" size="md" color="fg">
               {t('spendingHeading')}
             </Heading>
-            <Text fontSize="xs" color="gray.500">
+            <Text fontSize="xs" color="fg.subtle">
               {t('thisMonth')}
             </Text>
           </Box>
@@ -69,10 +69,10 @@ export function ValuesSpendingCard() {
             <VStack key={row.id} align="stretch" spacing={1}>
               <HStack justify="space-between" align="center">
                 <HStack spacing={2} minW={0}>
-                  <Badge colorScheme="blue" borderRadius="full" px={2} flexShrink={0}>
+                  <Badge colorScheme="brand" borderRadius="full" px={2} flexShrink={0}>
                     #{row.rank}
                   </Badge>
-                  <Text fontSize="sm" color="gray.800" noOfLines={1}>
+                  <Text fontSize="sm" color="fg" noOfLines={1}>
                     {row.name}
                   </Text>
                   {row.misaligned && (
@@ -83,7 +83,7 @@ export function ValuesSpendingCard() {
                 </HStack>
                 <HStack spacing={3} flexShrink={0}>
                   <TrendIndicator row={row} />
-                  <Text fontSize="sm" fontWeight="semibold" color="gray.800">
+                  <Text fontSize="sm" fontWeight="semibold" color="fg">
                     {formatAmount(row.amount, currency)}
                   </Text>
                 </HStack>
@@ -96,7 +96,7 @@ export function ValuesSpendingCard() {
                   colorScheme={row.misaligned ? 'orange' : 'blue'}
                   flex={1}
                 />
-                <Text fontSize="xs" color="gray.500" w="36px" textAlign="right">
+                <Text fontSize="xs" color="fg.subtle" w="36px" textAlign="right">
                   {row.percentage}%
                 </Text>
               </HStack>
@@ -106,10 +106,10 @@ export function ValuesSpendingCard() {
           {view.unassigned.amount > 0 && (
             <VStack align="stretch" spacing={1}>
               <HStack justify="space-between" align="center">
-                <Text fontSize="sm" color="gray.500">
+                <Text fontSize="sm" color="fg.subtle">
                   {t('unassigned')}
                 </Text>
-                <Text fontSize="sm" color="gray.500">
+                <Text fontSize="sm" color="fg.subtle">
                   {formatAmount(view.unassigned.amount, currency)}
                 </Text>
               </HStack>
@@ -121,11 +121,11 @@ export function ValuesSpendingCard() {
                   colorScheme="gray"
                   flex={1}
                 />
-                <Text fontSize="xs" color="gray.500" w="36px" textAlign="right">
+                <Text fontSize="xs" color="fg.subtle" w="36px" textAlign="right">
                   {view.unassigned.percentage}%
                 </Text>
               </HStack>
-              <Text fontSize="xs" color="gray.400">
+              <Text fontSize="xs" color="fg.subtle">
                 {t('unassignedHelp')}
               </Text>
             </VStack>

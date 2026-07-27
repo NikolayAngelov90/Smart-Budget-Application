@@ -561,7 +561,12 @@
     "saving": "Запазване...",
     "generatingPdf": "Генериране на PDF...",
     "generatingCsv": "Генериране на CSV...",
-    "failedToLoadProfile": "Неуспешно зареждане на профила. Моля, презаредете страницата."
+    "failedToLoadProfile": "Неуспешно зареждане на профила. Моля, презаредете страницата.",
+    "appearanceHeading": "Външен вид",
+    "appearanceDescription": "Изберете как да изглежда Smart Budget. „Системна“ следва настройката на устройството ви.",
+    "appearanceLight": "Светла",
+    "appearanceDark": "Тъмна",
+    "appearanceSystem": "Системна"
   },
   "onboarding": {
     "welcome": "Добре дошли в Smart Budget!",

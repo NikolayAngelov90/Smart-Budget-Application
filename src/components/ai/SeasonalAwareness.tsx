@@ -40,7 +40,7 @@ function MonthRow({ month, currency }: { month: SeasonalMonth; currency: string 
       px={4}
       py={3}
       borderBottom="1px solid"
-      borderColor="gray.100"
+      borderColor="border"
       gap={2}
       flexWrap="wrap"
     >
@@ -56,19 +56,19 @@ function MonthRow({ month, currency }: { month: SeasonalMonth; currency: string 
       </HStack>
       {hasHistory ? (
         <Box textAlign="right">
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="fg.subtle">
             {t('predicted')}
           </Text>
           <Text
             fontWeight="semibold"
-            color={month.is_seasonal_high ? 'orange.600' : 'gray.700'}
+            color={month.is_seasonal_high ? 'orange.600' : 'fg'}
             aria-label={`${label} ${t('predicted')}: ${formatAmount(month.predicted_amount, currency)}`}
           >
             {formatAmount(month.predicted_amount, currency)}
           </Text>
         </Box>
       ) : (
-        <Text fontSize="xs" color="gray.400" fontStyle="italic">
+        <Text fontSize="xs" color="fg.subtle" fontStyle="italic">
           {t('noHistory')}
         </Text>
       )}
@@ -93,15 +93,15 @@ export function SeasonalAwareness() {
     <Box as="section" aria-label={t('title')}>
       <VStack align="stretch" spacing={4}>
         <VStack align="start" spacing={0}>
-          <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700">
+          <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg">
             {t('title')}
           </Heading>
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize="sm" color="fg.subtle">
             {t('subtitle', { months: monthsAnalyzed })}
           </Text>
         </VStack>
 
-        <Box borderRadius="md" border="1px solid" borderColor="gray.200" overflow="hidden">
+        <Box borderRadius="md" border="1px solid" borderColor="border" overflow="hidden">
           {timeline.map((m) => (
             <MonthRow key={m.month} month={m} currency={currency} />
           ))}

@@ -167,16 +167,16 @@ export function WishlistSection() {
   return (
     <Box as="section" aria-label={t('title')} mt={{ base: 10, md: 12 }}>
       <Flex justify="space-between" align="baseline" mb={1} flexWrap="wrap" gap={2}>
-        <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700">
+        <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg">
           {t('title')}
         </Heading>
         {historyItems.length > 0 && (
-          <Button size="sm" variant="link" colorScheme="blue" onClick={() => setShowHistory(!showHistory)}>
+          <Button size="sm" variant="link" colorScheme="brand" onClick={() => setShowHistory(!showHistory)}>
             {showHistory ? t('hideHistory') : t('showHistory', { count: historyItems.length })}
           </Button>
         )}
       </Flex>
-      <Text fontSize="sm" color="gray.500" mb={4}>
+      <Text fontSize="sm" color="fg.subtle" mb={4}>
         {t('subtitle')}
       </Text>
 
@@ -237,7 +237,7 @@ export function WishlistSection() {
               </Select>
             </FormControl>
             <Button
-              colorScheme="blue"
+              colorScheme="brand"
               onClick={handleAdd}
               isLoading={isSaving}
               minH={{ base: '44px', md: '40px' }}
@@ -262,7 +262,7 @@ export function WishlistSection() {
       {data && activeItems.length === 0 && !showHistory && (
         <Card>
           <CardBody>
-            <Text color="gray.500" fontSize="sm" textAlign="center" py={2}>
+            <Text color="fg.subtle" fontSize="sm" textAlign="center" py={2}>
               {t('emptyState')}
             </Text>
           </CardBody>

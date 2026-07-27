@@ -75,7 +75,7 @@ export function Header() {
       // Quiet Ledger: a light header floating over the warm-paper canvas — the
       // full-bleed banking bar is gone. A hairline + translucent blur give it
       // just enough presence without shouting.
-      bg="rgba(246,245,242,0.82)"
+      bg="surface.veil"
       color="fg"
       sx={{
         backdropFilter: 'blur(14px)',
@@ -120,7 +120,7 @@ export function Header() {
                   name={displayName}
                   src={profile?.profile_picture_url || undefined}
                   bg="accent"
-                  color="white"
+                  color="fg.onAccent"
                 />
               }
             />

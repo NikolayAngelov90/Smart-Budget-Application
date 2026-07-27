@@ -39,11 +39,11 @@ import { useGamification } from '@/lib/hooks/useGamification';
 import type { BudgetScoreLevel, ScoreFactor } from '@/types/database.types';
 
 const LEVEL_COLOR: Record<BudgetScoreLevel, string> = {
-  beginner: 'green.400',
-  building: 'green.500',
+  beginner: 'income',
+  building: 'income',
   steady: 'teal.500',
-  strong: 'blue.500',
-  master: 'blue.600',
+  strong: 'accent',
+  master: 'accent',
 };
 
 const LEVEL_BADGE: Record<BudgetScoreLevel, string> = {
@@ -161,14 +161,14 @@ export function BudgetScoreRing() {
               size="120px"
               thickness="8px"
               color={LEVEL_COLOR[budgetScore.level]}
-              trackColor="gray.100"
+              trackColor="surface.sunken"
               capIsRound
             >
               <CircularProgressLabel
                 fontSize="2rem"
                 fontWeight={700}
                 fontFamily="mono"
-                color="gray.800"
+                color="fg"
               >
                 {budgetScore.score}
               </CircularProgressLabel>
@@ -196,7 +196,7 @@ export function BudgetScoreRing() {
                   </Text>
                   <HStack spacing={2}>
                     {factor.status !== 'unscored' && (
-                      <Text fontSize="sm" color="gray.600" fontFamily="mono">
+                      <Text fontSize="sm" color="fg.muted" fontFamily="mono">
                         {factor.earned}/{factor.max}
                       </Text>
                     )}
@@ -206,7 +206,7 @@ export function BudgetScoreRing() {
                   </HStack>
                 </HStack>
                 {factor.status === 'unscored' && (
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Text fontSize="xs" color="fg.subtle" mt={1}>
                     {t(`hint.${factor.key}`)}
                   </Text>
                 )}

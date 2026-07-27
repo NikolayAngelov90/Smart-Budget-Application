@@ -27,16 +27,16 @@ export function CombinedSpendingCard() {
       <CardBody>
         <VStack align="stretch" spacing={3}>
           <Box>
-            <Heading as="h2" size="md" color="gray.700">
+            <Heading as="h2" size="md" color="fg">
               {t('combinedSpending')}
             </Heading>
-            <Text fontSize="xs" color="gray.500">
+            <Text fontSize="xs" color="fg.subtle">
               {t('thisMonth')}
             </Text>
           </Box>
 
           {isLoading ? null : totals.length === 0 ? (
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               {t('noSharedCategories')}
             </Text>
           ) : (
@@ -44,7 +44,7 @@ export function CombinedSpendingCard() {
               <VStack key={c.category_id} align="stretch" spacing={1}>
                 <HStack justify="space-between">
                   <HStack spacing={2}>
-                    <Text fontSize="sm" color="gray.800">
+                    <Text fontSize="sm" color="fg">
                       {c.category_name}
                     </Text>
                     {c.visibility_level === 'category_only' && (
@@ -53,7 +53,7 @@ export function CombinedSpendingCard() {
                       </Badge>
                     )}
                   </HStack>
-                  <Text fontSize="sm" fontWeight="semibold" color="gray.800">
+                  <Text fontSize="sm" fontWeight="semibold" color="fg">
                     {formatAmount(Number(c.total), currency)}
                   </Text>
                 </HStack>
@@ -61,7 +61,7 @@ export function CombinedSpendingCard() {
                   value={max > 0 ? (Number(c.total) / max) * 100 : 0}
                   size="xs"
                   borderRadius="full"
-                  colorScheme="blue"
+                  colorScheme="brand"
                 />
               </VStack>
             ))

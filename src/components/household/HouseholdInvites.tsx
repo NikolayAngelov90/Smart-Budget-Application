@@ -92,7 +92,7 @@ export function HouseholdInvites() {
   return (
     <Box>
       <Divider my={2} />
-      <Heading as="h3" size="sm" color="gray.700" mb={2}>
+      <Heading as="h3" size="sm" color="fg" mb={2}>
         {t('heading')}
       </Heading>
 
@@ -106,7 +106,7 @@ export function HouseholdInvites() {
           aria-label={t('emailPlaceholder')}
         />
         <Button
-          colorScheme="blue"
+          colorScheme="brand"
           onClick={handleInvite}
           isLoading={isSubmitting}
           loadingText={t('sending')}
@@ -119,13 +119,13 @@ export function HouseholdInvites() {
 
       {pending.length > 0 && (
         <VStack align="stretch" spacing={2}>
-          <Text fontSize="xs" color="gray.500" textTransform="uppercase" fontWeight="semibold">
+          <Text fontSize="xs" color="fg.subtle" textTransform="uppercase" fontWeight="semibold">
             {t('pendingTitle')}
           </Text>
           {pending.map((inv) => (
             <HStack key={inv.id} justify="space-between" align="center" py={1}>
               <VStack align="flex-start" spacing={0} flex={1} minW={0}>
-                <Text fontSize="sm" color="gray.800" isTruncated maxW="full">
+                <Text fontSize="sm" color="fg" isTruncated maxW="full">
                   {inv.email}
                 </Text>
                 {inv.isExpired ? (
@@ -133,7 +133,7 @@ export function HouseholdInvites() {
                     {t('expired')}
                   </Badge>
                 ) : (
-                  <Text fontSize="xs" color="gray.500">
+                  <Text fontSize="xs" color="fg.subtle">
                     {t('expires')}
                   </Text>
                 )}

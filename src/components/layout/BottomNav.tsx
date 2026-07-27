@@ -63,7 +63,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
       zIndex={100}
       // Story UX-1: translucent blurred bar for a native iOS feel; solid-surface
       // fallback where backdrop-filter is unsupported (DESIGN.md).
-      bg="rgba(255,255,255,0.85)"
+      bg="surface.veilStrong"
       sx={{
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
@@ -141,7 +141,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
             minW="54px"
             minH="54px"
             bg="accent"
-            color="white"
+            color="fg.onAccent"
             boxShadow="accent"
             _hover={{ bg: 'accent.emphasis', transform: 'translateY(-1px) scale(1.04)' }}
             _active={{ bg: 'evergreen.700', transform: 'scale(0.96)' }}

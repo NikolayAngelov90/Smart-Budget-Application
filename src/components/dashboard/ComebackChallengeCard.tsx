@@ -85,7 +85,7 @@ export function ComebackChallengeCard() {
           <Heading as="h2" fontSize="1.125rem" color="orange.800">
             {t('heading')}
           </Heading>
-          <Text fontSize="sm" color="gray.700" mt={1}>
+          <Text fontSize="sm" color="fg" mt={1}>
             {t('body', { target: challenge.target_count })}
           </Text>
           <Text fontSize="xs" color="orange.700" mt={1}>
@@ -104,7 +104,7 @@ export function ComebackChallengeCard() {
           borderRadius="full"
           aria-label={t('progress', { count: loggedCount, target: challenge.target_count })}
         />
-        <Text fontSize="xs" color="gray.600" mt={1}>
+        <Text fontSize="xs" color="fg.muted" mt={1}>
           {t('progress', { count: loggedCount, target: challenge.target_count })}
         </Text>
       </Box>

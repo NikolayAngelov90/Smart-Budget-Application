@@ -174,7 +174,7 @@ export function PaginationControls({
             {pageNumbers.map((page, index) => {
               if (page === '...') {
                 return (
-                  <Text key={`ellipsis-${index}`} px={2} color="gray.500">
+                  <Text key={`ellipsis-${index}`} px={2} color="fg.subtle">
                     ...
                   </Text>
                 );
@@ -229,7 +229,7 @@ export function PaginationControls({
         >
           {/* AC-9.7.1: Page size selector */}
           <HStack spacing={2}>
-            <Text fontSize="sm" whiteSpace="nowrap" color="gray.600">
+            <Text fontSize="sm" whiteSpace="nowrap" color="fg.muted">
               {t('itemsPerPage')}
             </Text>
             <Select
@@ -252,7 +252,7 @@ export function PaginationControls({
           {totalPages > 1 && (
             <FormControl isInvalid={!!jumpToError} maxW={{ base: 'full', sm: '200px' }}>
               <HStack spacing={2}>
-                <Text fontSize="sm" whiteSpace="nowrap" color="gray.600">
+                <Text fontSize="sm" whiteSpace="nowrap" color="fg.muted">
                   {t('goTo')}
                 </Text>
                 <Input
@@ -293,7 +293,7 @@ export function PaginationControls({
       {/* Item count summary */}
       <Text
         fontSize="sm"
-        color="gray.500"
+        color="fg.subtle"
         textAlign="center"
         mt={2}
         aria-live="polite"

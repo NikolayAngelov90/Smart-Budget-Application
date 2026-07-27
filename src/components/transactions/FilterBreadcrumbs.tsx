@@ -100,15 +100,15 @@ export function FilterBreadcrumbs() {
 
   return (
     <Box
-      bg="gray.50"
+      bg="surface.sunken"
       borderRadius="md"
       p={4}
       mb={4}
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border"
     >
       <HStack spacing={3} align="center" flexWrap="wrap">
-        <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+        <Text fontSize="sm" fontWeight="semibold" color="fg">
           {t('filtering')}
         </Text>
 
@@ -123,7 +123,7 @@ export function FilterBreadcrumbs() {
 
         {/* Month filter */}
         {monthFormatted && (
-          <Text fontSize="sm" fontWeight="medium" color="gray.700">
+          <Text fontSize="sm" fontWeight="medium" color="fg">
             {monthFormatted}
           </Text>
         )}

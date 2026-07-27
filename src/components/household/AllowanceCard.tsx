@@ -92,10 +92,10 @@ export function AllowanceCard() {
       <Divider my={2} />
       <HStack justify="space-between" align="center" mb={1}>
         <HStack spacing={2}>
-          <Heading as="h3" size="sm" color="gray.700">
+          <Heading as="h3" size="sm" color="fg">
             {t('heading')}
           </Heading>
-          <Icon as={LockIcon} boxSize={3} color="gray.400" aria-hidden />
+          <Icon as={LockIcon} boxSize={3} color="fg.subtle" aria-hidden />
         </HStack>
         {!isEditing && (
           <Button size="xs" variant="ghost" onClick={beginEdit}>
@@ -103,7 +103,7 @@ export function AllowanceCard() {
           </Button>
         )}
       </HStack>
-      <Text fontSize="xs" color="gray.500" mb={3}>
+      <Text fontSize="xs" color="fg.subtle" mb={3}>
         {t('privacyNote')}
       </Text>
 
@@ -136,7 +136,7 @@ export function AllowanceCard() {
             <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} isDisabled={isSaving}>
               {t('cancel')}
             </Button>
-            <Button size="sm" colorScheme="blue" onClick={handleSave} isLoading={isSaving} loadingText={t('save')}>
+            <Button size="sm" colorScheme="brand" onClick={handleSave} isLoading={isSaving} loadingText={t('save')}>
               {t('save')}
             </Button>
           </HStack>
@@ -144,25 +144,25 @@ export function AllowanceCard() {
       ) : allowance ? (
         <VStack align="stretch" spacing={2}>
           <HStack justify="space-between">
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               {t('budgetLabel')}
             </Text>
-            <Text fontSize="sm" fontWeight="semibold" color="gray.800">
+            <Text fontSize="sm" fontWeight="semibold" color="fg">
               {formatAmount(allowance.monthly_amount, displayCurrency)}
             </Text>
           </HStack>
           <Progress value={pct} size="sm" borderRadius="full" colorScheme={remaining < 0 ? 'red' : 'blue'} />
           <HStack justify="space-between">
-            <Text fontSize="xs" color="gray.500">
+            <Text fontSize="xs" color="fg.subtle">
               {t('spentLabel')}: {formatAmount(spent, displayCurrency)}
             </Text>
-            <Text fontSize="xs" color={remaining < 0 ? 'red.500' : 'gray.500'}>
+            <Text fontSize="xs" color={remaining < 0 ? 'expense' : 'fg.subtle'}>
               {t('remainingLabel')}: {formatAmount(remaining, displayCurrency)}
             </Text>
           </HStack>
         </VStack>
       ) : (
-        <Text fontSize="sm" color="gray.600">
+        <Text fontSize="sm" color="fg.muted">
           {t('none')}
         </Text>
       )}

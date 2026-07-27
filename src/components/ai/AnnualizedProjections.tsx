@@ -89,7 +89,7 @@ function ProjectionRow({ projection, currency }: ProjectionRowProps) {
       px={4}
       py={3}
       borderBottom="1px solid"
-      borderColor="gray.100"
+      borderColor="border"
       gap={2}
     >
       {/* Left: color swatch + name + badges (own full-width line on mobile) */}
@@ -122,7 +122,7 @@ function ProjectionRow({ projection, currency }: ProjectionRowProps) {
         justify={{ base: 'space-between', md: 'flex-end' }}
       >
         <Box textAlign="right">
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="fg.subtle">
             {t('transactions')}
           </Text>
           <Text fontWeight="medium">
@@ -130,7 +130,7 @@ function ProjectionRow({ projection, currency }: ProjectionRowProps) {
           </Text>
         </Box>
         <Box textAlign="right">
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="fg.subtle">
             {t('monthlyAvg')}
           </Text>
           <Text fontWeight="medium" aria-label={`${t('monthlyAvg')}: ${formatAmount(monthly_avg, currency)}`}>
@@ -138,7 +138,7 @@ function ProjectionRow({ projection, currency }: ProjectionRowProps) {
           </Text>
         </Box>
         <Box textAlign="right" minW="80px">
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="fg.subtle">
             {t('annualProjection')}
           </Text>
           <Text fontWeight="semibold" aria-label={`${t('annualProjection')}: ${formatAmount(annual_projection, currency)}`}>
@@ -163,7 +163,7 @@ function TotalRow({ total, currency }: TotalRowProps) {
       justify="space-between"
       px={4}
       py={3}
-      bg="gray.50"
+      bg="surface.sunken"
       flexWrap="wrap"
       gap={2}
     >
@@ -205,15 +205,15 @@ export function AnnualizedProjections() {
     <Box as="section" aria-label={t('title')}>
       <VStack align="stretch" spacing={4}>
         <VStack align="start" spacing={0}>
-          <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700">
+          <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg">
             {t('title')}
           </Heading>
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize="sm" color="fg.subtle">
             {t('subtitle', { count: months_analyzed })}
           </Text>
         </VStack>
 
-        <Box borderRadius="md" border="1px solid" borderColor="gray.200" overflow="hidden">
+        <Box borderRadius="md" border="1px solid" borderColor="border" overflow="hidden">
           {projections.map((p) => (
             <ProjectionRow key={p.category_id} projection={p} currency={currency} />
           ))}

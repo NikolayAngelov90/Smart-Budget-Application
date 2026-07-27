@@ -180,12 +180,12 @@ function ResetPasswordForm() {
             <Heading
               as="h1"
               size={{ base: 'xl', md: '2xl' }}
-              color="gray.900"
+              color="fg"
               fontWeight="bold"
             >
               Reset link expired
             </Heading>
-            <Text color="gray.600" fontSize={{ base: 'sm', md: 'md' }}>
+            <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
               This password reset link is invalid or has expired
             </Text>
           </VStack>
@@ -214,7 +214,7 @@ function ResetPasswordForm() {
               as={Link}
               href="/forgot-password"
               size="lg"
-              bg="#2b6cb0"
+              bg="accent"
               color="white"
               _hover={{ bg: '#2c5282' }}
               minH="44px"
@@ -228,8 +228,8 @@ function ResetPasswordForm() {
               href="/login"
               size="lg"
               variant="outline"
-              borderColor="gray.300"
-              _hover={{ bg: 'gray.50' }}
+              borderColor="border.strong"
+              _hover={{ bg: 'surface.sunken' }}
               minH="44px"
               w="full"
               fontWeight="medium"
@@ -251,12 +251,12 @@ function ResetPasswordForm() {
           <Heading
             as="h1"
             size={{ base: 'xl', md: '2xl' }}
-            color="gray.900"
+            color="fg"
             fontWeight="bold"
           >
             Reset your password
           </Heading>
-          <Text color="gray.600" fontSize={{ base: 'sm', md: 'md' }}>
+          <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
             Enter your new password below
           </Text>
         </VStack>
@@ -265,12 +265,12 @@ function ResetPasswordForm() {
         <Box
           as="form"
           onSubmit={handleSubmit}
-          bg="white"
+          bg="surface"
           p={{ base: '6', md: '8' }}
           borderRadius="lg"
           boxShadow="lg"
           border="1px"
-          borderColor="gray.200"
+          borderColor="border"
         >
           <VStack spacing={5} align="stretch">
             {/* New Password Field */}
@@ -293,8 +293,8 @@ function ResetPasswordForm() {
                   }
                   autoComplete="new-password"
                   _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
+                    borderColor: 'accent',
+                    boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                   }}
                 />
                 <InputRightElement>
@@ -309,11 +309,11 @@ function ResetPasswordForm() {
                 </InputRightElement>
               </InputGroup>
               {errors.password ? (
-                <FormErrorMessage id="password-error" color="red.500" fontSize="sm">
+                <FormErrorMessage id="password-error" color="expense" fontSize="sm">
                   {errors.password}
                 </FormErrorMessage>
               ) : (
-                <FormHelperText id="password-helper" fontSize="xs" color="gray.500">
+                <FormHelperText id="password-helper" fontSize="xs" color="fg.subtle">
                   At least 8 characters with uppercase, lowercase, and number
                 </FormHelperText>
               )}
@@ -339,8 +339,8 @@ function ResetPasswordForm() {
                   }
                   autoComplete="new-password"
                   _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
+                    borderColor: 'accent',
+                    boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                   }}
                 />
                 <InputRightElement>
@@ -359,7 +359,7 @@ function ResetPasswordForm() {
               {errors.confirmPassword && (
                 <FormErrorMessage
                   id="confirm-password-error"
-                  color="red.500"
+                  color="expense"
                   fontSize="sm"
                 >
                   {errors.confirmPassword}
@@ -371,11 +371,11 @@ function ResetPasswordForm() {
             <Button
               type="submit"
               size="lg"
-              bg="#2b6cb0"
+              bg="accent"
               color="white"
               _hover={{ bg: '#2c5282' }}
               _active={{ bg: '#2c5282' }}
-              _disabled={{ bg: 'gray.300', cursor: 'not-allowed' }}
+              _disabled={{ bg: 'border.strong', cursor: 'not-allowed' }}
               isLoading={isLoading}
               loadingText="Updating password..."
               isDisabled={!password || !confirmPassword}
@@ -390,9 +390,9 @@ function ResetPasswordForm() {
         </Box>
 
         {/* Back to Login Link */}
-        <Text textAlign="center" fontSize="sm" color="gray.600">
+        <Text textAlign="center" fontSize="sm" color="fg.muted">
           Remember your password?{' '}
-          <Link href="/login" style={{ color: '#2b6cb0', fontWeight: '600' }}>
+          <Link href="/login" style={{ color: 'var(--chakra-colors-accent)', fontWeight: '600' }}>
             Back to login
           </Link>
         </Text>
@@ -411,7 +411,7 @@ export default function ResetPasswordPage() {
               <Heading
                 as="h1"
                 size={{ base: 'xl', md: '2xl' }}
-                color="gray.900"
+                color="fg"
                 fontWeight="bold"
               >
                 Loading...

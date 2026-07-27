@@ -97,7 +97,7 @@ export function AIBudgetCoach() {
         as="h2"
         size={{ base: 'lg', md: 'xl' }}
         mb={4}
-        color="gray.800"
+        color="fg"
       >
         {t('aiBudgetCoach')}
       </Heading>
@@ -121,9 +121,9 @@ export function AIBudgetCoach() {
 
       {/* Error State */}
       {error && (
-        <Card borderLeft="4px" borderColor="red.500">
+        <Card borderLeft="4px" borderColor="expense">
           <CardBody>
-            <Text color="red.600">
+            <Text color="expense">
               {t('unableToLoad')}
             </Text>
           </CardBody>
@@ -132,16 +132,16 @@ export function AIBudgetCoach() {
 
       {/* Empty State */}
       {!isLoading && !error && data && data.insights.length === 0 && (
-        <Card borderLeft="4px" borderColor="blue.500">
+        <Card borderLeft="4px" borderColor="accent">
           <CardBody>
             <VStack spacing={3} align="start">
               <Flex align="center" gap={2}>
-                <Icon as={InfoIcon} color="blue.500" boxSize={5} />
-                <Heading size="md" color="gray.800">
+                <Icon as={InfoIcon} color="accent" boxSize={5} />
+                <Heading size="md" color="fg">
                   {t('keepTracking')}
                 </Heading>
               </Flex>
-              <Text color="gray.600">
+              <Text color="fg.muted">
                 {t('keepTrackingDescription')}
               </Text>
             </VStack>
@@ -171,11 +171,11 @@ export function AIBudgetCoach() {
               <ChakraLink
                 as={Link}
                 href="/insights"
-                color="blue.500"
+                color="accent"
                 fontWeight="medium"
                 fontSize={{ base: 'sm', md: 'md' }}
                 _hover={{
-                  color: 'blue.600',
+                  color: 'accent',
                   textDecoration: 'underline',
                 }}
               >

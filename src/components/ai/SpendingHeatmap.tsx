@@ -89,10 +89,10 @@ export function SpendingHeatmap() {
         {/* Header row with title and controls */}
         <HStack justify="space-between" align="center" flexWrap="wrap" gap={2}>
           <VStack align="start" spacing={0}>
-            <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700">
+            <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg">
               {t('title')}
             </Heading>
-            <Text fontSize="sm" color="gray.500">
+            <Text fontSize="sm" color="fg.subtle">
               {t('subtitle', { month: monthLabel, year: selectedYear })}
             </Text>
           </VStack>

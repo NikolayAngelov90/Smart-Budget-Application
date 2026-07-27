@@ -461,7 +461,7 @@ function TransactionsContent() {
               <Button
                 size="sm"
                 variant="solid"
-                bg="white"
+                bg="surface"
                 color="income"
                 onClick={async (e) => {
                   e.preventDefault();

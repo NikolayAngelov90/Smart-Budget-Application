@@ -157,10 +157,10 @@ export function ValuesPlanSection() {
       <CardBody>
         <VStack spacing={6} align="stretch">
           <Box>
-            <Heading as="h2" size="md" color="gray.700">
+            <Heading as="h2" size="md" color="fg">
               {t('heading')}
             </Heading>
-            <Text fontSize="sm" color="gray.600" mt={1}>
+            <Text fontSize="sm" color="fg.muted" mt={1}>
               {t('subtitle')}
             </Text>
           </Box>
@@ -178,7 +178,7 @@ export function ValuesPlanSection() {
             />
             <Button
               leftIcon={<AddIcon />}
-              colorScheme="blue"
+              colorScheme="brand"
               onClick={handleAdd}
               isLoading={isAdding}
               isDisabled={!newName.trim()}
@@ -193,10 +193,10 @@ export function ValuesPlanSection() {
           {isLoading ? (
             <HStack justify="center" py={4}>
               <Spinner size="sm" />
-              <Text color="gray.500">{t('loading')}</Text>
+              <Text color="fg.subtle">{t('loading')}</Text>
             </HStack>
           ) : values.length === 0 ? (
-            <Text color="gray.500" fontSize="sm" textAlign="center" py={4}>
+            <Text color="fg.subtle" fontSize="sm" textAlign="center" py={4}>
               {t('empty')}
             </Text>
           ) : (
@@ -259,10 +259,10 @@ function ValueRow({
     onSetCategories(value.id, [...value.category_ids, categoryId]);
 
   return (
-    <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4}>
+    <Box borderWidth="1px" borderColor="border" borderRadius="md" p={4}>
       <HStack justify="space-between" align="flex-start">
         <HStack flex={1} minW={0}>
-          <Badge colorScheme="blue" borderRadius="full" px={2}>
+          <Badge colorScheme="brand" borderRadius="full" px={2}>
             #{index + 1}
           </Badge>
           {isEditing ? (
@@ -296,7 +296,7 @@ function ValueRow({
               />
             </HStack>
           ) : (
-            <Text fontWeight="semibold" color="gray.800" noOfLines={1}>
+            <Text fontWeight="semibold" color="fg" noOfLines={1}>
               {value.name}
             </Text>
           )}
@@ -344,7 +344,7 @@ function ValueRow({
 
       {/* Assigned categories */}
       <Box mt={3}>
-        <Text fontSize="xs" color="gray.500" mb={2}>
+        <Text fontSize="xs" color="fg.subtle" mb={2}>
           {t('assignCategories')}
         </Text>
         <Wrap spacing={2}>
@@ -383,7 +383,7 @@ function ValueRow({
           </WrapItem>
         </Wrap>
         {value.category_ids.length === 0 && (
-          <Text fontSize="xs" color="gray.400" mt={2}>
+          <Text fontSize="xs" color="fg.subtle" mt={2}>
             {t('none')}
           </Text>
         )}

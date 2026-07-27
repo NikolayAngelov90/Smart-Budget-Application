@@ -38,8 +38,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Pinch-zoom intentionally allowed (WCAG 1.4.4 resize) — Story UX-1.
   viewportFit: 'cover',
-  // Quiet Ledger: the browser chrome matches the warm-paper canvas (was bank-blue).
-  themeColor: '#F6F5F2',
+  // Quiet Ledger: the browser chrome matches the canvas (was bank-blue). Two
+  // entries so the mobile chrome follows the active mode instead of staying
+  // warm-paper bright behind a dark UI (theme `canvas` light / `canvas._dark`).
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#F6F5F2' },
+    { media: '(prefers-color-scheme: dark)', color: '#111008' },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -70,6 +75,29 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} className={`${spaceGrotesk.variable} ${onest.variable}`}>
+      <head>
+        {/*
+          Story 16.5 — appearance, applied BEFORE hydration.
+
+          Reads our `smart-budget-appearance` preference (light | dark | system),
+          resolves `system` against the OS, then (a) stamps `data-theme` on <html>
+          so globals.css paints the right canvas in the very first paint, and
+          (b) mirrors the resolved value into Chakra's own storage key so Chakra
+          initialises in agreement instead of flashing light then correcting.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{
+var p=localStorage.getItem('smart-budget-appearance')||'system';
+if(p!=='light'&&p!=='dark'&&p!=='system'){p='system';}
+var m=p==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;
+document.documentElement.dataset.theme=m;
+document.documentElement.style.colorScheme=m;
+localStorage.setItem('chakra-ui-color-mode',m);
+}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body>
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>

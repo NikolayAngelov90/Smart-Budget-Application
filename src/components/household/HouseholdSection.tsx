@@ -101,24 +101,24 @@ export function HouseholdSection() {
     <Card>
       <CardBody>
         <VStack spacing={4} align="stretch">
-          <Heading as="h2" size="md" color="gray.700">
+          <Heading as="h2" size="md" color="fg">
             {t('heading')}
           </Heading>
 
           {isLoading ? (
             <Skeleton height="40px" borderRadius="md" />
           ) : error ? (
-            <Text fontSize="sm" color="red.500">
+            <Text fontSize="sm" color="expense">
               {t('loadError')}
             </Text>
           ) : household ? (
             <VStack align="stretch" spacing={4}>
               <HStack justify="space-between" align="center">
                 <VStack align="flex-start" spacing={0}>
-                  <Text fontWeight="semibold" color="gray.800">
+                  <Text fontWeight="semibold" color="fg">
                     {household.name}
                   </Text>
-                  <Text fontSize="sm" color="gray.500">
+                  <Text fontSize="sm" color="fg.subtle">
                     {t('memberSince')}
                   </Text>
                 </VStack>
@@ -134,10 +134,10 @@ export function HouseholdSection() {
               {/* Story 13.4: transparency preset (applies defaults to your shared categories) */}
               <Box>
                 <Divider my={2} />
-                <Heading as="h3" size="sm" color="gray.700" mb={1}>
+                <Heading as="h3" size="sm" color="fg" mb={1}>
                   {t('presetHeading')}
                 </Heading>
-                <Text fontSize="sm" color="gray.600" mb={2}>
+                <Text fontSize="sm" color="fg.muted" mb={2}>
                   {t('presetHint')}
                 </Text>
                 <Select
@@ -155,7 +155,7 @@ export function HouseholdSection() {
                   <option value="custom">{t('presetCustom')}</option>
                 </Select>
                 {household.preset && (
-                  <Text fontSize="xs" color="gray.600" mt={1}>
+                  <Text fontSize="xs" color="fg.muted" mt={1}>
                     {t('presetActive', {
                       preset:
                         household.preset === 'newlyweds'
@@ -180,7 +180,7 @@ export function HouseholdSection() {
             <VStack align="stretch" spacing={3}>
               {/* Story 13.2 follow-up: surface any invitation addressed to this user */}
               <PendingInviteBanner />
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="fg.muted">
                 {t('emptyPrompt')}
               </Text>
               <HStack>
@@ -192,7 +192,7 @@ export function HouseholdSection() {
                   aria-label={t('namePlaceholder')}
                 />
                 <Button
-                  colorScheme="blue"
+                  colorScheme="brand"
                   onClick={handleCreate}
                   isLoading={isSubmitting}
                   loadingText={t('creating')}

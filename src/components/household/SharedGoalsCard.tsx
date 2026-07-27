@@ -100,18 +100,18 @@ export function SharedGoalsCard() {
       <CardBody>
         <VStack align="stretch" spacing={3}>
           <HStack justify="space-between" align="center">
-            <Heading as="h2" size="md" color="gray.700">
+            <Heading as="h2" size="md" color="fg">
               {t('heading')}
             </Heading>
             {!creating && (
-              <Button size="xs" colorScheme="blue" variant="ghost" onClick={() => setCreating(true)}>
+              <Button size="xs" colorScheme="brand" variant="ghost" onClick={() => setCreating(true)}>
                 {t('newGoal')}
               </Button>
             )}
           </HStack>
 
           {creating && (
-            <VStack align="stretch" spacing={2} bg="gray.50" p={3} borderRadius="md">
+            <VStack align="stretch" spacing={2} bg="surface.sunken" p={3} borderRadius="md">
               <Input size="sm" placeholder={t('name')} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} aria-label={t('name')} />
               <HStack>
                 <Input size="sm" type="number" min={0} step="0.01" placeholder={t('target')} value={target} onChange={(e) => setTarget(e.target.value)} aria-label={t('target')} />
@@ -121,7 +121,7 @@ export function SharedGoalsCard() {
                 <Button size="sm" variant="ghost" onClick={() => setCreating(false)} isDisabled={busy}>
                   {t('cancel')}
                 </Button>
-                <Button size="sm" colorScheme="blue" onClick={handleCreate} isLoading={busy} loadingText={t('create')}>
+                <Button size="sm" colorScheme="brand" onClick={handleCreate} isLoading={busy} loadingText={t('create')}>
                   {t('create')}
                 </Button>
               </HStack>
@@ -129,7 +129,7 @@ export function SharedGoalsCard() {
           )}
 
           {isLoading ? null : goals.length === 0 ? (
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               {t('none')}
             </Text>
           ) : (
@@ -139,10 +139,10 @@ export function SharedGoalsCard() {
                 <Box key={goal.id}>
                   <Divider mb={2} />
                   <HStack justify="space-between" mb={1}>
-                    <Text fontSize="sm" fontWeight="semibold" color="gray.800">
+                    <Text fontSize="sm" fontWeight="semibold" color="fg">
                       {goal.name}
                     </Text>
-                    <Text fontSize="xs" color="gray.500">
+                    <Text fontSize="xs" color="fg.subtle">
                       {formatAmount(goal.current_amount, currency)} / {formatAmount(goal.target_amount, currency)}
                     </Text>
                   </HStack>
@@ -152,10 +152,10 @@ export function SharedGoalsCard() {
                     <VStack align="stretch" spacing={0} mb={2}>
                       {breakdown.map((b) => (
                         <HStack key={b.user_id} justify="space-between">
-                          <Text fontSize="xs" color="gray.500">
+                          <Text fontSize="xs" color="fg.subtle">
                             {b.email}
                           </Text>
-                          <Text fontSize="xs" color="gray.500">
+                          <Text fontSize="xs" color="fg.subtle">
                             {formatAmount(Number(b.contributed), currency)}
                           </Text>
                         </HStack>
@@ -176,7 +176,7 @@ export function SharedGoalsCard() {
                         aria-label={t('contributeAmount')}
                         maxW="140px"
                       />
-                      <Button size="sm" colorScheme="blue" onClick={() => handleContribute(goal.id)} isLoading={busy} loadingText={t('save')}>
+                      <Button size="sm" colorScheme="brand" onClick={() => handleContribute(goal.id)} isLoading={busy} loadingText={t('save')}>
                         {t('save')}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setContributeFor(null)} isDisabled={busy}>

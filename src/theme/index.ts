@@ -39,7 +39,9 @@ const theme = extendTheme({
       // Darkened from paper.500 so small "subtle" text (hero date, inactive
       // nav labels) clears WCAG AA 4.5:1 on the warm canvas (~5:1).
       'fg.subtle': { default: '#6E6A60', _dark: 'paper.400' },
-      'fg.onAccent': { default: 'white', _dark: 'white' },
+      // Dark mode flips `accent` to the LIGHT evergreen.300, so white text on it
+      // is only ~2.5:1 — the ink shade is what reads there.
+      'fg.onAccent': { default: 'white', _dark: 'paper.900' },
 
       'border': { default: 'paper.200', _dark: 'paper.800' },
       'border.strong': { default: 'paper.300', _dark: 'paper.700' },
@@ -56,11 +58,33 @@ const theme = extendTheme({
       // dashboard "Out" figure.
       'expense': { default: 'clay.600', _dark: 'clay.300' },
       'expense.subtle': { default: 'clay.50', _dark: 'rgba(196,89,58,0.20)' },
+      // Destructive text — red.600 is only ~3.2:1 on the dark canvas.
+      'danger.fg': { default: 'red.600', _dark: 'red.300' },
       // amber.700 (not .600): amber.600 on amber.50 is only 3.85:1, which fails
       // AA for the small uppercase labels that use this pair (insight priority
       // badges). amber.700 gives ~5.7:1.
       'warning.fg': { default: 'amber.700', _dark: 'amber.300' },
       'warning.subtle': { default: 'amber.50', _dark: 'rgba(201,134,42,0.18)' },
+
+      // Translucent chrome for the blurred header / bottom nav (Story 16.5).
+      // These were hardcoded rgba WHITE / light-paper, so in dark mode the bars
+      // stayed bright while their text turned light — invisible. rgba can't be
+      // expressed with the paper ramp, hence dedicated tokens.
+      'surface.veil': { default: 'rgba(246,245,242,0.82)', _dark: 'rgba(27,26,22,0.82)' },
+      'surface.veilStrong': { default: 'rgba(255,255,255,0.85)', _dark: 'rgba(27,26,22,0.9)' },
+
+      // Achievement "unlocked" highlight — was a fixed yellow.50 card that made
+      // light text unreadable in dark mode.
+      'achievement.surface': { default: 'yellow.50', _dark: 'rgba(214,158,46,0.16)' },
+
+      // Spending-heatmap intensity ramp (Story 16.5). Tokens, not hex, so the
+      // scale inverts for dark mode — the old constants were still the
+      // PRE-REDESIGN Trust Blue (#2b6cb0) and were invisible on a dark canvas.
+      'heat.0': { default: 'paper.100', _dark: 'paper.800' },
+      'heat.1': { default: 'evergreen.100', _dark: 'evergreen.900' },
+      'heat.2': { default: 'evergreen.200', _dark: 'evergreen.700' },
+      'heat.3': { default: 'evergreen.400', _dark: 'evergreen.500' },
+      'heat.4': { default: 'evergreen.600', _dark: 'evergreen.300' },
     },
   },
 
@@ -222,7 +246,7 @@ const theme = extendTheme({
           }
           return {
             bg: 'accent',
-            color: 'white',
+            color: 'fg.onAccent',
             _hover: { bg: 'accent.emphasis', _disabled: { bg: 'accent' } },
             _active: { bg: 'evergreen.700' },
           };

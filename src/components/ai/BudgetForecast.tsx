@@ -61,7 +61,7 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
       px={4}
       py={3}
       borderBottom="1px solid"
-      borderColor="gray.100"
+      borderColor="border"
       gap={2}
     >
       {/* Left: color swatch + name + risk badge (own full-width line on mobile) */}
@@ -97,7 +97,7 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
         justify={{ base: 'space-between', md: 'flex-end' }}
       >
         <Box textAlign="right">
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="fg.subtle">
             {t('spentSoFar')}
           </Text>
           <Text fontWeight="medium">
@@ -105,18 +105,18 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
           </Text>
         </Box>
         <Box textAlign="right" minW="90px">
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="fg.subtle">
             {t('projectedEOM')}
           </Text>
           <Text
             fontWeight="semibold"
-            color={is_at_risk ? 'orange.600' : 'gray.700'}
+            color={is_at_risk ? 'orange.600' : 'fg'}
             aria-label={`${t('projectedEOM')}: ${formatAmount(projected_eom, currency)}`}
           >
             {formatAmount(projected_eom, currency)}
           </Text>
           {showBudgetLine && (
-            <Text fontSize="xs" color="blue.600">
+            <Text fontSize="xs" color="accent">
               {t('vsYourBudget', { amount: formatAmount(budget_amount, currency) })}
             </Text>
           )}
@@ -153,15 +153,15 @@ export function BudgetForecast() {
     <Box as="section" aria-label={t('title')}>
       <VStack align="stretch" spacing={4}>
         <VStack align="start" spacing={0}>
-          <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700">
+          <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg">
             {t('title')}
           </Heading>
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize="sm" color="fg.subtle">
             {t('subtitle', { day: daysElapsed, daysInMonth, daysRemaining })}
           </Text>
         </VStack>
 
-        <Box borderRadius="md" border="1px solid" borderColor="gray.200" overflow="hidden">
+        <Box borderRadius="md" border="1px solid" borderColor="border" overflow="hidden">
           {forecasts.map((f) => (
             <ForecastRow key={f.category_id} forecast={f} currency={currency} />
           ))}

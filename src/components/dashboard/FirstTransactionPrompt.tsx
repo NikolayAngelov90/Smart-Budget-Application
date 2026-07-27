@@ -28,7 +28,7 @@ export function FirstTransactionPrompt({ onAddTransaction }: FirstTransactionPro
 
   return (
     <Box
-      bg="white"
+      bg="surface"
       border="2px dashed"
       borderColor="trustBlue.200"
       borderRadius="xl"
@@ -47,17 +47,17 @@ export function FirstTransactionPrompt({ onAddTransaction }: FirstTransactionPro
           <Icon as={AddIcon} boxSize={8} color="trustBlue.500" />
         </Box>
 
-        <Heading as="h3" size="md" color="gray.800">
+        <Heading as="h3" size="md" color="fg">
           {t('firstTransactionTitle')}
         </Heading>
 
-        <Text color="gray.600" fontSize="md" maxW="sm">
+        <Text color="fg.muted" fontSize="md" maxW="sm">
           {t('firstTransactionDescription')}
         </Text>
 
         <Button
-          bg="#2b6cb0"
-          color="white"
+          bg="accent"
+          color="fg.onAccent"
           _hover={{ bg: '#2c5282' }}
           _active={{ bg: '#2c5282' }}
           size="lg"
