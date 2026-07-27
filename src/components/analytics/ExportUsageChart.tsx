@@ -31,9 +31,9 @@ export function ExportUsageChart({ data }: { data: ExportUsage }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                <XAxis dataKey="format" tick={{ fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
+                <XAxis dataKey="format" stroke={chart.axis} tick={{ fill: chart.tick, fontSize: 12 }} />
+                <YAxis allowDecimals={false} stroke={chart.axis} tick={{ fill: chart.tick, fontSize: 11 }} />
+                <Tooltip contentStyle={{ background: chart.tooltipBg, border: `1px solid ${chart.tooltipBorder}`, borderRadius: 8, color: chart.tick }} cursor={{ fill: chart.cursor, fillOpacity: 0.25 }} />
                 <Bar dataKey="count" name={t('exports')} fill={chart.accent} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

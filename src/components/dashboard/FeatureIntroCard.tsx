@@ -54,9 +54,9 @@ export function FeatureIntroCard() {
       // + heading + keyboard-navigable controls — NOT an aria-live surface
       // (a whole-card live region mounts with its content and over-announces
       // on internal updates; 15-8 review).
-      bg="trustBlue.50"
+      bg="accent.subtle"
       border="1px solid"
-      borderColor="trustBlue.200"
+      borderColor="accent"
       borderRadius="xl"
       p={{ base: 4, md: 5 }}
       mb={{ base: 6, md: 8 }}
@@ -76,7 +76,7 @@ export function FeatureIntroCard() {
             href={url}
             bg="accent"
             color="fg.onAccent"
-            _hover={{ bg: '#2c5282', textDecoration: 'none' }}
+            _hover={{ bg: 'accent.emphasis', textDecoration: 'none' }}
             borderRadius="md"
             px={4}
             py={2}

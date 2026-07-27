@@ -50,7 +50,7 @@ export function InactivityWarningModal({
       <ModalContent mx={4}>
         <ModalHeader>
           <VStack spacing={3} align="center">
-            <Icon as={WarningIcon} boxSize={12} color="orange.500" />
+            <Icon as={WarningIcon} boxSize={12} color="warning.fg" />
             <Text fontSize="xl" fontWeight="bold">
               Are you still there?
             </Text>

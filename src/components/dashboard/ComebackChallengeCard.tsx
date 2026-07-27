@@ -76,19 +76,19 @@ export function ComebackChallengeCard() {
       mb={{ base: 6, md: 8 }}
       p={5}
       borderWidth="2px"
-      borderColor="orange.300"
+      borderColor="warning.fg"
       borderRadius="xl"
-      bg="orange.50"
+      bg="warning.subtle"
     >
       <Flex justify="space-between" align="flex-start" gap={3}>
         <Box>
-          <Heading as="h2" fontSize="1.125rem" color="orange.800">
+          <Heading as="h2" fontSize="1.125rem" color="warning.fg">
             {t('heading')}
           </Heading>
           <Text fontSize="sm" color="fg" mt={1}>
             {t('body', { target: challenge.target_count })}
           </Text>
-          <Text fontSize="xs" color="orange.700" mt={1}>
+          <Text fontSize="xs" color="warning.fg" mt={1}>
             {t('restorePromise', { days: restoreDays })}
           </Text>
         </Box>

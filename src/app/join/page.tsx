@@ -133,8 +133,8 @@ function JoinContent() {
               </>
             ) : (
               <>
-                <Box bg="expense.subtle" border="1px" borderColor="expense.subtle" borderRadius="md" p={4}>
-                  <Text color="expense">{reasonMessage(validation.reason)}</Text>
+                <Box bg="danger.subtle" border="1px" borderColor="danger.fg" borderRadius="md" p={4}>
+                  <Text color="danger.fg">{reasonMessage(validation.reason)}</Text>
                 </Box>
                 <Button as="a" href="/dashboard" variant="outline">
                   {t('goToDashboard')}

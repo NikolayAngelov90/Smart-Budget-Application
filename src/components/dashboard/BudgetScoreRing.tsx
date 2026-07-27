@@ -38,11 +38,14 @@ import { useAchievementToast } from '@/lib/hooks/useAchievementToast';
 import { useGamification } from '@/lib/hooks/useGamification';
 import type { BudgetScoreLevel, ScoreFactor } from '@/types/database.types';
 
+// A real progression: the ring's whole job is to show WHICH level you're at.
+// The bulk token conversion had collapsed four of the five onto the same value
+// (`income` and `accent` both resolve to evergreen).
 const LEVEL_COLOR: Record<BudgetScoreLevel, string> = {
-  beginner: 'income',
-  building: 'income',
-  steady: 'teal.500',
-  strong: 'accent',
+  beginner: 'fg.subtle',
+  building: 'warning.fg',
+  steady: 'evergreen.300',
+  strong: 'evergreen.400',
   master: 'accent',
 };
 

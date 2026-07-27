@@ -25,9 +25,9 @@ export function InsightEngagementChart({ data }: { data: InsightEngagementPoint[
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-              <XAxis dataKey="insight_type" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <XAxis dataKey="insight_type" stroke={chart.axis} tick={{ fill: chart.tick, fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
+              <YAxis allowDecimals={false} stroke={chart.axis} tick={{ fill: chart.tick, fontSize: 11 }} />
+              <Tooltip contentStyle={{ background: chart.tooltipBg, border: `1px solid ${chart.tooltipBorder}`, borderRadius: 8, color: chart.tick }} cursor={{ fill: chart.cursor, fillOpacity: 0.25 }} />
               <Legend />
               <Bar dataKey="views" name={t('views')} fill={chart.accent} radius={[4, 4, 0, 0]} />
               <Bar dataKey="dismissals" name={t('dismissals')} fill={chart.expense} radius={[4, 4, 0, 0]} />

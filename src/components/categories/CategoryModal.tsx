@@ -359,12 +359,12 @@ export function CategoryModal({
                 <Box
                   w="full"
                   p={3}
-                  bg="expense.subtle"
+                  bg="danger.subtle"
                   border="1px"
-                  borderColor="expense.subtle"
+                  borderColor="danger.fg"
                   borderRadius="md"
                 >
-                  <Text color="expense" fontSize="sm">
+                  <Text color="danger.fg" fontSize="sm">
                     {apiError}
                   </Text>
                 </Box>

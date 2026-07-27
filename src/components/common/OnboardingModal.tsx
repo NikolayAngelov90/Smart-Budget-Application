@@ -172,8 +172,8 @@ export function OnboardingModal({
             form="onboarding-form"
             bg="accent"
             color="fg.onAccent"
-            _hover={{ bg: '#2c5282' }}
-            _active={{ bg: '#2c5282' }}
+            _hover={{ bg: 'accent.emphasis' }}
+            _active={{ bg: 'accent.emphasis' }}
             size="lg"
             minH="44px"
             px={8}

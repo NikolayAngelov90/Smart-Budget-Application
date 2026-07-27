@@ -92,7 +92,7 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
                 </Text>
               )}
               {impact.goal_delay && (
-                <Text fontSize="sm" color="orange.600">
+                <Text fontSize="sm" color="warning.fg">
                   {t('goalDelay', {
                     days: impact.goal_delay.delay_days,
                     goal: impact.goal_delay.goal_name,

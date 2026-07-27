@@ -108,7 +108,7 @@ export function RecoveryPlan() {
       }
     };
     return (
-      <Box as="section" aria-label={t('title')} borderRadius="md" border="1px solid" borderColor="orange.200" bg="orange.50" p={4}>
+      <Box as="section" aria-label={t('title')} borderRadius="md" border="1px solid" borderColor="warning.fg" bg="warning.subtle" p={4}>
         <VStack align="start" spacing={3}>
           <Heading as="h2" fontSize={{ base: '1.1rem', lg: '1.25rem' }} color="fg">
             {t('ctaTitle')}

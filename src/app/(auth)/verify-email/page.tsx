@@ -51,8 +51,8 @@ export default function VerifyEmailPage() {
           href="/login"
           size="lg"
           bg="accent"
-          color="white"
-          _hover={{ bg: '#2c5282' }}
+          color="fg.onAccent"
+          _hover={{ bg: 'accent.emphasis' }}
           minH="44px"
         >
           Go to Login

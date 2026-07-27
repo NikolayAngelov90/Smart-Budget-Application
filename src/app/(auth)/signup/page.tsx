@@ -82,9 +82,9 @@ function calculatePasswordStrength(password: string): {
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
   if (score <= 2)
-    return { score: 33, label: 'Weak', color: 'expense' };
+    return { score: 33, label: 'Weak', color: 'danger.fg' };
   if (score === 3 || score === 4)
-    return { score: 66, label: 'Medium', color: 'orange.400' };
+    return { score: 66, label: 'Medium', color: 'warning.fg' };
   return { score: 100, label: 'Strong', color: 'income' };
 }
 
@@ -318,7 +318,7 @@ export default function SignupPage() {
                 }}
               />
               {errors.email && (
-                <FormErrorMessage id="email-error" color="expense" fontSize="sm">
+                <FormErrorMessage id="email-error" color="danger.fg" fontSize="sm">
                   {errors.email.message}
                 </FormErrorMessage>
               )}
@@ -380,7 +380,7 @@ export default function SignupPage() {
               )}
 
               {errors.password && (
-                <FormErrorMessage id="password-error" color="expense" fontSize="sm">
+                <FormErrorMessage id="password-error" color="danger.fg" fontSize="sm">
                   {errors.password.message}
                 </FormErrorMessage>
               )}
@@ -427,7 +427,7 @@ export default function SignupPage() {
                 </InputRightElement>
               </InputGroup>
               {errors.confirmPassword && (
-                <FormErrorMessage id="confirm-password-error" color="expense" fontSize="sm">
+                <FormErrorMessage id="confirm-password-error" color="danger.fg" fontSize="sm">
                   {errors.confirmPassword.message}
                 </FormErrorMessage>
               )}
@@ -438,7 +438,7 @@ export default function SignupPage() {
               type="submit"
               size="lg"
               bg="accent"
-              color="white"
+              color="fg.onAccent"
               _hover={{ bg: 'accent.emphasis' }}
               _active={{ bg: 'evergreen.700' }}
               isLoading={isLoading}

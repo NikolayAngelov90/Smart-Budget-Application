@@ -215,8 +215,8 @@ function ResetPasswordForm() {
               href="/forgot-password"
               size="lg"
               bg="accent"
-              color="white"
-              _hover={{ bg: '#2c5282' }}
+              color="fg.onAccent"
+              _hover={{ bg: 'accent.emphasis' }}
               minH="44px"
               w="full"
               fontWeight="semibold"
@@ -309,7 +309,7 @@ function ResetPasswordForm() {
                 </InputRightElement>
               </InputGroup>
               {errors.password ? (
-                <FormErrorMessage id="password-error" color="expense" fontSize="sm">
+                <FormErrorMessage id="password-error" color="danger.fg" fontSize="sm">
                   {errors.password}
                 </FormErrorMessage>
               ) : (
@@ -359,7 +359,7 @@ function ResetPasswordForm() {
               {errors.confirmPassword && (
                 <FormErrorMessage
                   id="confirm-password-error"
-                  color="expense"
+                  color="danger.fg"
                   fontSize="sm"
                 >
                   {errors.confirmPassword}
@@ -372,9 +372,9 @@ function ResetPasswordForm() {
               type="submit"
               size="lg"
               bg="accent"
-              color="white"
-              _hover={{ bg: '#2c5282' }}
-              _active={{ bg: '#2c5282' }}
+              color="fg.onAccent"
+              _hover={{ bg: 'accent.emphasis' }}
+              _active={{ bg: 'accent.emphasis' }}
               _disabled={{ bg: 'border.strong', cursor: 'not-allowed' }}
               isLoading={isLoading}
               loadingText="Updating password..."

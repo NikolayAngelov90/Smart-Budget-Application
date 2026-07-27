@@ -61,7 +61,7 @@ function MonthRow({ month, currency }: { month: SeasonalMonth; currency: string 
           </Text>
           <Text
             fontWeight="semibold"
-            color={month.is_seasonal_high ? 'orange.600' : 'fg'}
+            color={month.is_seasonal_high ? 'warning.fg' : 'fg'}
             aria-label={`${label} ${t('predicted')}: ${formatAmount(month.predicted_amount, currency)}`}
           >
             {formatAmount(month.predicted_amount, currency)}

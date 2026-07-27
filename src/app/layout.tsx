@@ -74,7 +74,13 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`${spaceGrotesk.variable} ${onest.variable}`}>
+    <html
+      lang={locale}
+      className={`${spaceGrotesk.variable} ${onest.variable}`}
+      // The appearance script stamps data-theme/color-scheme before hydration,
+      // which the server did not render.
+      suppressHydrationWarning
+    >
       <head>
         {/*
           Story 16.5 — appearance, applied BEFORE hydration.
@@ -87,14 +93,18 @@ export default async function RootLayout({
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{
-var p=localStorage.getItem('smart-budget-appearance')||'system';
-if(p!=='light'&&p!=='dark'&&p!=='system'){p='system';}
-var m=p==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;
-document.documentElement.dataset.theme=m;
-document.documentElement.style.colorScheme=m;
-localStorage.setItem('chakra-ui-color-mode',m);
-}catch(e){}})();`,
+            __html: `(function(){
+var p='system';
+try{var v=localStorage.getItem('smart-budget-appearance');if(v==='light'||v==='dark'||v==='system'){p=v;}}catch(e){}
+var m=p;
+if(p==='system'){m=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
+/* Stamp FIRST and outside the storage try: if localStorage throws (Lockdown
+   Mode, partitioned context, enterprise policy) the paint must still happen,
+   otherwise the CSS falls through to the prefers-color-scheme default and then
+   snaps back after hydration — a flash in the opposite direction. */
+try{document.documentElement.dataset.theme=m;document.documentElement.style.colorScheme=m;}catch(e){}
+try{localStorage.setItem('chakra-ui-color-mode',m);}catch(e){}
+})();`,
           }}
         />
       </head>

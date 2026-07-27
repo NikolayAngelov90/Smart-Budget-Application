@@ -17,32 +17,40 @@ import { useAppearance, type Appearance } from '@/lib/hooks/useAppearance';
 
 interface SegmentProps extends UseRadioProps {
   icon: ComponentType;
+  label: string;
   children: ReactNode;
 }
 
-function Segment({ icon, children, ...radioProps }: SegmentProps) {
+function Segment({ icon, label, children, ...radioProps }: SegmentProps) {
   const { getInputProps, getRadioProps } = useRadio(radioProps);
 
   return (
     <Box as="label" flex={1} minW={0}>
-      <input {...getInputProps()} />
+      {/* The visible label lives inside the getRadioProps box, which Chakra
+          marks aria-hidden — so the accessible name has to come from the input
+          itself or the radio is announced with no name at all. */}
+      <input {...getInputProps({ 'aria-label': label })} />
       <HStack
         {...getRadioProps()}
         justify="center"
-        spacing={2}
+        spacing={{ base: 1, sm: 2 }}
         cursor="pointer"
         borderRadius="lg"
         // ≥44px touch target
         minH="44px"
-        px={3}
+        px={{ base: 1, sm: 3 }}
+        minW={0}
         color="fg.muted"
         transition="all 0.15s"
         _checked={{ bg: 'surface', color: 'accent', boxShadow: 'sm', fontWeight: 'semibold' }}
         _hover={{ color: 'fg' }}
         _focusVisible={{ outline: '2px solid', outlineColor: 'accent', outlineOffset: '2px' }}
       >
-        <Box as={icon} boxSize={4} aria-hidden />
-        <Text fontSize="sm" noOfLines={1}>
+        <Box as={icon} boxSize={4} flexShrink={0} aria-hidden />
+        {/* Hidden below 380px: at 320px there is only ~28px left for text, so
+            the label would render as an ellipsis. The icon + the input's
+            aria-label still identify each option. */}
+        <Text fontSize="sm" noOfLines={1} display={{ base: 'none', sm: 'block' }}>
           {children}
         </Text>
       </HStack>
@@ -86,6 +94,7 @@ export function AppearanceSection() {
           <Segment
             key={option.value}
             icon={option.icon}
+            label={option.label}
             {...getRadioProps({ value: option.value })}
           >
             {option.label}

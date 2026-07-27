@@ -61,7 +61,7 @@ export function ReengagementSummary() {
   };
 
   return (
-    <Card borderLeft="4px solid" borderColor="trustBlue.500" bg="trustBlue.50" as="section" aria-label={t('title')}>
+    <Card borderLeft="4px solid" borderColor="accent" bg="accent.subtle" as="section" aria-label={t('title')}>
       <CardBody>
         <Flex justify="space-between" align="start" gap={2}>
           <VStack align="start" spacing={1} flex="1">
@@ -115,7 +115,7 @@ export function ReengagementSummary() {
           )}
 
           {/* Recommended action */}
-          <Box bg="surface" borderRadius="md" p={3} border="1px solid" borderColor="trustBlue.200">
+          <Box bg="surface" borderRadius="md" p={3} border="1px solid" borderColor="accent">
             <HStack align="start" spacing={2}>
               <Badge colorScheme="brand" flexShrink={0}>{t('recommendedAction')}</Badge>
               <Text fontSize="sm" color="fg">{summary.recommended_action}</Text>

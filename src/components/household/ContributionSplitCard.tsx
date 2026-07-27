@@ -130,7 +130,7 @@ export function ContributionSplitCard() {
           })}
 
           {showNormalizedHint && (
-            <Text fontSize="xs" color="orange.500">
+            <Text fontSize="xs" color="warning.fg">
               {t('normalizedHint')}
             </Text>
           )}

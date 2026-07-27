@@ -215,7 +215,7 @@ export default function ForgotPasswordPage() {
                 }}
               />
               {errors.email && (
-                <FormErrorMessage id="email-error" color="expense" fontSize="sm">
+                <FormErrorMessage id="email-error" color="danger.fg" fontSize="sm">
                   {errors.email}
                 </FormErrorMessage>
               )}
@@ -226,9 +226,9 @@ export default function ForgotPasswordPage() {
               type="submit"
               size="lg"
               bg="accent"
-              color="white"
-              _hover={{ bg: '#2c5282' }}
-              _active={{ bg: '#2c5282' }}
+              color="fg.onAccent"
+              _hover={{ bg: 'accent.emphasis' }}
+              _active={{ bg: 'accent.emphasis' }}
               _disabled={{ bg: 'border.strong', cursor: 'not-allowed' }}
               isLoading={isLoading}
               loadingText="Sending link..."

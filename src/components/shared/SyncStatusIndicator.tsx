@@ -68,7 +68,7 @@ export function SyncStatusIndicator({
           colorScheme: 'yellow',
           icon: TimeIcon,
           text: t('syncing'),
-          iconColor: 'yellow.500',
+          iconColor: 'warning.fg',
         };
       case 'offline':
         return {

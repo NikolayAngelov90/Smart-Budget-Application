@@ -60,6 +60,7 @@ const theme = extendTheme({
       'expense.subtle': { default: 'clay.50', _dark: 'rgba(196,89,58,0.20)' },
       // Destructive text — red.600 is only ~3.2:1 on the dark canvas.
       'danger.fg': { default: 'red.600', _dark: 'red.300' },
+      'danger.subtle': { default: 'red.50', _dark: 'rgba(229,62,62,0.18)' },
       // amber.700 (not .600): amber.600 on amber.50 is only 3.85:1, which fails
       // AA for the small uppercase labels that use this pair (insight priority
       // badges). amber.700 gives ~5.7:1.
@@ -80,11 +81,14 @@ const theme = extendTheme({
       // Spending-heatmap intensity ramp (Story 16.5). Tokens, not hex, so the
       // scale inverts for dark mode — the old constants were still the
       // PRE-REDESIGN Trust Blue (#2b6cb0) and were invisible on a dark canvas.
-      'heat.0': { default: 'paper.100', _dark: 'paper.800' },
-      'heat.1': { default: 'evergreen.100', _dark: 'evergreen.900' },
-      'heat.2': { default: 'evergreen.200', _dark: 'evergreen.700' },
-      'heat.3': { default: 'evergreen.400', _dark: 'evergreen.500' },
-      'heat.4': { default: 'evergreen.600', _dark: 'evergreen.300' },
+      // The dark ramp must CLIMB monotonically: an earlier version put heat.0 on
+      // paper.800 and heat.1 on evergreen.900, which are 1.06:1 apart — "no
+      // spending" and "low spending" rendered as the same black square.
+      'heat.0': { default: 'paper.100', _dark: 'paper.850' },
+      'heat.1': { default: 'evergreen.100', _dark: 'evergreen.800' },
+      'heat.2': { default: 'evergreen.200', _dark: 'evergreen.600' },
+      'heat.3': { default: 'evergreen.400', _dark: 'evergreen.400' },
+      'heat.4': { default: 'evergreen.600', _dark: 'evergreen.200' },
     },
   },
 

@@ -110,7 +110,7 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
           </Text>
           <Text
             fontWeight="semibold"
-            color={is_at_risk ? 'orange.600' : 'fg'}
+            color={is_at_risk ? 'warning.fg' : 'fg'}
             aria-label={`${t('projectedEOM')}: ${formatAmount(projected_eom, currency)}`}
           >
             {formatAmount(projected_eom, currency)}

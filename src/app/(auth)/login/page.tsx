@@ -271,7 +271,7 @@ export default function LoginPage() {
                 }}
               />
               {errors.email && (
-                <FormErrorMessage id="email-error" color="expense" fontSize="sm">
+                <FormErrorMessage id="email-error" color="danger.fg" fontSize="sm">
                   {errors.email}
                 </FormErrorMessage>
               )}
@@ -315,7 +315,7 @@ export default function LoginPage() {
               {errors.password && (
                 <FormErrorMessage
                   id="password-error"
-                  color="expense"
+                  color="danger.fg"
                   fontSize="sm"
                 >
                   {errors.password}
@@ -338,7 +338,7 @@ export default function LoginPage() {
               type="submit"
               size="lg"
               bg="accent"
-              color="white"
+              color="fg.onAccent"
               _hover={{ bg: 'accent.emphasis' }}
               _active={{ bg: 'evergreen.700' }}
               _disabled={{ bg: 'border.strong', cursor: 'not-allowed' }}

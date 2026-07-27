@@ -25,9 +25,9 @@ export function WauTrendChart({ data }: { data: WauPoint[] }) {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-              <XAxis dataKey="week_start" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <XAxis dataKey="week_start" stroke={chart.axis} tick={{ fill: chart.tick, fontSize: 11 }} />
+              <YAxis allowDecimals={false} stroke={chart.axis} tick={{ fill: chart.tick, fontSize: 11 }} />
+              <Tooltip contentStyle={{ background: chart.tooltipBg, border: `1px solid ${chart.tooltipBorder}`, borderRadius: 8, color: chart.tick }} cursor={{ fill: chart.cursor, fillOpacity: 0.25 }} />
               <Line type="monotone" dataKey="active_users" name={t('activeUsers')} stroke={chart.accent} strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>

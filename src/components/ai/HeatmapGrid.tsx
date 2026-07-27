@@ -290,12 +290,12 @@ export function HeatmapGrid({
                     bg={bgColor}
                     borderRadius="sm"
                     border="1px solid"
-                    borderColor="border"
+                    borderColor="border.strong"
                     cursor={isClickable ? 'pointer' : 'default'}
-                    _hover={isClickable ? { opacity: 0.8, borderColor: 'trustBlue.300' } : {}}
+                    _hover={isClickable ? { opacity: 0.8, borderColor: 'accent' } : {}}
                     _focus={{
                       outline: '2px solid',
-                      outlineColor: 'trustBlue.500',
+                      outlineColor: 'accent',
                       outlineOffset: '2px',
                     }}
                     onClick={() => {

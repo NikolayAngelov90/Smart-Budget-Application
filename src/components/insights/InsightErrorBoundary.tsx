@@ -53,23 +53,23 @@ export class InsightErrorBoundary extends Component<Props, State> {
         <Box
           p={6}
           borderRadius="md"
-          bg="expense.subtle"
+          bg="danger.subtle"
           border="1px"
-          borderColor="expense.subtle"
+          borderColor="danger.fg"
         >
           <VStack spacing={3} align="start">
             <Box display="flex" alignItems="center" gap={2}>
-              <WarningIcon color="expense" />
-              <Text fontSize="sm" fontWeight="semibold" color="expense">
+              <WarningIcon color="danger.fg" />
+              <Text fontSize="sm" fontWeight="semibold" color="danger.fg">
                 Unable to display insight details
               </Text>
             </Box>
-            <Text fontSize="sm" color="expense">
+            <Text fontSize="sm" color="danger.fg">
               There was an error loading the detailed information for this insight.
               The data may be incomplete or in an unexpected format.
             </Text>
             {this.state.error && process.env.NODE_ENV === 'development' && (
-              <Text fontSize="xs" color="expense" fontFamily="mono">
+              <Text fontSize="xs" color="danger.fg" fontFamily="mono">
                 {this.state.error.message}
               </Text>
             )}
