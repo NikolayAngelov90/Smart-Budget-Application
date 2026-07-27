@@ -118,7 +118,10 @@ export function InsightsPagination({
                 onClick={() => onPageChange(page as number)}
                 isDisabled={isLoading}
                 variant={currentPage === page ? 'solid' : 'outline'}
-                colorScheme={currentPage === page ? 'blue' : 'gray'}
+                // 'brand' (evergreen), not 'blue': the theme's solid variant only
+                // styles the brand scheme, so 'blue' fell through to Chakra's
+                // default blue.500 — the one colour the redesign removes.
+                colorScheme="brand"
                 size="md"
                 minW="40px"
               >

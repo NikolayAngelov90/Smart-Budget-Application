@@ -199,8 +199,13 @@ export function AIInsightCard({
 
   return (
     <Card
-      borderLeft={isLead ? '6px' : '4px'}
-      borderColor={isDismissed ? 'border' : toneFg}
+      // borderLeftWidth, NOT the `borderLeft` shorthand: `borderLeft="4px"` sets
+      // border-left-STYLE to its initial `none`, and Chakra's reset only supplies
+      // `border-style: solid` via a zero-specificity `:where()` rule — so the
+      // shorthand silently erased the accent stripe entirely. The longhand keeps
+      // the reset's style, so the stripe actually renders.
+      borderLeftWidth={isLead ? '6px' : '4px'}
+      borderLeftColor={isDismissed ? 'border' : toneFg}
       position="relative"
       _hover={{
         shadow: 'md',
@@ -265,7 +270,7 @@ export function AIInsightCard({
                 py={1}
                 borderRadius="md"
                 textTransform="uppercase"
-                letterSpacing="wide"
+                letterSpacing="wider"
               >
                 {priorityLabel}
               </Badge>
@@ -280,6 +285,10 @@ export function AIInsightCard({
             letterSpacing={isLead ? 'tight' : undefined}
             color="fg"
             lineHeight="shorter"
+            // Titles interpolate user-supplied category names; without this a
+            // long unbroken word sizes the flex item to min-content and pushes
+            // the card past the viewport at 320px.
+            overflowWrap="anywhere"
           >
             {localizedTitle}
           </Text>
@@ -289,6 +298,7 @@ export function AIInsightCard({
             fontSize={isLead ? { base: 'sm', md: 'lg' } : { base: 'sm', md: 'md' }}
             color="fg.muted"
             lineHeight="base"
+            overflowWrap="anywhere"
           >
             {localizedDescription}
           </Text>

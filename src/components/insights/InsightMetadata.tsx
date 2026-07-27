@@ -129,13 +129,13 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               Spending Details for {meta.category_name ?? 'Unknown Category'}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
               <MetadataField
                 label="Current Month"
                 value={
                   <>
                     {formatCurrency(meta.current_amount ?? 0, undefined, currencyCode)}
-                    <Badge ml={2} colorScheme="gray" fontSize="xs">
+                    <Badge ml={2} bg="surface.sunken" color="fg.muted" fontSize="xs">
                       {meta.transaction_count_current ?? 0} transactions
                     </Badge>
                   </>
@@ -146,7 +146,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
                 value={
                   <>
                     {formatCurrency(meta.previous_amount ?? 0, undefined, currencyCode)}
-                    <Badge ml={2} colorScheme="gray" fontSize="xs">
+                    <Badge ml={2} bg="surface.sunken" color="fg.muted" fontSize="xs">
                       {meta.transaction_count_previous ?? 0} transactions
                     </Badge>
                   </>
@@ -174,7 +174,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.current_month)}
                 style={{
-                  color: 'var(--chakra-colors-blue-600)',
+                  color: 'var(--chakra-colors-evergreen-500)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -197,7 +197,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               Budget Recommendation for {meta.category_name ?? 'Unknown Category'}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
               <MetadataField
                 label="3-Month Average"
                 value={formatCurrency(meta.three_month_average ?? 0, undefined, currencyCode)}
@@ -227,7 +227,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.months_analyzed[meta.months_analyzed.length - 1] ?? '')}
                 style={{
-                  color: 'var(--chakra-colors-blue-600)',
+                  color: 'var(--chakra-colors-evergreen-500)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -250,7 +250,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               Unusual Expense in {meta.category_name ?? 'Unknown Category'}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
               <MetadataField
                 label="Transaction Amount"
                 value={formatCurrency(meta.transaction_amount ?? 0, undefined, currencyCode)}
@@ -280,7 +280,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.transaction_date.substring(0, 7))}
                 style={{
-                  color: 'var(--chakra-colors-blue-600)',
+                  color: 'var(--chakra-colors-evergreen-500)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -303,7 +303,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               Budget Performance for {meta.category_name ?? 'Unknown Category'}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
               <MetadataField
                 label="Budget Limit"
                 value={formatCurrency(meta.budget_amount ?? 0, undefined, currencyCode)}
@@ -333,7 +333,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.current_month)}
                 style={{
-                  color: 'var(--chakra-colors-blue-600)',
+                  color: 'var(--chakra-colors-evergreen-500)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',

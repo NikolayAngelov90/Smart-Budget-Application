@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { VStack, Text, Spinner, Center, Box, HStack, Badge } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import { bg } from 'date-fns/locale';
@@ -16,6 +16,12 @@ interface InsightsListProps {
   onDismiss: (id: string) => void;
   onUndismiss: (id: string) => void;
   isLoading?: boolean;
+  /**
+   * Whether to spotlight a lead insight. False on page 2+ and in the dismissed
+   * view — "Start here" must mean the single most valuable insight overall, not
+   * "the best thing on whichever page you happen to be on".
+   */
+  showLead?: boolean;
 }
 
 export function InsightsList({
@@ -23,6 +29,7 @@ export function InsightsList({
   onDismiss,
   onUndismiss,
   isLoading = false,
+  showLead = true,
 }: InsightsListProps) {
   const [selectedInsight, setSelectedInsight] = useState<Insight | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,12 +49,36 @@ export function InsightsList({
     setSelectedInsight(null);
   };
 
+  // Once an insight has been spotlighted we keep it in that slot (by id) for as
+  // long as it stays in the list — even after it's dismissed. Re-running the
+  // selection on every change would let a dismiss instantly promote a different
+  // insight into the slot under the user's finger, so the 44px dismiss button
+  // they just tapped now belongs to something they haven't read.
+  const pinnedLeadIdRef = useRef<string | null>(null);
+
   // Story 16.4: spotlight the single most valuable insight, then group the rest
   // into semantic sections so the page reads as guidance, not a flat stream.
   const { lead, groups } = useMemo(() => {
+    if (!showLead) {
+      pinnedLeadIdRef.current = null;
+      return { lead: null, groups: groupInsights(insights) };
+    }
+
+    const pinnedId = pinnedLeadIdRef.current;
+    const pinned = pinnedId ? insights.find((i) => i.id === pinnedId) : undefined;
+    if (pinned) {
+      return {
+        lead: pinned,
+        groups: groupInsights(insights.filter((i) => i.id !== pinned.id)),
+      };
+    }
+
+    // No pin yet (first render), or the pinned insight left the list (filter or
+    // page change) — pick a fresh lead and remember it.
     const { lead: leadInsight, rest } = selectLeadInsight(insights);
+    pinnedLeadIdRef.current = leadInsight?.id ?? null;
     return { lead: leadInsight, groups: groupInsights(rest) };
-  }, [insights]);
+  }, [insights, showLead]);
 
   if (isLoading) {
     return (
@@ -93,10 +124,11 @@ export function InsightsList({
         {lead && (
           <Box as="section" aria-label={t('leadInsight')}>
             <Text
+              as="h2"
               fontSize="2xs"
               color="accent"
               textTransform="uppercase"
-              letterSpacing="wide"
+              letterSpacing="wider"
               fontWeight="bold"
               mb={2}
             >
@@ -111,6 +143,7 @@ export function InsightsList({
           <Box as="section" key={group.key} aria-label={t(group.labelKey)}>
             <HStack spacing={2} mb={3} align="center">
               <Text
+                as="h2"
                 fontSize="sm"
                 fontFamily="heading"
                 fontWeight={600}

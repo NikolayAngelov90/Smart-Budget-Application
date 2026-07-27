@@ -311,7 +311,8 @@ export function InsightsPageContent() {
         {error && (
           <EmptyInsightsState
             message={t('failedToLoad')}
-            hasFilters={false}
+            isError
+            onRetry={() => mutate()}
           />
         )}
 
@@ -330,6 +331,9 @@ export function InsightsPageContent() {
                   onDismiss={handleDismiss}
                   onUndismiss={handleUndismiss}
                   isLoading={isLoading}
+                  // "Start here" only makes sense for the top of the real
+                  // ranking: page 1 of the live (non-dismissed) list.
+                  showLead={filters.page === 1 && !filters.dismissed}
                 />
                 {/* Pagination Controls */}
                 <InsightsPagination

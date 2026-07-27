@@ -26,7 +26,7 @@ import { mutate } from 'swr';
 
 interface RefreshInsightsButtonProps {
   /**
-   * Optional custom button text (default: "Refresh Insights")
+   * Optional custom button text (defaults to the localized "Refresh insights")
    */
   buttonText?: string;
 
@@ -108,8 +108,8 @@ export function RefreshInsightsButton({
       if (insightCount === 0) {
         // No new insights generated
         toast({
-          title: 'All caught up!',
-          description: 'No new insights at this time.',
+          title: t('refreshUpToDateTitle'),
+          description: t('refreshUpToDateDesc'),
           status: 'info',
           duration: 5000,
           isClosable: true,
@@ -118,8 +118,8 @@ export function RefreshInsightsButton({
       } else {
         // New insights generated
         toast({
-          title: 'Insights updated!',
-          description: `${insightCount} new insight${insightCount !== 1 ? 's' : ''} generated.`,
+          title: t('refreshDoneTitle'),
+          description: t('refreshDoneDesc', { count: insightCount }),
           status: 'success',
           duration: 5000,
           isClosable: true,
@@ -139,7 +139,7 @@ export function RefreshInsightsButton({
       console.error('Error refreshing insights:', error);
 
       toast({
-        title: 'Refresh failed',
+        title: t('refreshFailed'),
         description:
           error instanceof Error ? error.message : 'Failed to refresh insights. Please try again.',
         status: 'error',
