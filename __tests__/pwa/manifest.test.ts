@@ -41,12 +41,12 @@ describe('PWA Manifest Configuration', () => {
       expect(manifest.id).toBe('/');
     });
 
-    it('has theme_color field', () => {
-      expect(manifest.theme_color).toBe('#3182CE');
+    it('has theme_color field (Quiet Ledger evergreen, not the pre-redesign blue)', () => {
+      expect(manifest.theme_color).toBe('#0B5E4A');
     });
 
-    it('has background_color field', () => {
-      expect(manifest.background_color).toBe('#ffffff');
+    it('has background_color field (warm paper, so the splash is not a white flash)', () => {
+      expect(manifest.background_color).toBe('#F6F5F2');
     });
 
     it('has lang field', () => {

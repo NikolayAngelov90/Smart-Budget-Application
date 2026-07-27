@@ -50,7 +50,7 @@ export function InactivityWarningModal({
       <ModalContent mx={4}>
         <ModalHeader>
           <VStack spacing={3} align="center">
-            <Icon as={WarningIcon} boxSize={12} color="orange.500" />
+            <Icon as={WarningIcon} boxSize={12} color="warning.fg" />
             <Text fontSize="xl" fontWeight="bold">
               Are you still there?
             </Text>
@@ -59,11 +59,11 @@ export function InactivityWarningModal({
 
         <ModalBody>
           <VStack spacing={4} textAlign="center">
-            <Text color="gray.700">
+            <Text color="fg">
               You&apos;ll be logged out in <strong>{formatTime(timeRemaining)}</strong> due
               to inactivity.
             </Text>
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               Your session will expire to protect your financial data on shared devices.
             </Text>
           </VStack>
@@ -71,10 +71,10 @@ export function InactivityWarningModal({
 
         <ModalFooter justifyContent="center">
           <Button
-            bg="blue.600"
-            color="white"
-            _hover={{ bg: 'blue.700' }}
-            _active={{ bg: 'blue.700' }}
+            bg="accent"
+            color="fg.onAccent"
+            _hover={{ bg: 'accent' }}
+            _active={{ bg: 'accent' }}
             size="lg"
             minH="44px"
             px={8}

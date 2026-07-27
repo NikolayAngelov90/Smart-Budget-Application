@@ -94,7 +94,7 @@ export function WeeklyDigestCard() {
   const pct = digest.spending_change_pct;
   const isIncrease = pct > 0;
   const isDecrease = pct < 0;
-  const changeColor = isDecrease ? 'green.500' : isIncrease ? 'red.500' : 'gray.500';
+  const changeColor = isDecrease ? 'income' : isIncrease ? 'expense' : 'fg.subtle';
   const changeLabel = `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
 
   const totalForBar = digest.top_categories.reduce((sum: number, c: DigestTopCategory) => sum + c.total, 0);
@@ -107,7 +107,7 @@ export function WeeklyDigestCard() {
       <CardHeader pb={2}>
         <Flex justify="space-between" align="center">
           <Heading size="sm">{t('title')}</Heading>
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="fg.subtle">
             {t('weekOf', { start: weekStartFormatted, end: weekEndFormatted })}
           </Text>
         </Flex>
@@ -117,7 +117,7 @@ export function WeeklyDigestCard() {
         <VStack align="stretch" spacing={4}>
           {/* Total Spending + Change */}
           <Box>
-            <Text fontSize="xs" color="gray.500" mb={1}>
+            <Text fontSize="xs" color="fg.subtle" mb={1}>
               {t('totalSpending')}
             </Text>
             <Flex align="center" gap={3}>
@@ -140,7 +140,7 @@ export function WeeklyDigestCard() {
 
               {/* Top Categories */}
               <Box>
-                <Text fontSize="xs" color="gray.500" mb={2}>
+                <Text fontSize="xs" color="fg.subtle" mb={2}>
                   {t('topCategories')}
                 </Text>
                 <VStack align="stretch" spacing={2} role="list">
@@ -160,14 +160,14 @@ export function WeeklyDigestCard() {
                             />
                             <Text fontSize="sm">{cat.name}</Text>
                           </HStack>
-                          <Text fontSize="sm" color="gray.600">
+                          <Text fontSize="sm" color="fg.muted">
                             {formatAmount(cat.total, digest.currency)}
                           </Text>
                         </Flex>
                         <Progress
                           value={barPct}
                           size="xs"
-                          colorScheme="blue"
+                          colorScheme="brand"
                           aria-label={`${cat.name}: ${barPct.toFixed(0)}%`}
                         />
                       </Box>
@@ -182,7 +182,7 @@ export function WeeklyDigestCard() {
             <>
               <Divider />
               <Box>
-                <Text fontSize="xs" color="gray.500" mb={1}>
+                <Text fontSize="xs" color="fg.subtle" mb={1}>
                   {t('highlight')}
                 </Text>
                 <Text fontSize="sm">{digest.actionable_highlight}</Text>

@@ -97,10 +97,10 @@ export function OnboardingModal({
       <ModalContent mx={{ base: 0, md: 4 }} my={{ base: 0, md: 4 }}>
         <ModalHeader pt={8} pb={2}>
           <VStack spacing={2} align="stretch">
-            <Heading as="h2" size="lg" textAlign="center" color="gray.800">
+            <Heading as="h2" size="lg" textAlign="center" color="fg">
               {t('welcome')}
             </Heading>
-            <Text fontSize="sm" color="gray.600" textAlign="center">
+            <Text fontSize="sm" color="fg.muted" textAlign="center">
               {t('personalizeDescription')}
             </Text>
           </VStack>
@@ -122,8 +122,8 @@ export function OnboardingModal({
                   autoComplete="name"
                   autoFocus
                   _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
+                    borderColor: 'accent',
+                    boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                   }}
                 />
                 {errors.displayName && (
@@ -141,8 +141,8 @@ export function OnboardingModal({
                   {...register('currencyFormat')}
                   aria-label={t('currencyLabel')}
                   _focus={{
-                    borderColor: '#2b6cb0',
-                    boxShadow: '0 0 0 1px #2b6cb0',
+                    borderColor: 'accent',
+                    boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
                   }}
                 >
                   {enabledCurrencies.map((currency) => (
@@ -160,8 +160,8 @@ export function OnboardingModal({
           <Button
             variant="ghost"
             onClick={onSkip}
-            color="gray.600"
-            _hover={{ bg: 'gray.100' }}
+            color="fg.muted"
+            _hover={{ bg: 'surface.sunken' }}
             aria-label={tCommon('skip')}
           >
             {tCommon('skip')}
@@ -170,10 +170,10 @@ export function OnboardingModal({
           <Button
             type="submit"
             form="onboarding-form"
-            bg="#2b6cb0"
-            color="white"
-            _hover={{ bg: '#2c5282' }}
-            _active={{ bg: '#2c5282' }}
+            bg="accent"
+            color="fg.onAccent"
+            _hover={{ bg: 'accent.emphasis' }}
+            _active={{ bg: 'accent.emphasis' }}
             size="lg"
             minH="44px"
             px={8}

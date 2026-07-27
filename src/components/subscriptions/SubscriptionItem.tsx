@@ -78,11 +78,11 @@ export function SubscriptionItem({
   const canAct = subscription.status === 'active' || subscription.status === 'unused';
 
   return (
-    <AccordionItem border="1px" borderColor="gray.200" borderRadius="md" mb={2}>
+    <AccordionItem border="1px" borderColor="border" borderRadius="md" mb={2}>
       <AccordionButton
         py={3}
         px={4}
-        _hover={{ bg: 'gray.50' }}
+        _hover={{ bg: 'surface.sunken' }}
         aria-label={`${subscription.merchant_pattern} - ${formattedAmount} ${frequencyLabel}`}
       >
         <HStack flex="1" spacing={3} align="center">
@@ -90,7 +90,7 @@ export function SubscriptionItem({
             <Text fontWeight="semibold" fontSize="sm" textTransform="capitalize">
               {subscription.merchant_pattern}
             </Text>
-            <Text fontSize="xs" color="gray.500">
+            <Text fontSize="xs" color="fg.subtle">
               {formattedAmount} · {frequencyLabel}
             </Text>
           </VStack>
@@ -110,7 +110,7 @@ export function SubscriptionItem({
       <AccordionPanel pb={4} px={4}>
         <VStack align="stretch" spacing={3}>
           <HStack justify="space-between">
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               {t('lastCharge')}
             </Text>
             <Text fontSize="sm" fontWeight="medium">
@@ -133,7 +133,7 @@ export function SubscriptionItem({
               <Button
                 size="sm"
                 variant="solid"
-                colorScheme="blue"
+                colorScheme="brand"
                 onClick={() => onUpdateStatus(subscription.id, 'kept')}
                 isDisabled={isUpdating}
                 flex="1"

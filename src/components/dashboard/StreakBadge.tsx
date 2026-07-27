@@ -74,9 +74,9 @@ export function StreakBadge() {
           alignItems="center"
           px={3}
           py={1.5}
-          bg="orange.50"
+          bg="warning.subtle"
           borderWidth="1px"
-          borderColor="orange.200"
+          borderColor="warning.fg"
           borderRadius="full"
           minH={{ base: '44px', md: '36px' }}
           _focusVisible={{ boxShadow: 'outline' }}
@@ -85,16 +85,16 @@ export function StreakBadge() {
             <Text aria-hidden="true" fontSize="md" lineHeight="1">
               🔥
             </Text>
-            <Text fontSize="sm" fontWeight="semibold" color="orange.800" whiteSpace="nowrap">
+            <Text fontSize="sm" fontWeight="semibold" color="warning.fg" whiteSpace="nowrap">
               {t('dayStreak', { days: streak.current_streak })}
             </Text>
             {streak.weekly_streak > 1 && (
-              <Text fontSize="xs" color="orange.700" whiteSpace="nowrap">
+              <Text fontSize="xs" color="warning.fg" whiteSpace="nowrap">
                 {t('weekStreak', { weeks: streak.weekly_streak })}
               </Text>
             )}
             {freezeJustUsed && (
-              <Text fontSize="xs" color="blue.700" whiteSpace="nowrap">
+              <Text fontSize="xs" color="accent" whiteSpace="nowrap">
                 ❄️ {t('freezeUsedShort')}
               </Text>
             )}

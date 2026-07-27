@@ -7,6 +7,7 @@ import theme from '@/theme';
 import { localStorageProvider, loadPersistedEntries } from '@/lib/swr/localStorageProvider';
 import { usePWAAnalytics } from '@/hooks/usePWAAnalytics';
 import { detectAndSetLocale } from '@/i18n/detectLocale';
+import { AppearanceSync, appearanceColorModeManager } from '@/lib/hooks/useAppearance';
 
 /**
  * PWA Analytics wrapper component
@@ -74,8 +75,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ChakraProvider theme={theme}>
+    <ChakraProvider theme={theme} colorModeManager={appearanceColorModeManager}>
       <SWRConfig value={SWR_OPTIONS}>
+        {/* Applies the stored appearance app-wide. Mounted at the ROOT because
+            the System option must keep following the OS on every screen, not
+            only wherever the Settings control happens to be rendered. */}
+        <AppearanceSync />
         <CacheHydrator>
           <PWAAnalyticsProvider>{children}</PWAAnalyticsProvider>
         </CacheHydrator>

@@ -298,7 +298,7 @@ export function ProfilePictureUpload({
             colorScheme="brand"
             borderRadius="md"
           />
-          <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
+          <Text fontSize="sm" color="fg.muted" mt={2} textAlign="center">
             Uploading... {uploadProgress}%
           </Text>
         </Box>
@@ -350,7 +350,7 @@ export function ProfilePictureUpload({
       )}
 
       {/* File requirements */}
-      <Text fontSize="xs" color="gray.500" textAlign="center">
+      <Text fontSize="xs" color="fg.subtle" textAlign="center">
         JPG, PNG, or WEBP. Max 5MB.
       </Text>
     </VStack>

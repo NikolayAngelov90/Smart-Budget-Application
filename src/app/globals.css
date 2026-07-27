@@ -12,10 +12,27 @@ body {
 
 /* Quiet Ledger: the root canvas is warm paper. This paints the iOS standalone
    safe-area strip (below the fixed bottom nav) and prevents a white flash before
-   the Chakra/Emotion global styles hydrate. Kept in sync with theme `canvas`. */
+   the Chakra/Emotion global styles hydrate. Kept in sync with theme `canvas`.
+
+   It must be MODE-AWARE: a fixed light value here is exactly what makes dark
+   mode flash light on every load and leaves the iOS safe-area strip bright.
+   `data-theme` is stamped on <html> by the inline appearance script in
+   app/layout.tsx before hydration (there is no Chakra <ColorModeScript/>),
+   so this switches in the same paint. The media query is the fallback for a
+   first visit with no stored preference (System). */
 html {
   background-color: #f6f5f2;
   -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) {
+    background-color: #111008; /* theme canvas._dark = paper.900 */
+  }
+}
+
+html[data-theme='dark'] {
+  background-color: #111008; /* theme canvas._dark = paper.900 */
 }
 
 body {

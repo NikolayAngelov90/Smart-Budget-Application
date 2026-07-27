@@ -6,8 +6,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#3182CE",
+  "background_color": "#F6F5F2",
+  "theme_color": "#0B5E4A",
   "orientation": "portrait-primary",
   "lang": "en",
   "dir": "ltr",
@@ -37,7 +37,10 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["finance", "productivity"],
+  "categories": [
+    "finance",
+    "productivity"
+  ],
   "screenshots": [],
   "shortcuts": [
     {

@@ -44,7 +44,7 @@ export default function AnalyticsPage() {
         <VStack align="stretch" spacing={6}>
           <Box>
             <Heading as="h1" size="lg" mb={1}>{t('title')}</Heading>
-            <Text color="gray.600" fontSize="sm">{t('subtitle')}</Text>
+            <Text color="fg.muted" fontSize="sm">{t('subtitle')}</Text>
           </Box>
 
           {isForbidden ? (
@@ -76,7 +76,7 @@ export default function AnalyticsPage() {
               ) : (
                 <VStack align="stretch" spacing={6}>
                   <HStack justify="space-between" flexWrap="wrap">
-                    <Text fontSize="sm" color="gray.500">
+                    <Text fontSize="sm" color="fg.subtle">
                       {t('totalEvents', { count: data.total_events })}
                     </Text>
                   </HStack>
@@ -86,7 +86,7 @@ export default function AnalyticsPage() {
                   <PwaInstallsChart data={data.pwa_installs_by_platform} total={data.pwa_installs_total} />
                   <WauTrendChart data={data.wau_trend} />
 
-                  <Text fontSize="xs" color="gray.400" fontStyle="italic">
+                  <Text fontSize="xs" color="fg.subtle" fontStyle="italic">
                     {t('notInstrumented')}
                   </Text>
                 </VStack>

@@ -58,14 +58,14 @@ function ChangeItem({
     <ListItem
       p={{ base: 3, md: 4 }}
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border"
       borderRadius="md"
-      bg="white"
+      bg="surface"
       cursor="pointer"
       onClick={onClick}
       _hover={{
-        bg: 'gray.50',
-        borderColor: 'gray.300',
+        bg: 'surface.sunken',
+        borderColor: 'border.strong',
         transform: 'translateY(-2px)',
         boxShadow: 'md',
       }}
@@ -95,7 +95,7 @@ function ChangeItem({
           >
             {arrow} {Math.abs(change.percentChange).toFixed(0)}%
           </Badge>
-          <Text fontSize={{ base: '0.625rem', md: '0.75rem' }} color="gray.600" whiteSpace="nowrap" display={{ base: 'none', sm: 'block' }}>
+          <Text fontSize={{ base: '0.625rem', md: '0.75rem' }} color="fg.muted" whiteSpace="nowrap" display={{ base: 'none', sm: 'block' }}>
             {formatCurrency(change.currentAmount, undefined, currencyCode)} vs {formatCurrency(change.previousAmount, undefined, currencyCode)}
           </Text>
         </Flex>
@@ -174,15 +174,15 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
           justify="center"
           minH="150px"
           borderWidth="1px"
-          borderColor="gray.200"
+          borderColor="border"
           borderRadius="md"
-          bg="gray.50"
+          bg="surface.sunken"
         >
-          <Icon as={MdShowChart} boxSize={10} color="gray.400" mb={2} />
-          <Text fontSize={{ base: '0.875rem', lg: '1rem' }} fontWeight="medium" color="gray.600">
+          <Icon as={MdShowChart} boxSize={10} color="fg.subtle" mb={2} />
+          <Text fontSize={{ base: '0.875rem', lg: '1rem' }} fontWeight="medium" color="fg.muted">
             No significant changes this month
           </Text>
-          <Text fontSize={{ base: '0.75rem', lg: '0.875rem' }} color="gray.500" mt={1}>
+          <Text fontSize={{ base: '0.75rem', lg: '0.875rem' }} color="fg.subtle" mt={1}>
             Spending changes &lt;20% are not shown
           </Text>
         </Flex>

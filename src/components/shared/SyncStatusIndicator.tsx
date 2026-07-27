@@ -61,28 +61,28 @@ export function SyncStatusIndicator({
           colorScheme: 'green',
           icon: CheckCircleIcon,
           text: t('allDataSynced'),
-          iconColor: 'green.500',
+          iconColor: 'income',
         };
       case 'syncing':
         return {
           colorScheme: 'yellow',
           icon: TimeIcon,
           text: t('syncing'),
-          iconColor: 'yellow.500',
+          iconColor: 'warning.fg',
         };
       case 'offline':
         return {
-          colorScheme: 'red',
+          colorScheme: 'gray',
           icon: WarningIcon,
           text: t('offline'),
-          iconColor: 'red.500',
+          iconColor: 'danger.fg',
         };
       default:
         return {
           colorScheme: 'gray',
           icon: TimeIcon,
           text: t('unknown'),
-          iconColor: 'gray.500',
+          iconColor: 'fg.subtle',
         };
     }
   };
@@ -120,7 +120,7 @@ export function SyncStatusIndicator({
           )}
         </HStack>
         {showTimestamp && lastSync && (
-          <Text fontSize="xs" color="gray.600" mt={1}>
+          <Text fontSize="xs" color="fg.muted" mt={1}>
             {lastSyncText}
           </Text>
         )}

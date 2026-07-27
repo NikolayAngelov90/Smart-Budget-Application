@@ -91,12 +91,17 @@ describe('HEATMAP_COLORS', () => {
     expect(Object.keys(HEATMAP_COLORS)).toHaveLength(5);
   });
 
-  it('level 0 is the lightest color', () => {
-    expect(HEATMAP_COLORS[0]).toBe('#f7fafc');
+  it('uses semantic tokens (not hex) so the ramp inverts in dark mode', () => {
+    // Hex values pinned the pre-redesign Trust Blue and were invisible on a
+    // dark canvas; every level must now resolve through the theme.
+    for (const value of Object.values(HEATMAP_COLORS)) {
+      expect(value).toMatch(/^heat\.[0-4]$/);
+    }
   });
 
-  it('level 4 is Trust Blue (brand primary)', () => {
-    expect(HEATMAP_COLORS[4]).toBe('#2b6cb0');
+  it('maps each intensity level to its own ramp step', () => {
+    expect(HEATMAP_COLORS[0]).toBe('heat.0');
+    expect(HEATMAP_COLORS[4]).toBe('heat.4');
   });
 });
 

@@ -145,8 +145,8 @@ export function PWAInstallPrompt() {
   return (
     <Slide direction="bottom" in={showPrompt} style={{ zIndex: 1500 }}>
       <Box
-        bg="blue.600"
-        color="white"
+        bg="accent"
+        color="fg.onAccent"
         px={4}
         py={3}
         shadow="lg"

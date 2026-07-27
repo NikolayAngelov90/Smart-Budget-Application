@@ -76,7 +76,7 @@ export function ConfirmDeleteModal({
     <Modal isOpen={isOpen} onClose={handleClose} size="lg" isCentered>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader color="red.600" display="flex" alignItems="center" gap={2}>
+        <ModalHeader color="danger.fg" display="flex" alignItems="center" gap={2}>
           <WarningIcon />
           {t('deleteAccountPermanently')}
         </ModalHeader>
@@ -94,7 +94,7 @@ export function ConfirmDeleteModal({
               </VStack>
             </Alert>
 
-            <Text color="gray.600">
+            <Text color="fg.muted">
               {t('exportBeforeDelete')}
             </Text>
 

@@ -49,7 +49,7 @@ export function GoalProgress({ currentAmount, targetAmount, currency }: GoalProg
         size="sm"
         mb={1}
       />
-      <Text fontSize="xs" color="gray.600">
+      <Text fontSize="xs" color="fg.muted">
         {formatAmount(currentAmount, currency)} / {formatAmount(targetAmount, currency)}
       </Text>
       {isCompleted ? (
@@ -57,7 +57,7 @@ export function GoalProgress({ currentAmount, targetAmount, currency }: GoalProg
           {t('completed')}
         </Badge>
       ) : (
-        <Text fontSize="xs" color="gray.500" mt={1}>
+        <Text fontSize="xs" color="fg.subtle" mt={1}>
           {t('progress', { percentage })}
         </Text>
       )}

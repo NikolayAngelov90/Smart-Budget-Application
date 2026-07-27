@@ -66,7 +66,7 @@ export function HouseholdMembers({ isAdmin }: { isAdmin: boolean }) {
   return (
     <Box>
       <Divider my={2} />
-      <Heading as="h3" size="sm" color="gray.700" mb={2}>
+      <Heading as="h3" size="sm" color="fg" mb={2}>
         {t('membersHeading')}
       </Heading>
 
@@ -74,7 +74,7 @@ export function HouseholdMembers({ isAdmin }: { isAdmin: boolean }) {
         {members.map((m) => (
           <HStack key={m.user_id} justify="space-between" align="center">
             <HStack spacing={2} minW={0}>
-              <Text fontSize="sm" color="gray.800" isTruncated>
+              <Text fontSize="sm" color="fg" isTruncated>
                 {m.isSelf ? t('you') : m.email}
               </Text>
               <Badge colorScheme={m.role === 'admin' ? 'blue' : 'gray'} borderRadius="full" px={2} fontSize="10px">

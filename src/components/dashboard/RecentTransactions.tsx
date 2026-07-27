@@ -87,16 +87,16 @@ export function RecentTransactions() {
   return (
     <Box w="full">
       <Flex justify="space-between" align="baseline" mb={4}>
-        <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700">
+        <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg">
           {t('recentTransactions')}
         </Heading>
         <ChakraLink
           as={Link}
           href="/transactions"
-          color="blue.500"
+          color="accent"
           fontWeight="medium"
           fontSize={{ base: 'sm', md: 'md' }}
-          _hover={{ color: 'blue.600', textDecoration: 'underline' }}
+          _hover={{ color: 'accent', textDecoration: 'underline' }}
         >
           {t('viewAllTransactions')}
         </ChakraLink>
@@ -120,7 +120,7 @@ export function RecentTransactions() {
       {!isLoading && !error && transactions.length === 0 && (
         <Card>
           <CardBody>
-            <Text color="gray.500" fontSize="sm" textAlign="center" py={2}>
+            <Text color="fg.subtle" fontSize="sm" textAlign="center" py={2}>
               {t('noRecentTransactions')}
             </Text>
           </CardBody>
@@ -130,7 +130,7 @@ export function RecentTransactions() {
       {!isLoading && !error && transactions.length > 0 && (
         <Card>
           <CardBody p={0}>
-            <VStack spacing={0} align="stretch" divider={<Box borderBottomWidth="1px" borderColor="gray.100" />}>
+            <VStack spacing={0} align="stretch" divider={<Box borderBottomWidth="1px" borderColor="border" />}>
               {transactions.map((transaction) => {
                 const signedAmount =
                   transaction.type === 'expense' ? -transaction.amount : transaction.amount;
@@ -153,11 +153,11 @@ export function RecentTransactions() {
                     <VStack align="flex-start" spacing={0.5} flex={1} minW={0}>
                       <CategoryBadge category={transaction.category} variant="dot" size="sm" />
                       <HStack spacing={2} maxW="full">
-                        <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
+                        <Text fontSize="xs" color="fg.subtle" whiteSpace="nowrap">
                           {formatTransactionDate(transaction.date, dateFormat)}
                         </Text>
                         {transaction.notes && (
-                          <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                          <Text fontSize="xs" color="fg.subtle" noOfLines={1}>
                             {transaction.notes}
                           </Text>
                         )}
@@ -166,7 +166,7 @@ export function RecentTransactions() {
                     <Text
                       fontSize={{ base: 'sm', md: 'md' }}
                       fontWeight="semibold"
-                      color={transaction.type === 'income' ? 'green.600' : 'red.600'}
+                      color={transaction.type === 'income' ? 'income' : 'expense'}
                       whiteSpace="nowrap"
                     >
                       {formatted}

@@ -84,15 +84,15 @@ export function ContributionSplitCard() {
   return (
     <Box>
       <Divider my={2} />
-      <Heading as="h3" size="sm" color="gray.700" mb={1}>
+      <Heading as="h3" size="sm" color="fg" mb={1}>
         {t('heading')}
       </Heading>
-      <Text fontSize="sm" color="gray.600" mb={3}>
+      <Text fontSize="sm" color="fg.muted" mb={3}>
         {t('hint')}
       </Text>
 
       {splits.length === 0 ? (
-        <Text fontSize="sm" color="gray.600">
+        <Text fontSize="sm" color="fg.muted">
           {t('none')}
         </Text>
       ) : (
@@ -103,16 +103,16 @@ export function ContributionSplitCard() {
               <Box key={s.user_id}>
                 <HStack justify="space-between" mb={1}>
                   <HStack spacing={2}>
-                    <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                    <Text fontSize="sm" fontWeight="medium" color="fg">
                       {s.isSelf ? t('you') : s.email}
                     </Text>
                     {s.percentage != null && (
-                      <Badge colorScheme="blue" borderRadius="full" px={2}>
+                      <Badge colorScheme="brand" borderRadius="full" px={2}>
                         {s.percentage}%
                       </Badge>
                     )}
                   </HStack>
-                  <Text fontSize="xs" color="gray.500">
+                  <Text fontSize="xs" color="fg.subtle">
                     {t('fairShare')}: {formatAmount(s.fairShare, currency)}
                   </Text>
                 </HStack>
@@ -122,7 +122,7 @@ export function ContributionSplitCard() {
                   borderRadius="full"
                   colorScheme={s.progress >= 1 ? 'green' : 'blue'}
                 />
-                <Text fontSize="xs" color="gray.500" mt={1}>
+                <Text fontSize="xs" color="fg.subtle" mt={1}>
                   {t('contributed')}: {formatAmount(s.contributed, currency)}
                 </Text>
               </Box>
@@ -130,7 +130,7 @@ export function ContributionSplitCard() {
           })}
 
           {showNormalizedHint && (
-            <Text fontSize="xs" color="orange.500">
+            <Text fontSize="xs" color="warning.fg">
               {t('normalizedHint')}
             </Text>
           )}
@@ -149,7 +149,7 @@ export function ContributionSplitCard() {
                 aria-label={t('yourPercentage')}
                 maxW="120px"
               />
-              <Button size="sm" colorScheme="blue" onClick={handleSave} isLoading={isSaving} loadingText={t('save')}>
+              <Button size="sm" colorScheme="brand" onClick={handleSave} isLoading={isSaving} loadingText={t('save')}>
                 {t('save')}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setEditing(false)} isDisabled={isSaving}>

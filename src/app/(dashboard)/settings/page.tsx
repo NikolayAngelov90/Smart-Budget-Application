@@ -60,6 +60,7 @@ import { ProfilePictureUpload } from '@/components/settings/ProfilePictureUpload
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import { ActiveDevicesSection } from '@/components/settings/ActiveDevicesSection';
 import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
+import { AppearanceSection } from '@/components/settings/AppearanceSection';
 import type { SupportedLocale } from '@/i18n/routing';
 import type { PDFReportData } from '@/types/export.types';
 import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
@@ -501,12 +502,12 @@ export default function SettingsPage() {
               {t('failedToLoadProfile')}
             </Alert>
             {error && (
-              <Text fontSize="sm" color="gray.500">
+              <Text fontSize="sm" color="fg.subtle">
                 {error.message}
               </Text>
             )}
             <Button
-              colorScheme="blue"
+              colorScheme="brand"
               onClick={() => window.location.reload()}
             >
               {tCommon('retry')}
@@ -521,7 +522,7 @@ export default function SettingsPage() {
     <AppLayout>
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="stretch">
-          <Heading as="h1" size="xl" color="gray.800">
+          <Heading as="h1" size="xl" color="fg" fontFamily="heading" letterSpacing="tight">
             {t('title')}
           </Heading>
 
@@ -529,7 +530,7 @@ export default function SettingsPage() {
           <Card>
             <CardBody>
               <VStack spacing={4} align="stretch">
-                <Heading as="h2" size="md" color="gray.700">
+                <Heading as="h2" size="md" color="fg" fontFamily="heading">
                   {t('manageHeading')}
                 </Heading>
                 <VStack align="stretch" spacing={0}>
@@ -547,13 +548,13 @@ export default function SettingsPage() {
                       px={2}
                       minH="48px"
                       borderRadius="md"
-                      _hover={{ bg: 'gray.50' }}
+                      _hover={{ bg: 'surface.hover' }}
                     >
                       <HStack spacing={3}>
-                        <Icon as={item.icon} color="gray.600" boxSize={5} />
+                        <Icon as={item.icon} color="fg.muted" boxSize={5} />
                         <Text>{item.label}</Text>
                       </HStack>
-                      <Icon as={ChevronRightIcon} color="gray.400" boxSize={5} />
+                      <Icon as={ChevronRightIcon} color="fg.subtle" boxSize={5} />
                     </Flex>
                   ))}
                 </VStack>
@@ -573,7 +574,7 @@ export default function SettingsPage() {
           <Card>
             <CardBody>
               <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="gray.700">
+                <Heading as="h2" size="md" color="fg" fontFamily="heading">
                   {t('accountInformation')}
                 </Heading>
 
@@ -600,7 +601,7 @@ export default function SettingsPage() {
                       const date = new Date(profile.created_at);
                       if (!isNaN(date.getTime())) {
                         return (
-                          <Text fontSize="sm" color="gray.600">
+                          <Text fontSize="sm" color="fg.muted">
                             {t('memberSince')} {format(date, 'MMMM yyyy')}
                           </Text>
                         );
@@ -623,14 +624,14 @@ export default function SettingsPage() {
 
                 <FormControl>
                   <FormLabel>{t('email')}</FormLabel>
-                  <Input value={profile?.email || ''} isReadOnly bg="gray.50" />
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Input value={profile?.email || ''} isReadOnly bg="surface.sunken" />
+                  <Text fontSize="xs" color="fg.subtle" mt={1}>
                     {t('emailReadOnly')}
                   </Text>
                 </FormControl>
 
                 <Button
-                  colorScheme="blue"
+                  colorScheme="brand"
                   onClick={handleUpdateProfile}
                   isLoading={isSavingProfile}
                   loadingText={t('saving')}
@@ -646,11 +647,11 @@ export default function SettingsPage() {
           <Card>
             <CardBody>
               <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="gray.700">
+                <Heading as="h2" size="md" color="fg" fontFamily="heading">
                   {t('exportData')}
                 </Heading>
 
-                <Text color="gray.600">
+                <Text color="fg.muted">
                   {t('exportDescription')}
                 </Text>
 
@@ -674,7 +675,7 @@ export default function SettingsPage() {
                 <HStack spacing={4} flexWrap="wrap">
                   <Button
                     leftIcon={<DownloadIcon />}
-                    colorScheme="blue"
+                    colorScheme="brand"
                     onClick={handleExportPDF}
                     isLoading={isExportingPDF}
                     loadingText={t('generatingPdf')}
@@ -708,11 +709,23 @@ export default function SettingsPage() {
             </CardBody>
           </Card>
 
+          {/* Story 16.5: Appearance — Light / Dark / System */}
+          <Card>
+            <CardBody>
+              <VStack spacing={4} align="stretch">
+                <Heading as="h2" size="md" color="fg" fontFamily="heading">
+                  {t('appearanceHeading')}
+                </Heading>
+                <AppearanceSection />
+              </VStack>
+            </CardBody>
+          </Card>
+
           {/* AC-8.3.5: Preferences Section */}
           <Card>
             <CardBody>
               <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="gray.700">
+                <Heading as="h2" size="md" color="fg" fontFamily="heading">
                   {t('preferences')}
                 </Heading>
 
@@ -737,20 +750,20 @@ export default function SettingsPage() {
                       </option>
                     ))}
                   </Select>
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Text fontSize="xs" color="fg.subtle" mt={1}>
                     {t('currencyDescription')}
                   </Text>
                   {/* AC-10.5.7: Exchange rate display */}
                   {exchangeRates && exchangeRates.rates && (
-                    <VStack align="stretch" mt={2} p={2} bg="blue.50" borderRadius="md" spacing={1}>
+                    <VStack align="stretch" mt={2} p={2} bg="accent.subtle" borderRadius="md" spacing={1}>
                       {getEnabledCurrencies()
                         .filter((c) => c.code !== 'EUR')
                         .map((c) => (
-                          <Text key={c.code} fontSize="xs" color="blue.700">
+                          <Text key={c.code} fontSize="xs" color="accent">
                             {formatExchangeRate('EUR', c.code, exchangeRates.rates[c.code] || 0)}
                           </Text>
                         ))}
-                      <Text fontSize="xs" color="gray.500">
+                      <Text fontSize="xs" color="fg.subtle">
                         {t('ratesUpdatedAt', { date: new Date(exchangeRates.lastFetched).toLocaleDateString() })}
                       </Text>
                     </VStack>
@@ -848,7 +861,7 @@ export default function SettingsPage() {
 
                 <Divider />
 
-                <Button variant="outline" colorScheme="blue" isDisabled>
+                <Button variant="outline" colorScheme="brand" isDisabled>
                   {t('restartOnboarding')}
                 </Button>
               </VStack>
@@ -871,12 +884,12 @@ export default function SettingsPage() {
           <Card>
             <CardBody>
               <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="gray.700">
+                <Heading as="h2" size="md" color="fg" fontFamily="heading">
                   {t('dataSyncStatus')}
                 </Heading>
 
                 <VStack spacing={4} align="stretch">
-                  <Text fontSize="sm" color="gray.600">
+                  <Text fontSize="sm" color="fg.muted">
                     {t('dataSyncDescription')}
                   </Text>
 
@@ -899,7 +912,7 @@ export default function SettingsPage() {
           <Card>
             <CardBody>
               <VStack spacing={4} align="stretch">
-                <Heading as="h2" size="md" color="gray.700">
+                <Heading as="h2" size="md" color="fg" fontFamily="heading">
                   {tDisclaimer('settingsHeading')}
                 </Heading>
                 <FinancialDisclaimer variant="full" />
@@ -911,7 +924,7 @@ export default function SettingsPage() {
           <Card>
             <CardBody>
               <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="gray.700">
+                <Heading as="h2" size="md" color="fg" fontFamily="heading">
                   {t('privacyAndSecurity')}
                 </Heading>
 
@@ -923,10 +936,10 @@ export default function SettingsPage() {
                 <Divider />
 
                 <VStack align="stretch" spacing={3}>
-                  <Text fontWeight="bold" color="red.600">
+                  <Text fontWeight="bold" color="danger.fg">
                     {t('dangerZone')}
                   </Text>
-                  <Text fontSize="sm" color="gray.600">
+                  <Text fontSize="sm" color="fg.muted">
                     {t('deleteAccountWarning')}
                   </Text>
                   <Button
@@ -1027,22 +1040,22 @@ function NotificationsSection({
     <Card>
       <CardBody>
         <VStack spacing={6} align="stretch">
-          <Heading as="h2" size="md" color="gray.700">
+          <Heading as="h2" size="md" color="fg" fontFamily="heading">
             {t('title')}
           </Heading>
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize="sm" color="fg.subtle">
             {t('pushSubtitle')}
           </Text>
 
           {!isSupported && (
-            <Text fontSize="sm" color="gray.500">{t('pushNotSupported')}</Text>
+            <Text fontSize="sm" color="fg.subtle">{t('pushNotSupported')}</Text>
           )}
 
           {isSupported && (
             <VStack spacing={4} align="stretch">
               {/* Clear current status so it's obvious whether push is ON or OFF */}
               <HStack justify="space-between" align="center">
-                <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                <Text fontSize="sm" fontWeight="medium" color="fg">
                   {t('statusLabel')}
                 </Text>
                 <Badge
@@ -1084,12 +1097,12 @@ function NotificationsSection({
 
               {/* Verify the whole pipeline end-to-end */}
               {isSubscribed && (
-                <Button size="sm" variant="ghost" colorScheme="blue" onClick={handleTest} isLoading={isTesting} alignSelf="flex-start">
+                <Button size="sm" variant="ghost" colorScheme="brand" onClick={handleTest} isLoading={isTesting} alignSelf="flex-start">
                   {t('sendTest')}
                 </Button>
               )}
 
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize="xs" color="fg.subtle">
                 {t('iosHint')}
               </Text>
 

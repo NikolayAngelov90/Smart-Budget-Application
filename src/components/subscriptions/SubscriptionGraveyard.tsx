@@ -108,14 +108,14 @@ export function SubscriptionGraveyard() {
     <Card w="full">
       <CardHeader pb={2}>
         <Heading size="sm">{t('title')}</Heading>
-        <Text fontSize="xs" color="gray.500" mt={1}>
+        <Text fontSize="xs" color="fg.subtle" mt={1}>
           {t('subtitle')}
         </Text>
       </CardHeader>
       <CardBody pt={0}>
         {subscriptions.length === 0 ? (
           <Box py={4}>
-            <Text fontSize="sm" color="gray.500" textAlign="center">
+            <Text fontSize="sm" color="fg.subtle" textAlign="center">
               {t('emptyState')}
             </Text>
           </Box>

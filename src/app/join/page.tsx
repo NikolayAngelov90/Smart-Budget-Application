@@ -110,7 +110,7 @@ function JoinContent() {
       <Card>
         <CardBody>
           <VStack spacing={5} align="stretch">
-            <Heading as="h1" size="lg" color="gray.800">
+            <Heading as="h1" size="lg" color="fg">
               {t('title')}
             </Heading>
 
@@ -118,11 +118,11 @@ function JoinContent() {
               <Skeleton height="80px" borderRadius="md" />
             ) : validation.valid ? (
               <>
-                <Text color="gray.700">
+                <Text color="fg">
                   {t('invitePrompt', { household: validation.householdName ?? t('aHousehold') })}
                 </Text>
                 <Button
-                  colorScheme="blue"
+                  colorScheme="brand"
                   onClick={handleAccept}
                   isLoading={isAccepting}
                   loadingText={t('joining')}
@@ -133,8 +133,8 @@ function JoinContent() {
               </>
             ) : (
               <>
-                <Box bg="red.50" border="1px" borderColor="red.200" borderRadius="md" p={4}>
-                  <Text color="red.700">{reasonMessage(validation.reason)}</Text>
+                <Box bg="danger.subtle" border="1px" borderColor="danger.fg" borderRadius="md" p={4}>
+                  <Text color="danger.fg">{reasonMessage(validation.reason)}</Text>
                 </Box>
                 <Button as="a" href="/dashboard" variant="outline">
                   {t('goToDashboard')}

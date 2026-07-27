@@ -174,7 +174,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.current_month)}
                 style={{
-                  color: 'var(--chakra-colors-evergreen-500)',
+                  color: 'var(--chakra-colors-accent)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -227,7 +227,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.months_analyzed[meta.months_analyzed.length - 1] ?? '')}
                 style={{
-                  color: 'var(--chakra-colors-evergreen-500)',
+                  color: 'var(--chakra-colors-accent)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -280,7 +280,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.transaction_date.substring(0, 7))}
                 style={{
-                  color: 'var(--chakra-colors-evergreen-500)',
+                  color: 'var(--chakra-colors-accent)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -333,7 +333,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.current_month)}
                 style={{
-                  color: 'var(--chakra-colors-evergreen-500)',
+                  color: 'var(--chakra-colors-accent)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',

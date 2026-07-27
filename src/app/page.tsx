@@ -212,25 +212,25 @@ export default function Home() {
   return (
     <Container maxW="container.xl" py={20}>
       <VStack spacing={8} align="center">
-        <Heading as="h1" size="2xl" textAlign="center" color="trustBlue.500">
+        <Heading as="h1" size="2xl" textAlign="center" color="accent">
           Smart Budget Application
         </Heading>
-        <Text fontSize="xl" textAlign="center" color="gray.600">
+        <Text fontSize="xl" textAlign="center" color="fg.muted">
           AI-powered personal finance tracker with smart insights
         </Text>
         {loading ? (
-          <Text color="gray.500">Loading...</Text>
+          <Text color="fg.subtle">Loading...</Text>
         ) : (
           <HStack spacing={4}>
-            <Button as={Link} href="/login" colorScheme="trustBlue" size="lg">
+            <Button as={Link} href="/login" colorScheme="brand" size="lg">
               Login
             </Button>
             <Button
               as={Link}
               href="/signup"
               variant="outline"
-              borderColor="trustBlue.500"
-              color="trustBlue.500"
+              borderColor="accent"
+              color="accent"
               size="lg"
             >
               Sign Up

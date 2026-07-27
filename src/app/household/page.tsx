@@ -49,10 +49,10 @@ export default function HouseholdPage() {
   return (
     <Box maxW="container.lg" mx="auto" px={{ base: 4, md: 6 }} py={6}>
       <VStack align="stretch" spacing={1} mb={6}>
-        <Heading as="h1" size="lg" color="gray.800">
+        <Heading as="h1" size="lg" color="fg">
           {t('title')}
         </Heading>
-        <Text fontSize="sm" color="gray.500">
+        <Text fontSize="sm" color="fg.subtle">
           {t('subtitle')}
         </Text>
       </VStack>

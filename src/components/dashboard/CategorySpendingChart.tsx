@@ -34,6 +34,7 @@ import { useSpendingByCategory } from '@/lib/hooks/useSpendingByCategory';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency } from '@/lib/utils/currency';
+import { useChartColors } from '@/lib/hooks/useChartColors';
 
 export interface CategorySpendingChartProps {
   month?: string; // YYYY-MM format, defaults to current month
@@ -55,6 +56,7 @@ export function CategorySpendingChart({
   chartType = 'donut',
   height = 300,
 }: CategorySpendingChartProps) {
+  const chart = useChartColors();
   const { data, error, isLoading, mutate } = useSpendingByCategory(month);
   const { preferences } = useUserPreferences();
   const router = useRouter();
@@ -72,7 +74,7 @@ export function CategorySpendingChart({
   // Error state
   if (error) {
     return (
-      <Box p={6} bg="white" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="gray.200">
+      <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
         <Alert status="error" borderRadius="md">
           <AlertIcon />
           <AlertTitle>Failed to load spending data</AlertTitle>
@@ -87,7 +89,7 @@ export function CategorySpendingChart({
   // Loading state
   if (isLoading) {
     return (
-      <Box p={6} bg="white" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="gray.200">
+      <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
         <Skeleton height="32px" width="250px" mb={4} />
         <Skeleton height={`${height}px`} borderRadius="md" />
       </Box>
@@ -97,18 +99,18 @@ export function CategorySpendingChart({
   // Empty state
   if (!data || data.categories.length === 0) {
     return (
-      <Box p={6} bg="white" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="gray.200">
-        <Heading as="h3" size="md" mb={4} color="gray.700">
+      <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
+        <Heading as="h3" size="md" mb={4} color="fg">
           Spending by Category
         </Heading>
         <VStack py={8} spacing={3}>
-          <Text fontSize="4xl" color="gray.400">
+          <Text fontSize="4xl" color="fg.subtle">
             📊
           </Text>
-          <Text fontSize="lg" fontWeight="medium" color="gray.600">
+          <Text fontSize="lg" fontWeight="medium" color="fg.muted">
             No expenses this month
           </Text>
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize="sm" color="fg.subtle">
             Start adding transactions to see your spending breakdown
           </Text>
         </VStack>
@@ -138,20 +140,20 @@ export function CategorySpendingChart({
       const data = firstPayload.payload;
       return (
         <Box
-          bg="white"
+          bg="surface"
           p={3}
           borderRadius="md"
           boxShadow="lg"
           borderWidth="1px"
-          borderColor="gray.200"
+          borderColor="border"
         >
           <Text fontWeight="bold" fontSize="sm" mb={1}>
             {data.name}
           </Text>
-          <Text fontSize="sm" color="gray.700">
+          <Text fontSize="sm" color="fg">
             {formatCurrency(data.value, undefined, currencyCode)}
           </Text>
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="fg.subtle">
             {data.percentage.toFixed(1)}% of total
           </Text>
         </Box>
@@ -163,18 +165,18 @@ export function CategorySpendingChart({
   return (
     <Box
       p={6}
-      bg="white"
+      bg="surface"
       borderRadius="lg"
       boxShadow="sm"
       borderWidth="1px"
-      borderColor="gray.200"
+      borderColor="border"
     >
       <VStack align="stretch" spacing={4}>
         <Box>
-          <Heading as="h3" size="md" color="gray.700" mb={1}>
+          <Heading as="h3" size="md" color="fg" mb={1}>
             Spending by Category
           </Heading>
-          <Text fontSize="sm" color="gray.600">
+          <Text fontSize="sm" color="fg.muted">
             Total: {formatCurrency(data.total, undefined, currencyCode)}
           </Text>
         </Box>
@@ -188,7 +190,7 @@ export function CategorySpendingChart({
               labelLine={false}
               outerRadius={80}
               innerRadius={chartType === 'donut' ? 50 : 0}
-              fill="#8884d8"
+              fill={chart.accent}
               dataKey="value"
               onClick={(data) => handlePieClick(data)}
               cursor="pointer"
@@ -205,7 +207,7 @@ export function CategorySpendingChart({
               verticalAlign="bottom"
               height={36}
               formatter={(value: string) => (
-                <span style={{ fontSize: '14px', color: '#4A5568' }}>{value}</span>
+                <span style={{ fontSize: '14px', color: chart.tick }}>{value}</span>
               )}
             />
           </PieChart>

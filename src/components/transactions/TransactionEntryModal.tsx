@@ -789,9 +789,9 @@ export default function TransactionEntryModal({
           <Button
             type="submit"
             bg="accent"
-            color="white"
+            color="fg.onAccent"
             _hover={{ bg: isOnline ? 'accent.emphasis' : 'accent' }}
-            _active={{ bg: isOnline ? 'evergreen.700' : 'accent' }}
+            _active={{ bg: isOnline ? 'accent.emphasis' : 'accent' }}
             isLoading={isSubmitting}
             isDisabled={!isValid || isSubmitting || !isOnline}
             loadingText="Saving..."

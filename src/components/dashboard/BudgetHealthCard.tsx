@@ -52,16 +52,16 @@ export function BudgetHealthCard() {
   return (
     <Box as="section" aria-label={t('healthTitle')} w="full" mb={{ base: 6, md: 8 }}>
       <Flex justify="space-between" align="baseline" mb={4}>
-        <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700">
+        <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg">
           {t('healthTitle')}
         </Heading>
         <ChakraLink
           as={Link}
           href="/categories"
-          color="blue.500"
+          color="accent"
           fontWeight="medium"
           fontSize={{ base: 'sm', md: 'md' }}
-          _hover={{ color: 'blue.600', textDecoration: 'underline' }}
+          _hover={{ color: 'accent', textDecoration: 'underline' }}
         >
           {t('manageBudgets')}
         </ChakraLink>
@@ -95,7 +95,7 @@ export function BudgetHealthCard() {
                   </Flex>
                   <Text
                     fontSize="sm"
-                    color={budget.status === 'over' ? 'red.600' : 'gray.600'}
+                    color={budget.status === 'over' ? 'expense' : 'fg.muted'}
                     whiteSpace="nowrap"
                   >
                     {t('spentOfLimit', {
@@ -115,13 +115,13 @@ export function BudgetHealthCard() {
                   })}
                 />
                 {budget.status === 'over' ? (
-                  <Text fontSize="xs" color="red.600" mt={1}>
+                  <Text fontSize="xs" color="expense" mt={1}>
                     {t('overBy', {
                       amount: formatCurrency(Math.abs(budget.remaining), undefined, currencyCode),
                     })}
                   </Text>
                 ) : (
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Text fontSize="xs" color="fg.subtle" mt={1}>
                     {t('remainingThisMonth', {
                       amount: formatCurrency(budget.remaining, undefined, currencyCode),
                     })}

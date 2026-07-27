@@ -93,10 +93,10 @@ export function WhatIfSimulator() {
 
   return (
     <Box as="section" aria-label={t('title')} mt={{ base: 10, md: 12 }}>
-      <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700" mb={1}>
+      <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg" mb={1}>
         {t('title')}
       </Heading>
-      <Text fontSize="sm" color="gray.500" mb={4}>
+      <Text fontSize="sm" color="fg.subtle" mb={4}>
         {t('subtitle')}
       </Text>
 
@@ -114,7 +114,7 @@ export function WhatIfSimulator() {
       {data && !data.hasData && (
         <Card>
           <CardBody>
-            <Text color="gray.500" fontSize="sm" textAlign="center" py={2}>
+            <Text color="fg.subtle" fontSize="sm" textAlign="center" py={2}>
               {t('emptyState')}
             </Text>
           </CardBody>
@@ -146,7 +146,7 @@ export function WhatIfSimulator() {
                             {category.name}
                           </Text>
                         </Flex>
-                        <Text fontSize="sm" color={pct > 0 ? 'green.600' : 'gray.500'} whiteSpace="nowrap">
+                        <Text fontSize="sm" color={pct > 0 ? 'income' : 'fg.subtle'} whiteSpace="nowrap">
                           {pct > 0
                             ? t('reducedTo', { pct, amount: fmt(reducedTo) })
                             : t('avgPerMonth', { amount: fmt(category.avg_monthly) })}
@@ -177,13 +177,13 @@ export function WhatIfSimulator() {
                   <>
                     {categories.length > 0 && <Divider />}
                     <VStack align="stretch" spacing={3}>
-                      <Text fontSize="sm" fontWeight="medium" color="gray.600">
+                      <Text fontSize="sm" fontWeight="medium" color="fg.muted">
                         {t('subscriptionsHeading')}
                       </Text>
                       {/* Honest-projection hint: subscription charges usually sit
                           inside a category's average, so combined savings overlap */}
                       {categories.length > 0 && (
-                        <Text fontSize="xs" color="gray.500">
+                        <Text fontSize="xs" color="fg.subtle">
                           {t('subscriptionsOverlapHint')}
                         </Text>
                       )}
@@ -221,24 +221,24 @@ export function WhatIfSimulator() {
                 spacing={4}
                 flex={1}
                 minW={{ lg: '220px' }}
-                bg="gray.50"
+                bg="surface.sunken"
                 borderRadius="md"
                 p={4}
                 alignSelf={{ lg: 'flex-start' }}
               >
                 <Stat>
-                  <StatLabel fontSize="xs" color="gray.600">
+                  <StatLabel fontSize="xs" color="fg.muted">
                     {t('monthlySavings')}
                   </StatLabel>
-                  <StatNumber fontSize="xl" color={hasAdjustments ? 'green.600' : 'gray.700'}>
+                  <StatNumber fontSize="xl" color={hasAdjustments ? 'income' : 'fg'}>
                     {fmt(projection.monthly_savings)}
                   </StatNumber>
                 </Stat>
                 <Stat>
-                  <StatLabel fontSize="xs" color="gray.600">
+                  <StatLabel fontSize="xs" color="fg.muted">
                     {t('annualSavings')}
                   </StatLabel>
-                  <StatNumber fontSize="xl" color={hasAdjustments ? 'green.600' : 'gray.700'}>
+                  <StatNumber fontSize="xl" color={hasAdjustments ? 'income' : 'fg'}>
                     {fmt(projection.annual_savings)}
                   </StatNumber>
                 </Stat>
@@ -267,7 +267,7 @@ export function WhatIfSimulator() {
                   {t('reset')}
                 </Button>
 
-                <Text fontSize="xs" color="gray.500">
+                <Text fontSize="xs" color="fg.subtle">
                   {t('exploratoryDisclaimer')}
                 </Text>
               </VStack>

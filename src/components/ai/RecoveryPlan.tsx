@@ -44,7 +44,7 @@ function CategoryRow({
   const pct = Math.min(category.pct_of_target, 100);
 
   return (
-    <Box px={4} py={3} borderBottom="1px solid" borderColor="gray.100">
+    <Box px={4} py={3} borderBottom="1px solid" borderColor="border">
       <Flex align="center" justify="space-between" gap={2} mb={2} flexWrap="wrap">
         <HStack flex="1" minW={0}>
           <Box w={3} h={3} borderRadius="full" bg={category.category_color} flexShrink={0} aria-hidden="true" />
@@ -63,7 +63,7 @@ function CategoryRow({
         </HStack>
         <Text
           fontSize="sm"
-          color="gray.600"
+          color="fg.muted"
           aria-label={`${t('spentSoFar')}: ${formatAmount(category.current_spend, currency)}, ${t('monthlyTarget')}: ${formatAmount(category.monthly_target, currency)}`}
         >
           {formatAmount(category.current_spend, currency)} / {formatAmount(category.monthly_target, currency)}
@@ -108,12 +108,12 @@ export function RecoveryPlan() {
       }
     };
     return (
-      <Box as="section" aria-label={t('title')} borderRadius="md" border="1px solid" borderColor="orange.200" bg="orange.50" p={4}>
+      <Box as="section" aria-label={t('title')} borderRadius="md" border="1px solid" borderColor="warning.fg" bg="warning.subtle" p={4}>
         <VStack align="start" spacing={3}>
-          <Heading as="h2" fontSize={{ base: '1.1rem', lg: '1.25rem' }} color="gray.800">
+          <Heading as="h2" fontSize={{ base: '1.1rem', lg: '1.25rem' }} color="fg">
             {t('ctaTitle')}
           </Heading>
-          <Text fontSize="sm" color="gray.700">
+          <Text fontSize="sm" color="fg">
             {t('ctaBody')}
           </Text>
           <Button colorScheme="orange" size="sm" onClick={handleGenerate} isLoading={busy}>
@@ -143,10 +143,10 @@ export function RecoveryPlan() {
       <VStack align="stretch" spacing={4}>
         <Flex align="center" justify="space-between" flexWrap="wrap" gap={2}>
           <VStack align="start" spacing={0}>
-            <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="gray.700">
+            <Heading as="h2" fontSize={{ base: '1.25rem', lg: '1.5rem' }} color="fg">
               {t('title')}
             </Heading>
-            <Text fontSize="sm" color="gray.500">
+            <Text fontSize="sm" color="fg.subtle">
               {t('subtitle', { day: plan.days_elapsed, daysRemaining: plan.days_remaining })}
             </Text>
           </VStack>
@@ -155,7 +155,7 @@ export function RecoveryPlan() {
           </Button>
         </Flex>
 
-        <Box borderRadius="md" border="1px solid" borderColor="gray.200" overflow="hidden">
+        <Box borderRadius="md" border="1px solid" borderColor="border" overflow="hidden">
           {plan.categories.map((c) => (
             <CategoryRow key={c.category_id} category={c} currency={currency} />
           ))}

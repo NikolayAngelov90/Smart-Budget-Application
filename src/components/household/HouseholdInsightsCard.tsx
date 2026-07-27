@@ -20,21 +20,21 @@ export function HouseholdInsightsCard() {
     <Card>
       <CardBody>
         <VStack align="stretch" spacing={3}>
-          <Heading as="h2" size="md" color="gray.700">
+          <Heading as="h2" size="md" color="fg">
             {t('heading')}
           </Heading>
 
           {isLoading ? null : insights.length === 0 ? (
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               {t('none')}
             </Text>
           ) : (
             insights.map((insight, i) => (
-              <Box key={`${insight.type}-${insight.metadata.category_id ?? i}`} borderLeftWidth="3px" borderColor="blue.300" pl={3} py={1}>
-                <Text fontSize="sm" fontWeight="semibold" color="gray.800">
+              <Box key={`${insight.type}-${insight.metadata.category_id ?? i}`} borderLeftWidth="3px" borderColor="accent" pl={3} py={1}>
+                <Text fontSize="sm" fontWeight="semibold" color="fg">
                   {insight.title}
                 </Text>
-                <Text fontSize="sm" color="gray.600">
+                <Text fontSize="sm" color="fg.muted">
                   {insight.description}
                 </Text>
               </Box>

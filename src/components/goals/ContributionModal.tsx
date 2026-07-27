@@ -116,7 +116,7 @@ export function ContributionModal({
         <ModalCloseButton />
         <form onSubmit={handleSubmit(onSubmit)}>
           <ModalBody>
-            <Text fontSize="sm" color="gray.600" mb={4}>
+            <Text fontSize="sm" color="fg.muted" mb={4}>
               {goalName}
             </Text>
             <VStack spacing={4}>
@@ -147,7 +147,7 @@ export function ContributionModal({
             </Button>
             <Button
               type="submit"
-              colorScheme="blue"
+              colorScheme="brand"
               isLoading={isSubmitting}
             >
               {t('add')}

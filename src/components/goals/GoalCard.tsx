@@ -193,7 +193,7 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
             </Badge>
           )}
 
-          <Text fontSize="sm" color="gray.500" mt={2}>
+          <Text fontSize="sm" color="fg.subtle" mt={2}>
             {goal.deadline
               ? `${t('deadline')}: ${goal.deadline}`
               : t('noDeadline')}
@@ -202,7 +202,7 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
           <Button
             mt={3}
             size="sm"
-            colorScheme="blue"
+            colorScheme="brand"
             variant="outline"
             onClick={onContribOpen}
           >

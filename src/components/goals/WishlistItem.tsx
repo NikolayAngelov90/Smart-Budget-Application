@@ -32,7 +32,7 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
       px={{ base: 4, md: 5 }}
       py={4}
       borderBottomWidth="1px"
-      borderColor="gray.100"
+      borderColor="border"
       opacity={isActive ? 1 : 0.65}
     >
       <Flex justify="space-between" align="flex-start" gap={3} flexWrap="wrap">
@@ -41,7 +41,7 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
             <Text fontWeight="semibold" noOfLines={1}>
               {item.name}
             </Text>
-            <Text fontWeight="bold" color="gray.700" whiteSpace="nowrap">
+            <Text fontWeight="bold" color="fg" whiteSpace="nowrap">
               {fmt(item.price)}
             </Text>
             {item.category_name && (
@@ -72,7 +72,7 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
               {impact.category_budget && (
                 <Text
                   fontSize="sm"
-                  color={impact.category_budget.exceeds_budget ? 'red.600' : 'gray.600'}
+                  color={impact.category_budget.exceeds_budget ? 'expense' : 'fg.muted'}
                 >
                   {impact.category_budget.exceeds_budget
                     ? t('exceedsBudget', {
@@ -87,12 +87,12 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
                 </Text>
               )}
               {impact.month_balance_after !== null && (
-                <Text fontSize="sm" color={impact.month_balance_after < 0 ? 'red.600' : 'gray.600'}>
+                <Text fontSize="sm" color={impact.month_balance_after < 0 ? 'expense' : 'fg.muted'}>
                   {t('monthBalanceAfter', { amount: fmt(impact.month_balance_after) })}
                 </Text>
               )}
               {impact.goal_delay && (
-                <Text fontSize="sm" color="orange.600">
+                <Text fontSize="sm" color="warning.fg">
                   {t('goalDelay', {
                     days: impact.goal_delay.delay_days,
                     goal: impact.goal_delay.goal_name,
@@ -131,7 +131,7 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
             <Button
               size="sm"
               variant="ghost"
-              colorScheme="blue"
+              colorScheme="brand"
               minH={{ base: '44px', md: '32px' }}
               isDisabled={isUpdating}
               onClick={() => onStatusChange(item, 'active')}

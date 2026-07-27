@@ -26,12 +26,12 @@ export function ContributionProgressCard() {
     <Card>
       <CardBody>
         <VStack align="stretch" spacing={3}>
-          <Heading as="h2" size="md" color="gray.700">
+          <Heading as="h2" size="md" color="fg">
             {t('contributionProgress')}
           </Heading>
 
           {isLoading ? null : splits.length === 0 ? (
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="fg.muted">
               {t('noContributions')}
             </Text>
           ) : (
@@ -41,16 +41,16 @@ export function ContributionProgressCard() {
                 <VStack key={s.user_id} align="stretch" spacing={1}>
                   <HStack justify="space-between">
                     <HStack spacing={2}>
-                      <Text fontSize="sm" color="gray.800">
+                      <Text fontSize="sm" color="fg">
                         {s.isSelf ? t('you') : s.email}
                       </Text>
                       {s.percentage != null && (
-                        <Badge colorScheme="blue" borderRadius="full" px={2}>
+                        <Badge colorScheme="brand" borderRadius="full" px={2}>
                           {s.percentage}%
                         </Badge>
                       )}
                     </HStack>
-                    <Text fontSize="xs" color="gray.500">
+                    <Text fontSize="xs" color="fg.subtle">
                       {formatAmount(s.contributed, currency)} / {formatAmount(s.fairShare, currency)}
                     </Text>
                   </HStack>

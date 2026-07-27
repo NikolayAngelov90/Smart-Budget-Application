@@ -282,7 +282,7 @@ export function CategoryModal({
                   </Button>
                 </HStack>
                 {editMode && (
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Text fontSize="xs" color="fg.subtle" mt={1}>
                     Category type cannot be changed after creation
                   </Text>
                 )}
@@ -295,7 +295,7 @@ export function CategoryModal({
                   <Checkbox isChecked={shared} onChange={(e) => setShared(e.target.checked)}>
                     {t('sharedWithHousehold')}
                   </Checkbox>
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Text fontSize="xs" color="fg.subtle" mt={1}>
                     {t('sharedHint')}
                   </Text>
                 </FormControl>
@@ -313,7 +313,7 @@ export function CategoryModal({
                     <option value="category_only">{t('visibilityCategoryOnly')}</option>
                     <option value="private">{t('visibilityPrivate')}</option>
                   </Select>
-                  <Text fontSize="xs" color="gray.500" mt={1}>
+                  <Text fontSize="xs" color="fg.subtle" mt={1}>
                     {t('visibilityHint')}
                   </Text>
                 </FormControl>
@@ -332,11 +332,11 @@ export function CategoryModal({
                       bg={color.value}
                       cursor="pointer"
                       border="3px solid"
-                      borderColor={selectedColor === color.value ? 'blue.500' : 'transparent'}
+                      borderColor={selectedColor === color.value ? 'accent' : 'transparent'}
                       transition="all 0.2s"
                       _hover={{
                         transform: 'scale(1.1)',
-                        borderColor: selectedColor === color.value ? 'blue.600' : 'gray.300',
+                        borderColor: selectedColor === color.value ? 'accent' : 'border.strong',
                       }}
                       onClick={() => handleColorSelect(color.value)}
                       aria-label={`Select ${color.name} color`}
@@ -359,12 +359,12 @@ export function CategoryModal({
                 <Box
                   w="full"
                   p={3}
-                  bg="red.50"
+                  bg="danger.subtle"
                   border="1px"
-                  borderColor="red.200"
+                  borderColor="danger.fg"
                   borderRadius="md"
                 >
-                  <Text color="red.600" fontSize="sm">
+                  <Text color="danger.fg" fontSize="sm">
                     {apiError}
                   </Text>
                 </Box>
@@ -377,7 +377,7 @@ export function CategoryModal({
               {tCommon('cancel')}
             </Button>
             <Button
-              colorScheme="blue"
+              colorScheme="brand"
               type="submit"
               isLoading={isSubmitting}
               isDisabled={!isValid || isSubmitting}

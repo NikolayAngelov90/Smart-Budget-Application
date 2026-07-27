@@ -28,38 +28,38 @@ export function FirstTransactionPrompt({ onAddTransaction }: FirstTransactionPro
 
   return (
     <Box
-      bg="white"
+      bg="surface"
       border="2px dashed"
-      borderColor="trustBlue.200"
+      borderColor="accent"
       borderRadius="xl"
       p={{ base: 8, md: 12 }}
       textAlign="center"
     >
       <VStack spacing={4}>
         <Box
-          bg="trustBlue.50"
+          bg="accent.subtle"
           borderRadius="full"
           p={4}
           display="flex"
           alignItems="center"
           justifyContent="center"
         >
-          <Icon as={AddIcon} boxSize={8} color="trustBlue.500" />
+          <Icon as={AddIcon} boxSize={8} color="accent" />
         </Box>
 
-        <Heading as="h3" size="md" color="gray.800">
+        <Heading as="h3" size="md" color="fg">
           {t('firstTransactionTitle')}
         </Heading>
 
-        <Text color="gray.600" fontSize="md" maxW="sm">
+        <Text color="fg.muted" fontSize="md" maxW="sm">
           {t('firstTransactionDescription')}
         </Text>
 
         <Button
-          bg="#2b6cb0"
-          color="white"
-          _hover={{ bg: '#2c5282' }}
-          _active={{ bg: '#2c5282' }}
+          bg="accent"
+          color="fg.onAccent"
+          _hover={{ bg: 'accent.emphasis' }}
+          _active={{ bg: 'accent.emphasis' }}
           size="lg"
           minH="44px"
           px={8}

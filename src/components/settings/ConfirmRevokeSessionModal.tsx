@@ -35,7 +35,7 @@ export function ConfirmRevokeSessionModal({
     <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader color="orange.600" display="flex" alignItems="center" gap={2}>
+        <ModalHeader color="warning.fg" display="flex" alignItems="center" gap={2}>
           <WarningIcon />
           Revoke Device Access
         </ModalHeader>

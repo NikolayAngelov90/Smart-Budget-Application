@@ -55,7 +55,7 @@ export function AccountSheet({
           <VStack align="stretch" spacing={1}>
             {/* Identity */}
             <Flex align="center" gap={3} py={3}>
-              <Avatar size="md" name={displayName} src={avatarUrl} bg="accent" color="white" />
+              <Avatar size="md" name={displayName} src={avatarUrl} bg="accent" color="fg.onAccent" />
               <Box minW={0}>
                 <Text fontWeight="semibold" noOfLines={1}>{displayName}</Text>
                 <Text fontSize="sm" color="fg.muted" noOfLines={1}>{email}</Text>
@@ -93,8 +93,8 @@ export function AccountSheet({
               minH="48px"
               w="full"
               textAlign="left"
-              color="red.600"
-              _hover={{ bg: 'red.50' }}
+              color="danger.fg"
+              _hover={{ bg: 'danger.subtle' }}
             >
               <Icon as={MdLogout} boxSize={5} />
               <Text>{t('logout')}</Text>

@@ -69,7 +69,7 @@ export default function FloatingActionButton({
         minH="60px"
         // Quiet Ledger: evergreen squircle, matching the mobile bottom-nav Add tab.
         bg="accent"
-        color="white"
+        color="fg.onAccent"
         borderRadius="20px"
         boxShadow="accent"
         // Hover state
@@ -80,7 +80,7 @@ export default function FloatingActionButton({
         }}
         // Active state
         _active={{
-          bg: isOnline ? 'evergreen.700' : 'accent',
+          bg: isOnline ? 'accent.emphasis' : 'accent',
           transform: isOnline ? 'scale(0.97)' : 'none',
         }}
         // Focus state (keyboard accessibility)

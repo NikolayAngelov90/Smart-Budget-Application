@@ -161,17 +161,17 @@ export function MilestoneOverlay({
             {isComplete ? t('milestoneComplete') : t('milestoneTitle')}
           </Text>
 
-          <Text color="gray.600" mb={2}>
+          <Text color="fg.muted" mb={2}>
             {t('milestoneMessage', { goalName, percentage: milestone })}
           </Text>
 
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize="sm" color="fg.subtle">
             {t('milestoneAmount', { amount: formatAmount(currentAmount, currency) })}
           </Text>
         </ModalBody>
 
         <ModalFooter justifyContent="center" pt={0}>
-          <Button variant="ghost" colorScheme="blue" onClick={onClose}>
+          <Button variant="ghost" colorScheme="brand" onClick={onClose}>
             {t('milestoneDismiss')}
           </Button>
         </ModalFooter>

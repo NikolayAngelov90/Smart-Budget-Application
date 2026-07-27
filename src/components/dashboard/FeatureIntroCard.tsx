@@ -54,19 +54,19 @@ export function FeatureIntroCard() {
       // + heading + keyboard-navigable controls — NOT an aria-live surface
       // (a whole-card live region mounts with its content and over-announces
       // on internal updates; 15-8 review).
-      bg="trustBlue.50"
+      bg="accent.subtle"
       border="1px solid"
-      borderColor="trustBlue.200"
+      borderColor="accent"
       borderRadius="xl"
       p={{ base: 4, md: 5 }}
       mb={{ base: 6, md: 8 }}
     >
       <Flex justify="space-between" align="flex-start" gap={3} flexWrap="wrap">
         <Box>
-          <Heading as="h3" size="sm" color="gray.800" mb={1}>
+          <Heading as="h3" size="sm" color="fg" mb={1}>
             {t('cardHeading')}
           </Heading>
-          <Text color="gray.700" fontSize="sm">
+          <Text color="fg" fontSize="sm">
             {t(`intro.${feature}`)}
           </Text>
         </Box>
@@ -74,9 +74,9 @@ export function FeatureIntroCard() {
           <ChakraLink
             as={NextLink}
             href={url}
-            bg="#2b6cb0"
-            color="white"
-            _hover={{ bg: '#2c5282', textDecoration: 'none' }}
+            bg="accent"
+            color="fg.onAccent"
+            _hover={{ bg: 'accent.emphasis', textDecoration: 'none' }}
             borderRadius="md"
             px={4}
             py={2}
