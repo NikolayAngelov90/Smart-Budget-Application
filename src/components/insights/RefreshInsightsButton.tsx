@@ -19,13 +19,14 @@
  */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button, useToast } from '@chakra-ui/react';
 import { RepeatIcon } from '@chakra-ui/icons';
 import { mutate } from 'swr';
 
 interface RefreshInsightsButtonProps {
   /**
-   * Optional custom button text (default: "Refresh Insights")
+   * Optional custom button text (defaults to the localized "Refresh insights")
    */
   buttonText?: string;
 
@@ -46,7 +47,7 @@ interface RefreshInsightsButtonProps {
 }
 
 export function RefreshInsightsButton({
-  buttonText = 'Refresh Insights',
+  buttonText,
   size = 'md',
   variant = 'outline',
   onRefreshComplete,
@@ -54,6 +55,9 @@ export function RefreshInsightsButton({
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(null);
   const toast = useToast();
+  // Story 16.4: the label was a hardcoded English default, so it stayed
+  // "Refresh Insights" in the Bulgarian UI.
+  const t = useTranslations('insights');
 
   const handleRefresh = async () => {
     // Prevent double-clicks (client-side check, 2 seconds)
@@ -104,8 +108,8 @@ export function RefreshInsightsButton({
       if (insightCount === 0) {
         // No new insights generated
         toast({
-          title: 'All caught up!',
-          description: 'No new insights at this time.',
+          title: t('refreshUpToDateTitle'),
+          description: t('refreshUpToDateDesc'),
           status: 'info',
           duration: 5000,
           isClosable: true,
@@ -114,8 +118,8 @@ export function RefreshInsightsButton({
       } else {
         // New insights generated
         toast({
-          title: 'Insights updated!',
-          description: `${insightCount} new insight${insightCount !== 1 ? 's' : ''} generated.`,
+          title: t('refreshDoneTitle'),
+          description: t('refreshDoneDesc', { count: insightCount }),
           status: 'success',
           duration: 5000,
           isClosable: true,
@@ -135,7 +139,7 @@ export function RefreshInsightsButton({
       console.error('Error refreshing insights:', error);
 
       toast({
-        title: 'Refresh failed',
+        title: t('refreshFailed'),
         description:
           error instanceof Error ? error.message : 'Failed to refresh insights. Please try again.',
         status: 'error',
@@ -153,13 +157,13 @@ export function RefreshInsightsButton({
       leftIcon={<RepeatIcon />}
       onClick={handleRefresh}
       isLoading={isLoading}
-      loadingText="Refreshing..."
+      loadingText={t('refreshing')}
       size={size}
       variant={variant}
-      colorScheme="blue"
-      aria-label="Refresh insights"
+      colorScheme="brand"
+      aria-label={t('refresh')}
     >
-      {buttonText}
+      {buttonText ?? t('refresh')}
     </Button>
   );
 }

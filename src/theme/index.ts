@@ -56,7 +56,10 @@ const theme = extendTheme({
       // dashboard "Out" figure.
       'expense': { default: 'clay.600', _dark: 'clay.300' },
       'expense.subtle': { default: 'clay.50', _dark: 'rgba(196,89,58,0.20)' },
-      'warning.fg': { default: 'amber.600', _dark: 'amber.300' },
+      // amber.700 (not .600): amber.600 on amber.50 is only 3.85:1, which fails
+      // AA for the small uppercase labels that use this pair (insight priority
+      // badges). amber.700 gives ~5.7:1.
+      'warning.fg': { default: 'amber.700', _dark: 'amber.300' },
       'warning.subtle': { default: 'amber.50', _dark: 'rgba(201,134,42,0.18)' },
     },
   },

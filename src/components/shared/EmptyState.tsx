@@ -19,6 +19,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, description, cta }: EmptyStateProps) {
   return (
     <Box
+      w="full"
       bg="surface"
       borderRadius="xl"
       borderWidth="1px"

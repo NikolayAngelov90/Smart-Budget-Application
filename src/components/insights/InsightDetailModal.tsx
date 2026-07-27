@@ -12,9 +12,11 @@ import {
   HStack,
   useBreakpointValue,
 } from '@chakra-ui/react';
+import { useTranslations } from 'next-intl';
 import type { Insight } from '@/types/database.types';
 import { InsightMetadata } from './InsightMetadata';
 import { InsightErrorBoundary } from './InsightErrorBoundary';
+import { getInsightToneTokens } from '@/lib/utils/insightGroups';
 
 interface InsightDetailModalProps {
   insight: Insight | null;
@@ -22,26 +24,18 @@ interface InsightDetailModalProps {
   onClose: () => void;
 }
 
-// Get insight type label for display
-const getTypeLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    spending_increase: 'Spending Increase',
-    budget_recommendation: 'Budget Recommendation',
-    unusual_expense: 'Unusual Expense',
-    positive_reinforcement: 'Positive Feedback',
-  };
-  return labels[type] || type;
-};
-
-// Get color scheme for badge
-const getColorScheme = (type: string): string => {
-  const colorMap: Record<string, string> = {
-    spending_increase: 'orange',
-    budget_recommendation: 'blue',
-    unusual_expense: 'red',
-    positive_reinforcement: 'green',
-  };
-  return colorMap[type] || 'gray';
+/**
+ * i18n key per type. The old local map covered only four of the six enum values,
+ * so `spending_anomaly` / `new_high_spend_category` rendered the RAW ENUM STRING
+ * in the badge — on mobile, this modal is the primary read path.
+ */
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  spending_increase: 'type_spending_increase',
+  budget_recommendation: 'type_budget_recommendation',
+  unusual_expense: 'type_unusual_expense',
+  positive_reinforcement: 'type_positive_reinforcement',
+  spending_anomaly: 'type_spending_anomaly',
+  new_high_spend_category: 'type_new_high_spend_category',
 };
 
 export function InsightDetailModal({
@@ -51,8 +45,13 @@ export function InsightDetailModal({
 }: InsightDetailModalProps) {
   // Responsive modal size: full screen on mobile, xl on desktop
   const modalSize = useBreakpointValue({ base: 'full', md: 'xl' });
+  const t = useTranslations('insights');
+  const tCommon = useTranslations('common');
 
   if (!insight) return null;
+
+  const tone = getInsightToneTokens(insight.type);
+  const labelKey = TYPE_LABEL_KEYS[insight.type];
 
   return (
     <Modal
@@ -73,18 +72,19 @@ export function InsightDetailModal({
               {insight.title}
             </Text>
             <Badge
-              colorScheme={getColorScheme(insight.type)}
+              bg={tone.subtle}
+              color={tone.fg}
               fontSize="sm"
               px={3}
               py={1}
               borderRadius="md"
             >
-              {getTypeLabel(insight.type)}
+              {labelKey ? t(labelKey) : insight.type}
             </Badge>
           </HStack>
           <Text
             fontSize="sm"
-            color="gray.600"
+            color="fg.muted"
             fontWeight="normal"
             mt={2}
             lineHeight="base"
@@ -97,7 +97,7 @@ export function InsightDetailModal({
           size="lg"
           top={4}
           right={4}
-          aria-label="Close insight details"
+          aria-label={tCommon('close')}
         />
 
         <ModalBody pb={6}>

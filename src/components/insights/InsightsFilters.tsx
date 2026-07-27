@@ -57,11 +57,10 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
           id="insight-type-filter"
           value={filters.type || 'all'}
           onChange={(e) => onFilterChange({ type: e.target.value })}
-          bg="white"
+          bg="surface"
           size="md"
-          borderColor="gray.300"
-          _hover={{ borderColor: 'gray.400' }}
-          _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3182ce' }}
+          borderColor="border"
+          _hover={{ borderColor: 'border.strong' }}
           w="full"
         >
           <option value="all">{t('allTypes')}</option>
@@ -79,19 +78,18 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
         </FormLabel>
         <InputGroup size="md">
           <InputLeftElement pointerEvents="none" height="full">
-            <SearchIcon color="gray.400" />
+            <SearchIcon color="fg.subtle" />
           </InputLeftElement>
           <Input
             id="search-insights"
             placeholder={t('searchPlaceholder')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            bg="white"
+            bg="surface"
             size="md"
             paddingLeft="2.5rem"
-            borderColor="gray.300"
-            _hover={{ borderColor: 'gray.400' }}
-            _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px #3182ce' }}
+            borderColor="border"
+            _hover={{ borderColor: 'border.strong' }}
           />
         </InputGroup>
       </FormControl>
@@ -111,7 +109,7 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
           id="show-dismissed"
           isChecked={filters.dismissed}
           onChange={(e) => onFilterChange({ dismissed: e.target.checked })}
-          colorScheme="blue"
+          colorScheme="brand"
           size="md"
         />
       </FormControl>

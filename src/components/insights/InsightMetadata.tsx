@@ -98,13 +98,13 @@ function MetadataField({ label, value, highlight = false }: MetadataFieldProps) 
   return (
     <GridItem>
       <VStack align="start" spacing={1}>
-        <Text fontSize="xs" color="gray.500" fontWeight="medium">
+        <Text fontSize="xs" color="fg.subtle" fontWeight="medium">
           {label}
         </Text>
         <Text
           fontSize="md"
           fontWeight={highlight ? 'bold' : 'semibold'}
-          color={highlight ? 'blue.600' : 'gray.800'}
+          color={highlight ? 'accent' : 'fg'}
         >
           {value}
         </Text>
@@ -125,17 +125,17 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
         const meta = metadata as unknown as SpendingIncreaseMetadata;
         return (
           <VStack align="start" spacing={4} w="full">
-            <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+            <Text fontSize="sm" fontWeight="semibold" color="fg">
               Spending Details for {meta.category_name ?? 'Unknown Category'}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
               <MetadataField
                 label="Current Month"
                 value={
                   <>
                     {formatCurrency(meta.current_amount ?? 0, undefined, currencyCode)}
-                    <Badge ml={2} colorScheme="gray" fontSize="xs">
+                    <Badge ml={2} bg="surface.sunken" color="fg.muted" fontSize="xs">
                       {meta.transaction_count_current ?? 0} transactions
                     </Badge>
                   </>
@@ -146,7 +146,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
                 value={
                   <>
                     {formatCurrency(meta.previous_amount ?? 0, undefined, currencyCode)}
-                    <Badge ml={2} colorScheme="gray" fontSize="xs">
+                    <Badge ml={2} bg="surface.sunken" color="fg.muted" fontSize="xs">
                       {meta.transaction_count_previous ?? 0} transactions
                     </Badge>
                   </>
@@ -164,7 +164,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               />
             </Grid>
 
-            <Box fontSize="xs" color="gray.500">
+            <Box fontSize="xs" color="fg.subtle">
               <Text>Period: {formatMonth(meta.current_month ?? 'N/A')}</Text>
               <Text>Compared to: {formatMonth(meta.previous_month ?? 'N/A')}</Text>
             </Box>
@@ -174,7 +174,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.current_month)}
                 style={{
-                  color: 'var(--chakra-colors-blue-600)',
+                  color: 'var(--chakra-colors-evergreen-500)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -193,11 +193,11 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
         const meta = metadata as unknown as BudgetRecommendationMetadata;
         return (
           <VStack align="start" spacing={4} w="full">
-            <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+            <Text fontSize="sm" fontWeight="semibold" color="fg">
               Budget Recommendation for {meta.category_name ?? 'Unknown Category'}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
               <MetadataField
                 label="3-Month Average"
                 value={formatCurrency(meta.three_month_average ?? 0, undefined, currencyCode)}
@@ -209,13 +209,13 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               />
             </Grid>
 
-            <Box bg="blue.50" p={3} borderRadius="md" w="full">
-              <Text fontSize="xs" color="blue.800">
+            <Box bg="accent.subtle" p={3} borderRadius="md" w="full">
+              <Text fontSize="xs" color="accent">
                 {meta.calculation_explanation ?? 'Budget recommendation based on spending history'}
               </Text>
             </Box>
 
-            <Box fontSize="xs" color="gray.500">
+            <Box fontSize="xs" color="fg.subtle">
               <Text>
                 Based on spending in:{' '}
                 {meta.months_analyzed?.map(formatMonth).join(', ') ?? 'N/A'}
@@ -227,7 +227,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.months_analyzed[meta.months_analyzed.length - 1] ?? '')}
                 style={{
-                  color: 'var(--chakra-colors-blue-600)',
+                  color: 'var(--chakra-colors-evergreen-500)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -246,11 +246,11 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
         const meta = metadata as unknown as UnusualExpenseMetadata;
         return (
           <VStack align="start" spacing={4} w="full">
-            <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+            <Text fontSize="sm" fontWeight="semibold" color="fg">
               Unusual Expense in {meta.category_name ?? 'Unknown Category'}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
               <MetadataField
                 label="Transaction Amount"
                 value={formatCurrency(meta.transaction_amount ?? 0, undefined, currencyCode)}
@@ -271,7 +271,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               />
             </Grid>
 
-            <Box fontSize="xs" color="gray.500">
+            <Box fontSize="xs" color="fg.subtle">
               <Text>Transaction Date: {meta.transaction_date ? format(new Date(meta.transaction_date), 'PPP') : 'N/A'}</Text>
             </Box>
 
@@ -280,7 +280,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.transaction_date.substring(0, 7))}
                 style={{
-                  color: 'var(--chakra-colors-blue-600)',
+                  color: 'var(--chakra-colors-evergreen-500)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -299,11 +299,11 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
         const meta = metadata as unknown as PositiveReinforcementMetadata;
         return (
           <VStack align="start" spacing={4} w="full">
-            <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+            <Text fontSize="sm" fontWeight="semibold" color="fg">
               Budget Performance for {meta.category_name ?? 'Unknown Category'}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} w="full">
+            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
               <MetadataField
                 label="Budget Limit"
                 value={formatCurrency(meta.budget_amount ?? 0, undefined, currencyCode)}
@@ -324,7 +324,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               />
             </Grid>
 
-            <Box fontSize="xs" color="gray.500">
+            <Box fontSize="xs" color="fg.subtle">
               <Text>Period: {formatMonth(meta.current_month ?? 'N/A')}</Text>
             </Box>
 
@@ -333,7 +333,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Link
                 href={buildTransactionLink(meta.category_id, meta.current_month)}
                 style={{
-                  color: 'var(--chakra-colors-blue-600)',
+                  color: 'var(--chakra-colors-evergreen-500)',
                   fontWeight: 'medium',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
@@ -350,7 +350,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
 
       default:
         return (
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize="sm" color="fg.subtle">
             No additional details available for this insight type.
           </Text>
         );
@@ -362,7 +362,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
     switch (insight.type) {
       case 'spending_increase':
         return (
-          <Text fontSize="sm" color="gray.600" lineHeight="tall">
+          <Text fontSize="sm" color="fg.muted" lineHeight="tall">
             You're seeing this because your spending in this category increased by more than
             20% compared to last month. We calculate this by comparing your total spending in
             each category month-over-month to help you spot unusual spending patterns early.
@@ -371,7 +371,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
 
       case 'budget_recommendation':
         return (
-          <Text fontSize="sm" color="gray.600" lineHeight="tall">
+          <Text fontSize="sm" color="fg.muted" lineHeight="tall">
             You're seeing this because you don't have a budget set for this category, but
             you've been spending consistently here. We calculated the recommended budget by
             taking your average spending over the last 3 months and adding a 10% buffer to
@@ -381,7 +381,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
 
       case 'unusual_expense':
         return (
-          <Text fontSize="sm" color="gray.600" lineHeight="tall">
+          <Text fontSize="sm" color="fg.muted" lineHeight="tall">
             You're seeing this because we detected a transaction that's significantly higher
             than your typical spending in this category. We use statistical analysis to
             identify expenses that are more than 2 standard deviations above your category
@@ -391,7 +391,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
 
       case 'positive_reinforcement':
         return (
-          <Text fontSize="sm" color="gray.600" lineHeight="tall">
+          <Text fontSize="sm" color="fg.muted" lineHeight="tall">
             You're seeing this because you stayed under your budget limit for this category!
             We want to celebrate your success and encourage this positive behavior. Keep up
             the great work managing your spending.
@@ -412,7 +412,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
 
       {/* Why am I seeing this? */}
       <Box w="full">
-        <Text fontSize="sm" fontWeight="bold" color="gray.700" mb={2}>
+        <Text fontSize="sm" fontWeight="bold" color="fg" mb={2}>
           Why am I seeing this?
         </Text>
         {renderExplanation()}

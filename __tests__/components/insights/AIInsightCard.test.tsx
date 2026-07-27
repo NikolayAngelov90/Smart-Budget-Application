@@ -51,11 +51,14 @@ describe('AIInsightCard', () => {
     expect(screen.getByText('Test description for insight')).toBeInTheDocument();
   });
 
-  it('should render priority badge with correct label', () => {
+  it('should render a compact priority badge for critical insights', () => {
+    // Story 16.4: the badge is a bare human label ("Critical"), not the old
+    // verbose "Priority 5 - Critical".
     const insight = createMockInsight('spending_increase', 5);
     render(<AIInsightCard insight={insight} onDismiss={mockOnDismiss} />);
 
-    expect(screen.getByText(/Priority 5 - Critical/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Critical$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Priority 5/i)).not.toBeInTheDocument();
   });
 
   it('should call onDismiss when dismiss button is clicked', () => {
@@ -87,26 +90,38 @@ describe('AIInsightCard', () => {
     });
   });
 
-  it('should render all priority levels correctly', () => {
-    const priorities = [
+  it('labels only the meaningful priorities (critical/high) and stays quiet below', () => {
+    // Story 16.4: a badge on every card was noise competing with the insight
+    // itself, so priorities 1-3 render no badge at all.
+    const labelled = [
       { value: 5, label: 'Critical' },
       { value: 4, label: 'High' },
-      { value: 3, label: 'Medium' },
-      { value: 2, label: 'Low' },
-      { value: 1, label: 'Info' },
     ];
 
-    priorities.forEach(({ value, label }) => {
-      const { rerender } = render(
+    labelled.forEach(({ value, label }) => {
+      const { unmount } = render(
         <AIInsightCard
           insight={createMockInsight('budget_recommendation', value)}
           onDismiss={mockOnDismiss}
         />
       );
 
-      expect(screen.getByText(new RegExp(`Priority ${value} - ${label}`, 'i'))).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`^${label}$`, 'i'))).toBeInTheDocument();
 
-      rerender(<div />);
+      unmount();
+    });
+
+    [3, 2, 1].forEach((value) => {
+      const { unmount } = render(
+        <AIInsightCard
+          insight={createMockInsight('budget_recommendation', value)}
+          onDismiss={mockOnDismiss}
+        />
+      );
+
+      expect(screen.queryByText(/^(Critical|High|Medium|Low|Info)$/i)).not.toBeInTheDocument();
+
+      unmount();
     });
   });
 
