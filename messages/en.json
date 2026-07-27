@@ -566,7 +566,19 @@
     "appearanceDescription": "Choose how Smart Budget looks. System follows your device setting.",
     "appearanceLight": "Light",
     "appearanceDark": "Dark",
-    "appearanceSystem": "System"
+    "appearanceSystem": "System",
+    "backToSettings": "Back to Settings",
+    "notificationsHeading": "Notifications",
+    "personalizationHeading": "Personalization",
+    "aboutHeading": "About",
+    "accountSummary": "Photo, name and email",
+    "appearanceSummary": "Light, dark or system",
+    "preferencesSummary": "Currency, date format and language",
+    "notificationsSummary": "Email digest and push alerts",
+    "personalizationSummary": "Goals-style features, values and achievements",
+    "dataSummary": "Export your data and check sync",
+    "securitySummary": "Devices, sessions and privacy",
+    "aboutSummary": "Disclaimer and legal"
   },
   "onboarding": {
     "welcome": "Welcome to Smart Budget!",
@@ -736,7 +748,8 @@
     "testSent": "Test notification sent — check your device.",
     "testNoDevices": "No subscribed devices. Turn on notifications first, then try again.",
     "testFailed": "Couldn't send the test notification.",
-    "iosHint": "On iPhone/iPad, notifications only work after you add the app to your Home Screen (Share → Add to Home Screen) and open it from there — they don't work in the Safari tab."
+    "iosHint": "On iPhone/iPad, notifications only work after you add the app to your Home Screen (Share → Add to Home Screen) and open it from there — they don't work in the Safari tab.",
+    "pushHeading": "Push notifications"
   },
   "analytics": {
     "title": "Engagement Analytics",

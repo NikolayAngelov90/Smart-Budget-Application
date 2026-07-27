@@ -10,7 +10,8 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
-import SettingsPage from '@/app/(dashboard)/settings/page';
+// Story 16.8: push toggles moved from the settings index to its Notifications sub-page.
+import SettingsPage from '@/app/(dashboard)/settings/notifications/page';
 import type { UserProfile } from '@/types/user.types';
 
 jest.mock('@/lib/services/exportService', () => ({
