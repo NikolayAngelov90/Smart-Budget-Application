@@ -22,7 +22,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button, useToast } from '@chakra-ui/react';
 import { RepeatIcon } from '@chakra-ui/icons';
-import { mutate } from 'swr';
+import { useSWRConfig } from 'swr';
 
 interface RefreshInsightsButtonProps {
   /**
@@ -58,6 +58,11 @@ export function RefreshInsightsButton({
   // Story 16.4: the label was a hardcoded English default, so it stayed
   // "Refresh Insights" in the Bulgarian UI.
   const t = useTranslations('insights');
+  // SCOPED mutate. The global `mutate` imported from 'swr' binds to SWR's own
+  // default cache, while every hook in this app reads the localStorage cache
+  // provider — so the old global call silently matched nothing and the list
+  // never revalidated after a refresh.
+  const { mutate } = useSWRConfig();
 
   const handleRefresh = async () => {
     // Prevent double-clicks (client-side check, 2 seconds)

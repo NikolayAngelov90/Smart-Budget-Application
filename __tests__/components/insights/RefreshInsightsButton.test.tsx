@@ -19,13 +19,13 @@ jest.mock('@chakra-ui/react', () => ({
   useToast: () => mockToast,
 }));
 
-// Mock SWR mutate
+// Mock the SCOPED mutate. The component used to call the global `mutate` from
+// 'swr', which binds to SWR's default cache — inert under this app's
+// localStorage cache provider, so the list never revalidated after a refresh.
+const mockMutate = jest.fn();
 jest.mock('swr', () => ({
-  mutate: jest.fn(),
+  useSWRConfig: () => ({ mutate: mockMutate }),
 }));
-
-import { mutate } from 'swr';
-const mockMutate = mutate as jest.MockedFunction<typeof mutate>;
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -209,7 +209,7 @@ describe('RefreshInsightsButton', () => {
     });
   });
 
-  it('should mutate SWR cache after successful refresh', async () => {
+  it('should revalidate the insights list via the scoped mutate after a refresh', async () => {
     const user = userEvent.setup();
 
     (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -223,10 +223,29 @@ describe('RefreshInsightsButton', () => {
     await user.click(screen.getByRole('button'));
 
     await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith(
-        expect.any(Function)
-      );
+      expect(mockMutate).toHaveBeenCalledWith(expect.any(Function));
     });
+
+    // The key filter must actually match the list's SWR key.
+    const keyFilter = mockMutate.mock.calls[0][0] as (key: unknown) => boolean;
+    expect(keyFilter('/api/insights?limit=20&offset=0&dismissed=false')).toBe(true);
+    expect(keyFilter('/api/transactions?limit=5')).toBe(false);
+  });
+
+  it('does NOT revalidate when the refresh request fails', async () => {
+    const user = userEvent.setup();
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'boom' }),
+    });
+
+    render(<RefreshInsightsButton />);
+    await user.click(screen.getByRole('button'));
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(mockMutate).not.toHaveBeenCalled();
   });
 
   it('should call onRefreshComplete callback when provided', async () => {
