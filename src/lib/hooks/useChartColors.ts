@@ -8,11 +8,16 @@
  * light-mode hex (axis text `#4A5568`, grid `#E2E8F0`), which is effectively
  * invisible on a dark canvas.
  *
- * One hook resolves the palette per colour mode so every chart stays legible in
- * both, and chart theming lives in a single place.
+ * These are CSS VARIABLES, not `useColorModeValue` hex. Chakra's colour mode is
+ * React state that only settles AFTER hydration, so a hex palette painted one
+ * light frame on top of an already-dark canvas on every load. The `data-theme`
+ * stamp from the pre-hydration script flips these variables in the very first
+ * paint instead — verified in-browser that `var()` resolves when recharts sets
+ * it as an SVG presentation attribute (`fill="var(--…)"`), not just via CSS.
+ *
+ * It also means the palette is a stable constant: no hook subscription, and
+ * charts stop re-rendering on every colour-mode change.
  */
-
-import { useColorModeValue } from '@chakra-ui/react';
 
 export interface ChartColors {
   /** Axis lines. */
@@ -34,21 +39,18 @@ export interface ChartColors {
   tooltipBorder: string;
 }
 
+const CHART_COLORS: ChartColors = {
+  axis: 'var(--chakra-colors-fg-muted)',
+  tick: 'var(--chakra-colors-fg-muted)',
+  grid: 'var(--chakra-colors-border)',
+  cursor: 'var(--chakra-colors-border-strong)',
+  income: 'var(--chakra-colors-income)',
+  expense: 'var(--chakra-colors-expense)',
+  accent: 'var(--chakra-colors-accent)',
+  tooltipBg: 'var(--chakra-colors-surface)',
+  tooltipBorder: 'var(--chakra-colors-border)',
+};
+
 export function useChartColors(): ChartColors {
-  return {
-    // paper.600 / paper.400 — readable label grey in each mode
-    axis: useColorModeValue('#5F5B52', '#A8A49A'),
-    tick: useColorModeValue('#5F5B52', '#A8A49A'),
-    // paper.200 / paper.800 — a grid you can see but not fight
-    grid: useColorModeValue('#E1DFD8', '#26241F'),
-    cursor: useColorModeValue('#CFCCC2', '#443F38'),
-    // evergreen.500 / evergreen.300 — matches the `income` semantic token
-    income: useColorModeValue('#0B5E4A', '#6BB09A'),
-    // clay.600 / clay.300 — matches the `expense` semantic token
-    expense: useColorModeValue('#AC4C30', '#D98A6D'),
-    accent: useColorModeValue('#0B5E4A', '#6BB09A'),
-    // paper.0 / paper.850 — matches `surface`
-    tooltipBg: useColorModeValue('#FFFFFF', '#1B1A16'),
-    tooltipBorder: useColorModeValue('#E1DFD8', '#26241F'),
-  };
+  return CHART_COLORS;
 }

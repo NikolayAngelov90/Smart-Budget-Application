@@ -45,6 +45,11 @@ const theme = extendTheme({
 
       'border': { default: 'paper.200', _dark: 'paper.800' },
       'border.strong': { default: 'paper.300', _dark: 'paper.700' },
+      // Ring around a USER-CHOSEN colour (category swatches). It must separate
+      // the swatch from the surface whichever colour the user picked, so it
+      // inverts: dark ink over light surfaces, light over dark. A fixed
+      // `border` value vanished for dark swatches on the dark card.
+      'border.onColor': { default: 'rgba(26,28,26,0.25)', _dark: 'rgba(246,245,242,0.32)' },
 
       'accent': { default: 'evergreen.500', _dark: 'evergreen.300' },
       'accent.emphasis': { default: 'evergreen.600', _dark: 'evergreen.400' },

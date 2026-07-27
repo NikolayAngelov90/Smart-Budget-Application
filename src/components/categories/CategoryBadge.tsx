@@ -107,9 +107,10 @@ export function CategoryBadge({
           borderRadius="full"
           bg={category.color}
           flexShrink={0}
-          // Add border for better visibility of light colors
+          // Ring so the swatch stays visible whatever colour the user picked —
+          // inverts with the mode (a fixed light ring vanished on dark cards).
           border="1px solid"
-          borderColor="border"
+          borderColor="border.onColor"
           aria-label={`${category.name} color indicator`}
         />
         <Text fontSize={dimensions.fontSize} fontWeight="normal" lineHeight="short">
@@ -142,9 +143,9 @@ export function CategoryBadge({
         py={dimensions.py}
         borderRadius="md"
         fontWeight="medium"
-        // Add border for light colors to improve contrast
+        // Inverting ring — see the dot variant above.
         border="1px solid"
-        borderColor="border"
+        borderColor="border.onColor"
       >
         {category.name}
         {showType && ` (${category.type})`}
