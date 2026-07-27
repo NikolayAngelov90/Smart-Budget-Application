@@ -81,6 +81,34 @@ function subscribe(listener: () => void) {
 // read from storage on the client; SSR always reports 'system'.
 const getServerSnapshot = (): Appearance => 'system';
 
+/**
+ * Chakra colour-mode manager backed by OUR preference.
+ *
+ * Without this, `ColorModeProvider` reads its own `chakra-ui-color-mode` key and,
+ * when that read yields nothing, falls back to `config.initialColorMode` —
+ * 'light'. Its effect runs AFTER any descendant's, so it gets the last word and
+ * re-stamps `data-theme="light"`. That silently defeats the pre-hydration script
+ * exactly where the script matters most: when localStorage is unreadable
+ * (blocked cookies/site data, partitioned context, enterprise policy) with the
+ * OS in dark. Deriving `get()` from our own resolver removes the fallback path.
+ */
+export const appearanceColorModeManager = {
+  type: 'localStorage' as const,
+  ssr: false,
+  get(): 'light' | 'dark' {
+    return resolveAppearance(readAppearance());
+  },
+  set(value: 'light' | 'dark') {
+    // Keep Chakra's mirror in step for the pre-hydration script; our key stays
+    // the source of truth, so a failure here is not fatal.
+    try {
+      window.localStorage.setItem('chakra-ui-color-mode', value);
+    } catch {
+      /* storage unavailable — the resolver above still drives the mode */
+    }
+  },
+};
+
 /** Keeps the browser-chrome colour in step with the applied mode. */
 function syncThemeColorMeta(mode: 'light' | 'dark') {
   if (typeof document === 'undefined') return;

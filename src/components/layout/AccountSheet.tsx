@@ -93,8 +93,8 @@ export function AccountSheet({
               minH="48px"
               w="full"
               textAlign="left"
-              color="expense"
-              _hover={{ bg: 'expense.subtle' }}
+              color="danger.fg"
+              _hover={{ bg: 'danger.subtle' }}
             >
               <Icon as={MdLogout} boxSize={5} />
               <Text>{t('logout')}</Text>

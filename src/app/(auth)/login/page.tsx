@@ -327,7 +327,7 @@ export default function LoginPage() {
             <Box display="flex" justifyContent="flex-end" alignItems="center">
               <Link
                 href="/forgot-password"
-                style={{ color: '#0B5E4A', fontSize: '14px', fontWeight: '600' }}
+                style={{ color: 'var(--chakra-colors-accent)', fontSize: '14px', fontWeight: '600' }}
               >
                 Forgot password?
               </Link>
@@ -340,7 +340,7 @@ export default function LoginPage() {
               bg="accent"
               color="fg.onAccent"
               _hover={{ bg: 'accent.emphasis' }}
-              _active={{ bg: 'evergreen.700' }}
+              _active={{ bg: 'accent.emphasis' }}
               _disabled={{ bg: 'border.strong', cursor: 'not-allowed' }}
               isLoading={isLoading}
               loadingText="Signing in..."
@@ -358,7 +358,7 @@ export default function LoginPage() {
         {/* Signup Link */}
         <Text textAlign="center" fontSize="sm" color="fg.muted">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" style={{ color: '#0B5E4A', fontWeight: '600' }}>
+          <Link href="/signup" style={{ color: 'var(--chakra-colors-accent)', fontWeight: '600' }}>
             Sign up
           </Link>
         </Text>

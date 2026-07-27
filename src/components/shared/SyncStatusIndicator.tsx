@@ -72,10 +72,10 @@ export function SyncStatusIndicator({
         };
       case 'offline':
         return {
-          colorScheme: 'red',
+          colorScheme: 'gray',
           icon: WarningIcon,
           text: t('offline'),
-          iconColor: 'expense',
+          iconColor: 'danger.fg',
         };
       default:
         return {

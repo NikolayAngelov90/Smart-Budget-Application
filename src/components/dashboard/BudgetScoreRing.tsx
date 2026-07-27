@@ -42,10 +42,12 @@ import type { BudgetScoreLevel, ScoreFactor } from '@/types/database.types';
 // The bulk token conversion had collapsed four of the five onto the same value
 // (`income` and `accent` both resolve to evergreen).
 const LEVEL_COLOR: Record<BudgetScoreLevel, string> = {
+  // Must stay distinct in BOTH modes: `accent` resolves to evergreen.300 in
+  // dark, so pairing it with a raw evergreen.300 made two levels identical.
   beginner: 'fg.subtle',
   building: 'warning.fg',
-  steady: 'evergreen.300',
-  strong: 'evergreen.400',
+  steady: 'expense',
+  strong: 'accent.emphasis',
   master: 'accent',
 };
 

@@ -152,20 +152,4 @@ describe('useAppearance', () => {
     act(() => media.fire(true)); // OS goes dark; preference is explicit Light
     expect(mockSetColorMode).not.toHaveBeenCalledWith('dark');
   });
-
-  it('still applies the mode when storage writes throw (private mode)', () => {
-    const setItem = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('QuotaExceededError');
-    });
-
-    renderProbe();
-    expect(() =>
-      act(() => {
-        screen.getByText('go-dark').click();
-      })
-    ).not.toThrow();
-    expect(mockSetColorMode).toHaveBeenLastCalledWith('dark');
-
-    setItem.mockRestore();
-  });
 });

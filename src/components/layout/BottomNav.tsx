@@ -144,7 +144,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
             color="fg.onAccent"
             boxShadow="accent"
             _hover={{ bg: 'accent.emphasis', transform: 'translateY(-1px) scale(1.04)' }}
-            _active={{ bg: 'evergreen.700', transform: 'scale(0.96)' }}
+            _active={{ bg: 'accent.emphasis', transform: 'scale(0.96)' }}
             transition="all 0.16s cubic-bezier(0.4, 0, 0.2, 1)"
           />
           <Text fontSize="2xs" color="accent" fontWeight="semibold" mt="3px" lineHeight={1} letterSpacing="tight">

@@ -108,7 +108,7 @@ export function HouseholdSection() {
           {isLoading ? (
             <Skeleton height="40px" borderRadius="md" />
           ) : error ? (
-            <Text fontSize="sm" color="expense">
+            <Text fontSize="sm" color="danger.fg">
               {t('loadError')}
             </Text>
           ) : household ? (

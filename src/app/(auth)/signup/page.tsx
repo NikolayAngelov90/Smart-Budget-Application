@@ -440,7 +440,7 @@ export default function SignupPage() {
               bg="accent"
               color="fg.onAccent"
               _hover={{ bg: 'accent.emphasis' }}
-              _active={{ bg: 'evergreen.700' }}
+              _active={{ bg: 'accent.emphasis' }}
               isLoading={isLoading}
               loadingText="Creating account..."
               isDisabled={!isValid || isLoading}
@@ -457,7 +457,7 @@ export default function SignupPage() {
         {/* Login Link */}
         <Text textAlign="center" fontSize="sm" color="fg.muted">
           Already have an account?{' '}
-          <Link href="/login" style={{ color: '#0B5E4A', fontWeight: '600' }}>
+          <Link href="/login" style={{ color: 'var(--chakra-colors-accent)', fontWeight: '600' }}>
             Sign in
           </Link>
         </Text>

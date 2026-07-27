@@ -140,7 +140,7 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
           aria-label="Delete transaction"
           icon={<DeleteIcon />}
           variant="ghost"
-          color="white"
+          color="fg.onAccent"
           minH="48px"
           minW="48px"
           _hover={{ bg: 'clay.700' }}
@@ -165,7 +165,7 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
           aria-label="Edit transaction"
           icon={<EditIcon />}
           variant="ghost"
-          color="white"
+          color="fg.onAccent"
           minH="48px"
           minW="48px"
           _hover={{ bg: 'accent.emphasis' }}

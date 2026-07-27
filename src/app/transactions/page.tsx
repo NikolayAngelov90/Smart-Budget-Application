@@ -455,7 +455,7 @@ function TransactionsContent() {
         isClosable: true,
         position: 'bottom',
         render: ({ onClose }) => (
-          <Box p={4} bg="income" borderRadius="lg" color="white">
+          <Box p={4} bg="income" borderRadius="lg" color="fg.onAccent">
             <HStack justify="space-between">
               <Text>{t('deletedSuccess')}</Text>
               <Button

@@ -252,7 +252,7 @@ const theme = extendTheme({
             bg: 'accent',
             color: 'fg.onAccent',
             _hover: { bg: 'accent.emphasis', _disabled: { bg: 'accent' } },
-            _active: { bg: 'evergreen.700' },
+            _active: { bg: 'accent.emphasis' },
           };
         },
         outline: {
@@ -268,8 +268,8 @@ const theme = extendTheme({
         soft: {
           bg: 'accent.subtle',
           color: 'accent.emphasis',
-          _hover: { bg: 'evergreen.100' },
-          _active: { bg: 'evergreen.200' },
+          _hover: { bg: 'accent.subtle' },
+          _active: { bg: 'accent.subtle' },
         },
       },
       defaultProps: { colorScheme: 'brand' },

@@ -121,9 +121,9 @@ export function AIBudgetCoach() {
 
       {/* Error State */}
       {error && (
-        <Card borderLeft="4px" borderColor="expense">
+        <Card borderLeft="4px" borderColor="danger.fg">
           <CardBody>
-            <Text color="expense">
+            <Text color="danger.fg">
               {t('unableToLoad')}
             </Text>
           </CardBody>
