@@ -45,12 +45,12 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
               {fmt(item.price)}
             </Text>
             {item.category_name && (
-              <Badge bg="surface.sunken" color="fg.muted" fontSize="xs">
+              <Badge colorScheme="paper" fontSize="xs">
                 {item.category_name}
               </Badge>
             )}
             {impact.aligned_value && (
-              <Badge bg="achievement.surface" color="warning.fg" fontSize="xs">
+              <Badge colorScheme="amber" fontSize="xs">
                 {t('alignsWith', { value: impact.aligned_value })}
               </Badge>
             )}
@@ -60,7 +60,7 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
               </Badge>
             )}
             {item.status === 'removed' && (
-              <Badge bg="surface.sunken" color="fg.muted" fontSize="xs">
+              <Badge colorScheme="paper" fontSize="xs">
                 {t('removed')}
               </Badge>
             )}

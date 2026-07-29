@@ -25,6 +25,9 @@ const ROOT = path.resolve(__dirname, '../../..');
 const DIRS = [
   'src/components/goals',
   'src/components/household',
+  // Changed by Story 16.7 and rendered in the Header on every page — the first
+  // version of this guard omitted it, which is exactly how it drifted before.
+  'src/components/shared',
   'src/app/goals',
   'src/app/household',
 ];
@@ -34,11 +37,17 @@ function sourceFiles(): string[] {
   for (const dir of DIRS) {
     const abs = path.join(ROOT, dir);
     if (!fs.existsSync(abs)) continue;
-    for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
-      if (entry.isFile() && /\.tsx?$/.test(entry.name)) {
-        out.push(path.join(abs, entry.name));
+    const walk = (d: string) => {
+      for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+        const full = path.join(d, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== '__tests__') walk(full);
+        } else if (/\.tsx?$/.test(entry.name)) {
+          out.push(full);
+        }
       }
-    }
+    };
+    walk(abs);
   }
   return out;
 }
@@ -131,34 +140,34 @@ const amber = colors.amber as Record<string, string>;
  */
 const PAIRINGS: { name: string; fg: RGB; bg: RGB }[] = [
   {
-    name: 'admin role badge — light (accent on accent.subtle)',
-    fg: hex(evergreen['500']!),
-    bg: hex(evergreen['50']!),
+    name: 'admin role badge — light (income subtle)',
+    fg: hex(evergreen['800']!),
+    bg: hex(evergreen['100']!),
   },
   {
-    name: 'admin role badge — dark (accent on accent.subtle over surface)',
-    fg: hex(evergreen['300']!),
-    bg: over([11, 94, 74], 0.22, hex(paper['850']!)),
+    name: 'admin role badge — dark (income subtle)',
+    fg: hex(evergreen['200']!),
+    bg: over(hex(evergreen['200']!), 0.16, hex(paper['850']!)),
   },
   {
-    name: 'member role badge — light (fg.muted on surface.sunken)',
-    fg: hex(paper['600']!),
+    name: 'member role badge — light (paper subtle)',
+    fg: hex(paper['800']!),
     bg: hex(paper['100']!),
   },
   {
-    name: 'member role badge — dark (fg.muted on surface.sunken)',
-    fg: hex(paper['400']!),
-    bg: hex(paper['900']!),
+    name: 'member role badge — dark (paper subtle)',
+    fg: hex(paper['200']!),
+    bg: over(hex(paper['200']!), 0.16, hex(paper['850']!)),
   },
   {
-    name: 'milestone badge — light (warning.fg on achievement.surface)',
-    fg: hex(amber['700']!),
-    bg: hex('#FFFFF0'),
+    name: 'milestone badge — light (amber subtle)',
+    fg: hex(amber['800']!),
+    bg: hex(amber['100']!),
   },
   {
-    name: 'milestone badge — dark (warning.fg on achievement.surface over surface)',
-    fg: hex(amber['300']!),
-    bg: over([214, 158, 46], 0.16, hex(paper['850']!)),
+    name: 'milestone badge — dark (amber subtle)',
+    fg: hex(amber['200']!),
+    bg: over(hex(amber['200']!), 0.16, hex(paper['850']!)),
   },
 ];
 
@@ -168,5 +177,98 @@ describe('Story 16.7 badge pairings meet WCAG AA', () => {
     // accent.emphasis (evergreen.400) and no rendered audit caught it, because
     // the QA account has no household members to render a role badge at all.
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+/**
+ * A badge is two contrast problems, not one. Checking only text-on-badge
+ * passes a chip whose background is invisible against the card it sits on —
+ * which is exactly what `achievement.surface` (yellow.50, 1.01:1 on a white
+ * Card) did. These assert the PILL is distinguishable from the card.
+ *
+ * The bar is deliberately low: a subtle badge is meant to be quiet. It is set
+ * just under what Chakra's own `subtle` recipe achieves, so the guard fires on
+ * "the pill disappeared", not on "the pill is understated".
+ */
+const CARD_LIGHT = hex(paper['0']!);
+const CARD_DARK = hex(paper['850']!);
+const MIN_PILL = 1.15;
+
+const transparentize = (h: string, alpha: number, base: RGB) => over(hex(h), alpha, base);
+
+const PILLS: { name: string; light: RGB; dark: RGB }[] = [
+  {
+    name: 'amber badge (milestone)',
+    light: hex(amber['100']!),
+    dark: transparentize(amber['200']!, 0.16, CARD_DARK),
+  },
+  {
+    name: 'paper badge (neutral / member role)',
+    light: hex(paper['100']!),
+    dark: transparentize(paper['200']!, 0.16, CARD_DARK),
+  },
+  {
+    name: 'income badge (admin role)',
+    light: hex(evergreen['100']!),
+    dark: transparentize(evergreen['200']!, 0.16, CARD_DARK),
+  },
+];
+
+describe('Story 16.7 badges stay visible as pills against their card', () => {
+  it.each(PILLS)('$name — light', ({ light }) => {
+    expect(contrast(light, CARD_LIGHT)).toBeGreaterThanOrEqual(MIN_PILL);
+  });
+
+  it.each(PILLS)('$name — dark', ({ dark }) => {
+    expect(contrast(dark, CARD_DARK)).toBeGreaterThanOrEqual(MIN_PILL);
+  });
+
+  it('rejects a card-background token used as a badge background', () => {
+    // achievement.surface is for CARDS. Used as a chip on a white card it is
+    // 1.01:1 — the shape vanishes and the label floats. Kept as an executable
+    // note so nobody reaches for it again.
+    const achievementSurfaceLight = hex('#FFFFF0');
+    expect(contrast(achievementSurfaceLight, CARD_LIGHT)).toBeLessThan(MIN_PILL);
+  });
+});
+
+
+/**
+ * The contrast blocks above assert facts about `colors.ts`. On their own they
+ * do NOT stop a component from pointing at a different token — flipping the
+ * admin badge back to `accent.emphasis` leaves every one of them green, which
+ * is precisely the regression this story fixed.
+ *
+ * These close that loop by reading the component source, so the guard fails if
+ * the badge stops using the treatment whose contrast is verified above.
+ */
+describe('role badges keep pointing at the verified treatment', () => {
+  const roleBadgeFiles = [
+    'src/components/household/HouseholdMembers.tsx',
+    'src/components/household/HouseholdSection.tsx',
+  ];
+
+  it.each(roleBadgeFiles)('%s uses the income/paper subtle recipe', (rel) => {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+
+    expect(src).toMatch(/role === 'admin'/);
+    expect(src).toMatch(/\{ colorScheme: 'income' \}/);
+    expect(src).toMatch(/\{ colorScheme: 'paper' \}/);
+
+    // The exact pairing that shipped at 4.01:1 in dark mode.
+    expect(src).not.toMatch(/color: 'accent\.emphasis'/);
+    // A card-background token used as a chip background (1.01:1 on a white card).
+    expect(src).not.toMatch(/bg: 'achievement\.surface'/);
+  });
+
+  it('milestone badges use the amber recipe, not a card-surface token', () => {
+    for (const rel of [
+      'src/components/goals/GoalCard.tsx',
+      'src/components/goals/MilestoneOverlay.tsx',
+      'src/components/goals/WishlistItem.tsx',
+    ]) {
+      const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+      expect(src).not.toMatch(/bg="achievement\.surface"/);
+    }
   });
 });

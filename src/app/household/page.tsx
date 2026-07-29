@@ -47,7 +47,7 @@ export default function HouseholdPage() {
   }, []);
 
   return (
-    <Container maxW="container.lg" py={{ base: 4, md: 8 }}>
+    <Container maxW="container.lg" px={{ base: 4, md: 6 }} py={{ base: 4, md: 8 }}>
       <VStack align="stretch" spacing={1} mb={6}>
         <Heading as="h1" size="xl" color="fg" fontFamily="heading" letterSpacing="tight">
           {t('title')}

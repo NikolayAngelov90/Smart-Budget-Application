@@ -124,8 +124,8 @@ export function HouseholdSection() {
                 </VStack>
                 <Badge
                   {...(household.role === 'admin'
-                    ? { bg: 'accent.subtle', color: 'accent' }
-                    : { bg: 'surface.sunken', color: 'fg.muted' })}
+                    ? { colorScheme: 'income' }
+                    : { colorScheme: 'paper' })}
                   borderRadius="full"
                   px={3}
                   py={1}

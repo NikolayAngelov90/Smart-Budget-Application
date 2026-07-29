@@ -79,8 +79,8 @@ export function HouseholdMembers({ isAdmin }: { isAdmin: boolean }) {
               </Text>
               <Badge
                 {...(m.role === 'admin'
-                  ? { bg: 'accent.subtle', color: 'accent' }
-                  : { bg: 'surface.sunken', color: 'fg.muted' })}
+                  ? { colorScheme: 'income' }
+                  : { colorScheme: 'paper' })}
                 borderRadius="full"
                 px={2}
                 fontSize="10px"

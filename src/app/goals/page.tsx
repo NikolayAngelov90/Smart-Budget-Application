@@ -58,7 +58,7 @@ export default function GoalsPage() {
 
   return (
     <AppLayout>
-      <Container maxW="container.xl" py={{ base: 4, md: 8 }}>
+      <Container maxW="container.xl" px={{ base: 4, md: 6 }} py={{ base: 4, md: 8 }}>
         {/* Page header */}
         <Flex justify="space-between" align="center" mb={6} flexWrap="wrap" gap={3}>
           <Heading as="h1" size="xl" color="fg" fontFamily="heading" letterSpacing="tight">

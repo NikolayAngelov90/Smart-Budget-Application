@@ -10,6 +10,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
+import theme from '@/theme';
 import { HouseholdMembers } from '../HouseholdMembers';
 
 const mockUseHouseholdMembers = jest.fn();
@@ -29,8 +30,35 @@ const member = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const withTheme = ({ children }: { children: React.ReactNode }) => (
+  <ChakraProvider theme={theme}>{children}</ChakraProvider>
+);
+
 const renderList = (isAdmin = true) =>
-  render(<HouseholdMembers isAdmin={isAdmin} />, { wrapper: ChakraProvider });
+  render(<HouseholdMembers isAdmin={isAdmin} />, { wrapper: withTheme });
+
+/** Emotion writes its rules into <style> tags; jsdom will not resolve them via
+ *  getComputedStyle, so read the generated CSS directly. */
+const cssFor = (el: Element): string => {
+  const classes = el.className.split(/\s+/).filter((c) => c.startsWith('css-'));
+  if (classes.length === 0) return '';
+  // Emotion inserts through CSSOM here, so <style>.textContent is empty —
+  // the rules are only reachable via styleSheets.
+  const rules: string[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    let cssRules: CSSRuleList;
+    try {
+      cssRules = sheet.cssRules;
+    } catch {
+      continue;
+    }
+    for (const rule of Array.from(cssRules)) {
+      const text = rule.cssText;
+      if (classes.some((c) => text.includes(`.${c}`))) rules.push(text);
+    }
+  }
+  return rules.join(' ');
+};
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -60,9 +88,13 @@ describe('HouseholdMembers', () => {
 
     const badges = screen.getAllByText(/^role(Admin|Member)$/);
     expect(badges).toHaveLength(2);
-    // jsdom does not resolve Chakra's CSS variables, so computed colour is
-    // useless here; Emotion emits a different class per style set, which is.
-    expect(badges[0]!.className).not.toBe(badges[1]!.className);
+    // Not just "different classes" — that passes even if one badge is
+    // invisible. Both must actually paint a background, and a different one.
+    const adminCss = cssFor(badges[0]!);
+    const memberCss = cssFor(badges[1]!);
+    expect(adminCss).toMatch(/background/);
+    expect(memberCss).toMatch(/background/);
+    expect(adminCss).not.toBe(memberCss);
   });
 
   it('still renders a legible badge for an unrecognised role', () => {
@@ -79,6 +111,24 @@ describe('HouseholdMembers', () => {
     const badge = screen.getByText('roleMember');
     expect(badge).toBeInTheDocument();
     expect(badge.className).toMatch(/chakra-badge/);
+  });
+
+  it('never offers to remove yourself, even as admin', () => {
+    // The safety property: an admin removing themselves would orphan the
+    // household. Guarded by `!m.isSelf`, which nothing exercised before.
+    mockUseHouseholdMembers.mockReturnValue({
+      members: [
+        member({ user_id: 'me', email: 'me@example.com', role: 'admin', isSelf: true }),
+        member({ user_id: 'u2', email: 'mate@example.com', role: 'member' }),
+      ],
+      isLoading: false,
+      mutate: jest.fn(),
+    });
+    renderList(true);
+
+    expect(screen.getByText('you')).toBeInTheDocument();
+    // One remove button — for the other member, not for yourself.
+    expect(screen.getAllByText('remove')).toHaveLength(1);
   });
 
   it('offers removal only to admins', () => {

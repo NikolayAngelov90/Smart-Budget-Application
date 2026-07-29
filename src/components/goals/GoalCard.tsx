@@ -188,7 +188,7 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
           />
 
           {highestMilestone !== null && (
-            <Badge bg="achievement.surface" color="warning.fg" mt={2} data-testid="milestone-badge">
+            <Badge colorScheme="amber" mt={2} data-testid="milestone-badge">
               {t('milestoneBadge', { percentage: highestMilestone })}
             </Badge>
           )}

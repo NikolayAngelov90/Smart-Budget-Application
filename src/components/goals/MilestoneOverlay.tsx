@@ -31,14 +31,17 @@ import { useTranslations } from 'next-intl';
 
 // Theme palette — evergreen/clay/amber. A celebration should still look
 // like it belongs to this app.
+// Theme palette, mid-tones only: the Modal is Chakra's default (white in
+// light, gray.700 in dark), so very light or very dark pieces disappear in one
+// mode or the other.
 const CONFETTI_COLORS = [
-  '#0B5E4A', // evergreen.500
   '#3C9179', // evergreen.400
+  '#6BB09A', // evergreen.300
   '#9FCCBD', // evergreen.200
   '#C4593A', // clay.500
   '#D98A6D', // clay.300
-  '#C9862A', // amber
-  '#E1DFD8', // paper.200
+  '#C9862A', // amber.500
+  '#E7B355', // amber.300
 ];
 
 function generateConfettiPieces() {
@@ -153,7 +156,7 @@ export function MilestoneOverlay({
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0 }}
             >
-              <Badge bg="achievement.surface" color="warning.fg" fontSize="2xl" px={3} py={1}>
+              <Badge colorScheme="amber" fontSize="2xl" px={3} py={1}>
                 {emoji}
               </Badge>
             </motion.div>
