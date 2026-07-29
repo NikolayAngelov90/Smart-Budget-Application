@@ -77,12 +77,19 @@ export function HouseholdMembers({ isAdmin }: { isAdmin: boolean }) {
               <Text fontSize="sm" color="fg" isTruncated>
                 {m.isSelf ? t('you') : m.email}
               </Text>
-              <Badge colorScheme={m.role === 'admin' ? 'blue' : 'gray'} borderRadius="full" px={2} fontSize="10px">
+              <Badge
+                {...(m.role === 'admin'
+                  ? { colorScheme: 'income' }
+                  : { colorScheme: 'paper' })}
+                borderRadius="full"
+                px={2}
+                fontSize="10px"
+              >
                 {m.role === 'admin' ? t('roleAdmin') : t('roleMember')}
               </Badge>
             </HStack>
             {isAdmin && !m.isSelf && (
-              <Button size="xs" variant="ghost" colorScheme="red" flexShrink={0} onClick={() => askRemove(m)}>
+              <Button size="sm" variant="ghost" colorScheme="red" flexShrink={0} onClick={() => askRemove(m)}>
                 {t('remove')}
               </Button>
             )}

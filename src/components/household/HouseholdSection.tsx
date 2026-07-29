@@ -122,7 +122,14 @@ export function HouseholdSection() {
                     {t('memberSince')}
                   </Text>
                 </VStack>
-                <Badge colorScheme={household.role === 'admin' ? 'blue' : 'gray'} borderRadius="full" px={3} py={1}>
+                <Badge
+                  {...(household.role === 'admin'
+                    ? { colorScheme: 'income' }
+                    : { colorScheme: 'paper' })}
+                  borderRadius="full"
+                  px={3}
+                  py={1}
+                >
                   {household.role === 'admin' ? t('roleAdmin') : t('roleMember')}
                 </Badge>
               </HStack>

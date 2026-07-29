@@ -158,7 +158,7 @@ export function WhatIfSimulator() {
                         min={0}
                         max={100}
                         step={5}
-                        colorScheme="green"
+                        colorScheme="income"
                         onChange={(value) =>
                           setReductions((prev) => ({ ...prev, [category.category_id]: value }))
                         }
@@ -191,7 +191,7 @@ export function WhatIfSimulator() {
                         <Checkbox
                           key={sub.id}
                           isChecked={cancelled.has(sub.id)}
-                          colorScheme="green"
+                          colorScheme="income"
                           py={{ base: 2, md: 0.5 }}
                           onChange={(e) =>
                             setCancelled((prev) => {
@@ -244,7 +244,7 @@ export function WhatIfSimulator() {
                 </Stat>
 
                 {projection.goal_impact && projection.goal_impact.days_earlier > 0 && (
-                  <Badge colorScheme="green" px={2} py={1} borderRadius="md" whiteSpace="normal">
+                  <Badge colorScheme="income" px={2} py={1} borderRadius="md" whiteSpace="normal">
                     {projection.goal_impact.months_earlier >= 1
                       ? t('goalEarlierMonths', {
                           goal: projection.goal_impact.goal_name,

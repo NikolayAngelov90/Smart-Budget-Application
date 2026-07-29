@@ -129,7 +129,7 @@ export function HouseholdInvites() {
                   {inv.email}
                 </Text>
                 {inv.isExpired ? (
-                  <Badge colorScheme="gray" fontSize="10px">
+                  <Badge colorScheme="paper" fontSize="10px">
                     {t('expired')}
                   </Badge>
                 ) : (

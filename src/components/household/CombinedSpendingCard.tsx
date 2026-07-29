@@ -48,7 +48,7 @@ export function CombinedSpendingCard() {
                       {c.category_name}
                     </Text>
                     {c.visibility_level === 'category_only' && (
-                      <Badge colorScheme="gray" fontSize="10px">
+                      <Badge colorScheme="paper" fontSize="10px">
                         {t('totalOnly')}
                       </Badge>
                     )}

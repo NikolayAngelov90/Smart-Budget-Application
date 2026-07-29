@@ -58,7 +58,7 @@ export function ContributionProgressCard() {
                     value={pct}
                     size="xs"
                     borderRadius="full"
-                    colorScheme={s.progress >= 1 ? 'green' : 'blue'}
+                    colorScheme="brand"
                   />
                 </VStack>
               );

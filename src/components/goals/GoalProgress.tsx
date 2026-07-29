@@ -44,7 +44,7 @@ export function GoalProgress({ currentAmount, targetAmount, currency }: GoalProg
     <Box>
       <Progress
         value={percentage}
-        colorScheme={isCompleted ? 'green' : 'blue'}
+        colorScheme="brand"
         borderRadius="full"
         size="sm"
         mb={1}
@@ -53,7 +53,7 @@ export function GoalProgress({ currentAmount, targetAmount, currency }: GoalProg
         {formatAmount(currentAmount, currency)} / {formatAmount(targetAmount, currency)}
       </Text>
       {isCompleted ? (
-        <Badge colorScheme="green" mt={1}>
+        <Badge colorScheme="income" mt={1}>
           {t('completed')}
         </Badge>
       ) : (
