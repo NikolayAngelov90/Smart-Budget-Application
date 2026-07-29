@@ -42,6 +42,14 @@ interface Captured {
  * Each `.from('transactions')` call returns a fresh chain, so the two queries
  * (current window, previous window) can be told apart by call order.
  */
+/** Explicit, because `gte` returns the chain it is defined in. */
+interface QueryChain {
+  select: jest.Mock;
+  eq: jest.Mock;
+  gte: jest.Mock;
+  lte: jest.Mock;
+}
+
 function makeClient(rowsPerQuery: object[][], captured: Captured) {
   let call = 0;
   return {
@@ -52,7 +60,7 @@ function makeClient(rowsPerQuery: object[][], captured: Captured) {
     },
     from: jest.fn(() => {
       const index = call++;
-      const chain = {
+      const chain: QueryChain = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         gte: jest.fn((_col: string, value: string) => {
