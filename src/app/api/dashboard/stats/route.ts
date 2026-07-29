@@ -1,8 +1,10 @@
 /**
  * Dashboard Stats API Route
  * Story 5.2: Financial Summary Cards
+ * Story 16.6: period selector (week / month / quarter / year)
  *
- * GET /api/dashboard/stats?month=YYYY-MM
+ * GET /api/dashboard/stats?period=week|month|quarter|year
+ * GET /api/dashboard/stats?month=YYYY-MM   (still supported)
  * Returns aggregated financial stats for dashboard (balance, income, expenses, trends)
  */
 
@@ -12,6 +14,11 @@ import { createClient } from '@/lib/supabase/server';
 import { calculateTrend } from '@/lib/utils/currency';
 import { getExchangeRates } from '@/lib/services/exchangeRateService';
 import { logger } from '@/lib/utils/logger';
+import {
+  isDashboardPeriod,
+  resolvePeriodRanges,
+  type DashboardPeriod,
+} from '@/lib/utils/dashboardPeriod';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -30,6 +37,11 @@ export interface DashboardStatsResponse {
     trend: number;
   };
   month: string; // YYYY-MM format
+  /** Story 16.6: which window `current` covers. */
+  period: DashboardPeriod;
+  /** Inclusive yyyy-MM-dd bounds of `current`, for display and debugging. */
+  periodStart: string;
+  periodEnd: string;
 }
 
 interface AggregateResult {
@@ -46,7 +58,7 @@ interface TransactionRow {
 
 /**
  * GET handler for dashboard stats
- * Aggregates income/expense data for current and previous month
+ * Aggregates income/expense data for the selected period and the preceding one
  */
 export async function GET(request: NextRequest) {
   try {
@@ -65,35 +77,23 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const monthParam = searchParams.get('month');
+    const periodParam = searchParams.get('period');
+    // Unknown values fall back to 'month' rather than 400ing: the period is a
+    // display preference, and a stale bookmark should still render a dashboard.
+    const period: DashboardPeriod = isDashboardPeriod(periodParam) ? periodParam : 'month';
     // Preferred currency for cross-currency conversion (default EUR)
     const preferredCurrency = (searchParams.get('currency') || 'EUR').toUpperCase();
 
-    // Calculate current month date range.
+    // Calculate the date ranges.
     // transactions.date is a DATE column, so compare against plain YYYY-MM-DD strings —
     // toISOString() shifts local midnight into the previous UTC day on non-UTC servers.
+    //
+    // `month=YYYY-MM` pins the window to that calendar month and always uses
+    // month-over-month, exactly as before this story; `period` is ignored then.
     const currentDate = monthParam ? new Date(`${monthParam}-01T00:00:00`) : new Date();
-    const currentMonthStart = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1
-    );
-    const currentMonthEnd = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1,
-      0
-    );
-
-    // Calculate previous month date range
-    const previousMonthStart = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() - 1,
-      1
-    );
-    const previousMonthEnd = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      0
-    );
+    const ranges = resolvePeriodRanges(monthParam ? 'month' : period, currentDate);
+    const { start: currentMonthStart, end: currentMonthEnd } = ranges.current;
+    const { start: previousMonthStart, end: previousMonthEnd } = ranges.previous;
 
     // Query current month aggregation
     const { data: currentData, error: currentError } = await supabase
@@ -180,6 +180,9 @@ export async function GET(request: NextRequest) {
         trend: expensesTrend,
       },
       month: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`,
+      period: monthParam ? 'month' : period,
+      periodStart: format(currentMonthStart, 'yyyy-MM-dd'),
+      periodEnd: format(currentMonthEnd, 'yyyy-MM-dd'),
     };
 
     return NextResponse.json(response);

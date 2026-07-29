@@ -50,7 +50,7 @@ import { advanceStreak, localDayKey } from '@/lib/ai/streakEngine';
 import type { StreakResponse } from '@/types/database.types';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { FeatureIntroCard } from '@/components/dashboard/FeatureIntroCard';
-import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
+import { useDashboardStats, DASHBOARD_STATS_KEY } from '@/lib/hooks/useDashboardStats';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 
@@ -73,7 +73,14 @@ export default function DashboardPage() {
       const now = new Date();
       const heatmapKey = `/api/heatmap?year=${now.getFullYear()}&month=${now.getMonth() + 1}`;
       await Promise.all([
-        mutate('/api/dashboard/stats', undefined, { revalidate: true }),
+        // Story 16.6: the hero's key now carries ?period=…&currency=…, so an
+        // EXACT-key mutate no longer matches it — the hero would go stale
+        // after a refresh with no error. Match by prefix instead.
+        mutate(
+          (key) => typeof key === 'string' && key.startsWith(DASHBOARD_STATS_KEY),
+          undefined,
+          { revalidate: true }
+        ),
         mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),
         mutate('/api/dashboard/trends', undefined, { revalidate: true }),
         mutate(heatmapKey, undefined, { revalidate: true }),
@@ -326,7 +333,12 @@ export default function DashboardPage() {
             // Revalidation failure is non-fatal; the next focus/refresh reconciles
           });
           await Promise.all([
-            mutate('/api/dashboard/stats', undefined, { revalidate: true }),
+            // Prefix match — see the pull-to-refresh note above.
+            mutate(
+              (key) => typeof key === 'string' && key.startsWith(DASHBOARD_STATS_KEY),
+              undefined,
+              { revalidate: true }
+            ),
             mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),
             mutate('/api/dashboard/trends', undefined, { revalidate: true }),
             mutate('/api/values/spending', undefined, { revalidate: true }),

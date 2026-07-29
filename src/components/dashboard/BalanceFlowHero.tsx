@@ -20,6 +20,8 @@ import { format } from 'date-fns';
 import { bg } from 'date-fns/locale';
 import { useLocale, useTranslations } from 'next-intl';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
+import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
+import type { DashboardPeriod } from '@/lib/utils/dashboardPeriod';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -87,15 +89,60 @@ function FlowStat({ label, amount, color, align = 'start', emphasis = false }: F
   );
 }
 
+/**
+ * Story 16.6: every string that used to be month-worded, keyed by period.
+ * A lookup rather than string-building because Bulgarian inflects these
+ * differently and interpolating a period name produces broken grammar.
+ */
+const COPY: Record<
+  DashboardPeriod,
+  { net: string; flow: string; vsPrevious: string; kept: string; overspent: string; empty: string }
+> = {
+  week: {
+    net: 'netThisWeek',
+    flow: 'flowWeek',
+    vsPrevious: 'vsLastWeek',
+    kept: 'keptShareWeek',
+    overspent: 'overspentWeek',
+    empty: 'flowEmptyWeek',
+  },
+  month: {
+    net: 'netThisMonth',
+    flow: 'thisMonth',
+    vsPrevious: 'vsLastMonth',
+    kept: 'keptShare',
+    overspent: 'overspentMonth',
+    empty: 'flowEmpty',
+  },
+  quarter: {
+    net: 'netThisQuarter',
+    flow: 'flowQuarter',
+    vsPrevious: 'vsPrevQuarter',
+    kept: 'keptShareQuarter',
+    overspent: 'overspentQuarter',
+    empty: 'flowEmptyQuarter',
+  },
+  year: {
+    net: 'netThisYear',
+    flow: 'flowYear',
+    vsPrevious: 'vsLastYear',
+    kept: 'keptShareYear',
+    overspent: 'overspentYear',
+    empty: 'flowEmptyYear',
+  },
+};
+
 export function BalanceFlowHero() {
   const t = useTranslations('dashboard');
+  const [period, setPeriod] = useState<DashboardPeriod>('month');
+  const copy = COPY[period];
   const locale = useLocale();
   const dateLocale = locale === 'bg' ? bg : undefined;
   const reduce = useReducedMotion();
   const { preferences } = useUserPreferences();
   const currencyCode = preferences?.currency_format;
   const { data: profile } = useUserProfile(true);
-  const { data, error, isLoading, mutate } = useDashboardStats(undefined, currencyCode);
+  const { data, error, isLoading, mutate } = useDashboardStats(undefined, currencyCode, period);
 
   // Keep the hero live as transactions change (this replaces DashboardStats'
   // realtime subscription now that the hero is the primary overview).
@@ -160,10 +207,17 @@ export function BalanceFlowHero() {
         </Text>
       </Flex>
 
-      {/* Primary: total balance */}
+      {/* Story 16.6: the period this whole hero describes. Above the figure,
+          because it changes what the figure MEANS — a control placed below
+          would read as filtering something already stated. */}
+      <Box mb={{ base: 5, md: 6 }}>
+        <PeriodSelector value={period} onChange={setPeriod} />
+      </Box>
+
+      {/* Primary: net for the selected period */}
       <VStack align="start" spacing={1} mb={{ base: 6, md: 7 }}>
         <Text fontSize="2xs" fontWeight="semibold" letterSpacing="wider" textTransform="uppercase" color="fg.muted">
-          {t('totalBalance')}
+          {t(copy.net)}
         </Text>
         {isLoading ? (
           <Skeleton height={{ base: '48px', md: '60px' }} width="min(320px, 70%)" borderRadius="lg" />
@@ -195,7 +249,7 @@ export function BalanceFlowHero() {
                   {Math.abs(balanceTrend).toFixed(1)}%
                 </Text>
                 <Text fontSize="xs" fontWeight={500} lineHeight={1} display={{ base: 'none', sm: 'block' }}>
-                  {t('vsLastMonth')}
+                  {t(copy.vsPrevious)}
                 </Text>
               </HStack>
             )}
@@ -206,7 +260,7 @@ export function BalanceFlowHero() {
       {/* Secondary: this month's flow */}
       <Box>
         <Text fontSize="2xs" fontWeight="semibold" letterSpacing="wider" textTransform="uppercase" color="fg.muted" mb={2.5}>
-          {t('thisMonth')}
+          {t(copy.flow)}
         </Text>
 
         {isLoading ? (
@@ -255,10 +309,10 @@ export function BalanceFlowHero() {
         {!isLoading && (
           <Text fontSize="sm" color="fg.muted" mt={4} lineHeight={1.5}>
             {flowTotal === 0
-              ? t('flowEmpty')
+              ? t(copy.empty)
               : keptShare !== null && keptShare >= 0
-                ? t('keptShare', { percent: keptShare })
-                : t('overspentMonth', { amount: formatCurrency(Math.abs(remaining), undefined, currencyCode) })}
+                ? t(copy.kept, { percent: keptShare })
+                : t(copy.overspent, { amount: formatCurrency(Math.abs(remaining), undefined, currencyCode) })}
           </Text>
         )}
       </Box>
