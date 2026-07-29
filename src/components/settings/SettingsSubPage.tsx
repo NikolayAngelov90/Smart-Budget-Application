@@ -42,6 +42,10 @@ export function SettingsSubPage({ titleKey, descriptionKey, children }: Settings
               display="inline-flex"
               alignItems="center"
               _hover={{ color: 'accent' }}
+              // Matches the sidebar's focus treatment; without it this link
+              // fell back to the UA ring, which is near-invisible on the dark
+              // canvas — and this is the primary way out of a sub-page.
+              _focusVisible={{ boxShadow: 'focus', outline: 'none', borderRadius: 'md' }}
               aria-label={t('backToSettings')}
             >
               <ChevronLeftIcon boxSize={5} />

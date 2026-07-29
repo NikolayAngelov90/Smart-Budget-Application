@@ -17,17 +17,16 @@ import {
 } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import { useTranslations } from 'next-intl';
-import { useSWRConfig } from 'swr';
-import { PROFILE_KEY } from '@/hooks/useUserProfile';
 import { ProfilePictureUpload } from '@/components/settings/ProfilePictureUpload';
 import { useSettingsProfile } from '@/lib/hooks/useSettingsProfile';
 import { SettingsSectionGate } from '@/components/settings/SettingsSectionGate';
 
 export function AccountSection() {
   const t = useTranslations('settings');
-  const { mutate } = useSWRConfig();
   const {
-    isReady,
+    status,
+    error,
+    reload,
     profile,
     displayName,
     setDisplayName,
@@ -36,7 +35,7 @@ export function AccountSection() {
   } = useSettingsProfile();
 
   return (
-    <SettingsSectionGate isReady={isReady}>
+    <SettingsSectionGate status={status} error={error} onRetry={reload}>
       <Card>
         <CardBody>
           <VStack spacing={6} align="stretch">
@@ -45,16 +44,13 @@ export function AccountSection() {
                 currentPictureUrl={profile?.profile_picture_url || null}
                 displayName={displayName}
                 email={profile?.email || ''}
-                onUploadSuccess={async () => {
-                  // Refetch profile to pick up new picture URL
-                  const res = await fetch('/api/user/profile');
-                  if (res.ok) {
-                    const json = await res.json();
-                    if (json.data) {
-                      mutate(PROFILE_KEY, json.data, false);
-                    }
-                  }
-                }}
+                // Refetch through the hook, not just into the SWR cache: this
+                // section reads `profile` from the hook's own state, and
+                // `currentPictureUrl` feeds both the avatar and the Remove
+                // button. Writing only to PROFILE_KEY updated the header while
+                // leaving this card on the stale URL — the new picture appeared
+                // to revert the moment the success toast fired.
+                onUploadSuccess={() => void reload()}
               />
               {profile?.created_at &&
                 (() => {

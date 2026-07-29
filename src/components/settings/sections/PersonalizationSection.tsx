@@ -30,16 +30,16 @@ import { SettingsSectionGate } from '@/components/settings/SettingsSectionGate';
 export function PersonalizationSection() {
   const t = useTranslations('settings');
   const {
-    isReady,
+    status,
+    error,
+    reload,
     gamificationEnabled,
-    setGamificationEnabled,
     showAllFeatures,
-    setShowAllFeatures,
     updatePreference,
   } = useSettingsProfile();
 
   return (
-    <SettingsSectionGate isReady={isReady}>
+    <SettingsSectionGate status={status} error={error} onRetry={reload}>
       <VStack spacing={6} align="stretch">
         <Card>
           <CardBody>
@@ -56,7 +56,6 @@ export function PersonalizationSection() {
                     id="gamification-toggle"
                     isChecked={gamificationEnabled}
                     onChange={(e) => {
-                      setGamificationEnabled(e.target.checked);
                       updatePreference('gamification_enabled', e.target.checked);
                     }}
                   />
@@ -76,7 +75,6 @@ export function PersonalizationSection() {
                     id="show-all-features-toggle"
                     isChecked={showAllFeatures}
                     onChange={(e) => {
-                      setShowAllFeatures(e.target.checked);
                       updatePreference('disclosure_show_all', e.target.checked);
                     }}
                   />

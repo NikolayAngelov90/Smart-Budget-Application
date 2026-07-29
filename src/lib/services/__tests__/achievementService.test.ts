@@ -120,7 +120,7 @@ describe('unlockAchievements — batch push (Story 15.5)', () => {
       type: 'achievement',
       title: 'Achievement unlocked!',
       body: 'You earned a new badge — see it in Settings.',
-      data: { url: '/settings' },
+      data: { url: '/settings/personalization' },
     });
   });
 

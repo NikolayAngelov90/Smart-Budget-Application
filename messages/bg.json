@@ -497,9 +497,7 @@
   },
   "settings": {
     "title": "Настройки",
-    "manageHeading": "Управление",
     "manageCategories": "Категории",
-    "manageGoals": "Спестовни цели",
     "accountInformation": "Информация за акаунта",
     "displayName": "Показвано име",
     "displayNamePlaceholder": "Въведете показваното си име",

@@ -497,9 +497,7 @@
   },
   "settings": {
     "title": "Settings",
-    "manageHeading": "Manage",
     "manageCategories": "Categories",
-    "manageGoals": "Savings Goals",
     "accountInformation": "Account Information",
     "displayName": "Display Name",
     "displayNamePlaceholder": "Enter your display name",

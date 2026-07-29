@@ -35,11 +35,11 @@ export function PreferencesSection() {
   const t = useTranslations('settings');
   const tCommon = useTranslations('common');
   const {
-    isReady,
+    status,
+    error,
+    reload,
     currencyFormat,
-    setCurrencyFormat,
     dateFormat,
-    setDateFormat,
     language,
     updatePreference,
     updateLanguage,
@@ -53,7 +53,7 @@ export function PreferencesSection() {
   );
 
   return (
-    <SettingsSectionGate isReady={isReady}>
+    <SettingsSectionGate status={status} error={error} onRetry={reload}>
       <Card>
         <CardBody>
           <VStack spacing={6} align="stretch">
@@ -63,7 +63,6 @@ export function PreferencesSection() {
                 value={currencyFormat}
                 onChange={(e) => {
                   const newValue = e.target.value as 'USD' | 'EUR' | 'GBP';
-                  setCurrencyFormat(newValue);
                   updatePreference('currency_format', newValue);
                 }}
               >
@@ -101,7 +100,6 @@ export function PreferencesSection() {
                 value={dateFormat}
                 onChange={(e) => {
                   const newValue = e.target.value as 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
-                  setDateFormat(newValue);
                   updatePreference('date_format', newValue);
                 }}
               >

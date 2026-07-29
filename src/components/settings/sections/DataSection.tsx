@@ -9,10 +9,13 @@
 
 import { useState } from 'react';
 import {
+  Alert,
+  AlertIcon,
   Button,
   Card,
   CardBody,
   Divider,
+  Heading,
   FormControl,
   FormLabel,
   HStack,
@@ -27,6 +30,7 @@ import { useTranslations } from 'next-intl';
 import { exportMonthlyReportToPDF, exportTransactionsToCSV } from '@/lib/services/exportService';
 import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
 import { useSettingsProfile } from '@/lib/hooks/useSettingsProfile';
+import { SettingsSectionGate } from '@/components/settings/SettingsSectionGate';
 import type { PDFReportData } from '@/types/export.types';
 
 /** Local shape used by the export handlers (the joined row, not the DB row). */
@@ -48,7 +52,7 @@ interface Transaction {
 export function DataSection() {
   const t = useTranslations('settings');
   const toast = useToast();
-  const { currencyFormat } = useSettingsProfile();
+  const { status, error: profileError, reload, currencyFormat } = useSettingsProfile();
 
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [isExportingPDF, setIsExportingPDF] = useState(false);
@@ -173,77 +177,94 @@ export function DataSection() {
     }
   };
   return (
-    <VStack spacing={6} align="stretch">
-      <Card>
-        <CardBody>
-          <VStack spacing={6} align="stretch">
-            <Text color="fg.muted">{t('exportDescription')}</Text>
+    // Gated like every other section, and here it is not only about
+    // hydration: the export buttons read `currencyFormat`, which starts at
+    // the hardcoded 'EUR' until the profile lands. Ungated, a user on USD
+    // who exported during that window got a report with € symbols over USD
+    // amounts and spurious conversion columns computed against EUR.
+    <SettingsSectionGate status={status} error={profileError} onRetry={reload}>
+      <VStack spacing={6} align="stretch">
+        <Card>
+          <CardBody>
+            <VStack spacing={6} align="stretch">
+              <Text color="fg.muted">{t('exportDescription')}</Text>
 
-            <Divider />
+              <Divider />
 
-            <FormControl>
-              <FormLabel>{t('selectMonth')}</FormLabel>
-              <Select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                isDisabled={isExportingPDF}
-              >
-                {monthOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </FormControl>
+              <FormControl>
+                <FormLabel>{t('selectMonth')}</FormLabel>
+                <Select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  isDisabled={isExportingPDF}
+                >
+                  {monthOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
 
-            <HStack spacing={4} flexWrap="wrap">
-              <Button
-                leftIcon={<DownloadIcon />}
-                colorScheme="brand"
-                onClick={handleExportPDF}
-                isLoading={isExportingPDF}
-                loadingText={t('generatingPdf')}
-                flex={{ base: 'none', sm: '1' }}
-                w={{ base: 'full', sm: 'auto' }}
-                minW={{ base: 0, sm: '200px' }}
-                whiteSpace="normal"
-                h="auto"
-                py={2}
-              >
-                {t('exportMonthlyReport')}
-              </Button>
+              <HStack spacing={4} flexWrap="wrap">
+                <Button
+                  leftIcon={<DownloadIcon />}
+                  colorScheme="brand"
+                  onClick={handleExportPDF}
+                  isLoading={isExportingPDF}
+                  loadingText={t('generatingPdf')}
+                  flex={{ base: 'none', sm: '1' }}
+                  w={{ base: 'full', sm: 'auto' }}
+                  minW={{ base: 0, sm: '200px' }}
+                  whiteSpace="normal"
+                  h="auto"
+                  py={2}
+                >
+                  {t('exportMonthlyReport')}
+                </Button>
 
-              <Button
-                leftIcon={<DownloadIcon />}
-                colorScheme="green"
-                onClick={handleExportCSV}
-                isLoading={isExportingCSV}
-                loadingText={t('generatingCsv')}
-                flex={{ base: 'none', sm: '1' }}
-                w={{ base: 'full', sm: 'auto' }}
-                minW={{ base: 0, sm: '200px' }}
-                whiteSpace="normal"
-                h="auto"
-                py={2}
-              >
-                {t('exportAllTransactions')}
-              </Button>
-            </HStack>
-          </VStack>
-        </CardBody>
-      </Card>
+                <Button
+                  leftIcon={<DownloadIcon />}
+                  // Was colorScheme="green" — raw green.500, 3.25:1 on white.
+                  // CSV is the secondary export next to the PDF button.
+                  colorScheme="brand"
+                  variant="outline"
+                  onClick={handleExportCSV}
+                  isLoading={isExportingCSV}
+                  loadingText={t('generatingCsv')}
+                  flex={{ base: 'none', sm: '1' }}
+                  w={{ base: 'full', sm: 'auto' }}
+                  minW={{ base: 0, sm: '200px' }}
+                  whiteSpace="normal"
+                  h="auto"
+                  py={2}
+                >
+                  {t('exportAllTransactions')}
+                </Button>
+              </HStack>
+            </VStack>
+          </CardBody>
+        </Card>
 
-      {/* Story 8.4: Data Sync Status — AC-8.4.2 */}
-      <Card>
-        <CardBody>
-          <VStack spacing={4} align="stretch">
-            <Text fontSize="sm" fontWeight="semibold" color="fg">
-              {t('dataSyncStatus')}
-            </Text>
-            <SyncStatusIndicator />
-          </VStack>
-        </CardBody>
-      </Card>
-    </VStack>
+        {/* Story 8.4: Data Sync Status — AC-8.4.2 */}
+        <Card>
+          <CardBody>
+            <VStack spacing={4} align="stretch">
+              <Heading as="h2" size="md" color="fg">
+                {t('dataSyncStatus')}
+              </Heading>
+              <Text fontSize="sm" color="fg.muted">
+                {t('dataSyncDescription')}
+              </Text>
+              <SyncStatusIndicator />
+              <Alert status="success" borderRadius="md">
+                <AlertIcon />
+                <Text fontSize="sm">{t('syncDescription')}</Text>
+              </Alert>
+            </VStack>
+          </CardBody>
+        </Card>
+      </VStack>
+    </SettingsSectionGate>
   );
 }

@@ -86,7 +86,9 @@ export async function unlockAchievements(
       type: 'achievement',
       title: 'Achievement unlocked!',
       body,
-      data: { url: '/settings' },
+      // Story 16.8 moved achievements off the settings index and onto the
+      // Personalization sub-page; '/settings' now lands on a bare menu.
+      data: { url: '/settings/personalization' },
     });
   }
 

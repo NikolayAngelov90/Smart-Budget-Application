@@ -10,7 +10,7 @@
  * moved verbatim — same optimistic update, same revert, same toasts.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { useSWRConfig } from 'swr';
@@ -18,6 +18,8 @@ import { PROFILE_KEY, refreshProfile } from '@/hooks/useUserProfile';
 import { DISCLOSURE_KEY } from '@/lib/hooks/useFeatureDisclosure';
 import type { UserProfile } from '@/types/user.types';
 import type { SupportedLocale } from '@/i18n/routing';
+
+export type SettingsProfileStatus = 'loading' | 'failed' | 'ready';
 
 export type PreferenceField =
   | 'currency_format'
@@ -48,62 +50,76 @@ export function useSettingsProfile() {
 
   // Direct fetch — completely bypasses SWR cache to guarantee fresh API data.
   // SWR cache deduplication was preventing the fetcher from ever running.
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  //
+  // The cache is still read ONCE for the initial value: every sub-page remounts
+  // this hook, and starting from null meant a full-card spinner on every single
+  // navigation between settings groups. Seeding from the cache the hook itself
+  // populated makes re-entry instant while the revalidating fetch still runs.
+  const { cache } = useSWRConfig();
+  const cachedProfile = useRef<UserProfile | null>(
+    (cache.get(PROFILE_KEY)?.data as UserProfile | undefined) ?? null
+  ).current;
+
+  const [profile, setProfile] = useState<UserProfile | null>(cachedProfile);
+  const [isLoading, setIsLoading] = useState(cachedProfile === null);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadProfile() {
-      try {
-        setIsLoading(true);
-        const res = await fetch('/api/user/profile');
-        if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) throw new Error('Unexpected response format');
-        const json = await res.json();
-        if (!cancelled && json.data) {
-          setProfile(json.data);
-          // Also update SWR cache so Header picks up the fresh data
-          mutate(PROFILE_KEY, json.data, false);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err : new Error('Unknown error'));
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
+  const loadProfile = useCallback(async (signal?: { cancelled: boolean }) => {
+    try {
+      setError(null);
+      const res = await fetch('/api/user/profile');
+      if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) throw new Error('Unexpected response format');
+      const json = await res.json();
+      if (signal?.cancelled) return;
+      if (!json.data) throw new Error('Profile response contained no data');
+      setProfile(json.data);
+      // Also update SWR cache so Header picks up the fresh data
+      mutate(PROFILE_KEY, json.data, false);
+    } catch (err) {
+      if (!signal?.cancelled) setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      if (!signal?.cancelled) setIsLoading(false);
     }
-    loadProfile();
+  }, [mutate]);
+
+  useEffect(() => {
+    const signal = { cancelled: false };
+    loadProfile(signal);
     return () => {
-      cancelled = true;
+      signal.cancelled = true;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Form state, initialised from the loaded profile
   const [displayName, setDisplayName] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [currencyFormat, setCurrencyFormat] = useState<'USD' | 'EUR' | 'GBP'>('EUR');
-  const [dateFormat, setDateFormat] = useState<'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD'>(
-    'MM/DD/YYYY'
-  );
-  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(true);
-  const [gamificationEnabled, setGamificationEnabled] = useState(true);
-  const [showAllFeatures, setShowAllFeatures] = useState(false);
+
+  // DERIVED, not mirrored into state. These used to be `useState` defaults kept
+  // in sync by an effect, which lagged the profile by exactly one render — the
+  // render on which the gate first opens. A user on USD who clicked Export on
+  // that frame got a report formatted in EUR. The mirror also never reverted:
+  // when a PUT failed, `profile` rolled back but the mirrored value kept the
+  // value that failed to save, so the control lied about what was stored.
+  //
+  // Deriving gives both for free: no lag, and the optimistic update / rollback
+  // in updatePreference is the single source of truth.
+  const prefs = profile?.preferences;
+  const currencyFormat: 'USD' | 'EUR' | 'GBP' = prefs?.currency_format ?? 'EUR';
+  const dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' = prefs?.date_format ?? 'MM/DD/YYYY';
+  const weeklyDigestEnabled = prefs?.weekly_digest_enabled ?? true;
+  const gamificationEnabled = prefs?.gamification_enabled ?? true;
+  const showAllFeatures = prefs?.disclosure_show_all ?? false;
 
   const language: SupportedLocale =
     typeof document !== 'undefined'
       ? ((document.cookie.match(/NEXT_LOCALE=(\w+)/)?.[1] as SupportedLocale) || 'en')
       : 'en';
 
+  // displayName stays local state: it is a free-text field the user edits
+  // between saves, so it cannot be derived. Seed it when the profile arrives.
   useEffect(() => {
-    if (profile?.preferences) {
-      setDisplayName(profile.display_name || '');
-      setCurrencyFormat(profile.preferences.currency_format);
-      setDateFormat(profile.preferences.date_format);
-      setWeeklyDigestEnabled(profile.preferences.weekly_digest_enabled ?? true);
-      setGamificationEnabled(profile.preferences.gamification_enabled ?? true);
-      setShowAllFeatures(profile.preferences.disclosure_show_all ?? false);
-    }
+    if (profile) setDisplayName(profile.display_name || '');
   }, [profile]);
 
   // AC-8.3.2, AC-8.3.6, AC-8.3.7: Update profile with optimistic UI
@@ -229,26 +245,32 @@ export function useSettingsProfile() {
     }
   }, []);
 
+  // Mirrors the three branches the pre-split page rendered at the top of the
+  // screen. 'failed' must be distinct from 'loading': the fetch clears
+  // isLoading on the error path too, so a boolean-only gate opens onto a null
+  // profile — a UI that shows hardcoded defaults as if they were the user's
+  // saved settings and silently discards every write (both save actions
+  // early-return when profile is null).
+  const status: SettingsProfileStatus =
+    !hasMounted || isLoading ? 'loading' : error || !profile ? 'failed' : 'ready';
+
   return {
     profile,
     isLoading,
     error,
     /** Server and first client render must agree — gate profile-driven UI on this. */
-    isReady: hasMounted && !isLoading,
+    status,
+    /** Re-fetch after a mutation this hook did not perform (e.g. picture upload). */
+    reload: loadProfile,
     // form state
     displayName,
     setDisplayName,
     isSavingProfile,
     currencyFormat,
-    setCurrencyFormat,
     dateFormat,
-    setDateFormat,
     weeklyDigestEnabled,
-    setWeeklyDigestEnabled,
     gamificationEnabled,
-    setGamificationEnabled,
     showAllFeatures,
-    setShowAllFeatures,
     language,
     // actions
     updateProfile,

@@ -460,7 +460,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
             }),
           ]),
         }),
-        expect.any(String)
+        'USD' // the profile's currency, not the hook's EUR default
       );
     });
 
@@ -652,7 +652,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
           categories: [],
           topTransactions: [],
         }),
-        expect.any(String)
+        'USD' // the profile's currency, not the hook's EUR default
       );
     });
 
@@ -741,7 +741,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
             }),
           ]),
         }),
-        expect.any(String)
+        'USD' // the profile's currency, not the hook's EUR default
       );
     });
   });
@@ -807,7 +807,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
             expect.objectContaining({ amount: 100.0, notes: 'Small' }),
           ],
         }),
-        expect.any(String)
+        'USD' // the profile's currency, not the hook's EUR default
       );
     });
   });

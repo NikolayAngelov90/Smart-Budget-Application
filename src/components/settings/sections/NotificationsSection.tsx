@@ -14,6 +14,7 @@ import { useState } from 'react';
 import {
   Alert,
   AlertIcon,
+  Heading,
   Badge,
   Button,
   Card,
@@ -47,10 +48,11 @@ export function NotificationsSection() {
   const t = useTranslations('notifications');
   const tSettings = useTranslations('settings');
   const {
-    isReady,
+    status,
+    error: profileError,
+    reload,
     profile,
     weeklyDigestEnabled,
-    setWeeklyDigestEnabled,
     updatePreference,
   } = useSettingsProfile();
 
@@ -100,7 +102,7 @@ export function NotificationsSection() {
   };
 
   return (
-    <SettingsSectionGate isReady={isReady}>
+    <SettingsSectionGate status={status} error={profileError} onRetry={reload}>
       <Card>
         <CardBody>
           <VStack spacing={6} align="stretch">
@@ -114,7 +116,6 @@ export function NotificationsSection() {
                   id="weekly-digest-toggle"
                   isChecked={weeklyDigestEnabled}
                   onChange={(e) => {
-                    setWeeklyDigestEnabled(e.target.checked);
                     updatePreference('weekly_digest_enabled', e.target.checked);
                   }}
                 />
@@ -124,9 +125,12 @@ export function NotificationsSection() {
 
             <Divider />
 
-            <Text fontSize="sm" fontWeight="semibold" color="fg">
-              {t('title')}
-            </Text>
+            {/* `pushHeading`, not `title`: the sub-page <h1> is already
+                "Notifications", so reusing the namespace title printed the
+                same word twice with nothing distinguishing the push block. */}
+            <Heading as="h2" size="md" color="fg">
+              {t('pushHeading')}
+            </Heading>
             <Text fontSize="sm" color="fg.subtle">
               {t('pushSubtitle')}
             </Text>
@@ -155,7 +159,11 @@ export function NotificationsSection() {
                 {/* Enable / disable — label + color reflect the action and current state */}
                 <Button
                   size="sm"
-                  colorScheme={isSubscribed ? 'gray' : 'blue'}
+                  // Was colorScheme={isSubscribed ? 'gray' : 'blue'} — raw
+                  // Chakra blue.500, off-palette and 4.03:1 against white.
+                  // The variant below already carries the enabled/disabled
+                  // distinction, so the colour only has to be on-palette.
+                  colorScheme="brand"
                   variant={isSubscribed ? 'outline' : 'solid'}
                   isLoading={isLoading}
                   isDisabled={isBlocked}

@@ -134,9 +134,18 @@ describe('Settings — push category toggles (Story 15.5)', () => {
     // assert the push one exists among the matches instead of getBy (ambiguous)
     expect(screen.getAllByLabelText(/weekly digest/i).length).toBeGreaterThanOrEqual(1);
 
-    // Defaults surface correctly: milestones ON (?? true), reengagement OFF (?? false)
-    expect((screen.getByLabelText('Achievements & milestones') as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByLabelText('Welcome-back reminders') as HTMLInputElement).checked).toBe(false);
+    // All five defaults, not just two. These are the opt-in/opt-out posture of
+    // every push category, and a profile with no push keys set (the common
+    // case) is decided entirely by them — a flipped `??` would silently start
+    // pushing to users who never agreed to it.
+    const checked = (label: string | RegExp) =>
+      (screen.getAllByLabelText(label)[0] as HTMLInputElement).checked;
+
+    expect(checked('Spending nudges')).toBe(false); // ?? false — opt-in
+    expect(checked('Achievements & milestones')).toBe(true); // ?? true
+    expect(checked('Household activity')).toBe(true); // ?? true
+    expect(checked(/weekly digest/i)).toBe(true); // ?? true
+    expect(checked('Welcome-back reminders')).toBe(false); // ?? false — opt-in
   });
 
   it('renders the toggles when subscribed too (AC2 surface)', async () => {
