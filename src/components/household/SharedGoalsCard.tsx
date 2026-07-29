@@ -104,7 +104,7 @@ export function SharedGoalsCard() {
               {t('heading')}
             </Heading>
             {!creating && (
-              <Button size="xs" colorScheme="brand" variant="ghost" onClick={() => setCreating(true)}>
+              <Button size="sm" colorScheme="brand" variant="ghost" onClick={() => setCreating(true)}>
                 {t('newGoal')}
               </Button>
             )}
@@ -146,7 +146,7 @@ export function SharedGoalsCard() {
                       {formatAmount(goal.current_amount, currency)} / {formatAmount(goal.target_amount, currency)}
                     </Text>
                   </HStack>
-                  <Progress value={pct} size="sm" borderRadius="full" colorScheme={pct >= 100 ? 'green' : 'blue'} mb={2} />
+                  <Progress value={pct} size="sm" borderRadius="full" colorScheme="brand" mb={2} />
 
                   {breakdown.length > 0 && (
                     <VStack align="stretch" spacing={0} mb={2}>
@@ -184,7 +184,7 @@ export function SharedGoalsCard() {
                       </Button>
                     </HStack>
                   ) : (
-                    <Button size="xs" variant="outline" onClick={() => { setContributeFor(goal.id); setAmount(''); }}>
+                    <Button size="sm" variant="outline" onClick={() => { setContributeFor(goal.id); setAmount(''); }}>
                       {t('contribute')}
                     </Button>
                   )}

@@ -13,8 +13,8 @@
 
 import { useCallback, useEffect } from 'react';
 import {
-  Box,
   Button,
+  Container,
   Flex,
   Heading,
   SimpleGrid,
@@ -58,10 +58,10 @@ export default function GoalsPage() {
 
   return (
     <AppLayout>
-      <Box maxW="1200px" mx="auto" p={{ base: 4, md: 6 }}>
+      <Container maxW="container.xl" py={{ base: 4, md: 8 }}>
         {/* Page header */}
         <Flex justify="space-between" align="center" mb={6} flexWrap="wrap" gap={3}>
-          <Heading as="h1" fontSize={{ base: '1.5rem', lg: '2rem' }} color="fg">
+          <Heading as="h1" size="xl" color="fg" fontFamily="heading" letterSpacing="tight">
             {t('title')}
           </Heading>
           <Button colorScheme="brand" onClick={onOpen}>
@@ -112,7 +112,7 @@ export default function GoalsPage() {
 
         {/* "What If" savings simulator — Story 14.4 (FR16, exploratory only) */}
         <WhatIfSimulator />
-      </Box>
+      </Container>
 
       {/* Create goal modal */}
       <GoalForm

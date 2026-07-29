@@ -58,28 +58,28 @@ export function SyncStatusIndicator({
     switch (syncStatus) {
       case 'synced':
         return {
-          colorScheme: 'green',
+          colorScheme: 'income',
           icon: CheckCircleIcon,
           text: t('allDataSynced'),
           iconColor: 'income',
         };
       case 'syncing':
         return {
-          colorScheme: 'yellow',
+          colorScheme: 'amber',
           icon: TimeIcon,
           text: t('syncing'),
           iconColor: 'warning.fg',
         };
       case 'offline':
         return {
-          colorScheme: 'gray',
+          colorScheme: 'paper',
           icon: WarningIcon,
           text: t('offline'),
           iconColor: 'danger.fg',
         };
       default:
         return {
-          colorScheme: 'gray',
+          colorScheme: 'paper',
           icon: TimeIcon,
           text: t('unknown'),
           iconColor: 'fg.subtle',

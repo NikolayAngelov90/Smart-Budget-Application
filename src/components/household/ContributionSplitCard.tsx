@@ -120,7 +120,7 @@ export function ContributionSplitCard() {
                   value={pctDisplay}
                   size="sm"
                   borderRadius="full"
-                  colorScheme={s.progress >= 1 ? 'green' : 'blue'}
+                  colorScheme="brand"
                 />
                 <Text fontSize="xs" color="fg.subtle" mt={1}>
                   {t('contributed')}: {formatAmount(s.contributed, currency)}

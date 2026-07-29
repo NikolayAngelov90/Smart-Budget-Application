@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { Box, Heading, Text, VStack } from '@chakra-ui/react';
+import { Container, Heading, Text, VStack } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { mutate as globalMutate } from 'swr';
 import { useHousehold } from '@/lib/hooks/useHousehold';
@@ -47,9 +47,9 @@ export default function HouseholdPage() {
   }, []);
 
   return (
-    <Box maxW="container.lg" mx="auto" px={{ base: 4, md: 6 }} py={6}>
+    <Container maxW="container.lg" py={{ base: 4, md: 8 }}>
       <VStack align="stretch" spacing={1} mb={6}>
-        <Heading as="h1" size="lg" color="fg">
+        <Heading as="h1" size="xl" color="fg" fontFamily="heading" letterSpacing="tight">
           {t('title')}
         </Heading>
         <Text fontSize="sm" color="fg.subtle">
@@ -72,6 +72,6 @@ export default function HouseholdPage() {
             invite banner when you're not yet in a household. */}
         <HouseholdSection />
       </VStack>
-    </Box>
+    </Container>
   );
 }

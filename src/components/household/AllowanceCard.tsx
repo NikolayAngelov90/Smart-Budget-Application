@@ -98,7 +98,7 @@ export function AllowanceCard() {
           <Icon as={LockIcon} boxSize={3} color="fg.subtle" aria-hidden />
         </HStack>
         {!isEditing && (
-          <Button size="xs" variant="ghost" onClick={beginEdit}>
+          <Button size="sm" variant="ghost" onClick={beginEdit}>
             {allowance ? t('edit') : t('setup')}
           </Button>
         )}
@@ -151,7 +151,7 @@ export function AllowanceCard() {
               {formatAmount(allowance.monthly_amount, displayCurrency)}
             </Text>
           </HStack>
-          <Progress value={pct} size="sm" borderRadius="full" colorScheme={remaining < 0 ? 'red' : 'blue'} />
+          <Progress value={pct} size="sm" borderRadius="full" colorScheme={remaining < 0 ? 'expense' : 'brand'} />
           <HStack justify="space-between">
             <Text fontSize="xs" color="fg.subtle">
               {t('spentLabel')}: {formatAmount(spent, displayCurrency)}
