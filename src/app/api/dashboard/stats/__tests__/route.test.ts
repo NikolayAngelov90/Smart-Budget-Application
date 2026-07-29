@@ -36,6 +36,9 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
 interface Captured {
   gte: string[];
   lte: string[];
+  gteCols: string[];
+  lteCols: string[];
+  eq: [string, unknown][];
 }
 
 /**
@@ -62,12 +65,17 @@ function makeClient(rowsPerQuery: object[][], captured: Captured) {
       const index = call++;
       const chain: QueryChain = {
         select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        gte: jest.fn((_col: string, value: string) => {
+        eq: jest.fn((col: string, value: unknown) => {
+          captured.eq.push([col, value]);
+          return chain;
+        }),
+        gte: jest.fn((col: string, value: string) => {
+          captured.gteCols.push(col);
           captured.gte.push(value);
           return chain;
         }),
-        lte: jest.fn((_col: string, value: string) => {
+        lte: jest.fn((col: string, value: string) => {
+          captured.lteCols.push(col);
           captured.lte.push(value);
           return Promise.resolve({ data: rowsPerQuery[index] ?? [], error: null });
         }),
@@ -81,7 +89,7 @@ const request = (query: string) =>
   ({ url: `http://localhost:3000/api/dashboard/stats${query}` }) as Parameters<typeof GET>[0];
 
 const run = async (query: string, rows: object[][] = [[], []]) => {
-  const captured: Captured = { gte: [], lte: [] };
+  const captured: Captured = { gte: [], lte: [], gteCols: [], lteCols: [], eq: [] };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mockCreateClient.mockResolvedValue(makeClient(rows, captured) as any);
   const res = await GET(request(query));
@@ -102,7 +110,7 @@ describe('GET /api/dashboard/stats — period', () => {
     const { body, captured } = await run('?period=week');
 
     expect(captured.gte).toEqual(['2026-07-27', '2026-07-20']);
-    expect(captured.lte).toEqual(['2026-08-02', '2026-07-26']);
+    expect(captured.lte).toEqual(['2026-08-02', '2026-07-22']);
     expect(body.period).toBe('week');
     expect(body.periodStart).toBe('2026-07-27');
     expect(body.periodEnd).toBe('2026-08-02');
@@ -112,21 +120,65 @@ describe('GET /api/dashboard/stats — period', () => {
     const { body, captured } = await run('?period=quarter');
 
     expect(captured.gte).toEqual(['2026-05-01', '2026-02-01']);
+    // 90 days elapsed (May 1 -> Jul 29), but Feb-Apr is only 89 days long, so
+    // the truncation clamps to the end of the previous window rather than
+    // spilling into May and double-counting it.
     expect(captured.lte).toEqual(['2026-07-31', '2026-04-30']);
     expect(body.period).toBe('quarter');
   });
 
-  it('queries the calendar year and the previous year', async () => {
+  it('queries the calendar year and the same span of the previous year', async () => {
     const { captured } = await run('?period=year');
 
     expect(captured.gte).toEqual(['2026-01-01', '2025-01-01']);
-    expect(captured.lte).toEqual(['2026-12-31', '2025-12-31']);
+    // Not 2025-12-31: comparing 7 months of this year against 12 of last would
+    // read as a collapse every year until December.
+    expect(captured.lte).toEqual(['2026-12-31', '2025-07-29']);
+  });
+
+  it('compares like-for-like: previous covers the same elapsed days', async () => {
+    const { captured } = await run('?period=week');
+    // Wed 2026-07-29 is day 3 of the week, so the previous week is Mon-Wed too.
+    expect(captured.gte).toEqual(['2026-07-27', '2026-07-20']);
+    expect(captured.lte).toEqual(['2026-08-02', '2026-07-22']);
+  });
+
+  it('scopes both queries to the authenticated user and the date column', async () => {
+    const { captured } = await run('?period=week');
+
+    // Without these, a dropped user filter or a wrong column keeps every other
+    // assertion green while leaking or mis-reading data.
+    expect(captured.eq).toEqual([
+      ['user_id', 'user-1'],
+      ['user_id', 'user-1'],
+    ]);
+    expect(captured.gteCols).toEqual(['date', 'date']);
+    expect(captured.lteCols).toEqual(['date', 'date']);
+  });
+
+  it('uses the client local date so windows match the user day, not UTC', async () => {
+    // Server sits on 2026-07-29; a user just past midnight in UTC+3 is on the 30th.
+    const { captured } = await run('?period=week&today=2026-07-30');
+    expect(captured.gte[0]).toBe('2026-07-27');
+    // Elapsed is 4 days (Mon-Thu), so the previous window runs Mon-Thu too.
+    expect(captured.lte[1]).toBe('2026-07-23');
+  });
+
+  it('ignores a client date more than a day from the server clock', async () => {
+    const { captured } = await run('?period=month&today=2020-01-15');
+    expect(captured.gte).toEqual(['2026-07-01', '2026-06-01']);
+  });
+
+  it('ignores a malformed client date', async () => {
+    const { captured } = await run('?period=month&today=not-a-date');
+    expect(captured.gte).toEqual(['2026-07-01', '2026-06-01']);
   });
 
   it('defaults to the current month when no period is given', async () => {
     const { body, captured } = await run('');
 
     expect(captured.gte).toEqual(['2026-07-01', '2026-06-01']);
+    // No `period` means a pre-16.6 caller: whole previous month, as before.
     expect(captured.lte).toEqual(['2026-07-31', '2026-06-30']);
     expect(body.period).toBe('month');
   });

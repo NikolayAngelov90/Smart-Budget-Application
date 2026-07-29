@@ -40,12 +40,17 @@ function PeriodOption({ label, ...radioProps }: UseRadioProps & { label: string 
         display="flex"
         alignItems="center"
         justifyContent="center"
-        px={{ base: 2, sm: 3 }}
+        px={{ base: 1, sm: 3 }}
         borderRadius="lg"
-        fontSize={{ base: 'xs', sm: 'sm' }}
+        fontSize={{ base: '2xs', sm: 'sm' }}
         fontWeight={600}
         color="fg.muted"
-        whiteSpace="nowrap"
+        // Deliberately NOT nowrap. Four segments splitting a 320px screen leave
+        // ~57px each, and "3 Months" (and Bulgarian "Седмица"/"3 месеца") are
+        // wider than that — with nowrap they silently spilled over the pill
+        // edge. Wrapping inside the 44px box is the graceful failure; at 360px
+        // and up everything still sits on one line.
+        lineHeight={1.15}
         textAlign="center"
         transition="background 0.16s ease, color 0.16s ease"
         _checked={{ bg: 'surface', color: 'fg', boxShadow: 'sm' }}

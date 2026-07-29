@@ -7,6 +7,9 @@
  */
 
 import {
+  addDays,
+  differenceInCalendarDays,
+  endOfDay,
   endOfMonth,
   endOfWeek,
   endOfYear,
@@ -47,6 +50,33 @@ export function isDashboardPeriod(value: unknown): value is DashboardPeriod {
  * misbucket transactions at the edges of every window.
  */
 export function resolvePeriodRanges(
+  period: DashboardPeriod,
+  now: Date,
+  options: { comparePartial?: boolean } = {}
+): { current: DateRange; previous: DateRange } {
+  const ranges = fullRanges(period, now);
+  if (!options.comparePartial) return ranges;
+
+  // The current window runs to the END of the period, so for all but its last
+  // day it holds PARTIAL data — while `previous` is a complete window. Compared
+  // raw, the trend is structurally negative nearly always: on the Monday of a
+  // new week, one day of spending against a full previous week reads as a ~86%
+  // collapse. Truncate `previous` to the same number of elapsed days so the
+  // comparison is like-for-like (week-to-date vs the same days last week).
+  const elapsedDays = differenceInCalendarDays(now, ranges.current.start) + 1;
+  const truncatedEnd = endOfDay(addDays(ranges.previous.start, elapsedDays - 1));
+
+  return {
+    current: ranges.current,
+    previous: {
+      start: ranges.previous.start,
+      // Clamp: a 31-day month-to-date has no 31st day in a 30-day predecessor.
+      end: truncatedEnd < ranges.previous.end ? truncatedEnd : ranges.previous.end,
+    },
+  };
+}
+
+function fullRanges(
   period: DashboardPeriod,
   now: Date
 ): { current: DateRange; previous: DateRange } {

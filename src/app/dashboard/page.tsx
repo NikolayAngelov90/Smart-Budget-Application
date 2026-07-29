@@ -58,7 +58,10 @@ export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const { mutate } = useSWRConfig();
   const { preferences } = useUserPreferences();
-  const { data: stats } = useDashboardStats(undefined, preferences?.currency_format);
+  // Pass 'month' explicitly so this shares the hero's default SWR key instead
+  // of fetching the same aggregate twice on every dashboard load. This gate
+  // stays month-scoped whatever the hero shows.
+  const { data: stats } = useDashboardStats(undefined, preferences?.currency_format, 'month');
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   // Progressive disclosure: the advanced forecast/projection tail is collapsed
   // by default so the dashboard stays scannable (FR / brief §5E, §9).

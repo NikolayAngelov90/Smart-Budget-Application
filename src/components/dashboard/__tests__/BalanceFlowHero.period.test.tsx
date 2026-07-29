@@ -108,6 +108,79 @@ describe('BalanceFlowHero period selector', () => {
     expect(screen.queryByText(/^keptShare:/)).not.toBeInTheDocument();
   });
 
+  it('labels by the FETCHED period, never the pending selection', async () => {
+    // `keepPreviousData` keeps the old figures on screen while the new period
+    // loads, and `isLoading` stays false because data is present. Labelling by
+    // selection would print "This year" over last month's money.
+    const user = userEvent.setup();
+    mockUseDashboardStats.mockImplementation(() => ({
+      data: statsFor('month'), // server has not answered for 'year' yet
+      error: undefined,
+      isLoading: false,
+      mutate: jest.fn(),
+    }));
+    renderHero();
+
+    await user.click(screen.getByRole('radio', { name: 'periodYear' }));
+
+    expect(screen.getByText('netThisMonth')).toBeInTheDocument();
+    expect(screen.queryByText('netThisYear')).not.toBeInTheDocument();
+    // The selection itself still moved — only the figures' label lags.
+    expect(screen.getByRole('radio', { name: 'periodYear' })).toBeChecked();
+  });
+
+  it('keeps the selector reachable when a period fails to load', () => {
+    // A year-wide scan is the likeliest to fail; if the error card replaced the
+    // whole hero there would be no way back to a period that works.
+    mockUseDashboardStats.mockImplementation(() => ({
+      data: undefined,
+      error: new Error('boom'),
+      isLoading: false,
+      mutate: jest.fn(),
+    }));
+    renderHero();
+
+    expect(screen.getByText('failedToLoad')).toBeInTheDocument();
+    expect(screen.getAllByRole('radio')).toHaveLength(4);
+  });
+
+  it('calls a small overspend overspending, not "kept -0%"', () => {
+    // Math.round(-0.4) is -0, and -0 >= 0 is true, so branching on the rounded
+    // share reported a loss as a saving.
+    mockUseDashboardStats.mockImplementation(() => ({
+      data: {
+        ...statsFor('week'),
+        balance: -0.4,
+        income: { current: 100, previous: 0, trend: 0 },
+        expenses: { current: 100.4, previous: 0, trend: 0 },
+      },
+      error: undefined,
+      isLoading: false,
+      mutate: jest.fn(),
+    }));
+    renderHero();
+
+    expect(screen.getByText(/^overspentWeek:/)).toBeInTheDocument();
+    expect(screen.queryByText(/keptShareWeek/)).not.toBeInTheDocument();
+  });
+
+  it('shows the comparison when the previous window had activity that netted zero', () => {
+    mockUseDashboardStats.mockImplementation(() => ({
+      data: {
+        ...statsFor('week'),
+        income: { current: 500, previous: 1000, trend: 0 },
+        expenses: { current: 200, previous: 1000, trend: 0 },
+      },
+      error: undefined,
+      isLoading: false,
+      mutate: jest.fn(),
+    }));
+    renderHero();
+
+    // Previous net is exactly 0 but €2,000 moved — that is a real comparison.
+    expect(screen.getByText('vsLastWeek')).toBeInTheDocument();
+  });
+
   it('keeps the selection exposed to assistive tech', async () => {
     const user = userEvent.setup();
     renderHero();

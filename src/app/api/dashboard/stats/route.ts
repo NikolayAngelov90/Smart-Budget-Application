@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { format } from 'date-fns';
+import { differenceInCalendarDays, format } from 'date-fns';
 import { createClient } from '@/lib/supabase/server';
 import { calculateTrend } from '@/lib/utils/currency';
 import { getExchangeRates } from '@/lib/services/exchangeRateService';
@@ -42,6 +42,32 @@ export interface DashboardStatsResponse {
   /** Inclusive yyyy-MM-dd bounds of `current`, for display and debugging. */
   periodStart: string;
   periodEnd: string;
+}
+
+/**
+ * Which day "now" is, from the USER's point of view.
+ *
+ * Vercel runs functions with TZ=UTC, but `transactions.date` is written as the
+ * client's LOCAL day. Deriving windows from the server clock therefore puts the
+ * boundary in the wrong place for anyone not on UTC: a Sofia user (UTC+3) at
+ * 00:30 Monday is still in "last week" as far as the server is concerned, so
+ * the transaction they just added falls outside both windows and vanishes from
+ * the hero. Weekly windows hit this 52x a year.
+ *
+ * The client sends its own local date. Clamped to ±1 day of the server's date
+ * so a bad or hostile value cannot shift the window arbitrarily — the same
+ * clock-skew guard the transactions route already uses.
+ */
+function resolveToday(todayParam: string | null): Date {
+  const serverNow = new Date();
+  if (!todayParam || !/^\d{4}-\d{2}-\d{2}$/.test(todayParam)) return serverNow;
+
+  // Midday, so DST shifts can never push this across a date boundary.
+  const candidate = new Date(`${todayParam}T12:00:00`);
+  if (Number.isNaN(candidate.getTime())) return serverNow;
+  if (Math.abs(differenceInCalendarDays(candidate, serverNow)) > 1) return serverNow;
+
+  return candidate;
 }
 
 interface AggregateResult {
@@ -90,8 +116,17 @@ export async function GET(request: NextRequest) {
     //
     // `month=YYYY-MM` pins the window to that calendar month and always uses
     // month-over-month, exactly as before this story; `period` is ignored then.
-    const currentDate = monthParam ? new Date(`${monthParam}-01T00:00:00`) : new Date();
-    const ranges = resolvePeriodRanges(monthParam ? 'month' : period, currentDate);
+    //
+    // `comparePartial` truncates the previous window to the same elapsed days,
+    // so a part-finished current window is not compared against a complete one.
+    // Only period-driven requests opt in: the no-param and `month=` paths are
+    // pre-16.6 callers and keep their original whole-window comparison.
+    const currentDate = monthParam
+      ? new Date(`${monthParam}-01T00:00:00`)
+      : resolveToday(searchParams.get('today'));
+    const ranges = resolvePeriodRanges(monthParam ? 'month' : period, currentDate, {
+      comparePartial: !monthParam && periodParam !== null,
+    });
     const { start: currentMonthStart, end: currentMonthEnd } = ranges.current;
     const { start: previousMonthStart, end: previousMonthEnd } = ranges.previous;
 
@@ -179,7 +214,9 @@ export async function GET(request: NextRequest) {
         previous: previousAggregates.expenses,
         trend: expensesTrend,
       },
-      month: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`,
+      // The month the window STARTS in — with a period, `currentDate` (today)
+      // no longer describes the data. Unchanged for the month/no-param paths.
+      month: format(currentMonthStart, 'yyyy-MM'),
       period: monthParam ? 'month' : period,
       periodStart: format(currentMonthStart, 'yyyy-MM-dd'),
       periodEnd: format(currentMonthEnd, 'yyyy-MM-dd'),

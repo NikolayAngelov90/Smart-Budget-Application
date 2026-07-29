@@ -101,6 +101,76 @@ describe('resolvePeriodRanges', () => {
   });
 });
 
+describe('resolvePeriodRanges — comparePartial', () => {
+  const partial = (period: DashboardPeriod, iso: string) => {
+    const { current, previous } = resolvePeriodRanges(period, new Date(iso), {
+      comparePartial: true,
+    });
+    return {
+      current: [ymd(current.start), ymd(current.end)],
+      previous: [ymd(previous.start), ymd(previous.end)],
+    };
+  };
+
+  it('truncates the previous week to the days elapsed so far', () => {
+    // Wed = 3 days in. Without this, 3 days of spending is compared against a
+    // full 7-day week and the trend reads as a ~60% collapse every Monday.
+    expect(partial('week', '2026-07-29T12:00:00')).toEqual({
+      current: ['2026-07-27', '2026-08-02'],
+      previous: ['2026-07-20', '2026-07-22'],
+    });
+  });
+
+  it('is at its harshest on day one, which is exactly when it matters', () => {
+    // Monday: one day this week vs one day last week, not vs seven.
+    expect(partial('week', '2026-07-27T09:00:00').previous).toEqual([
+      '2026-07-20',
+      '2026-07-20',
+    ]);
+  });
+
+  it('truncates the previous year to the same day of year', () => {
+    expect(partial('year', '2026-07-29T12:00:00').previous).toEqual([
+      '2025-01-01',
+      '2025-07-29',
+    ]);
+  });
+
+  it('truncates the previous month to the same day of month', () => {
+    expect(partial('month', '2026-07-15T12:00:00').previous).toEqual([
+      '2026-06-01',
+      '2026-06-15',
+    ]);
+  });
+
+  it('clamps rather than spilling past the end of a shorter previous window', () => {
+    // 31 days into March; February has only 28. Without the clamp the previous
+    // window would reach into March and double-count it.
+    expect(partial('month', '2026-03-31T12:00:00').previous).toEqual([
+      '2026-02-01',
+      '2026-02-28',
+    ]);
+  });
+
+  it('never lets the previous window overlap the current one', () => {
+    for (const period of DASHBOARD_PERIODS) {
+      const { current, previous } = resolvePeriodRanges(period, new Date('2026-03-31T12:00:00'), {
+        comparePartial: true,
+      });
+      expect(previous.end.getTime()).toBeLessThan(current.start.getTime());
+    }
+  });
+
+  it('leaves ranges untouched when not opted in', () => {
+    const now = new Date('2026-07-29T12:00:00');
+    for (const period of DASHBOARD_PERIODS) {
+      expect(resolvePeriodRanges(period, now, { comparePartial: false })).toEqual(
+        resolvePeriodRanges(period, now)
+      );
+    }
+  });
+});
+
 describe('isDashboardPeriod', () => {
   it.each(DASHBOARD_PERIODS)('accepts %s', (period) => {
     expect(isDashboardPeriod(period)).toBe(true);

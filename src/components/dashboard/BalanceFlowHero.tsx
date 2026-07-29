@@ -63,21 +63,44 @@ interface FlowStatProps {
   color: string;
   align?: 'start' | 'end' | 'center';
   emphasis?: boolean;
+  /** Three seven-figure sums side by side outgrow a 390px row. */
+  compact?: boolean;
 }
 
-function FlowStat({ label, amount, color, align = 'start', emphasis = false }: FlowStatProps) {
+function FlowStat({
+  label,
+  amount,
+  color,
+  align = 'start',
+  emphasis = false,
+  compact = false,
+}: FlowStatProps) {
   return (
     <VStack spacing={0.5} align={align} minW={0}>
       <HStack spacing={1.5}>
         <Box w="7px" h="7px" borderRadius="full" bg={color} flexShrink={0} />
-        <Text fontSize="2xs" fontWeight="semibold" letterSpacing="wide" textTransform="uppercase" color="fg.muted">
+        <Text
+          fontSize="2xs"
+          fontWeight="semibold"
+          letterSpacing="wide"
+          textTransform="uppercase"
+          color="fg.muted"
+        >
           {label}
         </Text>
       </HStack>
       <Text
         className="tnum"
         fontFamily="heading"
-        fontSize={emphasis ? { base: 'lg', md: 'xl' } : { base: 'md', md: 'lg' }}
+        fontSize={
+          compact
+            ? emphasis
+              ? { base: 'sm', md: 'lg' }
+              : { base: 'xs', md: 'md' }
+            : emphasis
+              ? { base: 'lg', md: 'xl' }
+              : { base: 'md', md: 'lg' }
+        }
         fontWeight={emphasis ? 700 : 600}
         color={emphasis ? 'fg' : color}
         letterSpacing="tight"
@@ -96,11 +119,10 @@ function FlowStat({ label, amount, color, align = 'start', emphasis = false }: F
  */
 const COPY: Record<
   DashboardPeriod,
-  { net: string; flow: string; vsPrevious: string; kept: string; overspent: string; empty: string }
+  { net: string; vsPrevious: string; kept: string; overspent: string; empty: string }
 > = {
   week: {
     net: 'netThisWeek',
-    flow: 'flowWeek',
     vsPrevious: 'vsLastWeek',
     kept: 'keptShareWeek',
     overspent: 'overspentWeek',
@@ -108,7 +130,6 @@ const COPY: Record<
   },
   month: {
     net: 'netThisMonth',
-    flow: 'thisMonth',
     vsPrevious: 'vsLastMonth',
     kept: 'keptShare',
     overspent: 'overspentMonth',
@@ -116,7 +137,6 @@ const COPY: Record<
   },
   quarter: {
     net: 'netThisQuarter',
-    flow: 'flowQuarter',
     vsPrevious: 'vsPrevQuarter',
     kept: 'keptShareQuarter',
     overspent: 'overspentQuarter',
@@ -124,7 +144,6 @@ const COPY: Record<
   },
   year: {
     net: 'netThisYear',
-    flow: 'flowYear',
     vsPrevious: 'vsLastYear',
     kept: 'keptShareYear',
     overspent: 'overspentYear',
@@ -135,7 +154,6 @@ const COPY: Record<
 export function BalanceFlowHero() {
   const t = useTranslations('dashboard');
   const [period, setPeriod] = useState<DashboardPeriod>('month');
-  const copy = COPY[period];
   const locale = useLocale();
   const dateLocale = locale === 'bg' ? bg : undefined;
   const reduce = useReducedMotion();
@@ -143,6 +161,15 @@ export function BalanceFlowHero() {
   const currencyCode = preferences?.currency_format;
   const { data: profile } = useUserProfile(true);
   const { data, error, isLoading, mutate } = useDashboardStats(undefined, currencyCode, period);
+
+  // Label from the DATA's period, not the selection. `keepPreviousData` holds
+  // the outgoing period's figures on screen while the new ones load, and
+  // `isLoading` stays false throughout because data is present — so labelling
+  // by selection would print "This year" over last month's money. The server
+  // echoes back which window it actually aggregated; trust that.
+  const shownPeriod = data?.period ?? period;
+  const copy = COPY[shownPeriod];
+  const isSwitching = !!data && data.period !== period;
 
   // Keep the hero live as transactions change (this replaces DashboardStats'
   // realtime subscription now that the hero is the primary overview).
@@ -155,8 +182,19 @@ export function BalanceFlowHero() {
   const incomePrev = data?.income.previous ?? 0;
   const expensesPrev = data?.expenses.previous ?? 0;
   const balanceTrend = calculateTrend(balance, incomePrev - expensesPrev);
+  // Show the comparison whenever the previous window had ANY activity. Gating
+  // on its NET being non-zero hid the chip for a week that earned and spent
+  // €1,000 each — real activity that happened to cancel out. Exact-zero nets
+  // are far likelier over a week than over a month.
+  const hasPrevious = incomePrev + expensesPrev > 0;
 
-  const animate = !reduce && !isLoading && !!data;
+  // Count up on the FIRST load only. Re-running it per selection turned every
+  // tap into a 750ms roll-up from zero, delaying the figure the tap asked for.
+  const hasAnimated = useRef(false);
+  const animate = !reduce && !isLoading && !!data && !hasAnimated.current;
+  useEffect(() => {
+    if (!isLoading && data) hasAnimated.current = true;
+  }, [isLoading, data]);
   const animatedBalance = useCountUp(balance, animate);
 
   // Proportional split of the month's flow. Guard the zero-flow case.
@@ -164,7 +202,10 @@ export function BalanceFlowHero() {
   const incomePct = flowTotal > 0 ? (income / flowTotal) * 100 : 0;
   const expensePct = flowTotal > 0 ? (expenses / flowTotal) * 100 : 0;
 
+  // `remaining >= 0`, not `keptShare >= 0`: Math.round(-0.4) is -0, and -0 >= 0
+  // is true, so a €0.40 overspend rendered "You kept -0% of what came in".
   const keptShare = income > 0 ? Math.round((remaining / income) * 100) : null;
+  const kept = remaining >= 0;
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -175,13 +216,47 @@ export function BalanceFlowHero() {
   const name = profile?.display_name?.trim();
 
   const balanceIsPositive = balance >= 0;
+
+  // Step the signature figure down for long strings. At 390px the container is
+  // ~264px and the 48px face needs ~267px from EUR 123,456.78 upward — and the
+  // hero clips (overflow: hidden), so it would silently cut digits off. Year
+  // makes six-figure sums ordinary. Sized from the settled value, not the
+  // animated one, so the type doesn't resize mid count-up.
+  const formattedBalance = formatCurrency(balance, undefined, currencyCode);
+  const formattedIn = formatCurrency(income, undefined, currencyCode);
+  const formattedOut = formatCurrency(expenses, undefined, currencyCode);
+  const formattedLeft = formatCurrency(remaining, undefined, currencyCode);
+  const flowCompact = Math.max(formattedIn.length, formattedOut.length, formattedLeft.length) > 12;
+
+  const balanceFontSize =
+    formattedBalance.length > 12
+      ? { base: '3xl', md: '5xl' }
+      : formattedBalance.length > 10
+        ? { base: '4xl', md: '6xl' }
+        : { base: '5xl', md: '6xl' };
   const trendUp = balanceTrend >= 0;
 
   if (error) {
     return (
-      <Box bg="surface" borderRadius="2xl" borderWidth="1px" borderColor="border" p={{ base: 5, md: 7 }}>
-        <Text fontWeight="semibold" color="fg">{t('failedToLoad')}</Text>
-        <Text fontSize="sm" color="fg.muted" mt={1}>{t('failedToLoadDescription')}</Text>
+      <Box
+        bg="surface"
+        borderRadius="2xl"
+        borderWidth="1px"
+        borderColor="border"
+        p={{ base: 5, md: 7 }}
+      >
+        {/* The selector stays mounted: one period failing (a year scan is the
+            most likely) must not strand the user in an error card with no way
+            back to a period that works. */}
+        <Box mb={{ base: 5, md: 6 }}>
+          <PeriodSelector value={period} onChange={setPeriod} />
+        </Box>
+        <Text fontWeight="semibold" color="fg">
+          {t('failedToLoad')}
+        </Text>
+        <Text fontSize="sm" color="fg.muted" mt={1}>
+          {t('failedToLoadDescription')}
+        </Text>
       </Box>
     );
   }
@@ -198,8 +273,20 @@ export function BalanceFlowHero() {
       position="relative"
     >
       {/* Greeting eyebrow */}
-      <Flex justify="space-between" align="baseline" gap={3} flexWrap="wrap" mb={{ base: 5, md: 6 }}>
-        <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight={600} color="fg" letterSpacing="tight" fontFamily="heading">
+      <Flex
+        justify="space-between"
+        align="baseline"
+        gap={3}
+        flexWrap="wrap"
+        mb={{ base: 5, md: 6 }}
+      >
+        <Text
+          fontSize={{ base: 'md', md: 'lg' }}
+          fontWeight={600}
+          color="fg"
+          letterSpacing="tight"
+          fontFamily="heading"
+        >
           {name ? `${greeting}, ${name}` : greeting}
         </Text>
         <Text fontSize="xs" color="fg.subtle" fontWeight="medium">
@@ -214,107 +301,154 @@ export function BalanceFlowHero() {
         <PeriodSelector value={period} onChange={setPeriod} />
       </Box>
 
-      {/* Primary: net for the selected period */}
-      <VStack align="start" spacing={1} mb={{ base: 6, md: 7 }}>
-        <Text fontSize="2xs" fontWeight="semibold" letterSpacing="wider" textTransform="uppercase" color="fg.muted">
-          {t(copy.net)}
-        </Text>
-        {isLoading ? (
-          <Skeleton height={{ base: '48px', md: '60px' }} width="min(320px, 70%)" borderRadius="lg" />
-        ) : (
-          <HStack align="baseline" spacing={3} flexWrap="wrap">
-            <Text
-              className="tnum"
-              fontFamily="heading"
-              fontSize={{ base: '5xl', md: '6xl' }}
-              fontWeight={700}
-              letterSpacing="tighter"
-              lineHeight={1}
-              color={balanceIsPositive ? 'fg' : 'expense'}
-            >
-              {formatCurrency(animate ? animatedBalance : balance, undefined, currencyCode)}
-            </Text>
-            {incomePrev - expensesPrev !== 0 && (
-              <HStack
-                spacing={1}
-                px={2.5}
-                py={1}
-                borderRadius="full"
-                bg={trendUp ? 'income.subtle' : 'expense.subtle'}
-                color={trendUp ? 'income' : 'expense'}
-                flexShrink={0}
-              >
-                <Text fontSize="sm" fontWeight={700} lineHeight={1}>{trendUp ? '↑' : '↓'}</Text>
-                <Text className="tnum" fontSize="sm" fontWeight={600} lineHeight={1}>
-                  {Math.abs(balanceTrend).toFixed(1)}%
-                </Text>
-                <Text fontSize="xs" fontWeight={500} lineHeight={1} display={{ base: 'none', sm: 'block' }}>
-                  {t(copy.vsPrevious)}
-                </Text>
-              </HStack>
-            )}
-          </HStack>
-        )}
-      </VStack>
-
-      {/* Secondary: this month's flow */}
-      <Box>
-        <Text fontSize="2xs" fontWeight="semibold" letterSpacing="wider" textTransform="uppercase" color="fg.muted" mb={2.5}>
-          {t(copy.flow)}
-        </Text>
-
-        {isLoading ? (
-          <Skeleton height="14px" width="full" borderRadius="full" mb={4} />
-        ) : (
-          <Box
-            role="img"
-            aria-label={`${t('moneyIn')} ${formatCurrency(income, undefined, currencyCode)}, ${t('moneyOut')} ${formatCurrency(expenses, undefined, currencyCode)}`}
-            h="14px"
-            w="full"
-            borderRadius="full"
-            bg="surface.sunken"
-            overflow="hidden"
-            display="flex"
-            mb={4}
+      <Box
+        opacity={isSwitching ? 0.55 : 1}
+        transition="opacity 0.15s ease"
+        aria-busy={isSwitching || undefined}
+      >
+        {/* Primary: net for the selected period */}
+        <VStack align="start" spacing={1} mb={{ base: 6, md: 7 }}>
+          <Text
+            fontSize="2xs"
+            fontWeight="semibold"
+            letterSpacing="wider"
+            textTransform="uppercase"
+            color="fg.muted"
           >
-            {flowTotal > 0 ? (
-              <>
-                <MotionBox
-                  h="full"
-                  bg="income"
-                  initial={{ width: reduce ? `${incomePct}%` : 0 }}
-                  animate={{ width: `${incomePct}%` }}
-                  transition={{ duration: reduce ? 0 : 0.7, ease: [0.4, 0, 0.2, 1] }}
-                />
-                <MotionBox
-                  h="full"
-                  bg="expense"
-                  initial={{ width: reduce ? `${expensePct}%` : 0 }}
-                  animate={{ width: `${expensePct}%` }}
-                  transition={{ duration: reduce ? 0 : 0.7, delay: reduce ? 0 : 0.1, ease: [0.4, 0, 0.2, 1] }}
-                />
-              </>
-            ) : null}
-          </Box>
-        )}
-
-        {/* In / Out / Left */}
-        <Flex justify="space-between" align="flex-start" gap={4}>
-          <FlowStat label={t('moneyIn')} amount={formatCurrency(income, undefined, currencyCode)} color="income" />
-          <FlowStat label={t('moneyLeft')} amount={formatCurrency(remaining, undefined, currencyCode)} color={remaining >= 0 ? 'income' : 'expense'} align="center" emphasis />
-          <FlowStat label={t('moneyOut')} amount={formatCurrency(expenses, undefined, currencyCode)} color="expense" align="end" />
-        </Flex>
-
-        {/* Plain-language, non-judgmental caption */}
-        {!isLoading && (
-          <Text fontSize="sm" color="fg.muted" mt={4} lineHeight={1.5}>
-            {flowTotal === 0
-              ? t(copy.empty)
-              : keptShare !== null && keptShare >= 0
-                ? t(copy.kept, { percent: keptShare })
-                : t(copy.overspent, { amount: formatCurrency(Math.abs(remaining), undefined, currencyCode) })}
+            {t(copy.net)}
           </Text>
-        )}
+          {isLoading ? (
+            <Skeleton
+              height={{ base: '48px', md: '60px' }}
+              width="min(320px, 70%)"
+              borderRadius="lg"
+            />
+          ) : (
+            <HStack align="baseline" spacing={3} flexWrap="wrap">
+              <Text
+                className="tnum"
+                fontFamily="heading"
+                fontSize={balanceFontSize}
+                fontWeight={700}
+                letterSpacing="tighter"
+                lineHeight={1}
+                color={balanceIsPositive ? 'fg' : 'expense'}
+              >
+                {animate
+                  ? formatCurrency(animatedBalance, undefined, currencyCode)
+                  : formattedBalance}
+              </Text>
+              {hasPrevious && (
+                <HStack
+                  spacing={1}
+                  px={2.5}
+                  py={1}
+                  borderRadius="full"
+                  bg={trendUp ? 'income.subtle' : 'expense.subtle'}
+                  color={trendUp ? 'income' : 'expense'}
+                  flexShrink={0}
+                >
+                  <Text fontSize="sm" fontWeight={700} lineHeight={1}>
+                    {trendUp ? '↑' : '↓'}
+                  </Text>
+                  <Text className="tnum" fontSize="sm" fontWeight={600} lineHeight={1}>
+                    {Math.abs(balanceTrend) > 999 ? '999+' : Math.abs(balanceTrend).toFixed(1)}%
+                  </Text>
+                  <Text
+                    fontSize="xs"
+                    fontWeight={500}
+                    lineHeight={1}
+                    display={{ base: 'none', sm: 'block' }}
+                  >
+                    {t(copy.vsPrevious)}
+                  </Text>
+                </HStack>
+              )}
+            </HStack>
+          )}
+        </VStack>
+
+        {/* Secondary: the same period's flow. Deliberately unlabelled — the
+          eyebrow above already names the period, and repeating it here
+          printed the identical words twice in one card. */}
+        <Box>
+          {isLoading ? (
+            <Skeleton height="14px" width="full" borderRadius="full" mb={4} />
+          ) : (
+            <Box
+              role="img"
+              aria-label={`${t('moneyIn')} ${formatCurrency(income, undefined, currencyCode)}, ${t('moneyOut')} ${formatCurrency(expenses, undefined, currencyCode)}`}
+              h="14px"
+              w="full"
+              borderRadius="full"
+              bg="surface.sunken"
+              overflow="hidden"
+              display="flex"
+              mb={4}
+            >
+              {flowTotal > 0 ? (
+                <>
+                  <MotionBox
+                    h="full"
+                    bg="income"
+                    initial={{ width: reduce ? `${incomePct}%` : 0 }}
+                    animate={{ width: `${incomePct}%` }}
+                    transition={{ duration: reduce ? 0 : 0.7, ease: [0.4, 0, 0.2, 1] }}
+                  />
+                  <MotionBox
+                    h="full"
+                    bg="expense"
+                    initial={{ width: reduce ? `${expensePct}%` : 0 }}
+                    animate={{ width: `${expensePct}%` }}
+                    transition={{
+                      duration: reduce ? 0 : 0.7,
+                      delay: reduce ? 0 : 0.1,
+                      ease: [0.4, 0, 0.2, 1],
+                    }}
+                  />
+                </>
+              ) : null}
+            </Box>
+          )}
+
+          {/* In / Out / Left */}
+          <Flex justify="space-between" align="flex-start" gap={{ base: 2, sm: 4 }}>
+            <FlowStat
+              label={t('moneyIn')}
+              amount={formattedIn}
+              color="income"
+              compact={flowCompact}
+            />
+            <FlowStat
+              label={t('moneyLeft')}
+              amount={formattedLeft}
+              color={remaining >= 0 ? 'income' : 'expense'}
+              align="center"
+              emphasis
+              compact={flowCompact}
+            />
+            <FlowStat
+              label={t('moneyOut')}
+              amount={formattedOut}
+              color="expense"
+              align="end"
+              compact={flowCompact}
+            />
+          </Flex>
+
+          {/* Plain-language, non-judgmental caption */}
+          {!isLoading && (
+            <Text fontSize="sm" color="fg.muted" mt={4} lineHeight={1.5}>
+              {flowTotal === 0
+                ? t(copy.empty)
+                : keptShare !== null && kept
+                  ? t(copy.kept, { percent: keptShare })
+                  : t(copy.overspent, {
+                      amount: formatCurrency(Math.abs(remaining), undefined, currencyCode),
+                    })}
+            </Text>
+          )}
+        </Box>
       </Box>
     </Box>
   );
