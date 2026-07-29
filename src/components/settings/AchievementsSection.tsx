@@ -78,7 +78,16 @@ export function AchievementsSection() {
                   {unlockedLabel}
                 </Badge>
               ) : (
-                <Badge variant="outline" colorScheme="gray" borderRadius="full" px={2} fontSize="0.65rem">
+                // colorScheme="gray" resolved to gray.500 — 3.39:1 on the
+                // warm card surface. fg.muted is a real text token.
+                <Badge
+                  variant="outline"
+                  color="fg.muted"
+                  boxShadow="inset 0 0 0px 1px var(--chakra-colors-border)"
+                  borderRadius="full"
+                  px={2}
+                  fontSize="0.65rem"
+                >
                   {t('locked')}
                 </Badge>
               )}

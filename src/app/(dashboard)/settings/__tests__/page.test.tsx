@@ -6,7 +6,10 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
-import SettingsPage from '@/app/(dashboard)/settings/page';
+// Story 16.8: export moved to the Data sub-page, the digest toggle to Notifications.
+import SettingsPage from '@/app/(dashboard)/settings/data/page';
+import NotificationsPage from '@/app/(dashboard)/settings/notifications/page';
+import PersonalizationPage from '@/app/(dashboard)/settings/personalization/page';
 import * as exportService from '@/lib/services/exportService';
 import type { UserProfile } from '@/types/user.types';
 
@@ -160,7 +163,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
   // AC-11.8.5: Weekly digest toggle tests
   describe('Weekly Digest preference toggle', () => {
     test('renders Weekly Digest toggle in Preferences section (default enabled)', async () => {
-      customRender(<SettingsPage />);
+      customRender(<NotificationsPage />);
 
       await waitFor(() => {
         expect(screen.getByLabelText(/weekly digest/i)).toBeInTheDocument();
@@ -186,7 +189,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
         return Promise.resolve(mockResponse({ data: [] }));
       });
 
-      customRender(<SettingsPage />);
+      customRender(<NotificationsPage />);
 
       await waitFor(() => {
         const toggle = screen.getByLabelText(/weekly digest/i) as HTMLInputElement;
@@ -205,7 +208,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
         return Promise.resolve(mockResponse({ data: [] }));
       });
 
-      customRender(<SettingsPage />);
+      customRender(<NotificationsPage />);
 
       await waitFor(() => {
         expect(screen.getByLabelText(/weekly digest/i)).toBeInTheDocument();
@@ -228,7 +231,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
 
     describe('Gamification master toggle (Story 15.6)', () => {
       test('renders in Preferences, default ON when the flag is absent', async () => {
-        customRender(<SettingsPage />);
+        customRender(<PersonalizationPage />);
 
         await waitFor(() => {
           expect(screen.getByLabelText('Gamification')).toBeInTheDocument();
@@ -248,7 +251,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
           return Promise.resolve(mockResponse({ data: [] }));
         });
 
-        customRender(<SettingsPage />);
+        customRender(<PersonalizationPage />);
 
         await waitFor(() => {
           expect((screen.getByLabelText('Gamification') as HTMLInputElement).checked).toBe(false);
@@ -263,7 +266,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
           return Promise.resolve(mockResponse({ data: [] }));
         });
 
-        customRender(<SettingsPage />);
+        customRender(<PersonalizationPage />);
 
         await waitFor(() => {
           expect(screen.getByLabelText('Gamification')).toBeInTheDocument();
@@ -285,7 +288,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
 
     describe('Show-all-features toggle (Story 15.7)', () => {
       test('renders in Preferences, default OFF when the flag is absent', async () => {
-        customRender(<SettingsPage />);
+        customRender(<PersonalizationPage />);
         await waitFor(() => {
           expect(screen.getByLabelText('Show all features')).toBeInTheDocument();
         });
@@ -301,7 +304,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
           return Promise.resolve(mockResponse({ data: [] }));
         });
 
-        customRender(<SettingsPage />);
+        customRender(<PersonalizationPage />);
         await waitFor(() => {
           expect(screen.getByLabelText('Show all features')).toBeInTheDocument();
         });
@@ -331,7 +334,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     });
 
     test('renders Weekly Digest helper text', async () => {
-      customRender(<SettingsPage />);
+      customRender(<NotificationsPage />);
 
       await waitFor(() => {
         expect(
@@ -457,7 +460,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
             }),
           ]),
         }),
-        expect.any(String)
+        'USD' // the profile's currency, not the hook's EUR default
       );
     });
 
@@ -649,7 +652,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
           categories: [],
           topTransactions: [],
         }),
-        expect.any(String)
+        'USD' // the profile's currency, not the hook's EUR default
       );
     });
 
@@ -738,7 +741,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
             }),
           ]),
         }),
-        expect.any(String)
+        'USD' // the profile's currency, not the hook's EUR default
       );
     });
   });
@@ -804,7 +807,7 @@ describe('Settings Page - PDF Export Integration Tests', () => {
             expect.objectContaining({ amount: 100.0, notes: 'Small' }),
           ],
         }),
-        expect.any(String)
+        'USD' // the profile's currency, not the hook's EUR default
       );
     });
   });

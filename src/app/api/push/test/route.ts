@@ -43,7 +43,7 @@ export async function POST() {
       type: 'test',
       title: 'Smart Budget',
       body: 'Test notification — your notifications are working! 🎉',
-      data: { url: '/settings' },
+      data: { url: '/settings/notifications' },
     });
 
     return NextResponse.json({ data: { sent: deviceCount } });

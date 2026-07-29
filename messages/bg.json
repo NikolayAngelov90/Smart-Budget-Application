@@ -497,9 +497,7 @@
   },
   "settings": {
     "title": "Настройки",
-    "manageHeading": "Управление",
     "manageCategories": "Категории",
-    "manageGoals": "Спестовни цели",
     "accountInformation": "Информация за акаунта",
     "displayName": "Показвано име",
     "displayNamePlaceholder": "Въведете показваното си име",
@@ -566,7 +564,19 @@
     "appearanceDescription": "Изберете как да изглежда Smart Budget. „Системна“ следва настройката на устройството ви.",
     "appearanceLight": "Светла",
     "appearanceDark": "Тъмна",
-    "appearanceSystem": "Системна"
+    "appearanceSystem": "Системна",
+    "backToSettings": "Обратно към Настройки",
+    "notificationsHeading": "Известия",
+    "personalizationHeading": "Персонализация",
+    "aboutHeading": "Относно",
+    "accountSummary": "Снимка, име и имейл",
+    "appearanceSummary": "Светла, тъмна или системна",
+    "preferencesSummary": "Валута, формат на датата и език",
+    "notificationsSummary": "Имейл обобщения и push известия",
+    "personalizationSummary": "Функции, ценности и постижения",
+    "dataSummary": "Експорт на данни и синхронизация",
+    "securitySummary": "Устройства, сесии и поверителност",
+    "aboutSummary": "Отказ от отговорност и правни"
   },
   "onboarding": {
     "welcome": "Добре дошли в Smart Budget!",
@@ -736,7 +746,8 @@
     "testSent": "Тестовото известие е изпратено — проверете устройството си.",
     "testNoDevices": "Няма абонирани устройства. Първо включете известията и опитайте отново.",
     "testFailed": "Тестовото известие не можа да бъде изпратено.",
-    "iosHint": "На iPhone/iPad известията работят само след като добавите приложението към началния екран (Share → Add to Home Screen) и го отворите оттам — не работят в таба на Safari."
+    "iosHint": "На iPhone/iPad известията работят само след като добавите приложението към началния екран (Share → Add to Home Screen) и го отворите оттам — не работят в таба на Safari.",
+    "pushHeading": "Push известия"
   },
   "analytics": {
     "title": "Анализ на ангажираността",

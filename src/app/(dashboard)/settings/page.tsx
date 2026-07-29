@@ -1,1214 +1,152 @@
 'use client';
 
 /**
- * Settings Page
- * Story 8.2: Export Financial Report to PDF
- * Story 8.3: Settings Page and Account Management
- * Story 9.6: Complete Device Session Management
+ * Settings index — Story 16.8
  *
- * AC-8.3.1: Settings page at /settings route
- * AC-8.3.2: Account Information section
- * AC-8.3.3: Data Export section
- * AC-8.3.4: Privacy & Security section
- * AC-8.3.5: Preferences section
- * AC-8.3.6: Optimistic UI updates
- * AC-8.3.7: Success feedback
- * AC-8.3.8: Account deletion confirmation
- * AC-8.3.9: Mobile responsive
- * AC-9.6.2: Active Devices section
+ * Was a single 1214-line page of ~12 stacked cards, where feature content (the
+ * values plan, achievements) sat above the user's own account info and the two
+ * halves of "how the app contacts you" lived in different cards. It is now a
+ * short index; each group owns a route and renders through `SettingsSubPage`.
+ *
+ * The old "Manage" card linking to Categories/Goals is deliberately gone —
+ * both are in the desktop sidebar and the mobile More sheet, so it was a
+ * duplicate path into the same screens.
  */
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Card, CardBody, Container, Flex, Heading, Icon, Text, VStack } from '@chakra-ui/react';
 import {
-  Container,
-  Heading,
-  VStack,
-  Button,
-  Select,
-  FormControl,
-  FormLabel,
-  FormHelperText,
-  Input,
-  Switch,
-  useToast,
-  Card,
-  CardBody,
-  Text,
-  HStack,
-  Divider,
-  useDisclosure,
-  Spinner,
-  Alert,
-  AlertIcon,
-  Flex,
-  Icon,
-  Badge,
-} from '@chakra-ui/react';
+  ChevronRightIcon,
+  AtSignIcon,
+  BellIcon,
+  DownloadIcon,
+  InfoOutlineIcon,
+  LockIcon,
+  MoonIcon,
+  SettingsIcon,
+  StarIcon,
+} from '@chakra-ui/icons';
 import NextLink from 'next/link';
-import { DownloadIcon, DeleteIcon, ChevronRightIcon, AtSignIcon, StarIcon } from '@chakra-ui/icons';
-import { format, subMonths } from 'date-fns';
 import { useTranslations } from 'next-intl';
-import useSWR, { useSWRConfig } from 'swr';
-import { PROFILE_KEY, refreshProfile } from '@/hooks/useUserProfile';
-import { DISCLOSURE_KEY } from '@/lib/hooks/useFeatureDisclosure';
-import type { UserProfile } from '@/types/user.types';
+import type { ComponentType } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { exportMonthlyReportToPDF, exportTransactionsToCSV } from '@/lib/services/exportService';
-import { ConfirmDeleteModal } from '@/components/settings/ConfirmDeleteModal';
-import { ProfilePictureUpload } from '@/components/settings/ProfilePictureUpload';
-import { SyncStatusIndicator } from '@/components/shared/SyncStatusIndicator';
-import { ActiveDevicesSection } from '@/components/settings/ActiveDevicesSection';
-import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
-import { AppearanceSection } from '@/components/settings/AppearanceSection';
-import type { SupportedLocale } from '@/i18n/routing';
-import type { PDFReportData } from '@/types/export.types';
-import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
-import { FinancialDisclaimer } from '@/components/ai/FinancialDisclaimer';
-import { ValuesPlanSection } from '@/components/values/ValuesPlanSection';
-import { AchievementsSection } from '@/components/settings/AchievementsSection';
-import { SUPPORTED_CURRENCIES, getEnabledCurrencies } from '@/lib/config/currencies';
-import { formatExchangeRate } from '@/lib/utils/currency';
-import type { ExchangeRateResponse } from '@/types/exchangeRate.types';
+import { DangerZoneSection } from '@/components/settings/sections/DangerZoneSection';
 
-interface Transaction {
-  id: string;
-  amount: number;
-  type: 'income' | 'expense';
-  date: string;
-  notes: string | null;
-  created_at: string;
-  category: {
-    id: string;
-    name: string;
-    color: string;
-    type: 'income' | 'expense';
-  } | null;
+interface SettingsGroup {
+  href: string;
+  /** i18n keys (settings namespace) */
+  labelKey: string;
+  descriptionKey: string;
+  icon: ComponentType;
 }
 
+/**
+ * Order is deliberate: the user's own account first, then how the app LOOKS,
+ * then how it BEHAVES, then what it SENDS, then their data, then security, then
+ * legal. Destructive actions sit apart at the very end.
+ */
+const GROUPS: SettingsGroup[] = [
+  {
+    href: '/settings/account',
+    labelKey: 'accountInformation',
+    descriptionKey: 'accountSummary',
+    icon: AtSignIcon,
+  },
+  {
+    href: '/settings/appearance',
+    labelKey: 'appearanceHeading',
+    descriptionKey: 'appearanceSummary',
+    icon: MoonIcon,
+  },
+  {
+    href: '/settings/preferences',
+    labelKey: 'preferences',
+    descriptionKey: 'preferencesSummary',
+    icon: SettingsIcon,
+  },
+  {
+    href: '/settings/notifications',
+    labelKey: 'notificationsHeading',
+    descriptionKey: 'notificationsSummary',
+    icon: BellIcon,
+  },
+  {
+    href: '/settings/personalization',
+    labelKey: 'personalizationHeading',
+    descriptionKey: 'personalizationSummary',
+    icon: StarIcon,
+  },
+  {
+    href: '/settings/data',
+    labelKey: 'exportData',
+    descriptionKey: 'dataSummary',
+    icon: DownloadIcon,
+  },
+  {
+    href: '/settings/security',
+    labelKey: 'privacyAndSecurity',
+    descriptionKey: 'securitySummary',
+    icon: LockIcon,
+  },
+  {
+    href: '/settings/about',
+    labelKey: 'aboutHeading',
+    descriptionKey: 'aboutSummary',
+    icon: InfoOutlineIcon,
+  },
+];
+
 export default function SettingsPage() {
-  const router = useRouter();
-  const toast = useToast();
-  const { mutate } = useSWRConfig();
   const t = useTranslations('settings');
-  const tCommon = useTranslations('common');
-  const tDisclaimer = useTranslations('disclaimer');
-
-  // Hydration guard
-  const [hasMounted, setHasMounted] = useState(false);
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
-
-  // Direct fetch — completely bypasses SWR cache to guarantee fresh API data.
-  // SWR cache deduplication was preventing the fetcher from ever running.
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadProfile() {
-      try {
-        setIsLoading(true);
-        const res = await fetch('/api/user/profile');
-        if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) throw new Error('Unexpected response format');
-        const json = await res.json();
-        if (!cancelled && json.data) {
-          setProfile(json.data);
-          // Also update SWR cache so Header picks up the fresh data
-          mutate(PROFILE_KEY, json.data, false);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err : new Error('Unknown error'));
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    }
-    loadProfile();
-    return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Exchange rate fetching (Story 10-5: AC-10.5.7)
-  const exchangeRateFetcher = async (url: string) => {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    return res.json() as Promise<ExchangeRateResponse>;
-  };
-  const { data: exchangeRates } = useSWR<ExchangeRateResponse | null>(
-    '/api/exchange-rates?base=EUR',
-    exchangeRateFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 300000 }
-  );
-
-  // State
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [isExportingPDF, setIsExportingPDF] = useState(false);
-  const [isExportingCSV, setIsExportingCSV] = useState(false);
-  const [displayName, setDisplayName] = useState('');
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [currencyFormat, setCurrencyFormat] = useState<'USD' | 'EUR' | 'GBP'>('EUR');
-  const [dateFormat, setDateFormat] = useState<'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD'>(
-    'MM/DD/YYYY'
-  );
-  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(true);
-  const [gamificationEnabled, setGamificationEnabled] = useState(true);
-  const [showAllFeatures, setShowAllFeatures] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const language: SupportedLocale =
-    typeof document !== 'undefined'
-      ? ((document.cookie.match(/NEXT_LOCALE=(\w+)/)?.[1] as SupportedLocale) || 'en')
-      : 'en';
-
-  // Modal control
-  const { isOpen, onOpen, onClose } = useDisclosure();
-
-  // Initialize form fields from profile data
-  useEffect(() => {
-    if (profile?.preferences) {
-      setDisplayName(profile.display_name || '');
-      setCurrencyFormat(profile.preferences.currency_format);
-      setDateFormat(profile.preferences.date_format);
-      setWeeklyDigestEnabled(profile.preferences.weekly_digest_enabled ?? true);
-      setGamificationEnabled(profile.preferences.gamification_enabled ?? true);
-      setShowAllFeatures(profile.preferences.disclosure_show_all ?? false);
-    }
-  }, [profile]);
-
-  // AC-8.2.2: Generate last 12 months for selector
-  const monthOptions = Array.from({ length: 12 }, (_, i) => {
-    const date = subMonths(new Date(), i);
-    return {
-      value: format(date, 'yyyy-MM'),
-      label: format(date, 'MMMM yyyy'),
-    };
-  });
-
-  // AC-8.3.2, AC-8.3.6, AC-8.3.7: Update profile with optimistic UI
-  const handleUpdateProfile = async () => {
-    if (!profile) return;
-
-    setIsSavingProfile(true);
-
-    try {
-      // Optimistic update
-      const optimisticProfile = {
-        ...profile,
-        display_name: displayName,
-      };
-      setProfile(optimisticProfile);
-      mutate(PROFILE_KEY, optimisticProfile, false);
-
-      // Send update request
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ display_name: displayName }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
-      }
-
-      const result = await response.json();
-      if (result.data) {
-        setProfile(result.data);
-        mutate(PROFILE_KEY, result.data, false);
-        refreshProfile();
-      }
-
-      // AC-8.3.7: Success toast
-      toast({
-        title: t('profileUpdated'),
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.error('Error updating profile:', error);
-
-      // Revert optimistic update
-      setProfile(profile);
-      mutate(PROFILE_KEY, profile, false);
-      refreshProfile();
-
-      toast({
-        title: t('profileUpdateFailed'),
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
-  // AC-8.3.5, AC-8.3.6, AC-8.3.7: Update preferences
-  const handleUpdatePreferences = async (field: 'currency_format' | 'date_format' | 'weekly_digest_enabled' | 'gamification_enabled' | 'disclosure_show_all' | 'push_nudges_enabled' | 'push_milestones_enabled' | 'push_household_enabled' | 'push_digest_enabled' | 'push_reengagement_enabled' | 'quiet_hours_start' | 'quiet_hours_end', value: string | boolean | number) => {
-    if (!profile) return;
-
-    try {
-      // Optimistic update
-      const optimisticProfile = {
-        ...profile,
-        preferences: {
-          ...profile.preferences,
-          [field]: value,
-        },
-      };
-      setProfile(optimisticProfile);
-      mutate(PROFILE_KEY, optimisticProfile, false);
-
-      // Send update request
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          preferences: { [field]: value },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update preferences');
-      }
-
-      const result = await response.json();
-      if (result.data) {
-        setProfile(result.data);
-        mutate(PROFILE_KEY, result.data, false);
-        refreshProfile();
-      }
-
-      // Story 15.7: disclosure_show_all is consumed by the disclosure GET
-      // server-side, so revalidate that key on flip (the profile mutate above
-      // does not reach it).
-      if (field === 'disclosure_show_all') {
-        mutate(DISCLOSURE_KEY, undefined, { revalidate: true });
-      }
-
-      // AC-8.3.7: Success toast
-      toast({
-        title: t('preferencesUpdated'),
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.error('Error updating preferences:', error);
-
-      // Revert optimistic update
-      setProfile(profile);
-      mutate(PROFILE_KEY, profile, false);
-      refreshProfile();
-
-      toast({
-        title: t('preferencesUpdateFailed'),
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-  };
-
-  // AC-10.1.4, AC-10.1.5: Update language preference and persist
-  const handleLanguageChange = async (newLocale: SupportedLocale) => {
-    if (!profile) return;
-    try {
-      await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferences: { language: newLocale } }),
-      });
-    } catch (error) {
-      console.error('Error saving language preference:', error);
-    }
-  };
-
-  // AC-8.2: Export PDF report
-  const handleExportPDF = async () => {
-    setIsExportingPDF(true);
-    try {
-      const [year = '', month = ''] = selectedMonth.split('-');
-      const startDate = `${year}-${month}-01`;
-      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-      const endDate = `${year}-${month}-${lastDay}`;
-
-      const response = await fetch(
-        `/api/transactions?startDate=${startDate}&endDate=${endDate}&all=true`
-      );
-
-      if (!response.ok) throw new Error('Failed to fetch transactions');
-
-      const data = await response.json();
-      const transactions: Transaction[] = data.data;
-
-      const totalIncome = transactions
-        .filter((t) => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const totalExpenses = transactions
-        .filter((t) => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const categoryMap = new Map<string, { amount: number; color: string }>();
-      transactions
-        .filter((t) => t.type === 'expense')
-        .forEach((t) => {
-          const catName = t.category?.name || 'Unknown';
-          const catColor = t.category?.color || '#gray';
-          const existing = categoryMap.get(catName) || { amount: 0, color: catColor };
-          categoryMap.set(catName, { amount: existing.amount + t.amount, color: catColor });
-        });
-
-      const categories = Array.from(categoryMap.entries())
-        .map(([name, data]) => ({
-          name,
-          amount: data.amount,
-          percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
-          color: data.color,
-        }))
-        .sort((a, b) => b.amount - a.amount);
-
-      const topTransactions = transactions
-        .filter((t) => t.type === 'expense')
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 5)
-        .map((t) => ({
-          date: t.date,
-          category: t.category?.name || 'Unknown',
-          amount: t.amount,
-          notes: t.notes || '',
-        }));
-
-      const reportData: PDFReportData = {
-        month: selectedMonth,
-        summary: { totalIncome, totalExpenses, netBalance: totalIncome - totalExpenses },
-        categories,
-        topTransactions,
-      };
-
-      await exportMonthlyReportToPDF(reportData, currencyFormat);
-
-      toast({
-        title: t('pdfDownloaded'),
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      toast({
-        title: t('pdfFailed'),
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsExportingPDF(false);
-    }
-  };
-
-  // AC-8.1: Export CSV
-  const handleExportCSV = async () => {
-    setIsExportingCSV(true);
-    try {
-      const response = await fetch('/api/transactions?all=true');
-      if (!response.ok) throw new Error('Failed to fetch transactions');
-
-      const data = await response.json();
-      const transactions: Transaction[] = data.data;
-
-      await exportTransactionsToCSV(transactions, undefined, currencyFormat);
-
-      toast({
-        title: t('csvDownloaded'),
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.error('Error exporting CSV:', error);
-      toast({
-        title: t('csvFailed'),
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsExportingCSV(false);
-    }
-  };
-
-  // AC-8.3.8: Account deletion with password confirmation
-  const handleDeleteAccount = async (password: string) => {
-    setIsDeleting(true);
-    try {
-      const response = await fetch('/api/user/account', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmation_password: password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error?.details || 'Failed to delete account');
-      }
-
-      // Account deleted successfully
-      toast({
-        title: t('accountDeleted'),
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-
-      // Logout and redirect to login page
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
-    } catch (error) {
-      console.error('Error deleting account:', error);
-      setIsDeleting(false);
-      throw error;
-    }
-  };
-
-  // Show loading state during SSR, before hydration, and while SWR is fetching.
-  // This prevents hydration mismatch: server always renders spinner (no localStorage),
-  // and client also renders spinner until mounted + data resolves.
-  if (!hasMounted || isLoading) {
-    return (
-      <AppLayout>
-        <Container maxW="container.xl" py={8}>
-          <VStack spacing={8}>
-            <Spinner size="xl" />
-            <Text>{tCommon('loading')}</Text>
-          </VStack>
-        </Container>
-      </AppLayout>
-    );
-  }
-
-  if (error || !profile) {
-    return (
-      <AppLayout>
-        <Container maxW="container.xl" py={8}>
-          <VStack spacing={4}>
-            <Alert status="error">
-              <AlertIcon />
-              {t('failedToLoadProfile')}
-            </Alert>
-            {error && (
-              <Text fontSize="sm" color="fg.subtle">
-                {error.message}
-              </Text>
-            )}
-            <Button
-              colorScheme="brand"
-              onClick={() => window.location.reload()}
-            >
-              {tCommon('retry')}
-            </Button>
-          </VStack>
-        </Container>
-      </AppLayout>
-    );
-  }
 
   return (
     <AppLayout>
-      <Container maxW="container.xl" py={8}>
-        <VStack spacing={8} align="stretch">
+      <Container maxW="container.md" py={{ base: 4, md: 8 }}>
+        <VStack spacing={6} align="stretch">
           <Heading as="h1" size="xl" color="fg" fontFamily="heading" letterSpacing="tight">
             {t('title')}
           </Heading>
 
-          {/* Story UX-1: Manage — secondary destinations reachable on mobile after hamburger removal */}
           <Card>
-            <CardBody>
-              <VStack spacing={4} align="stretch">
-                <Heading as="h2" size="md" color="fg" fontFamily="heading">
-                  {t('manageHeading')}
-                </Heading>
-                <VStack align="stretch" spacing={0}>
-                  {[
-                    { href: '/categories', label: t('manageCategories'), icon: AtSignIcon },
-                    { href: '/goals', label: t('manageGoals'), icon: StarIcon },
-                  ].map((item) => (
-                    <Flex
-                      key={item.href}
-                      as={NextLink}
-                      href={item.href}
-                      align="center"
-                      justify="space-between"
-                      py={3}
-                      px={2}
-                      minH="48px"
-                      borderRadius="md"
-                      _hover={{ bg: 'surface.hover' }}
-                    >
-                      <HStack spacing={3}>
-                        <Icon as={item.icon} color="fg.muted" boxSize={5} />
-                        <Text>{item.label}</Text>
-                      </HStack>
-                      <Icon as={ChevronRightIcon} color="fg.subtle" boxSize={5} />
-                    </Flex>
-                  ))}
-                </VStack>
-              </VStack>
-            </CardBody>
-          </Card>
-
-          {/* Household management moved to its own Household nav tab (/household). */}
-
-          {/* Story 14.1: Values-Based Spending Plan */}
-          <ValuesPlanSection />
-
-          {/* Story 15.3: Achievement gallery — settings section per UX (no new nav) */}
-          <AchievementsSection />
-
-          {/* AC-8.3.2: Account Information Section */}
-          <Card>
-            <CardBody>
-              <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="fg" fontFamily="heading">
-                  {t('accountInformation')}
-                </Heading>
-
-                <VStack spacing={4}>
-                  {/* Profile Picture Upload - Phase 2 */}
-                  <ProfilePictureUpload
-                    currentPictureUrl={profile?.profile_picture_url || null}
-                    displayName={displayName}
-                    email={profile?.email || ''}
-                    onUploadSuccess={async () => {
-                      // Refetch profile to pick up new picture URL
-                      const res = await fetch('/api/user/profile');
-                      if (res.ok) {
-                        const json = await res.json();
-                        if (json.data) {
-                          setProfile(json.data);
-                          mutate(PROFILE_KEY, json.data, false);
-                        }
-                      }
-                    }}
-                  />
-                  {profile?.created_at && (() => {
-                    try {
-                      const date = new Date(profile.created_at);
-                      if (!isNaN(date.getTime())) {
-                        return (
-                          <Text fontSize="sm" color="fg.muted">
-                            {t('memberSince')} {format(date, 'MMMM yyyy')}
-                          </Text>
-                        );
-                      }
-                    } catch {
-                      // Invalid date, don't display
-                    }
-                    return null;
-                  })()}
-                </VStack>
-
-                <FormControl>
-                  <FormLabel>{t('displayName')}</FormLabel>
-                  <Input
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder={t('displayNamePlaceholder')}
-                  />
-                </FormControl>
-
-                <FormControl>
-                  <FormLabel>{t('email')}</FormLabel>
-                  <Input value={profile?.email || ''} isReadOnly bg="surface.sunken" />
-                  <Text fontSize="xs" color="fg.subtle" mt={1}>
-                    {t('emailReadOnly')}
-                  </Text>
-                </FormControl>
-
-                <Button
-                  colorScheme="brand"
-                  onClick={handleUpdateProfile}
-                  isLoading={isSavingProfile}
-                  loadingText={t('saving')}
-                  isDisabled={displayName === (profile?.display_name || '')}
-                >
-                  {t('saveProfile')}
-                </Button>
-              </VStack>
-            </CardBody>
-          </Card>
-
-          {/* AC-8.3.3: Data Export Section */}
-          <Card>
-            <CardBody>
-              <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="fg" fontFamily="heading">
-                  {t('exportData')}
-                </Heading>
-
-                <Text color="fg.muted">
-                  {t('exportDescription')}
-                </Text>
-
-                <Divider />
-
-                <FormControl>
-                  <FormLabel>{t('selectMonth')}</FormLabel>
-                  <Select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    isDisabled={isExportingPDF}
-                  >
-                    {monthOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <HStack spacing={4} flexWrap="wrap">
-                  <Button
-                    leftIcon={<DownloadIcon />}
-                    colorScheme="brand"
-                    onClick={handleExportPDF}
-                    isLoading={isExportingPDF}
-                    loadingText={t('generatingPdf')}
-                    flex={{ base: 'none', sm: '1' }}
-                    w={{ base: 'full', sm: 'auto' }}
-                    minW={{ base: 0, sm: '200px' }}
-                    whiteSpace="normal"
-                    h="auto"
-                    py={2}
-                  >
-                    {t('exportMonthlyReport')}
-                  </Button>
-
-                  <Button
-                    leftIcon={<DownloadIcon />}
-                    colorScheme="green"
-                    onClick={handleExportCSV}
-                    isLoading={isExportingCSV}
-                    loadingText={t('generatingCsv')}
-                    flex={{ base: 'none', sm: '1' }}
-                    w={{ base: 'full', sm: 'auto' }}
-                    minW={{ base: 0, sm: '200px' }}
-                    whiteSpace="normal"
-                    h="auto"
-                    py={2}
-                  >
-                    {t('exportAllTransactions')}
-                  </Button>
-                </HStack>
-              </VStack>
-            </CardBody>
-          </Card>
-
-          {/* Story 16.5: Appearance — Light / Dark / System */}
-          <Card>
-            <CardBody>
-              <VStack spacing={4} align="stretch">
-                <Heading as="h2" size="md" color="fg" fontFamily="heading">
-                  {t('appearanceHeading')}
-                </Heading>
-                <AppearanceSection />
-              </VStack>
-            </CardBody>
-          </Card>
-
-          {/* AC-8.3.5: Preferences Section */}
-          <Card>
-            <CardBody>
-              <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="fg" fontFamily="heading">
-                  {t('preferences')}
-                </Heading>
-
-                <FormControl>
-                  <FormLabel>{t('currencyFormat')}</FormLabel>
-                  <Select
-                    value={currencyFormat}
-                    onChange={(e) => {
-                      const newValue = e.target.value as 'USD' | 'EUR' | 'GBP';
-                      setCurrencyFormat(newValue);
-                      handleUpdatePreferences('currency_format', newValue);
+            <CardBody p={0}>
+              <VStack align="stretch" spacing={0}>
+                {GROUPS.map((group, index) => (
+                  <Flex
+                    key={group.href}
+                    as={NextLink}
+                    href={group.href}
+                    align="center"
+                    gap={4}
+                    px={4}
+                    py={3}
+                    minH="64px"
+                    borderTopWidth={index === 0 ? 0 : '1px'}
+                    borderColor="border"
+                    _hover={{ bg: 'surface.hover' }}
+                    _focusVisible={{
+                      outline: '2px solid',
+                      outlineColor: 'accent',
+                      outlineOffset: '-2px',
                     }}
                   >
-                    {SUPPORTED_CURRENCIES.map((currency) => (
-                      <option
-                        key={currency.code}
-                        value={currency.code}
-                        disabled={!currency.enabled}
-                      >
-                        {currency.code} ({currency.symbol})
-                        {!currency.enabled ? ` - ${tCommon('comingSoon')}` : ''}
-                      </option>
-                    ))}
-                  </Select>
-                  <Text fontSize="xs" color="fg.subtle" mt={1}>
-                    {t('currencyDescription')}
-                  </Text>
-                  {/* AC-10.5.7: Exchange rate display */}
-                  {exchangeRates && exchangeRates.rates && (
-                    <VStack align="stretch" mt={2} p={2} bg="accent.subtle" borderRadius="md" spacing={1}>
-                      {getEnabledCurrencies()
-                        .filter((c) => c.code !== 'EUR')
-                        .map((c) => (
-                          <Text key={c.code} fontSize="xs" color="accent">
-                            {formatExchangeRate('EUR', c.code, exchangeRates.rates[c.code] || 0)}
-                          </Text>
-                        ))}
-                      <Text fontSize="xs" color="fg.subtle">
-                        {t('ratesUpdatedAt', { date: new Date(exchangeRates.lastFetched).toLocaleDateString() })}
+                    <Icon as={group.icon} boxSize={5} color="accent" flexShrink={0} />
+                    <VStack align="start" spacing={0} flex={1} minW={0}>
+                      <Text fontWeight="semibold" color="fg" noOfLines={1}>
+                        {t(group.labelKey)}
+                      </Text>
+                      <Text fontSize="sm" color="fg.muted" noOfLines={1}>
+                        {t(group.descriptionKey)}
                       </Text>
                     </VStack>
-                  )}
-                </FormControl>
-
-                <FormControl>
-                  <FormLabel>{t('dateFormat')}</FormLabel>
-                  <Select
-                    value={dateFormat}
-                    onChange={(e) => {
-                      const newValue = e.target.value as
-                        | 'MM/DD/YYYY'
-                        | 'DD/MM/YYYY'
-                        | 'YYYY-MM-DD';
-                      setDateFormat(newValue);
-                      handleUpdatePreferences('date_format', newValue);
-                    }}
-                  >
-                    <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
-                    <option value="DD/MM/YYYY">DD/MM/YYYY (European)</option>
-                    <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
-                  </Select>
-                </FormControl>
-
-                {/* AC-11.8.5: Weekly Digest opt-in/out */}
-                <FormControl>
-                  <HStack mb={1}>
-                    <FormLabel htmlFor="weekly-digest-toggle" mb="0">
-                      {t('weeklyDigest')}
-                    </FormLabel>
-                    <Switch
-                      id="weekly-digest-toggle"
-                      isChecked={weeklyDigestEnabled}
-                      onChange={(e) => {
-                        setWeeklyDigestEnabled(e.target.checked);
-                        handleUpdatePreferences('weekly_digest_enabled', e.target.checked);
-                      }}
-                    />
-                  </HStack>
-                  <FormHelperText mt={0}>
-                    {t('weeklyDigestDescription')}
-                  </FormHelperText>
-                </FormControl>
-
-                {/* Story 15.6: master gamification opt-in/out. UI-only —
-                    handleUpdatePreferences scope-mutates PROFILE_KEY, the same
-                    SWR key useGamification reads, so the gate flips everywhere */}
-                <FormControl>
-                  <HStack mb={1}>
-                    <FormLabel htmlFor="gamification-toggle" mb="0">
-                      {t('gamificationToggle')}
-                    </FormLabel>
-                    <Switch
-                      id="gamification-toggle"
-                      isChecked={gamificationEnabled}
-                      onChange={(e) => {
-                        setGamificationEnabled(e.target.checked);
-                        handleUpdatePreferences('gamification_enabled', e.target.checked);
-                      }}
-                    />
-                  </HStack>
-                  <FormHelperText mt={0}>
-                    {t('gamificationToggleDescription')}
-                  </FormHelperText>
-                </FormControl>
-
-                {/* Story 15.7: progressive-disclosure escape hatch — reveal all
-                    usage-gated features immediately. Revalidates DISCLOSURE_KEY
-                    on flip (the pref is read server-side by the disclosure GET). */}
-                <FormControl>
-                  <HStack mb={1}>
-                    <FormLabel htmlFor="show-all-features-toggle" mb="0">
-                      {t('showAllFeatures')}
-                    </FormLabel>
-                    <Switch
-                      id="show-all-features-toggle"
-                      isChecked={showAllFeatures}
-                      onChange={(e) => {
-                        setShowAllFeatures(e.target.checked);
-                        handleUpdatePreferences('disclosure_show_all', e.target.checked);
-                      }}
-                    />
-                  </HStack>
-                  <FormHelperText mt={0}>
-                    {t('showAllFeaturesDescription')}
-                  </FormHelperText>
-                </FormControl>
-
-                {/* AC-10.1.4: Language Switcher */}
-                <LanguageSwitcher
-                  currentLocale={language}
-                  onLanguageChange={handleLanguageChange}
-                />
-
-                <Divider />
-
-                <Button variant="outline" colorScheme="brand" isDisabled>
-                  {t('restartOnboarding')}
-                </Button>
+                    <Icon as={ChevronRightIcon} boxSize={5} color="fg.subtle" flexShrink={0} />
+                  </Flex>
+                ))}
               </VStack>
             </CardBody>
           </Card>
 
-          {/* Story 12.3: Push Notification Preferences */}
-          <NotificationsSection
-            pushNudgesEnabled={profile?.preferences?.push_nudges_enabled ?? false}
-            pushMilestonesEnabled={profile?.preferences?.push_milestones_enabled ?? true}
-            pushHouseholdEnabled={profile?.preferences?.push_household_enabled ?? true}
-            pushDigestEnabled={profile?.preferences?.push_digest_enabled ?? true}
-            pushReengagementEnabled={profile?.preferences?.push_reengagement_enabled ?? false}
-            quietHoursStart={profile?.preferences?.quiet_hours_start ?? 22}
-            quietHoursEnd={profile?.preferences?.quiet_hours_end ?? 8}
-            onUpdatePreferences={handleUpdatePreferences}
-          />
-
-          {/* Story 8.4: Data Sync Status Section - AC-8.4.2 */}
-          <Card>
-            <CardBody>
-              <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="fg" fontFamily="heading">
-                  {t('dataSyncStatus')}
-                </Heading>
-
-                <VStack spacing={4} align="stretch">
-                  <Text fontSize="sm" color="fg.muted">
-                    {t('dataSyncDescription')}
-                  </Text>
-
-                  {/* AC-8.4.1, AC-8.4.2: Sync Status with Last Sync Timestamp */}
-                  <SyncStatusIndicator compact={false} showTimestamp={true} />
-
-                  <Alert status="success" variant="left-accent">
-                    <AlertIcon />
-                    {t('syncDescription')}
-                  </Alert>
-                </VStack>
-              </VStack>
-            </CardBody>
-          </Card>
-
-          {/* Story 9.6: Active Devices Section - AC-9.6.2 */}
-          <ActiveDevicesSection />
-
-          {/* Story 12.7 / FR39: Persistent Financial Advice Disclaimer */}
-          <Card>
-            <CardBody>
-              <VStack spacing={4} align="stretch">
-                <Heading as="h2" size="md" color="fg" fontFamily="heading">
-                  {tDisclaimer('settingsHeading')}
-                </Heading>
-                <FinancialDisclaimer variant="full" />
-              </VStack>
-            </CardBody>
-          </Card>
-
-          {/* AC-8.3.4: Privacy & Security Section */}
-          <Card>
-            <CardBody>
-              <VStack spacing={6} align="stretch">
-                <Heading as="h2" size="md" color="fg" fontFamily="heading">
-                  {t('privacyAndSecurity')}
-                </Heading>
-
-                <Alert status="info" variant="left-accent">
-                  <AlertIcon />
-                  {t('bankLevelEncryption')}
-                </Alert>
-
-                <Divider />
-
-                <VStack align="stretch" spacing={3}>
-                  <Text fontWeight="bold" color="danger.fg">
-                    {t('dangerZone')}
-                  </Text>
-                  <Text fontSize="sm" color="fg.muted">
-                    {t('deleteAccountWarning')}
-                  </Text>
-                  <Button
-                    leftIcon={<DeleteIcon />}
-                    colorScheme="red"
-                    variant="outline"
-                    onClick={onOpen}
-                  >
-                    {t('deleteAccount')}
-                  </Button>
-                </VStack>
-              </VStack>
-            </CardBody>
-          </Card>
+          <DangerZoneSection />
         </VStack>
       </Container>
-
-      <ConfirmDeleteModal
-        isOpen={isOpen}
-        onClose={onClose}
-        onConfirm={handleDeleteAccount}
-        isDeleting={isDeleting}
-      />
     </AppLayout>
-  );
-}
-
-// ============================================================================
-// NOTIFICATIONS SECTION — Story 12.3
-// ============================================================================
-
-type PushPreferenceField =
-  | 'push_nudges_enabled'
-  | 'push_milestones_enabled'
-  | 'push_household_enabled'
-  | 'push_digest_enabled'
-  | 'push_reengagement_enabled'
-  | 'quiet_hours_start'
-  | 'quiet_hours_end';
-
-interface NotificationsSectionProps {
-  pushNudgesEnabled: boolean;
-  /** Story 15.5 per-category toggles (defaults documented in user.types) */
-  pushMilestonesEnabled: boolean;
-  pushHouseholdEnabled: boolean;
-  pushDigestEnabled: boolean;
-  pushReengagementEnabled: boolean;
-  quietHoursStart: number;
-  quietHoursEnd: number;
-  onUpdatePreferences: (field: PushPreferenceField, value: boolean | number) => void;
-}
-
-function NotificationsSection({
-  pushNudgesEnabled,
-  pushMilestonesEnabled,
-  pushHouseholdEnabled,
-  pushDigestEnabled,
-  pushReengagementEnabled,
-  quietHoursStart,
-  quietHoursEnd,
-  onUpdatePreferences,
-}: NotificationsSectionProps) {
-  const t = useTranslations('notifications');
-  const toast = useToast();
-  const { isSupported, isSubscribed, isLoading, permission, subscribe, unsubscribe, error } = usePushNotifications();
-  const [isTesting, setIsTesting] = useState(false);
-
-  const isBlocked = permission === 'denied';
-
-  const handleTest = async () => {
-    setIsTesting(true);
-    try {
-      const res = await fetch('/api/push/test', { method: 'POST' });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(json?.error?.message || t('testFailed'));
-      }
-      const sent = json?.data?.sent ?? 0;
-      toast({
-        title: sent > 0 ? t('testSent') : t('testNoDevices'),
-        status: sent > 0 ? 'success' : 'warning',
-        duration: 4000,
-        isClosable: true,
-      });
-    } catch (err) {
-      toast({
-        title: err instanceof Error ? err.message : t('testFailed'),
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  return (
-    <Card>
-      <CardBody>
-        <VStack spacing={6} align="stretch">
-          <Heading as="h2" size="md" color="fg" fontFamily="heading">
-            {t('title')}
-          </Heading>
-          <Text fontSize="sm" color="fg.subtle">
-            {t('pushSubtitle')}
-          </Text>
-
-          {!isSupported && (
-            <Text fontSize="sm" color="fg.subtle">{t('pushNotSupported')}</Text>
-          )}
-
-          {isSupported && (
-            <VStack spacing={4} align="stretch">
-              {/* Clear current status so it's obvious whether push is ON or OFF */}
-              <HStack justify="space-between" align="center">
-                <Text fontSize="sm" fontWeight="medium" color="fg">
-                  {t('statusLabel')}
-                </Text>
-                <Badge
-                  colorScheme={isBlocked ? 'red' : isSubscribed ? 'green' : 'gray'}
-                  borderRadius="full"
-                  px={3}
-                  py={1}
-                >
-                  {isBlocked ? t('statusBlocked') : isSubscribed ? t('statusOn') : t('statusOff')}
-                </Badge>
-              </HStack>
-
-              {/* Enable / disable — label + color reflect the action and current state */}
-              <Button
-                size="sm"
-                colorScheme={isSubscribed ? 'gray' : 'blue'}
-                variant={isSubscribed ? 'outline' : 'solid'}
-                isLoading={isLoading}
-                isDisabled={isBlocked}
-                onClick={isSubscribed ? unsubscribe : subscribe}
-                alignSelf="flex-start"
-              >
-                {isSubscribed ? t('disablePush') : t('enablePush')}
-              </Button>
-
-              {isBlocked && (
-                <Alert status="warning" borderRadius="md" fontSize="sm">
-                  <AlertIcon />
-                  {t('blockedHelp')}
-                </Alert>
-              )}
-
-              {error && !isBlocked && (
-                <Alert status="error" borderRadius="md" fontSize="sm">
-                  <AlertIcon />
-                  {error}
-                </Alert>
-              )}
-
-              {/* Verify the whole pipeline end-to-end */}
-              {isSubscribed && (
-                <Button size="sm" variant="ghost" colorScheme="brand" onClick={handleTest} isLoading={isTesting} alignSelf="flex-start">
-                  {t('sendTest')}
-                </Button>
-              )}
-
-              <Text fontSize="xs" color="fg.subtle">
-                {t('iosHint')}
-              </Text>
-
-              <Divider />
-
-              {/* Spending nudges toggle */}
-              <FormControl>
-                <HStack justify="space-between">
-                  <FormLabel mb={0}>{t('spendingNudges')}</FormLabel>
-                  <Switch
-                    isChecked={pushNudgesEnabled}
-                    onChange={(e) => onUpdatePreferences('push_nudges_enabled', e.target.checked)}
-                  />
-                </HStack>
-                <FormHelperText>{t('spendingNudgesDescription')}</FormHelperText>
-              </FormControl>
-
-              {/* Story 15.5: per-category toggles. NOT gated on isSubscribed:
-                  the flags are per-ACCOUNT while isSubscribed is per-DEVICE —
-                  hiding them here would strand a user whose phone is
-                  subscribed but who opens Settings on an unsubscribed
-                  desktop (review 15-5). Same policy as the nudges toggle. */}
-              <FormControl>
-                <HStack justify="space-between">
-                  <FormLabel mb={0}>{t('categoryMilestones')}</FormLabel>
-                  <Switch
-                    isChecked={pushMilestonesEnabled}
-                    onChange={(e) =>
-                      onUpdatePreferences('push_milestones_enabled', e.target.checked)
-                    }
-                  />
-                </HStack>
-                <FormHelperText>{t('categoryMilestonesDescription')}</FormHelperText>
-              </FormControl>
-
-              <FormControl>
-                <HStack justify="space-between">
-                  <FormLabel mb={0}>{t('categoryHousehold')}</FormLabel>
-                  <Switch
-                    isChecked={pushHouseholdEnabled}
-                    onChange={(e) =>
-                      onUpdatePreferences('push_household_enabled', e.target.checked)
-                    }
-                  />
-                </HStack>
-                <FormHelperText>{t('categoryHouseholdDescription')}</FormHelperText>
-              </FormControl>
-
-              <FormControl>
-                <HStack justify="space-between">
-                  <FormLabel mb={0}>{t('categoryDigest')}</FormLabel>
-                  <Switch
-                    isChecked={pushDigestEnabled}
-                    onChange={(e) =>
-                      onUpdatePreferences('push_digest_enabled', e.target.checked)
-                    }
-                  />
-                </HStack>
-                <FormHelperText>{t('categoryDigestDescription')}</FormHelperText>
-              </FormControl>
-
-              <FormControl>
-                <HStack justify="space-between">
-                  <FormLabel mb={0}>{t('categoryReengagement')}</FormLabel>
-                  <Switch
-                    isChecked={pushReengagementEnabled}
-                    onChange={(e) =>
-                      onUpdatePreferences('push_reengagement_enabled', e.target.checked)
-                    }
-                  />
-                </HStack>
-                <FormHelperText>{t('categoryReengagementDescription')}</FormHelperText>
-              </FormControl>
-
-              {/* Quiet hours — always editable so users can configure before subscribing */}
-              <FormControl>
-                <FormLabel>{t('quietHoursStart')} (UTC)</FormLabel>
-                <Select
-                  value={quietHoursStart}
-                  onChange={(e) => onUpdatePreferences('quiet_hours_start', Number(e.target.value))}
-                  size="sm"
-                  maxW="120px"
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>{t('quietHoursEnd')} (UTC)</FormLabel>
-                <Select
-                  value={quietHoursEnd}
-                  onChange={(e) => onUpdatePreferences('quiet_hours_end', Number(e.target.value))}
-                  size="sm"
-                  maxW="120px"
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
-                  ))}
-                </Select>
-              </FormControl>
-            </VStack>
-          )}
-        </VStack>
-      </CardBody>
-    </Card>
   );
 }

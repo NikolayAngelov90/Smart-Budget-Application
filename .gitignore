@@ -103,7 +103,11 @@ lerna-debug.log*
 local/
 
 # Data & Database
-data/
+# Anchored to the repo root: this is for a local database/data dir, NOT for
+# source folders. Unanchored, it silently swallowed src/app/.../settings/data/
+# (the file existed locally, so builds and tests passed, but it was never
+# committed and CI failed on the missing module).
+/data/
 *.db
 *.sqlite
 *.sqlite3
