@@ -8,7 +8,12 @@
  */
 
 import useSWR from 'swr';
+import { format } from 'date-fns';
 import type { DashboardStatsResponse } from '@/app/api/dashboard/stats/route';
+import type { DashboardPeriod } from '@/lib/utils/dashboardPeriod';
+
+/** Prefix every dashboard-stats SWR key shares, whatever its params. */
+export const DASHBOARD_STATS_KEY = '/api/dashboard/stats';
 
 /**
  * Fetcher function for SWR
@@ -39,14 +44,27 @@ export interface UseDashboardStatsResult {
  * Custom hook for fetching dashboard stats with SWR
  * @param month - Optional month in YYYY-MM format (defaults to current month)
  * @param currency - Optional preferred currency code for cross-currency conversion (e.g. 'EUR')
+ * @param period - Story 16.6: week | month | quarter | year (defaults to month).
+ *   Omitting it keeps the pre-16.6 key and behaviour exactly.
  * @returns Dashboard stats data, error, loading state, and mutate function
  */
-export function useDashboardStats(month?: string, currency?: string): UseDashboardStatsResult {
+export function useDashboardStats(
+  month?: string,
+  currency?: string,
+  period?: DashboardPeriod
+): UseDashboardStatsResult {
   const params = new URLSearchParams();
   if (month) params.set('month', month);
   if (currency) params.set('currency', currency);
+  if (period) params.set('period', period);
+  // The server runs UTC; the user's day is what defines "this week". Sending
+  // the client's local date keeps the window aligned with the dates the client
+  // writes onto transactions. It also rolls the SWR key over at local midnight,
+  // so an open tab picks up the new day. Only on the period path, to leave the
+  // pre-16.6 keys byte-identical.
+  if (period) params.set('today', format(new Date(), 'yyyy-MM-dd'));
   const query = params.toString();
-  const url = query ? `/api/dashboard/stats?${query}` : '/api/dashboard/stats';
+  const url = query ? `${DASHBOARD_STATS_KEY}?${query}` : DASHBOARD_STATS_KEY;
 
   const { data, error, isLoading, mutate } = useSWR<DashboardStatsResponse>(
     url,

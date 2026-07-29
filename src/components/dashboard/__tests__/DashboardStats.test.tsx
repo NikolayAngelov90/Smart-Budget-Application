@@ -53,6 +53,10 @@ const statsData = {
   income: { current: 2000, previous: 1000, trend: 100 },
   expenses: { current: 1500, previous: 900, trend: 66.7 },
   month: '2026-07',
+  // Story 16.6 added these to the response.
+  period: 'month' as const,
+  periodStart: '2026-07-01',
+  periodEnd: '2026-07-31',
 };
 
 describe('DashboardStats', () => {
@@ -111,6 +115,9 @@ describe('DashboardStats', () => {
         income: { current: 0, previous: 0, trend: 0 },
         expenses: { current: 300, previous: 0, trend: 100 },
         month: '2026-07',
+        period: 'month' as const,
+        periodStart: '2026-07-01',
+        periodEnd: '2026-07-31',
       },
       error: undefined,
       isLoading: false,
