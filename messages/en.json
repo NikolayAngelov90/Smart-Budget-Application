@@ -440,7 +440,8 @@
     "reassignPrompt": "\"{name}\" has {count} transaction(s). Move them to another category, then delete it:",
     "reassignPlaceholder": "Choose a category",
     "reassignNoTarget": "This category has {count} transaction(s), but there is no other category of the same type to move them to. Create one first.",
-    "moveAndDelete": "Move & delete"
+    "moveAndDelete": "Move & delete",
+    "deleteSharedInUse": "Other household members have {count, plural, one {1 transaction} other {# transactions}} in this category, so it can't be deleted. Ask them to recategorise first, or make the category private."
   },
   "insights": {
     "title": "Insights",
@@ -880,7 +881,8 @@
     "monthBalanceAfter": "Month balance after purchase: {amount}",
     "goalDelay": "{goal} would be delayed by about {days, plural, one {1 day} other {# days}}",
     "showHistory": "Show history ({count})",
-    "hideHistory": "Hide history"
+    "hideHistory": "Hide history",
+    "goalDelayBeyondCap": "{goal} would be delayed by more than 2 years"
   },
   "streaks": {
     "dayStreak": "{days, plural, one {1-day streak} other {#-day streak}}",

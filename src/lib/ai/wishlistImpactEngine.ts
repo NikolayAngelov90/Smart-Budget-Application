@@ -40,6 +40,13 @@ export interface WishlistImpactInput {
   today: Date;
 }
 
+/**
+ * Beyond this the figure stops being informative. A goal 1 EUR short of target
+ * with a distant deadline has a tiny `dailyRequired`, so `price / dailyRequired`
+ * runs to tens of thousands of days — correct, and useless to read. Two years.
+ */
+export const WISHLIST_MAX_DELAY_DAYS = 730;
+
 const MS_PER_DAY = 86_400_000;
 
 /** Parse a YYYY-MM-DD DATE string as LOCAL midnight — never new Date('YYYY-MM-DD')
@@ -88,9 +95,11 @@ export function computeWishlistImpact(input: WishlistImpactInput): WishlistItemI
       const daysToDeadline = Math.round((deadline.getTime() - todayLocal.getTime()) / MS_PER_DAY);
       if (daysToDeadline > 0) {
         const dailyRequired = remainingToTarget / daysToDeadline;
+        const rawDelayDays = Math.ceil(price / dailyRequired);
         goalDelay = {
           goal_name: nearestGoal.name,
-          delay_days: Math.ceil(price / dailyRequired),
+          delay_days: Math.min(rawDelayDays, WISHLIST_MAX_DELAY_DAYS),
+          exceeds_cap: rawDelayDays > WISHLIST_MAX_DELAY_DAYS,
         };
       }
     }
