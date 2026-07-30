@@ -57,8 +57,15 @@ export async function GET(request: NextRequest) {
     // Own-scoped queries mirroring /api/dashboard/budget-forecast EXACTLY —
     // the score's adherence must agree with BudgetHealthCard/BudgetForecast
     // (deliberately NOT the what-if RLS-visible widening; see story Data scope)
-    const [currentResult, historicalResult, categoriesResult, budgetsResult, goalsResult, streakResult] =
-      await Promise.all([
+    const [
+      currentResult,
+      historicalResult,
+      categoriesResult,
+      budgetsResult,
+      goalsResult,
+      contributedGoalsResult,
+      streakResult,
+    ] = await Promise.all([
         supabase
           .from('transactions')
           .select('*')
@@ -95,6 +102,48 @@ export async function GET(request: NextRequest) {
         // goals aren't in the typed Database schema (13-9 gotcha) — generic client.
         (supabase as unknown as SupabaseClient).from('goals').select('*').eq('user_id', user.id),
 
+        // DW-6: SHARED goals this user has contributed to.
+        //
+        // Kept as a SEPARATE query rather than widening the one above, because
+        // that one also feeds the score's consistency factor and Story 15-2
+        // deliberately scopes the SCORE to personal goals. Only the achievement
+        // evaluation may see shared goals; the number must not move.
+        //
+        // Two layers keep this from leaking anything: `household_id IS NOT NULL`
+        // excludes every personal goal, and the 027 dual-path SELECT policy only
+        // exposes shared goals in the caller's OWN household. Participation comes
+        // from `goal_contributions`, never from household membership — otherwise
+        // every member would earn every shared goal's badge and the achievement
+        // would stop meaning anything (AC3).
+        //
+        // Enrichment: a failure must warn and degrade, never 500 the score.
+        (async () => {
+          try {
+            const client = supabase as unknown as SupabaseClient;
+            const { data: contributions, error: contribError } = await client
+              .from('goal_contributions')
+              .select('goal_id')
+              .eq('user_id', user.id);
+
+            if (contribError) return { data: null, error: contribError };
+
+            const goalIds = [
+              ...new Set(
+                ((contributions ?? []) as { goal_id: string }[]).map((c) => c.goal_id)
+              ),
+            ];
+            if (goalIds.length === 0) return { data: [], error: null };
+
+            return await client
+              .from('goals')
+              .select('*')
+              .in('id', goalIds)
+              .not('household_id', 'is', null);
+          } catch (err) {
+            return { data: null, error: err };
+          }
+        })(),
+
         // Streak enrichment — 034 may be unapplied; never let it 500 the score.
         // Unknowable ≠ zero: an unreadable table marks consistency UNSCORED
         // (degradation policy), while a missing row legitimately scores 0.
@@ -128,9 +177,29 @@ export async function GET(request: NextRequest) {
         b.limit_amount,
       ])
     );
-    const allGoals = (goalsResult.error ? [] : (goalsResult.data ?? [])) as Goal[];
-    // Score factor: ACTIVE goals only (deadline null or in the future)
-    const activeGoals = allGoals.filter((g) => g.deadline === null || g.deadline > todayKey);
+    const ownGoals = (goalsResult.error ? [] : (goalsResult.data ?? [])) as Goal[];
+
+    // Score factor: ACTIVE goals only (deadline null or in the future), and only
+    // the user's OWN — Story 15-2's scoping, unchanged by DW-6.
+    const activeGoals = ownGoals.filter((g) => g.deadline === null || g.deadline > todayKey);
+
+    // DW-6: the achievement evaluation additionally sees shared goals this user
+    // contributed to. Deduped by id, because a shared goal the user also created
+    // appears in both sets.
+    const contributedShared = (
+      contributedGoalsResult.error ? [] : (contributedGoalsResult.data ?? [])
+    ) as Goal[];
+    const achievementGoals: Goal[] = (() => {
+      const seen = new Set(ownGoals.map((g) => g.id));
+      return [...ownGoals, ...contributedShared.filter((g) => !seen.has(g.id))];
+    })();
+    if (contributedGoalsResult.error) {
+      logger.warn(
+        'BudgetScoreAPI',
+        'Shared-goal contributions unavailable; achievements see own goals only:',
+        contributedGoalsResult.error
+      );
+    }
 
     const budgetScore = computeBudgetScore({
       currentMonthTransactions,
@@ -153,7 +222,9 @@ export async function GET(request: NextRequest) {
         // Errored queries are UNKNOWABLE signals — skip, don't evaluate as false.
         // Achievements see ALL goals incl. expired (unlocks are once-ever).
         hasBudget: budgetsResult.error ? undefined : explicitBudgets.size > 0,
-        goals: goalsResult.error ? undefined : allGoals,
+        // Unknowable ≠ empty: if the OWN-goals query failed we cannot say
+        // anything about goals, even if the shared query succeeded.
+        goals: goalsResult.error ? undefined : achievementGoals,
         alreadyUnlocked: new Set(unlocked.map((a) => a.achievement_key)),
       });
       if (earned.length === 0) return [];
