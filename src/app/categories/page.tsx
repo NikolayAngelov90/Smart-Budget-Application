@@ -247,6 +247,25 @@ export default function CategoriesPage() {
       // 409 = the category is in use; switch the dialog to reassign mode.
       if (response.status === 409) {
         const result = await response.json().catch(() => ({}));
+
+        // DW-5 #3: a shared category still labelling other members' spending is
+        // refused outright. Reassigning on their behalf would rewrite someone
+        // else's history, so there is nothing for the user to resolve here —
+        // say why rather than offering a reassign picker that cannot help.
+        if (result.sharedInUse) {
+          setIsDeleting(false);
+          setCategoryToDelete(null);
+          toast({
+            title: t('deleteSharedInUse', {
+              count: result.otherMemberTransactionCount ?? 0,
+            }),
+            status: 'info',
+            duration: 6000,
+            isClosable: true,
+          });
+          return;
+        }
+
         if (result.requiresReassign) {
           setReassignCount(result.transactionCount ?? 0);
           setIsDeleting(false);

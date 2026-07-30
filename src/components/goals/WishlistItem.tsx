@@ -93,10 +93,12 @@ export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }:
               )}
               {impact.goal_delay && (
                 <Text fontSize="sm" color="warning.fg">
-                  {t('goalDelay', {
-                    days: impact.goal_delay.delay_days,
-                    goal: impact.goal_delay.goal_name,
-                  })}
+                  {impact.goal_delay.exceeds_cap
+                    ? t('goalDelayBeyondCap', { goal: impact.goal_delay.goal_name })
+                    : t('goalDelay', {
+                        days: impact.goal_delay.delay_days,
+                        goal: impact.goal_delay.goal_name,
+                      })}
                 </Text>
               )}
             </VStack>

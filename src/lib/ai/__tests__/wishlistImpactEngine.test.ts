@@ -4,7 +4,7 @@
  * Fixed reference: today = 2026-07-02.
  */
 
-import { computeWishlistImpact } from '../wishlistImpactEngine';
+import { computeWishlistImpact, WISHLIST_MAX_DELAY_DAYS } from '../wishlistImpactEngine';
 
 const TODAY = new Date(2026, 6, 2); // 2026-07-02 local
 
@@ -97,10 +97,40 @@ describe('computeWishlistImpact', () => {
     // 2026-07-02 → 2026-08-01 is 30 days out
     const GOAL = { name: 'Vacation', targetAmount: 1300, currentAmount: 1000, deadline: '2026-08-01' };
 
+    it('caps an absurd delay and flags it, rather than printing 30,000 days', () => {
+      // A goal 1 cent short with a distant deadline: dailyRequired is minuscule,
+      // so price / dailyRequired runs away. Correct arithmetic, useless copy.
+      const impact = computeWishlistImpact({
+        ...BASE,
+        price: 100,
+        nearestGoal: {
+          ...GOAL,
+          targetAmount: 1000,
+          currentAmount: 999.99,
+          deadline: '2030-01-01',
+        },
+      });
+
+      expect(impact.goal_delay).not.toBeNull();
+      expect(impact.goal_delay!.exceeds_cap).toBe(true);
+      // Clamped, never the raw runaway figure.
+      expect(impact.goal_delay!.delay_days).toBe(WISHLIST_MAX_DELAY_DAYS);
+    });
+
+    it('leaves a delay at the cap boundary unflagged', () => {
+      const impact = computeWishlistImpact({ ...BASE, nearestGoal: GOAL });
+      expect(impact.goal_delay!.delay_days).toBeLessThanOrEqual(WISHLIST_MAX_DELAY_DAYS);
+      expect(impact.goal_delay!.exceeds_cap).toBe(false);
+    });
+
     it('computes delayDays = ceil(price / dailyRequired)', () => {
       // remaining 300 over 30 days → 10/day; 100 / 10 = 10 days
       const impact = computeWishlistImpact({ ...BASE, nearestGoal: GOAL });
-      expect(impact.goal_delay).toEqual({ goal_name: 'Vacation', delay_days: 10 });
+      expect(impact.goal_delay).toEqual({
+        goal_name: 'Vacation',
+        delay_days: 10,
+        exceeds_cap: false,
+      });
     });
 
     it('ceils fractional delays', () => {

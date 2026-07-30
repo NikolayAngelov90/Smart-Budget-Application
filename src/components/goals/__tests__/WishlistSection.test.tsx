@@ -92,7 +92,7 @@ function makeItem(overrides: Partial<WishlistItemWithImpact> = {}): WishlistItem
         remaining_after: 80,
         exceeds_budget: false,
       },
-      goal_delay: { goal_name: 'Vacation', delay_days: 10 },
+      goal_delay: { goal_name: 'Vacation', delay_days: 10, exceeds_cap: false },
       aligned_value: 'Fun',
     },
     ...overrides,

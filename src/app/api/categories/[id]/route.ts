@@ -12,7 +12,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { getCurrentHousehold } from '@/lib/services/householdService';
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
 
@@ -95,6 +96,21 @@ export async function PUT(
         { error: 'Only the category owner can change its visibility' },
         { status: 403 }
       );
+    }
+
+    // DW-5 #4: renaming a SHARED category relabels every member's spending
+    // history, so it is an admin action. The original AC said "manageable by
+    // all", which predates household roles. A non-admin owner is not stuck:
+    // visibility is still theirs, so they can un-share it and then rename it
+    // freely as a personal category.
+    if (existingCategory.household_id && name !== undefined) {
+      const household = await getCurrentHousehold(user.id);
+      if (household?.role !== 'admin') {
+        return NextResponse.json(
+          { error: 'Only a household admin can rename a shared category' },
+          { status: 403 }
+        );
+      }
     }
 
     // Check for duplicate name (if name is being updated)
@@ -188,7 +204,7 @@ export async function DELETE(
     // Story 13.5: RLS scopes visibility (own OR shared-in-household); members can delete shared.
     const { data: category, error: fetchError } = await supabase
       .from('categories')
-      .select('id, name, is_predefined, type')
+      .select('id, name, is_predefined, type, household_id')
       .eq('id', id)
       .single();
 
@@ -202,6 +218,54 @@ export async function DELETE(
         { error: 'Cannot delete predefined categories' },
         { status: 403 }
       );
+    }
+
+    // DW-5 #3 + #4: a shared category belongs to the household, so deleting it
+    // is an admin action, AND it must not proceed while it still labels another
+    // member's transactions.
+    //
+    // The count below is RLS-scoped to the caller, so it only ever saw the
+    // CALLER's rows. For a shared category that made the delete either fail on
+    // the FK (transactions.category_id is NOT NULL, ON DELETE RESTRICT) or
+    // partially orphan — the caller's rows reassigned, everyone else's left
+    // pointing at a row about to disappear. Counting all members' rows requires
+    // stepping outside RLS, which is what the service-role client is for.
+    if (category.household_id) {
+      const household = await getCurrentHousehold(user.id);
+      if (household?.role !== 'admin') {
+        return NextResponse.json(
+          { error: 'Only a household admin can delete a shared category' },
+          { status: 403 }
+        );
+      }
+
+      const service = createServiceRoleClient();
+      const { count: othersCount, error: othersError } = await service
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('category_id', id)
+        .neq('user_id', user.id);
+
+      if (othersError) {
+        logger.error('Categories', 'Error counting other members transactions:', othersError);
+        return NextResponse.json(
+          { error: 'Failed to check shared category usage' },
+          { status: 500 }
+        );
+      }
+
+      if (othersCount && othersCount > 0) {
+        // Refuse, and say why. Reassigning another member's transactions on
+        // their behalf would silently rewrite their history.
+        return NextResponse.json(
+          {
+            error: 'Shared category is in use by other members',
+            sharedInUse: true,
+            otherMemberTransactionCount: othersCount,
+          },
+          { status: 409 }
+        );
+      }
     }
 
     // Check transaction count

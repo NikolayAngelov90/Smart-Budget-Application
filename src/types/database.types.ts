@@ -1416,7 +1416,14 @@ export interface WishlistItemImpact {
   /** Delay to the nearest-deadline unmet goal; null when no such goal */
   goal_delay: {
     goal_name: string;
+    /** Capped at WISHLIST_MAX_DELAY_DAYS; see `exceeds_cap`. */
     delay_days: number;
+    /**
+     * True when the true delay is beyond the cap. A goal a euro short with a
+     * distant deadline produces arithmetically correct but useless figures
+     * ("30,142 days"), so the UI says "more than 2 years" instead.
+     */
+    exceeds_cap: boolean;
   } | null;
   /** Highest-priority value mapped to the linked category; null without plan/category */
   aligned_value: string | null;
