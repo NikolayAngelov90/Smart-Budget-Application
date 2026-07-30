@@ -11,8 +11,23 @@
 import useSWR, { type KeyedMutator } from 'swr';
 import { useGamification } from '@/lib/hooks/useGamification';
 import type { BudgetScoreResponse } from '@/types/database.types';
+import { clientTodayParam } from '@/lib/utils/date';
 
+/**
+ * The KEY constants are now PREFIXES, not whole keys: each request carries the
+ * client's local `?today=`, because the server runs UTC and would otherwise put
+ * the month boundary in the wrong place for hours of every day. The param also
+ * rolls the cache over at local midnight, so an open tab picks up the new day.
+ *
+ * Anything revalidating these must match by PREFIX — an exact-key mutate stops
+ * matching and goes silently stale.
+ */
 export const SCORE_KEY = '/api/gamification/score';
+
+/** Full request URL for the client's current local day. */
+function scoreUrl(): string {
+  return `${SCORE_KEY}?today=${clientTodayParam()}`;
+}
 
 async function fetcher(url: string): Promise<BudgetScoreResponse> {
   const response = await fetch(url);
@@ -37,7 +52,7 @@ export function useBudgetScore(): UseBudgetScoreResult {
   // revalidations (AppLayout quick-add, dashboard pull-to-refresh) are gated
   // separately on the same pref so the reduction actually holds.
   const { enabled } = useGamification();
-  const { data, error, isLoading, mutate } = useSWR<BudgetScoreResponse>(enabled ? SCORE_KEY : null, fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<BudgetScoreResponse>(enabled ? scoreUrl() : null, fetcher, {
     dedupingInterval: 5000,
     revalidateOnFocus: true,
     keepPreviousData: true,

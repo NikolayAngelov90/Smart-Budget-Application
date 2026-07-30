@@ -11,11 +11,11 @@
  * - Row Level Security enforced via user-scoped client
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { computeEndOfMonthForecasts } from '@/lib/ai/forecastEngine';
 import { AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
-import { toLocalISODate } from '@/lib/utils/date';
+import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ export const revalidate = 0;
 /**
  * GET /api/dashboard/budget-forecast
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -39,7 +39,10 @@ export async function GET() {
       );
     }
 
-    const today = new Date();
+    // The server runs UTC; `transactions.date` holds the client's LOCAL day, so
+    // a window derived from the server clock is wrong for anyone east or west of
+    // UTC for part of every day. Clamped to +/-1 day server-side.
+    const today = resolveClientToday(new URL(request.url).searchParams.get('today'));
     const currentMonthStart = toLocalISODate(new Date(today.getFullYear(), today.getMonth(), 1));
     const currentMonthEnd = toLocalISODate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
     const threeMonthsAgo = toLocalISODate(

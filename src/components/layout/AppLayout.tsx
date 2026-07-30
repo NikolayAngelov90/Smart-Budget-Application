@@ -71,7 +71,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     await mutate('/api/dashboard/stats', undefined, { revalidate: true });
 
     // Force immediate revalidation of spending by category
-    await mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true });
+    // PREFIX match: these keys now carry the client's local `?today=`,
+    // so an exact-key mutate no longer matches and would go stale.
+    mutate(
+      (key) => typeof key === 'string' && key.startsWith('/api/dashboard/spending-by-category'),
+      undefined,
+      { revalidate: true }
+    );
 
     // Force immediate revalidation of spending trends
     await mutate('/api/dashboard/trends', undefined, { revalidate: true });
@@ -95,7 +101,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     if (gamificationEnabled) {
       await Promise.all([
         mutate(STREAK_KEY, undefined, { revalidate: true }),
-        mutate(SCORE_KEY, undefined, { revalidate: true }),
+        // PREFIX match: these keys now carry the client's local `?today=`,
+        // so an exact-key mutate no longer matches and would go stale.
+        mutate(
+          (key) => typeof key === 'string' && key.startsWith(SCORE_KEY),
+          undefined,
+          { revalidate: true }
+        ),
         mutate(COMEBACK_KEY, undefined, { revalidate: true }),
       ]);
     }

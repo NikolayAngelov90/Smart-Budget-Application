@@ -37,6 +37,9 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 jest.mock('@/lib/utils/date', () => ({
+  // Spread the real module so a NEW export (e.g. resolveClientToday) does not
+  // silently become undefined and 500 the route.
+  ...jest.requireActual('@/lib/utils/date'),
   toLocalISODate: jest.fn((d: Date) => d.toISOString().substring(0, 10)),
 }));
 
@@ -51,6 +54,16 @@ import {
 } from '@/lib/services/budgetService';
 import { GET, PUT } from '../route';
 import { DELETE } from '../[id]/route';
+
+/**
+ * GET now takes the request so it can read `?today=` — the client's local day,
+ * because the server runs UTC and would otherwise put the month boundary in the
+ * wrong place. Omitting the param falls back to the server clock, which is the
+ * behaviour these tests already assume.
+ */
+const getRequest = (query = '') =>
+  ({ url: `http://localhost:3000/api/budgets${query}` }) as Parameters<typeof GET>[0];
+
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockListBudgets = listBudgets as jest.MockedFunction<typeof listBudgets>;
@@ -103,7 +116,7 @@ beforeEach(() => jest.clearAllMocks());
 describe('GET /api/budgets', () => {
   it('returns 401 when unauthenticated', async () => {
     mockCreateClient.mockResolvedValue(makeSupabase({ user: null }) as never);
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(401);
   });
 
@@ -112,7 +125,7 @@ describe('GET /api/budgets', () => {
     mockCreateClient.mockResolvedValue(supabase as never);
     mockListBudgets.mockResolvedValue([]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.budgets).toEqual([]);
@@ -132,7 +145,7 @@ describe('GET /api/budgets', () => {
     );
     mockListBudgets.mockResolvedValue([BUDGET_ROW]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.budgets).toHaveLength(1);
@@ -159,7 +172,7 @@ describe('GET /api/budgets', () => {
     );
     mockListBudgets.mockResolvedValue([BUDGET_ROW]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(body.budgets[0].spent).toBe(250);
   });
@@ -182,7 +195,7 @@ describe('GET /api/budgets', () => {
       { ...BUDGET_ROW, id: 'b-2', category_id: 'cat-2', limit_amount: 100 },
     ]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(body.budgets[0].category_id).toBe('cat-2');
     expect(body.budgets[0].status).toBe('over');

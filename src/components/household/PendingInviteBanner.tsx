@@ -10,11 +10,16 @@
 
 import { useState } from 'react';
 import { Box, VStack, HStack, Text, Button, useToast } from '@chakra-ui/react';
-import { mutate as globalMutate } from 'swr';
+import { useSWRConfig } from 'swr';
 import { useTranslations } from 'next-intl';
 import { useMyInvitations } from '@/lib/hooks/useMyInvitations';
 
 export function PendingInviteBanner() {
+  // SCOPED mutate. The global `mutate` from 'swr' binds to SWR's own default
+  // cache while every hook here reads the localStorage provider, so these
+  // revalidations were no-ops (15-1).
+  const { mutate: globalMutate } = useSWRConfig();
+
   const t = useTranslations('invitations');
   const toast = useToast();
   const { invitations, isLoading, mutate } = useMyInvitations();

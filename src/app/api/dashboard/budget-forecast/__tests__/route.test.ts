@@ -31,12 +31,25 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 jest.mock('@/lib/utils/date', () => ({
+  // Spread the real module so a NEW export (e.g. resolveClientToday) does not
+  // silently become undefined and 500 the route.
+  ...jest.requireActual('@/lib/utils/date'),
   toLocalISODate: jest.fn((d: Date) => d.toISOString().substring(0, 10)),
 }));
 
 import { createClient } from '@/lib/supabase/server';
 import { computeEndOfMonthForecasts } from '@/lib/ai/forecastEngine';
 import { GET } from '../route';
+
+/**
+ * GET now takes the request so it can read `?today=` — the client's local day,
+ * because the server runs UTC and would otherwise put the month boundary in the
+ * wrong place. Omitting the param falls back to the server clock, which is the
+ * behaviour these tests already assume.
+ */
+const getRequest = (query = '') =>
+  ({ url: `http://localhost:3000/api/dashboard/budget-forecast${query}` }) as Parameters<typeof GET>[0];
+
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockComputeForecasts = computeEndOfMonthForecasts as jest.MockedFunction<typeof computeEndOfMonthForecasts>;
@@ -96,7 +109,7 @@ describe('GET /api/dashboard/budget-forecast', () => {
 
   it('returns 401 when user is not authenticated', async () => {
     mockCreateClient.mockResolvedValue(makeSupabaseMock({ user: null, authError: { message: 'No session' } }) as never);
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error.message).toBe('Unauthorized');
@@ -104,7 +117,7 @@ describe('GET /api/dashboard/budget-forecast', () => {
 
   it('returns hasCurrentMonthData: false when no current-month transactions', async () => {
     mockCreateClient.mockResolvedValue(makeSupabaseMock({ currentTx: [] }) as never);
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.hasCurrentMonthData).toBe(false);
@@ -119,7 +132,7 @@ describe('GET /api/dashboard/budget-forecast', () => {
     mockCreateClient.mockResolvedValue(makeSupabaseMock({ currentTx: [fakeTx] }) as never);
     mockComputeForecasts.mockReturnValue([fakeForecast]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.hasCurrentMonthData).toBe(true);
@@ -144,7 +157,7 @@ describe('GET /api/dashboard/budget-forecast', () => {
     }));
     mockCreateClient.mockResolvedValue(mockClient as never);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(500);
   });
 });

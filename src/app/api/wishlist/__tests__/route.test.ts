@@ -41,6 +41,9 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 jest.mock('@/lib/utils/date', () => ({
+  // Spread the real module so a NEW export (e.g. resolveClientToday) does not
+  // silently become undefined and 500 the route.
+  ...jest.requireActual('@/lib/utils/date'),
   toLocalISODate: jest.fn((d: Date) => {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -61,6 +64,16 @@ import {
 import { getValuesPlan } from '@/lib/services/valuesService';
 import { GET, POST } from '../route';
 import { PATCH } from '../[id]/route';
+
+/**
+ * GET now takes the request so it can read `?today=` — the client's local day,
+ * because the server runs UTC and would otherwise put the month boundary in the
+ * wrong place. Omitting the param falls back to the server clock, which is the
+ * behaviour these tests already assume.
+ */
+const getRequest = (query = '') =>
+  ({ url: `http://localhost:3000/api/wishlist${query}` }) as Parameters<typeof GET>[0];
+
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockListWishlist = listWishlist as jest.MockedFunction<typeof listWishlist>;
@@ -127,7 +140,7 @@ beforeEach(() => {
 describe('GET /api/wishlist', () => {
   it('returns 401 when unauthenticated', async () => {
     mockCreateClient.mockResolvedValue(makeSupabase({}, null) as never);
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(401);
   });
 
@@ -136,7 +149,7 @@ describe('GET /api/wishlist', () => {
     mockCreateClient.mockResolvedValue(supabase as never);
     mockListWishlist.mockResolvedValue([]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.items).toEqual([]);
@@ -168,7 +181,7 @@ describe('GET /api/wishlist', () => {
       { id: 'v-1', name: 'Fun', priority: 1, category_ids: ['cat-1'] },
     ]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.items).toHaveLength(1);
@@ -202,7 +215,7 @@ describe('GET /api/wishlist', () => {
     mockListWishlist.mockResolvedValue([ITEM]);
     mockGetValuesPlan.mockRejectedValue(new Error('no plan'));
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     const item = body.items[0];
@@ -222,7 +235,7 @@ describe('GET /api/wishlist', () => {
     );
     mockListWishlist.mockResolvedValue([{ ...ITEM, category_id: null }]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.items[0].impact.month_balance_after).toBeNull();
@@ -242,7 +255,7 @@ describe('GET /api/wishlist', () => {
     );
     mockListWishlist.mockResolvedValue([ITEM]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(body.items[0].impact.category_budget).toBeNull();
     // Month balance is unaffected by the spend-query failure
@@ -263,7 +276,7 @@ describe('GET /api/wishlist', () => {
     );
     mockListWishlist.mockResolvedValue([{ ...ITEM, status: 'purchased' }]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     const impact = body.items[0].impact;
     expect(impact.month_balance_after).toBeNull();
@@ -284,7 +297,7 @@ describe('GET /api/wishlist', () => {
     );
     mockListWishlist.mockResolvedValue([{ ...ITEM, category_id: null }]);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(body.items[0].impact.month_balance_after).toBe(100); // 200 - 0 - 100
   });

@@ -21,7 +21,7 @@ import {
 } from '@/lib/services/wishlistService';
 import { getValuesPlan } from '@/lib/services/valuesService';
 import { computeWishlistImpact } from '@/lib/ai/wishlistImpactEngine';
-import { toLocalISODate } from '@/lib/utils/date';
+import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 import type {
   WishlistItemWithImpact,
@@ -53,7 +53,7 @@ interface GoalRow {
   deadline: string;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -70,7 +70,10 @@ export async function GET() {
       return NextResponse.json(empty);
     }
 
-    const today = new Date();
+    // The server runs UTC; `transactions.date` holds the client's LOCAL day, so
+    // a window derived from the server clock is wrong for anyone east or west of
+    // UTC for part of every day. Clamped to +/-1 day server-side.
+    const today = resolveClientToday(new URL(request.url).searchParams.get('today'));
     const todayKey = toLocalISODate(today);
     const monthStart = toLocalISODate(new Date(today.getFullYear(), today.getMonth(), 1));
     const monthEnd = toLocalISODate(new Date(today.getFullYear(), today.getMonth() + 1, 0));

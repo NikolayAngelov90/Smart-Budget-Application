@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
-import { toLocalISODate } from '@/lib/utils/date';
+import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -51,7 +51,12 @@ export async function GET(request: NextRequest) {
     const monthParam = searchParams.get('month');
 
     // Calculate month date range
-    const currentDate = monthParam ? new Date(`${monthParam}-01`) : new Date();
+    // The server runs UTC; `transactions.date` holds the client's LOCAL day, so
+    // a window derived from the server clock is wrong for anyone east or west of
+    // UTC for part of every day. Clamped to +/-1 day server-side.
+    const currentDate = monthParam
+      ? new Date(`${monthParam}-01T00:00:00`)
+      : resolveClientToday(searchParams.get('today'));
     const monthStart = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),

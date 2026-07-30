@@ -36,6 +36,16 @@ import { AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
 import { toLocalISODate } from '@/lib/utils/date';
 import { GET } from '../route';
 
+/**
+ * GET now takes the request so it can read `?today=` — the client's local day,
+ * because the server runs UTC and would otherwise put the month boundary in the
+ * wrong place. Omitting the param falls back to the server clock, which is the
+ * behaviour these tests already assume.
+ */
+const getRequest = (query = '') =>
+  ({ url: `http://localhost:3000/api/gamification/score${query}` }) as Parameters<typeof GET>[0];
+
+
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockGetStreak = getStreak as jest.MockedFunction<typeof getStreak>;
 
@@ -112,7 +122,7 @@ beforeEach(() => jest.clearAllMocks());
 describe('GET /api/gamification/score', () => {
   it('returns 401 when unauthenticated', async () => {
     mockCreateClient.mockResolvedValue(makeSupabase({}, null) as never);
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(401);
     expect(mockGetStreak).not.toHaveBeenCalled();
   });
@@ -130,7 +140,7 @@ describe('GET /api/gamification/score', () => {
     mockCreateClient.mockResolvedValue(supabase as never);
     mockGetStreak.mockResolvedValue(STREAK);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.hasData).toBe(true);
@@ -188,7 +198,7 @@ describe('GET /api/gamification/score', () => {
     mockCreateClient.mockResolvedValue(supabase as never);
     mockGetStreak.mockResolvedValue(STREAK);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     // Full adherence + full consistency + half goals -> score 90 -> master:
@@ -237,7 +247,7 @@ describe('GET /api/gamification/score', () => {
     mockCreateClient.mockResolvedValue(supabase as never);
     mockGetStreak.mockResolvedValue(STREAK);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(body.newlyUnlocked).toEqual(expect.arrayContaining(['first_goal', 'goal_reached']));
     const goalsFactor = body.budgetScore.factors.find((f: { key: string }) => f.key === 'goals');
@@ -257,7 +267,7 @@ describe('GET /api/gamification/score', () => {
     mockCreateClient.mockResolvedValue(supabase as never);
     mockGetStreak.mockResolvedValue(STREAK);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.budgetScore).not.toBeNull();
@@ -268,7 +278,7 @@ describe('GET /api/gamification/score', () => {
     mockCreateClient.mockResolvedValue(makeSupabase({}) as never);
     mockGetStreak.mockResolvedValue(null);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body).toEqual({ hasData: false, budgetScore: null, newlyUnlocked: [] });
@@ -282,7 +292,7 @@ describe('GET /api/gamification/score', () => {
     );
     mockGetStreak.mockResolvedValue(null);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(500);
   });
 
@@ -298,7 +308,7 @@ describe('GET /api/gamification/score', () => {
     mockCreateClient.mockResolvedValue(supabase as never);
     mockGetStreak.mockResolvedValue(STREAK);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.hasData).toBe(true); // historical average still yields adherence
@@ -317,7 +327,7 @@ describe('GET /api/gamification/score', () => {
     mockCreateClient.mockResolvedValue(supabase as never);
     mockGetStreak.mockRejectedValue(new Error('Failed to load streak'));
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     const consistency = body.budgetScore.factors.find(
@@ -343,7 +353,7 @@ describe('GET /api/gamification/score', () => {
     mockCreateClient.mockResolvedValue(supabase as never);
     mockGetStreak.mockResolvedValue(STREAK);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     const goals = body.budgetScore.factors.find((f: { key: string }) => f.key === 'goals');
