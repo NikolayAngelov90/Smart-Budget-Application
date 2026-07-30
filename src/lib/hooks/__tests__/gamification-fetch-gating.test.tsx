@@ -46,7 +46,14 @@ describe('gamification fetch gating (Story 15.6)', () => {
     it(`passes ${key} when gamification is enabled`, () => {
       mockUseGamification.mockReturnValue({ enabled: true, isLoading: false });
       run();
-      expect(mockUseSWR).toHaveBeenCalledWith(key, expect.any(Function), expect.any(Object));
+      // The key is now a PREFIX: each request carries the client's local
+      // `?today=` so the server does not derive the window from its own UTC
+      // clock. What matters here is the gating, i.e. that a key is passed at all.
+      expect(mockUseSWR).toHaveBeenCalledWith(
+        expect.stringContaining(key),
+        expect.any(Function),
+        expect.any(Object)
+      );
     });
 
     it('passes null (no fetch) when gamification is opted out', () => {

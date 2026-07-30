@@ -8,6 +8,10 @@
 
 import useSWR, { type KeyedMutator } from 'swr';
 import type { CategoryForecast, ForecastResponse } from '@/types/database.types';
+import { clientTodayParam } from '@/lib/utils/date';
+
+/** PREFIX, not a whole key — requests carry the client's local `?today=`. */
+export const BUDGET_FORECAST_KEY = '/api/dashboard/budget-forecast';
 
 export interface UseBudgetForecastResult {
   forecasts: CategoryForecast[];
@@ -20,7 +24,7 @@ export interface UseBudgetForecastResult {
 
 export function useBudgetForecast(): UseBudgetForecastResult {
   const { data, error, isLoading, mutate } = useSWR<ForecastResponse>(
-    '/api/dashboard/budget-forecast',
+    `${BUDGET_FORECAST_KEY}?today=${clientTodayParam()}`,
     async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) {

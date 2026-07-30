@@ -26,6 +26,9 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 jest.mock('@/lib/utils/date', () => ({
+  // Spread the real module so a NEW export (e.g. resolveClientToday) does not
+  // silently become undefined and 500 the route.
+  ...jest.requireActual('@/lib/utils/date'),
   toLocalISODate: jest.fn((d: Date) => {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -36,6 +39,16 @@ jest.mock('@/lib/utils/date', () => ({
 
 import { createClient } from '@/lib/supabase/server';
 import { GET } from '../route';
+
+/**
+ * GET now takes the request so it can read `?today=` — the client's local day,
+ * because the server runs UTC and would otherwise put the month boundary in the
+ * wrong place. Omitting the param falls back to the server clock, which is the
+ * behaviour these tests already assume.
+ */
+const getRequest = (query = '') =>
+  ({ url: `http://localhost:3000/api/what-if${query}` }) as Parameters<typeof GET>[0];
+
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
@@ -86,7 +99,7 @@ beforeEach(() => jest.clearAllMocks());
 describe('GET /api/what-if', () => {
   it('returns 401 when unauthenticated', async () => {
     mockCreateClient.mockResolvedValue(makeSupabase({}, null) as never);
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(401);
   });
 
@@ -97,7 +110,7 @@ describe('GET /api/what-if', () => {
     });
     mockCreateClient.mockResolvedValue(supabase as never);
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.hasData).toBe(true);
@@ -129,7 +142,7 @@ describe('GET /api/what-if', () => {
       }) as never
     );
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.hasData).toBe(true); // subscriptions alone are simulatable
@@ -148,7 +161,7 @@ describe('GET /api/what-if', () => {
       }) as never
     );
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(body.categories[0].avg_monthly).toBe(66.67); // (100 × rate 2) / 3
   });
@@ -170,7 +183,7 @@ describe('GET /api/what-if', () => {
       }) as never
     );
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(body.subscriptions).toEqual([
       { id: 's-1', name: 'Netflix', monthly_amount: expected },
@@ -192,7 +205,7 @@ describe('GET /api/what-if', () => {
       }) as never
     );
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(body.goal).toEqual({
       name: 'Vacation',
@@ -212,7 +225,7 @@ describe('GET /api/what-if', () => {
       }) as never
     );
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.hasData).toBe(true);
@@ -228,7 +241,7 @@ describe('GET /api/what-if', () => {
       }) as never
     );
 
-    const res = await GET();
+    const res = await GET(getRequest());
     expect(res.status).toBe(500);
   });
 
@@ -240,7 +253,7 @@ describe('GET /api/what-if', () => {
       }) as never
     );
 
-    const res = await GET();
+    const res = await GET(getRequest());
     const body = await res.json();
     expect(body.hasData).toBe(false);
     expect(body.categories).toEqual([]);

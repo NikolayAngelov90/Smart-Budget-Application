@@ -17,7 +17,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Box, Flex, HStack, Skeleton, Text, VStack } from '@chakra-ui/react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { format } from 'date-fns';
-import { bg } from 'date-fns/locale';
 import { useLocale, useTranslations } from 'next-intl';
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats';
 import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
@@ -26,6 +25,7 @@ import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { formatCurrency, calculateTrend } from '@/lib/utils/currency';
+import { getDateLocale } from '@/lib/utils/dateFormatter';
 
 const MotionBox = motion(Box);
 
@@ -155,7 +155,7 @@ export function BalanceFlowHero() {
   const t = useTranslations('dashboard');
   const [period, setPeriod] = useState<DashboardPeriod>('month');
   const locale = useLocale();
-  const dateLocale = locale === 'bg' ? bg : undefined;
+  const dateLocale = getDateLocale(locale);
   const reduce = useReducedMotion();
   const { preferences } = useUserPreferences();
   const currencyCode = preferences?.currency_format;

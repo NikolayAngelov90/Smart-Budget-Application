@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { logger } from '@/lib/utils/logger';
+import { toLocalISODate } from '@/lib/utils/date';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -82,8 +83,8 @@ export async function GET(request: NextRequest) {
       .select('category_id, amount')
       .eq('user_id', user.id)
       .eq('type', 'expense')
-      .gte('date', currentStart.toISOString())
-      .lte('date', currentEnd.toISOString());
+      .gte('date', toLocalISODate(currentStart))
+      .lte('date', toLocalISODate(currentEnd));
 
     if (currentError) {
       logger.error('Dashboard', 'Error fetching current month transactions:', currentError);
@@ -99,8 +100,8 @@ export async function GET(request: NextRequest) {
       .select('category_id, amount')
       .eq('user_id', user.id)
       .eq('type', 'expense')
-      .gte('date', previousStart.toISOString())
-      .lte('date', previousEnd.toISOString());
+      .gte('date', toLocalISODate(previousStart))
+      .lte('date', toLocalISODate(previousEnd));
 
     if (previousError) {
       logger.error('Dashboard', 'Error fetching previous month transactions:', previousError);

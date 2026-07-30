@@ -11,9 +11,12 @@ import { bg } from 'date-fns/locale';
 import type { UserPreferences } from '@/types/user.types';
 
 /**
- * Get the date-fns locale object for a given language code
+ * The date-fns locale object for a language code, or undefined for English
+ * (date-fns' default). Exported because five call sites had each inlined
+ * `locale === 'bg' ? bg : undefined`, which quietly needs updating in five
+ * places every time a locale is added.
  */
-function getDateLocale(language?: string) {
+export function getDateLocale(language?: string) {
   switch (language) {
     case 'bg':
       return bg;

@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Container, Heading, Text, VStack } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
-import { mutate as globalMutate } from 'swr';
+import { useSWRConfig } from 'swr';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { CombinedSpendingCard } from '@/components/household/CombinedSpendingCard';
@@ -24,6 +24,11 @@ import { HouseholdInsightsCard } from '@/components/household/HouseholdInsightsC
 import { HouseholdSection } from '@/components/household/HouseholdSection';
 
 export default function HouseholdPage() {
+  // SCOPED mutate. The global `mutate` from 'swr' binds to SWR's own default
+  // cache while every hook here reads the localStorage provider, so these
+  // revalidations were no-ops (15-1).
+  const { mutate: globalMutate } = useSWRConfig();
+
   const t = useTranslations('householdDashboard');
   const { household, isLoading } = useHousehold();
 
@@ -38,7 +43,8 @@ export default function HouseholdPage() {
       globalMutate('/api/households/goals'); // a contribution also logs a transaction → keep goals fresh
       globalMutate('/api/households/insights'); // shared spend changed → recompute insights
     }, 150);
-  }, []);
+    // `mutate` from useSWRConfig is referentially stable.
+  }, [globalMutate]);
   useRealtimeSubscription(revalidate);
 
   // Don't let a queued revalidation fire after the page unmounts.

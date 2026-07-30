@@ -3,13 +3,13 @@
 import { useState, useMemo, useRef } from 'react';
 import { VStack, Text, Spinner, Center, Box, HStack, Badge } from '@chakra-ui/react';
 import { format } from 'date-fns';
-import { bg } from 'date-fns/locale';
 import { useLocale, useTranslations } from 'next-intl';
 import { AIInsightCard } from './AIInsightCard';
 import { InsightMetadata } from './InsightMetadata';
 import { InsightDetailModal } from './InsightDetailModal';
 import { groupInsights, selectLeadInsight } from '@/lib/utils/insightGroups';
 import type { Insight } from '@/types/database.types';
+import { getDateLocale } from '@/lib/utils/dateFormatter';
 
 interface InsightsListProps {
   insights: Insight[];
@@ -37,7 +37,7 @@ export function InsightsList({
   // Timestamps were formatted with the default (English) locale, so they read
   // "July 25th, 2026" inside the Bulgarian UI (same class as the hero-date fix).
   const locale = useLocale();
-  const dateLocale = locale === 'bg' ? bg : undefined;
+  const dateLocale = getDateLocale(locale);
 
   const handleOpenModal = (insight: Insight) => {
     setSelectedInsight(insight);

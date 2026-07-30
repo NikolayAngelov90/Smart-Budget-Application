@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { format } from 'date-fns';
 import { logger } from '@/lib/utils/logger';
+import { toLocalISODate } from '@/lib/utils/date';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -78,8 +79,8 @@ export async function GET(request: NextRequest) {
       .from('transactions')
       .select('date, type, amount')
       .eq('user_id', user.id)
-      .gte('date', startDate.toISOString())
-      .lte('date', endDate.toISOString())
+      .gte('date', toLocalISODate(startDate))
+      .lte('date', toLocalISODate(endDate))
       .order('date', { ascending: true });
 
     if (transactionsError) {

@@ -15,7 +15,7 @@ import {
   CategoryNotBudgetableError,
 } from '@/lib/services/budgetService';
 import { budgetStatusFor } from '@/lib/ai/budgetResolver';
-import { toLocalISODate } from '@/lib/utils/date';
+import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 import type { BudgetsResponse, BudgetSummary } from '@/types/database.types';
 
@@ -38,7 +38,7 @@ const upsertSchema = z.object({
     }),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -51,7 +51,10 @@ export async function GET() {
 
     const budgets = await listBudgets(user.id);
 
-    const today = new Date();
+    // The server runs UTC; `transactions.date` holds the client's LOCAL day, so
+    // a window derived from the server clock is wrong for anyone east or west of
+    // UTC for part of every day. Clamped to +/-1 day server-side.
+    const today = resolveClientToday(new URL(request.url).searchParams.get('today'));
     const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
     if (budgets.length === 0) {

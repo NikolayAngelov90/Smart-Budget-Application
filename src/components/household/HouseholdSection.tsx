@@ -25,7 +25,7 @@ import {
   Divider,
   useToast,
 } from '@chakra-ui/react';
-import { mutate as globalMutate } from 'swr';
+import { useSWRConfig } from 'swr';
 import { useTranslations } from 'next-intl';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { HouseholdInvites } from '@/components/household/HouseholdInvites';
@@ -36,6 +36,11 @@ import { ContributionSplitCard } from '@/components/household/ContributionSplitC
 import type { HouseholdPreset } from '@/types/database.types';
 
 export function HouseholdSection() {
+  // SCOPED mutate. The global `mutate` from 'swr' binds to SWR's own default
+  // cache while every hook here reads the localStorage provider, so these
+  // revalidations were no-ops (15-1).
+  const { mutate: globalMutate } = useSWRConfig();
+
   const t = useTranslations('household');
   const toast = useToast();
   const { household, isLoading, error, mutate } = useHousehold();

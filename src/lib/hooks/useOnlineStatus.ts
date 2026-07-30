@@ -16,7 +16,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { mutate } from 'swr';
+import { useSWRConfig } from 'swr';
 import { createClient } from '@/lib/supabase/client';
 import { getCachedDataTimestamp } from '@/lib/services/offlineService';
 
@@ -78,6 +78,12 @@ function saveLastSyncToStorage(date: Date): void {
  * @returns OnlineStatusState with isOnline, lastSync, syncStatus
  */
 export function useOnlineStatus(): OnlineStatusState {
+  // SCOPED mutate. The global `mutate` imported from 'swr' binds to SWR's own
+  // default cache, while every hook in this app reads the localStorage cache
+  // provider — so the reconnect revalidation below (AC-8.5.4) has never
+  // actually fired. It only looked like it worked because revalidateOnFocus
+  // usually refetched moments later.
+  const { mutate } = useSWRConfig();
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return navigator.onLine;
@@ -116,6 +122,7 @@ export function useOnlineStatus(): OnlineStatusState {
 
       // Story 8.5 AC-8.5.4: Trigger SWR revalidation on reconnection
       // Revalidate all SWR caches to fetch latest data
+      // Every key in the provider cache.
       mutate(() => true);
 
       // Update sync status to synced after revalidation
@@ -140,7 +147,9 @@ export function useOnlineStatus(): OnlineStatusState {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+    // `mutate` from useSWRConfig is referentially stable, so listing it does not
+    // re-bind the listeners.
+  }, [mutate]);
 
   // Initialize last sync on mount
   useEffect(() => {

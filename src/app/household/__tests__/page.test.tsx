@@ -8,7 +8,6 @@ import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useHouseholdCategoryTotals } from '@/lib/hooks/useHouseholdCategoryTotals';
 import { useContributions } from '@/lib/hooks/useContributions';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
-import { mutate } from 'swr';
 import HouseholdDashboardPage from '../page';
 
 jest.mock('@/lib/hooks/useHousehold', () => ({ useHousehold: jest.fn() }));
@@ -23,13 +22,19 @@ jest.mock('@/lib/hooks/useInvitations', () => ({ useInvitations: () => ({ invita
 jest.mock('@/lib/hooks/useAllowance', () => ({ useAllowance: () => ({ status: null, isLoading: false, error: undefined, mutate: jest.fn() }) }));
 jest.mock('@/lib/hooks/useHouseholdMembers', () => ({ useHouseholdMembers: () => ({ members: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
 jest.mock('@/lib/hooks/useMyInvitations', () => ({ useMyInvitations: () => ({ invitations: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
-jest.mock('swr', () => ({ ...jest.requireActual('swr'), mutate: jest.fn() }));
+const mockScopedMutate = jest.fn();
+jest.mock('swr', () => ({
+  ...jest.requireActual('swr'),
+  // The page revalidates through useSWRConfig(), not the global `mutate` —
+  // the global one binds to SWR's default cache, not this app's provider, so
+  // asserting on it passed while nothing was actually revalidated (15-1).
+  useSWRConfig: () => ({ mutate: mockScopedMutate }),
+}));
 
 const mockHousehold = useHousehold as jest.MockedFunction<typeof useHousehold>;
 const mockTotals = useHouseholdCategoryTotals as jest.MockedFunction<typeof useHouseholdCategoryTotals>;
 const mockContrib = useContributions as jest.MockedFunction<typeof useContributions>;
 const mockRealtime = useRealtimeSubscription as jest.MockedFunction<typeof useRealtimeSubscription>;
-const mockMutate = mutate as jest.MockedFunction<typeof mutate>;
 
 function asMember() {
   mockHousehold.mockReturnValue({ household: { id: 'h', name: 'Home', role: 'admin' } as never, isLoading: false, error: undefined, mutate: jest.fn() });
@@ -89,6 +94,6 @@ it('revalidates both dashboard endpoints on a realtime event (AC#5)', async () =
 
   await new Promise((r) => setTimeout(r, 200)); // trailing-guard debounce (150ms)
 
-  expect(mockMutate).toHaveBeenCalledWith('/api/households/category-totals');
-  expect(mockMutate).toHaveBeenCalledWith('/api/households/contributions');
+  expect(mockScopedMutate).toHaveBeenCalledWith('/api/households/category-totals');
+  expect(mockScopedMutate).toHaveBeenCalledWith('/api/households/contributions');
 });

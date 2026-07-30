@@ -14,7 +14,7 @@
  * - empty results ≠ errors
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { computeBudgetScore } from '@/lib/ai/budgetScoreEngine';
@@ -23,14 +23,14 @@ import { getUnlocked, unlockAchievements } from '@/lib/services/achievementServi
 import { AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spendingAnalysis';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import { getStreak } from '@/lib/services/streakService';
-import { toLocalISODate } from '@/lib/utils/date';
+import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 import type { BudgetScoreResponse, Goal } from '@/types/database.types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -42,7 +42,10 @@ export async function GET() {
       return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
-    const today = new Date();
+    // The server runs UTC; `transactions.date` holds the client's LOCAL day, so
+    // a window derived from the server clock is wrong for anyone east or west of
+    // UTC for part of every day. Clamped to +/-1 day server-side.
+    const today = resolveClientToday(new URL(request.url).searchParams.get('today'));
     const todayKey = localDayKey(today);
     // DATE columns compare as YYYY-MM-DD strings (never toISOString) — house rule
     const currentMonthStart = toLocalISODate(new Date(today.getFullYear(), today.getMonth(), 1));

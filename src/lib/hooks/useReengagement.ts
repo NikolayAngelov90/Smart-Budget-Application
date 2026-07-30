@@ -6,7 +6,7 @@
  * to user preferences (via PUT /api/user/profile).
  */
 
-import useSWR, { type KeyedMutator, mutate as globalMutate } from 'swr';
+import useSWR, { type KeyedMutator, useSWRConfig } from 'swr';
 import type { ReengagementResponse, ReengagementSummary } from '@/types/database.types';
 
 export interface UseReengagementResult {
@@ -18,6 +18,11 @@ export interface UseReengagementResult {
 }
 
 export function useReengagement(): UseReengagementResult {
+  // SCOPED mutate. The global `mutate` from 'swr' binds to SWR's own default
+  // cache while every hook here reads the localStorage provider, so these
+  // revalidations were no-ops (15-1).
+  const { mutate: globalMutate } = useSWRConfig();
+
   const { data, error, isLoading, mutate } = useSWR<ReengagementResponse>(
     '/api/reengagement',
     async (url: string) => {

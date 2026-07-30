@@ -9,11 +9,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { differenceInCalendarDays, format } from 'date-fns';
+import { format } from 'date-fns';
 import { createClient } from '@/lib/supabase/server';
 import { calculateTrend } from '@/lib/utils/currency';
 import { getExchangeRates } from '@/lib/services/exchangeRateService';
 import { logger } from '@/lib/utils/logger';
+import { resolveClientToday } from '@/lib/utils/date';
 import {
   isDashboardPeriod,
   resolvePeriodRanges,
@@ -42,32 +43,6 @@ export interface DashboardStatsResponse {
   /** Inclusive yyyy-MM-dd bounds of `current`, for display and debugging. */
   periodStart: string;
   periodEnd: string;
-}
-
-/**
- * Which day "now" is, from the USER's point of view.
- *
- * Vercel runs functions with TZ=UTC, but `transactions.date` is written as the
- * client's LOCAL day. Deriving windows from the server clock therefore puts the
- * boundary in the wrong place for anyone not on UTC: a Sofia user (UTC+3) at
- * 00:30 Monday is still in "last week" as far as the server is concerned, so
- * the transaction they just added falls outside both windows and vanishes from
- * the hero. Weekly windows hit this 52x a year.
- *
- * The client sends its own local date. Clamped to ±1 day of the server's date
- * so a bad or hostile value cannot shift the window arbitrarily — the same
- * clock-skew guard the transactions route already uses.
- */
-function resolveToday(todayParam: string | null): Date {
-  const serverNow = new Date();
-  if (!todayParam || !/^\d{4}-\d{2}-\d{2}$/.test(todayParam)) return serverNow;
-
-  // Midday, so DST shifts can never push this across a date boundary.
-  const candidate = new Date(`${todayParam}T12:00:00`);
-  if (Number.isNaN(candidate.getTime())) return serverNow;
-  if (Math.abs(differenceInCalendarDays(candidate, serverNow)) > 1) return serverNow;
-
-  return candidate;
 }
 
 interface AggregateResult {
@@ -123,7 +98,7 @@ export async function GET(request: NextRequest) {
     // pre-16.6 callers and keep their original whole-window comparison.
     const currentDate = monthParam
       ? new Date(`${monthParam}-01T00:00:00`)
-      : resolveToday(searchParams.get('today'));
+      : resolveClientToday(searchParams.get('today'));
     const ranges = resolvePeriodRanges(monthParam ? 'month' : period, currentDate, {
       comparePartial: !monthParam && periodParam !== null,
     });

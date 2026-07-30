@@ -49,7 +49,7 @@ import {
   AlertDialogOverlay,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
-import useSWR, { mutate as globalMutate } from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useTranslations } from 'next-intl';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CategoryModal } from '@/components/categories/CategoryModal';
@@ -62,6 +62,7 @@ import { formatCurrency } from '@/lib/utils/currency';
 import { EmptyState } from '@/components/shared/EmptyState';
 import type { BudgetSummary } from '@/types/database.types';
 import type { Category } from '@/types/category.types';
+import { clientTodayParam } from '@/lib/utils/date';
 
 // Throws on HTTP errors so SWR surfaces the error state instead of treating
 // an error payload as a successful (empty) categories response.
@@ -74,6 +75,11 @@ const fetcher = async (url: string) => {
 };
 
 export default function CategoriesPage() {
+  // SCOPED mutate. The global `mutate` from 'swr' binds to SWR's own default
+  // cache while every hook here reads the localStorage provider, so these
+  // revalidations were no-ops (15-1).
+  const { mutate: globalMutate } = useSWRConfig();
+
   const t = useTranslations('categories');
   const tToast = useTranslations('toast');
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -116,7 +122,7 @@ export default function CategoriesPage() {
   );
 
   // Story 16.3: current-month spend per category (expenses) for the card caption.
-  const { data: spendingData, mutate: mutateSpending } = useSWR('/api/dashboard/spending-by-category', fetcher);
+  const { data: spendingData, mutate: mutateSpending } = useSWR(`/api/dashboard/spending-by-category?today=${clientTodayParam()}`, fetcher);
   const spentByCategory = new Map<string, number>(
     (Array.isArray(spendingData?.categories)
       ? (spendingData.categories as Array<{ category_id: string; amount: number }>)
@@ -129,7 +135,12 @@ export default function CategoriesPage() {
   // Budget changes move the forecast's at-risk baseline — revalidate both.
   const handleBudgetChanged = () => {
     mutateBudgets();
-    globalMutate('/api/dashboard/budget-forecast', undefined, { revalidate: true });
+    // PREFIX match — the key now carries the client's local `?today=`.
+    globalMutate(
+      (key) => typeof key === 'string' && key.startsWith('/api/dashboard/budget-forecast'),
+      undefined,
+      { revalidate: true }
+    );
   };
 
   // Defensive: the `/api/categories` SWR key is shared and was historically

@@ -84,18 +84,36 @@ export default function DashboardPage() {
           undefined,
           { revalidate: true }
         ),
-        mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),
+        // PREFIX match: these keys now carry the client's local `?today=`,
+        // so an exact-key mutate no longer matches and would go stale.
+        mutate(
+          (key) => typeof key === 'string' && key.startsWith('/api/dashboard/spending-by-category'),
+          undefined,
+          { revalidate: true }
+        ),
         mutate('/api/dashboard/trends', undefined, { revalidate: true }),
         mutate(heatmapKey, undefined, { revalidate: true }),
         mutate('/api/dashboard/annualized-projections', undefined, { revalidate: true }),
-        mutate('/api/dashboard/budget-forecast', undefined, { revalidate: true }),
+        // PREFIX match: these keys now carry the client's local `?today=`,
+        // so an exact-key mutate no longer matches and would go stale.
+        mutate(
+          (key) => typeof key === 'string' && key.startsWith('/api/dashboard/budget-forecast'),
+          undefined,
+          { revalidate: true }
+        ),
         mutate('/api/recovery-plan', undefined, { revalidate: true }),
         mutate('/api/dashboard/seasonal', undefined, { revalidate: true }),
         mutate('/api/reengagement', undefined, { revalidate: true }),
         mutate('/api/user/digest', undefined, { revalidate: true }),
         mutate('/api/values/spending', undefined, { revalidate: true }),
         mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
-        mutate(BUDGETS_KEY, undefined, { revalidate: true }),
+        // PREFIX match: these keys now carry the client's local `?today=`,
+        // so an exact-key mutate no longer matches and would go stale.
+        mutate(
+          (key) => typeof key === 'string' && key.startsWith(BUDGETS_KEY),
+          undefined,
+          { revalidate: true }
+        ),
         // Story 15.6: skip the gamification revalidations when opted out — the
         // null-key hooks don't subscribe, and firing these would trigger the
         // score/comeback GETs (server achievement eval / create-on-read) from
@@ -103,7 +121,13 @@ export default function DashboardPage() {
         ...(preferences?.gamification_enabled ?? true
           ? [
               mutate(STREAK_KEY, undefined, { revalidate: true }),
-              mutate(SCORE_KEY, undefined, { revalidate: true }),
+              // PREFIX match: these keys now carry the client's local `?today=`,
+              // so an exact-key mutate no longer matches and would go stale.
+              mutate(
+                (key) => typeof key === 'string' && key.startsWith(SCORE_KEY),
+                undefined,
+                { revalidate: true }
+              ),
               mutate(COMEBACK_KEY, undefined, { revalidate: true }),
             ]
           : []),
@@ -342,13 +366,31 @@ export default function DashboardPage() {
               undefined,
               { revalidate: true }
             ),
-            mutate('/api/dashboard/spending-by-category', undefined, { revalidate: true }),
+            // PREFIX match: these keys now carry the client's local `?today=`,
+            // so an exact-key mutate no longer matches and would go stale.
+            mutate(
+              (key) => typeof key === 'string' && key.startsWith('/api/dashboard/spending-by-category'),
+              undefined,
+              { revalidate: true }
+            ),
             mutate('/api/dashboard/trends', undefined, { revalidate: true }),
             mutate('/api/values/spending', undefined, { revalidate: true }),
             mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
-            mutate(BUDGETS_KEY, undefined, { revalidate: true }),
+            // PREFIX match: these keys now carry the client's local `?today=`,
+            // so an exact-key mutate no longer matches and would go stale.
+            mutate(
+              (key) => typeof key === 'string' && key.startsWith(BUDGETS_KEY),
+              undefined,
+              { revalidate: true }
+            ),
             // Story 15.2 AC #4: the score updates after each transaction
-            mutate(SCORE_KEY, undefined, { revalidate: true }),
+            // PREFIX match: these keys now carry the client's local `?today=`,
+            // so an exact-key mutate no longer matches and would go stale.
+            mutate(
+              (key) => typeof key === 'string' && key.startsWith(SCORE_KEY),
+              undefined,
+              { revalidate: true }
+            ),
             // Story 15.4: challenge progress advances with each log
             mutate(COMEBACK_KEY, undefined, { revalidate: true }),
           ]);

@@ -36,7 +36,7 @@ import { EditIcon, CheckIcon, CloseIcon } from '@chakra-ui/icons';
 import { FaMobileAlt, FaTabletAlt, FaDesktop } from 'react-icons/fa';
 import { formatDistanceToNow } from 'date-fns';
 import { useTranslations } from 'next-intl';
-import useSWR, { mutate } from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { createClient } from '@/lib/supabase/client';
 import { ConfirmRevokeSessionModal } from './ConfirmRevokeSessionModal';
 import type { DeviceSession } from '@/types/session.types';
@@ -54,6 +54,10 @@ const fetcher = async (url: string): Promise<SessionsResponse> => {
 };
 
 export function ActiveDevicesSection() {
+  // SCOPED mutate — the global one binds to SWR's default cache, not this
+  // app's localStorage provider (15-1).
+  const { mutate } = useSWRConfig();
+
   const toast = useToast();
   const t = useTranslations('devices');
 
@@ -106,7 +110,8 @@ export function ActiveDevicesSection() {
       isMounted.current = false;
       supabase.removeChannel(channel);
     };
-  }, []);
+    // `mutate` from useSWRConfig is referentially stable.
+  }, [mutate]);
 
   // AC-9.6.4: Update timestamps every minute
   useEffect(() => {
@@ -116,7 +121,7 @@ export function ActiveDevicesSection() {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [mutate]);
 
   // Get device icon based on device type
   const getDeviceIcon = (deviceType: string) => {
