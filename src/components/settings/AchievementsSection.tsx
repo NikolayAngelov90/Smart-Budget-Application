@@ -13,11 +13,11 @@
 import { Badge, Box, Heading, SimpleGrid, Text, VStack } from '@chakra-ui/react';
 import { useLocale, useTranslations } from 'next-intl';
 import { format } from 'date-fns';
-import { bg } from 'date-fns/locale';
 import { ACHIEVEMENTS } from '@/lib/ai/achievementCatalog';
 import { useAchievements } from '@/lib/hooks/useAchievements';
 import { useGamification } from '@/lib/hooks/useGamification';
 import type { UserAchievement } from '@/types/database.types';
+import { getDateLocale } from '@/lib/utils/dateFormatter';
 
 const ACHIEVEMENT_GOLD = '#D69E2E';
 
@@ -25,7 +25,7 @@ export function AchievementsSection() {
   const t = useTranslations('achievements');
   // Locale-aware unlock dates — "Отключено на Jul 1, 2026" is not a sentence (15-3 review)
   const locale = useLocale();
-  const dateLocale = locale === 'bg' ? bg : undefined;
+  const dateLocale = getDateLocale(locale);
   const { enabled } = useGamification();
   const { data } = useAchievements();
 

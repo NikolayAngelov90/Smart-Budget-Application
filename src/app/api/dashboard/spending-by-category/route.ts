@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
+import { toLocalISODate } from '@/lib/utils/date';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -79,8 +80,8 @@ export async function GET(request: NextRequest) {
       `)
       .eq('user_id', user.id)
       .eq('type', 'expense')
-      .gte('date', monthStart.toISOString())
-      .lte('date', monthEnd.toISOString());
+      .gte('date', toLocalISODate(monthStart))
+      .lte('date', toLocalISODate(monthEnd));
 
     if (transactionsError) {
       logger.error('Dashboard', 'Error fetching transactions:', transactionsError);

@@ -23,7 +23,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
-import { mutate } from 'swr';
+import { useSWRConfig } from 'swr';
 import { createClient } from '@/lib/supabase/client';
 import type { InvitationValidation } from '@/lib/services/invitationService';
 
@@ -31,6 +31,10 @@ function JoinContent() {
   const t = useTranslations('join');
   const router = useRouter();
   const toast = useToast();
+  // SCOPED mutate — the global `mutate` from 'swr' binds to SWR's own default
+  // cache, not this app's localStorage provider, so it never revalidated the
+  // household key after accepting an invite.
+  const { mutate } = useSWRConfig();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
@@ -88,7 +92,7 @@ function JoinContent() {
       });
       setIsAccepting(false);
     }
-  }, [token, router, toast, t]);
+  }, [token, router, toast, t, mutate]);
 
   const reasonMessage = (reason: InvitationValidation['reason']): string => {
     switch (reason) {

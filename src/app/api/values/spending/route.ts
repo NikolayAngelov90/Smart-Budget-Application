@@ -13,6 +13,7 @@ import { getValuesPlan } from '@/lib/services/valuesService';
 import { computeValuesSpending } from '@/lib/ai/valuesSpendingEngine';
 import { logger } from '@/lib/utils/logger';
 import type { ValuesSpendingView } from '@/types/database.types';
+import { toLocalISODate } from '@/lib/utils/date';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -56,8 +57,8 @@ export async function GET() {
       .select('amount, category_id, date')
       .eq('user_id', user.id)
       .eq('type', 'expense')
-      .gte('date', prevMonthStart.toISOString())
-      .lt('date', nextMonthStart.toISOString());
+      .gte('date', toLocalISODate(prevMonthStart))
+      .lt('date', toLocalISODate(nextMonthStart));
 
     if (txError) {
       logger.error('ValuesSpending', 'Error fetching transactions:', txError);

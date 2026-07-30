@@ -56,7 +56,6 @@ import {
 import { CloseIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { bg } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 import { FilterBreadcrumbs } from '@/components/transactions/FilterBreadcrumbs';
@@ -72,6 +71,7 @@ import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrencyWithSign } from '@/lib/utils/currency';
 import { getEnabledCurrencies } from '@/lib/config/currencies';
 import { useTranslations, useLocale } from 'next-intl';
+import { getDateLocale } from '@/lib/utils/dateFormatter';
 
 // Types
 interface Category {
@@ -123,7 +123,7 @@ function TransactionsContent() {
 
   // Locale for the date-group headers (Story 16.1)
   const locale = useLocale();
-  const dateLocale = locale === 'bg' ? bg : undefined;
+  const dateLocale = getDateLocale(locale);
 
   // Filter state
   const [startDate, setStartDate] = useState('');
