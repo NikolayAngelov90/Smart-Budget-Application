@@ -8,13 +8,21 @@
  */
 
 import useSWR from 'swr';
+import { clientTodayParam } from '@/lib/utils/date';
+import type { DashboardPeriod } from '@/lib/utils/dashboardPeriod';
+
+/** PREFIX, not a whole key — requests carry `?today=` and may carry `?period=`. */
+export const SPENDING_BY_CATEGORY_KEY = '/api/dashboard/spending-by-category';
 
 /**
  * API response type for spending by category
  */
 export interface SpendingByCategoryResponse {
   month: string; // YYYY-MM format
-  total: number; // Total expenses for the month
+  /** The window the server actually aggregated — label from this, not from the
+   *  pending selection (see the hook's note below). */
+  period?: DashboardPeriod;
+  total: number; // Total expenses for the window
   categories: Array<{
     category_id: string;
     category_name: string;
@@ -52,13 +60,30 @@ export interface UseSpendingByCategoryResult {
 
 /**
  * Custom hook for fetching spending by category with SWR
- * @param month - Optional month in YYYY-MM format (defaults to current month)
+ *
+ * HP-1: the key now ALWAYS carries the client's local `?today=`. The route has
+ * accepted it since the deferred-work batch — but this hook never sent it, so
+ * the fix was live on the categories screen (which fetches the URL directly)
+ * and inert on the dashboard. The two screens then disagreed: at 01:30 on the
+ * 1st, a UTC+3 user saw an empty categories screen and a donut still showing
+ * the whole of last month. Same endpoint, same user, two answers, no error.
+ *
+ * @param month - Optional month in YYYY-MM format (an explicit drill-down; wins over `period`)
+ * @param period - Optional dashboard period (defaults server-side to `month`)
  * @returns Spending data, error, loading state, and mutate function
  */
-export function useSpendingByCategory(month?: string): UseSpendingByCategoryResult {
-  const url = month
-    ? `/api/dashboard/spending-by-category?month=${month}`
-    : '/api/dashboard/spending-by-category';
+export function useSpendingByCategory(
+  month?: string,
+  period?: DashboardPeriod
+): UseSpendingByCategoryResult {
+  const params = new URLSearchParams();
+  if (month) {
+    params.set('month', month);
+  } else if (period) {
+    params.set('period', period);
+  }
+  params.set('today', clientTodayParam());
+  const url = `${SPENDING_BY_CATEGORY_KEY}?${params.toString()}`;
 
   const { data, error, isLoading, mutate } = useSWR<SpendingByCategoryResponse>(
     url,
