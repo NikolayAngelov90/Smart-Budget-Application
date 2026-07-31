@@ -12,9 +12,11 @@
 
 import { startOfMonth, endOfMonth, subMonths, format, parseISO } from 'date-fns';
 import {
+  AVERAGE_WINDOW_MONTHS,
   calculateMean,
   calculateStdDev,
   calculateMonthOverMonth,
+  fixedWindowMonthlyAverage,
   isOutlier,
 } from './spendingAnalysis';
 import { formatAmount } from '@/lib/utils/formatAmount';
@@ -135,8 +137,9 @@ export function detectSpendingIncrease(input: RuleInput): InsightInsert | null {
 export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | null {
   const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currentBudget, currency } = input;
 
-  // Need at least 3 months of data
-  const threeMonthsAgo = subMonths(currentMonth, 3);
+  // One window back. Driven by the shared constant so the fetch, the loop below
+  // and the guard cannot drift apart.
+  const threeMonthsAgo = subMonths(currentMonth, AVERAGE_WINDOW_MONTHS);
 
   const recentTransactions = transactions.filter((t) => {
     const txDate = parseISO(t.date);
@@ -152,7 +155,7 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
   const monthlyTotals: number[] = [];
   const monthsAnalyzed: string[] = [];
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < AVERAGE_WINDOW_MONTHS; i++) {
     const month = subMonths(currentMonth, i);
     const monthStart = startOfMonth(month);
     const monthEnd = endOfMonth(month);
@@ -169,13 +172,32 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
     }
   }
 
-  // Need at least 2 months of data
-  if (monthlyTotals.length < 2) {
+  // A FULL three months, not two.
+  //
+  // This used to accept two while the copy said "3-month average" — so it
+  // divided by 2 and called the result a 3-month figure. That also made it the
+  // last holdout from the epic-14 ÷3 decision: every other baseline
+  // (nudge, forecastEngine, recoveryPlanner) uses `fixedWindowMonthlyAverage`,
+  // so a 2-month category showed "typical 300" here and "usual 200" on the
+  // forecast card, for the same category on the same dashboard.
+  //
+  // Porting the ÷3 window here — what the deferred note literally proposed —
+  // would have been worse: a steady [300, 300] spender becomes 200, and we
+  // would recommend a 220 budget to someone who reliably spends 300, then flag
+  // them for overspending every month. The ÷3 rule stops a spike posing as
+  // "usual", which is right for DETECTION and wrong for a RECOMMENDATION.
+  //
+  // Requiring the full window resolves both: at exactly 3 buckets the two
+  // formulas are identical, so no disagreement is possible and the copy is
+  // finally true. The cost is a month's wait for a category with only two
+  // months of history — a budget inferred from two months is a guess anyway.
+  if (monthlyTotals.length < AVERAGE_WINDOW_MONTHS) {
     return null;
   }
 
-  // Calculate 3-month average
-  const averageMonthly = calculateMean(monthlyTotals);
+  // Equivalent to calculateMean given the guard above, and stated this way so
+  // the shared window convention is what the number visibly comes from.
+  const averageMonthly = fixedWindowMonthlyAverage(monthlyTotals);
 
   // Add 10% buffer for recommended budget
   const recommendedBudget = Math.round(averageMonthly * 1.1);
