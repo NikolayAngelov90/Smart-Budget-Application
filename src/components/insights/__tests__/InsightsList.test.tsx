@@ -19,7 +19,13 @@ jest.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
   useLocale: () => 'en',
 }));
-jest.mock('../InsightMetadata', () => ({ InsightMetadata: () => null }));
+jest.mock('../InsightMetadata', () => ({
+  // Spread the real module: the list now also imports `hasInsightMetadata` to
+  // decide whether a "See details" affordance should exist at all, and a
+  // component-only stub leaves it undefined.
+  ...jest.requireActual('../InsightMetadata'),
+  InsightMetadata: () => null,
+}));
 jest.mock('../InsightDetailModal', () => ({ InsightDetailModal: () => null }));
 jest.mock('@/lib/hooks/useUserPreferences', () => ({
   useUserPreferences: () => ({ preferences: { currency_format: 'EUR' } }),

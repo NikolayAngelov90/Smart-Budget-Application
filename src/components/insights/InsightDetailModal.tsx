@@ -17,6 +17,8 @@ import type { Insight } from '@/types/database.types';
 import { InsightMetadata } from './InsightMetadata';
 import { InsightErrorBoundary } from './InsightErrorBoundary';
 import { getInsightToneTokens } from '@/lib/utils/insightGroups';
+import { getLocalizedInsightText } from '@/lib/utils/insightText';
+import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 
 interface InsightDetailModalProps {
   insight: Insight | null;
@@ -47,8 +49,16 @@ export function InsightDetailModal({
   const modalSize = useBreakpointValue({ base: 'full', md: 'xl' });
   const t = useTranslations('insights');
   const tCommon = useTranslations('common');
+  const { preferences } = useUserPreferences();
 
   if (!insight) return null;
+
+  // DW-3: the SAME localised strings the card shows. This used to render the
+  // raw stored columns, which hold English written at generation time — so the
+  // Bulgarian UI switched languages the moment an insight was opened. Placed
+  // below the guard because it is a plain function, not a hook.
+  const { title: localizedTitle, description: localizedDescription } =
+    getLocalizedInsightText(insight, t, preferences?.currency_format);
 
   const tone = getInsightToneTokens(insight.type);
   const labelKey = TYPE_LABEL_KEYS[insight.type];
@@ -69,7 +79,7 @@ export function InsightDetailModal({
         <ModalHeader pb={2}>
           <HStack spacing={3} align="start" flexWrap="wrap">
             <Text fontSize={{ base: 'lg', md: 'xl' }} fontWeight="bold" flex="1">
-              {insight.title}
+              {localizedTitle}
             </Text>
             <Badge
               bg={tone.subtle}
@@ -89,7 +99,7 @@ export function InsightDetailModal({
             mt={2}
             lineHeight="base"
           >
-            {insight.description}
+            {localizedDescription}
           </Text>
         </ModalHeader>
 

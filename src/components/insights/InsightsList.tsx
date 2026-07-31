@@ -5,7 +5,7 @@ import { VStack, Text, Spinner, Center, Box, HStack, Badge } from '@chakra-ui/re
 import { format } from 'date-fns';
 import { useLocale, useTranslations } from 'next-intl';
 import { AIInsightCard } from './AIInsightCard';
-import { InsightMetadata } from './InsightMetadata';
+import { InsightMetadata, hasInsightMetadata } from './InsightMetadata';
 import { InsightDetailModal } from './InsightDetailModal';
 import { groupInsights, selectLeadInsight } from '@/lib/utils/insightGroups';
 import type { Insight } from '@/types/database.types';
@@ -108,7 +108,11 @@ export function InsightsList({
         onDismiss={onDismiss}
         onUndismiss={onUndismiss}
         isDismissed={insight.is_dismissed}
-        expandable={true}
+        // DW-3: no affordance when there is nothing behind it. The Epic-12
+        // types have no renderer, so this used to open a panel containing
+        // "No additional details available", a divider, and a bold heading
+        // over empty space.
+        expandable={hasInsightMetadata(insight)}
         variant={variant}
         onOpenModal={() => handleOpenModal(insight)}
       >
