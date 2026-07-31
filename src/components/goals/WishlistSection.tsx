@@ -20,6 +20,7 @@ import {
   Flex,
   FormControl,
   FormErrorMessage,
+  FormHelperText,
   FormLabel,
   Heading,
   Input,
@@ -57,7 +58,15 @@ export function WishlistSection() {
   const { preferences } = useUserPreferences();
   const currencyCode = preferences?.currency_format || 'EUR';
 
-  const { data: categoriesData } = useSWR('/api/categories?type=expense', categoriesFetcher);
+  // `error` matters here: without it a failed fetch renders a picker holding
+  // nothing but the "No category" placeholder, which reads as "you have no
+  // categories" rather than "we couldn't load them". The category is optional,
+  // so this is enrichment — warn and carry on, never block the add (see the
+  // degradation policy in docs/api-conventions.md).
+  const { data: categoriesData, error: categoriesError } = useSWR(
+    '/api/categories?type=expense',
+    categoriesFetcher
+  );
   const categories = (categoriesData?.data ?? []).filter((c) => c.isOwn !== false);
 
   const [name, setName] = useState('');
@@ -228,6 +237,9 @@ export function WishlistSection() {
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 placeholder={t('noCategory')}
+                // An enabled control with nothing in it invites a tap that does
+                // nothing. Disabled + the hint below says why.
+                isDisabled={!!categoriesError}
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -235,6 +247,12 @@ export function WishlistSection() {
                   </option>
                 ))}
               </Select>
+              {/* No explicit id/aria-describedby: FormControl wires the helper
+                  text to the field itself, and setting our own overrode the
+                  generated id on one side only, breaking the association. */}
+              {categoriesError && (
+                <FormHelperText color="fg.muted">{t('categoriesUnavailable')}</FormHelperText>
+              )}
             </FormControl>
             <Button
               colorScheme="brand"

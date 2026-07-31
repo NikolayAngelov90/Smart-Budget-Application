@@ -946,7 +946,8 @@
     "goalDelay": "{goal} би се забавила с около {days, plural, one {1 ден} other {# дни}}",
     "showHistory": "Покажи историята ({count})",
     "hideHistory": "Скрий историята",
-    "goalDelayBeyondCap": "{goal} би се забавила с повече от 2 години"
+    "goalDelayBeyondCap": "{goal} би се забавила с повече от 2 години",
+    "categoriesUnavailable": "Категориите не можаха да се заредят — можете да добавите артикула и без категория."
   },
   "streaks": {
     "dayStreak": "{days, plural, one {Серия от 1 ден} other {Серия от # дни}}",
