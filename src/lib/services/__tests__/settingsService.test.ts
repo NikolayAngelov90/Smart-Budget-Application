@@ -39,6 +39,13 @@ describe('settingsService', () => {
         },
       },
       from: jest.fn(),
+      // DW-2: preference writes now go through the atomic
+      // `patch_user_preferences` RPC. Default to "not applied" so tests that
+      // do not care about preferences keep exercising the same update path.
+      rpc: jest.fn().mockResolvedValue({
+        data: null,
+        error: { code: '42883', message: 'function does not exist' },
+      }),
     };
 
     mockCreateClient.mockResolvedValue(mockSupabase);
