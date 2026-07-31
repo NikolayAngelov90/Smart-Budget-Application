@@ -120,6 +120,7 @@ const KNOWN_PREFERENCE_KEYS = new Set<string>([
   'push_household_enabled',
   'push_digest_enabled',
   'push_reengagement_enabled',
+  'timezone',
   'quiet_hours_start',
   'quiet_hours_end',
   'reengagement_dismissed_at',

@@ -100,6 +100,12 @@ describe('GET /api/cron/weekly-digest', () => {
     const supabaseMock = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      // DW-4: the route reads `notification_deliveries` to skip users already
+      // pushed this ISO week, and upserts a marker after a successful send.
+      // Default: nobody delivered yet.
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockResolvedValue({ data: [], error: null }),
+      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
       limit: jest.fn().mockResolvedValue({ data: users, error: null }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
@@ -121,6 +127,12 @@ describe('GET /api/cron/weekly-digest', () => {
     const supabaseMock = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      // DW-4: the route reads `notification_deliveries` to skip users already
+      // pushed this ISO week, and upserts a marker after a successful send.
+      // Default: nobody delivered yet.
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockResolvedValue({ data: [], error: null }),
+      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
       limit: jest.fn().mockResolvedValue({ data: [{ id: 'user-1', preferences: {} }], error: null }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
@@ -142,6 +154,12 @@ describe('GET /api/cron/weekly-digest', () => {
     const supabaseMock = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      // DW-4: the route reads `notification_deliveries` to skip users already
+      // pushed this ISO week, and upserts a marker after a successful send.
+      // Default: nobody delivered yet.
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockResolvedValue({ data: [], error: null }),
+      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
       limit: jest.fn().mockResolvedValue({ data: users, error: null }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
@@ -157,6 +175,12 @@ describe('GET /api/cron/weekly-digest', () => {
     const supabaseMock = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      // DW-4: the route reads `notification_deliveries` to skip users already
+      // pushed this ISO week, and upserts a marker after a successful send.
+      // Default: nobody delivered yet.
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockResolvedValue({ data: [], error: null }),
+      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
       limit: jest.fn().mockResolvedValue({ data: users, error: null }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
@@ -171,6 +195,12 @@ describe('GET /api/cron/weekly-digest', () => {
     const supabaseMock = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      // DW-4: the route reads `notification_deliveries` to skip users already
+      // pushed this ISO week, and upserts a marker after a successful send.
+      // Default: nobody delivered yet.
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockResolvedValue({ data: [], error: null }),
+      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
       limit: jest.fn().mockResolvedValue({ data: null, error: { message: 'DB connection timeout' } }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
@@ -190,6 +220,12 @@ describe('GET /api/cron/weekly-digest', () => {
     const supabaseMock = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      // DW-4: the route reads `notification_deliveries` to skip users already
+      // pushed this ISO week, and upserts a marker after a successful send.
+      // Default: nobody delivered yet.
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockResolvedValue({ data: [], error: null }),
+      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
       limit: jest.fn().mockResolvedValue({ data: users, error: null }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
@@ -210,6 +246,12 @@ describe('GET /api/cron/weekly-digest', () => {
     const supabaseMock = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      // DW-4: the route reads `notification_deliveries` to skip users already
+      // pushed this ISO week, and upserts a marker after a successful send.
+      // Default: nobody delivered yet.
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockResolvedValue({ data: [], error: null }),
+      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
       limit: jest.fn().mockResolvedValue({ data: users, error: null }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
@@ -229,6 +271,12 @@ describe('GET /api/cron/weekly-digest', () => {
     const supabaseMock = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      // DW-4: the route reads `notification_deliveries` to skip users already
+      // pushed this ISO week, and upserts a marker after a successful send.
+      // Default: nobody delivered yet.
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockResolvedValue({ data: [], error: null }),
+      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
       limit: jest.fn().mockResolvedValue({ data: [], error: null }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);

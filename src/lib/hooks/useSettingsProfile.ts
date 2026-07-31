@@ -32,6 +32,7 @@ export type PreferenceField =
   | 'push_household_enabled'
   | 'push_digest_enabled'
   | 'push_reengagement_enabled'
+  | 'timezone'
   | 'quiet_hours_start'
   | 'quiet_hours_end';
 

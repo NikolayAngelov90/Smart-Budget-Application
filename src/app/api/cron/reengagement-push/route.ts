@@ -32,6 +32,11 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import { logger } from '@/lib/utils/logger';
+import {
+  dayPeriodKey,
+  getAlreadyDelivered,
+  markDelivered,
+} from '@/lib/services/notificationDeliveryService';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -94,32 +99,77 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 3. Dispatch through the gate (opt-in toggle + quiet hours enforced
+    // 3. DW-4: skip anyone already served for this period.
+    //
+    // This job now runs HOURLY rather than once at 10:00 UTC. A daily run could
+    // never recover a deferral: the next attempt landed at the same hour, so a
+    // user whose quiet window covered 10:00 was deferred forever — which is
+    // indistinguishable from the suppression it replaced. Scanning every hour
+    // with a marker is what actually delivers once their quiet window ends.
+    //
+    // The period key also gives expiry for free: it is today's day key, so a
+    // notification that never became sendable simply stops being offered when
+    // the day rolls over, rather than arriving late describing a stale day.
+    const periodKey = dayPeriodKey();
+    let alreadyDelivered: Set<string>;
+    try {
+      alreadyDelivered = await getAlreadyDelivered(
+        supabase,
+        'reengagement',
+        periodKey,
+        users.map((u) => u.user_id)
+      );
+    } catch {
+      // Fail closed — see getAlreadyDelivered. The next hourly run retries.
+      return NextResponse.json(
+        { success: false, error: 'Delivery lookup failed' },
+        { status: 500 }
+      );
+    }
+
+    const pending = users.filter((u) => !alreadyDelivered.has(u.user_id));
+
+    // 4. Dispatch through the gate (opt-in toggle + quiet hours enforced
     //    there). The gate never throws — outcomes are the honest telemetry.
     const outcomes = await Promise.all(
-      users.map((row) =>
-        dispatchCategorizedPush(row.user_id, 'reengagement', {
+      pending.map(async (row) => {
+        const outcome = await dispatchCategorizedPush(row.user_id, 'reengagement', {
           type: 'comeback',
           title: 'Your streak is waiting',
           body: "We saved your progress — log a transaction to pick up where you left off.",
           data: { url: '/dashboard' },
-        })
-      )
+        });
+
+        // Only a real send is recorded. A DEFERRED user must stay eligible so
+        // the next hourly run can reach them once quiet hours are over — that
+        // is the entire mechanism. 'suppressed' (opted out) is also left
+        // unmarked; it costs one cheap gate check per hour and keeps the marker
+        // meaning exactly "this user was served".
+        if (outcome === 'sent') {
+          await markDelivered(supabase, 'reengagement', periodKey, row.user_id);
+        }
+        return outcome;
+      })
     );
     const sent = outcomes.filter((o) => o === 'sent').length;
     const suppressed = outcomes.filter((o) => o === 'suppressed').length;
+    const deferred = outcomes.filter((o) => o === 'deferred').length;
     const failed = outcomes.filter((o) => o === 'failed').length;
 
     const elapsedMs = Date.now() - startTime;
     logger.info(
       'ReengagementPushCron',
-      `Completed: ${users.length} day-7 users, ${sent} sent, ${suppressed} suppressed, ${failed} failed, ${elapsedMs}ms`
+      `Completed: ${users.length} day-7 users, ${pending.length} pending, ` +
+        `${sent} sent, ${deferred} deferred (quiet hours - retried next run), ` +
+        `${suppressed} suppressed, ${failed} failed, ${elapsedMs}ms`
     );
 
     return NextResponse.json({
       success: true,
       usersFound: users.length,
+      pending: pending.length,
       sent,
+      deferred,
       suppressed,
       failed,
     });

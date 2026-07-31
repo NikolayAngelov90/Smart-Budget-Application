@@ -286,7 +286,10 @@ describe('dispatchCategorizedPush', () => {
     );
     const categories = ['nudges', 'milestones', 'household', 'digest', 'reengagement'] as const;
     for (const category of categories) {
-      expect(await dispatchCategorizedPush('u-1', category, payload)).toBe('suppressed');
+      // DW-4: quiet hours DEFER, they do not suppress. The distinction is the
+      // whole fix — conflating them is what turned "not now" into "never" and
+      // made the telemetry claim the user had opted out.
+      expect(await dispatchCategorizedPush('u-1', category, payload)).toBe('deferred');
     }
     expect(mockSendNotification).not.toHaveBeenCalled();
   });

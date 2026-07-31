@@ -33,6 +33,10 @@ import {
 import { useTranslations } from 'next-intl';
 import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
 import { useSettingsProfile } from '@/lib/hooks/useSettingsProfile';
+import {
+  detectBrowserTimezone,
+  useTimezoneCapture,
+} from '@/lib/hooks/useTimezoneCapture';
 import { SettingsSectionGate } from '@/components/settings/SettingsSectionGate';
 
 type PushPreferenceField =
@@ -66,6 +70,18 @@ export function NotificationsSection() {
   const pushReengagementEnabled = prefs?.push_reengagement_enabled ?? false;
   const quietHoursStart = prefs?.quiet_hours_start ?? 22;
   const quietHoursEnd = prefs?.quiet_hours_end ?? 8;
+
+  // DW-4: quiet hours are enforced by CRON jobs, where there is no client to
+  // ask for a timezone — so the browser's zone is stored on the profile. Until
+  // it is, the window is evaluated in UTC, which is why these controls used to
+  // be labelled "(UTC)": a Sofia user setting 22:00 got 01:00 local.
+  useTimezoneCapture({
+    storedTimezone: prefs?.timezone,
+    // Only once the profile has really loaded — see the hook's guard.
+    isReady: status === 'ready',
+    onCapture: (timezone) => updatePreference('timezone', timezone),
+  });
+  const quietHoursZone = prefs?.timezone ?? detectBrowserTimezone();
   const onUpdatePreferences = (field: PushPreferenceField, value: boolean | number) =>
     updatePreference(field, value);
   const toast = useToast();
@@ -271,7 +287,10 @@ export function NotificationsSection() {
 
                 {/* Quiet hours — always editable so users can configure before subscribing */}
                 <FormControl>
-                  <FormLabel>{t('quietHoursStart')} (UTC)</FormLabel>
+                  <FormLabel>
+                    {t('quietHoursStart')}
+                    {quietHoursZone ? ` (${quietHoursZone})` : ''}
+                  </FormLabel>
                   <Select
                     value={quietHoursStart}
                     onChange={(e) => onUpdatePreferences('quiet_hours_start', Number(e.target.value))}
@@ -285,7 +304,10 @@ export function NotificationsSection() {
                 </FormControl>
 
                 <FormControl>
-                  <FormLabel>{t('quietHoursEnd')} (UTC)</FormLabel>
+                  <FormLabel>
+                    {t('quietHoursEnd')}
+                    {quietHoursZone ? ` (${quietHoursZone})` : ''}
+                  </FormLabel>
                   <Select
                     value={quietHoursEnd}
                     onChange={(e) => onUpdatePreferences('quiet_hours_end', Number(e.target.value))}
