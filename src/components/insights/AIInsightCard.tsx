@@ -26,12 +26,12 @@ import {
   ArrowUpIcon,
 } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
-import type { Insight, InsightMetadata } from '@/types/database.types';
+import type { Insight } from '@/types/database.types';
 import { InsightErrorBoundary } from './InsightErrorBoundary';
 import { trackInsightViewed } from '@/lib/services/analyticsService';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
-import { formatCurrency } from '@/lib/utils/currency';
 import { getInsightToneTokens } from '@/lib/utils/insightGroups';
+import { getLocalizedInsightText } from '@/lib/utils/insightText';
 
 interface AIInsightCardProps {
   insight: Insight;
@@ -89,80 +89,11 @@ export function AIInsightCard({
   const { preferences } = useUserPreferences();
   const currencyCode = preferences?.currency_format;
 
-  const getLocalizedText = (): { title: string; description: string } => {
-    const meta = insight.metadata as InsightMetadata | null;
-    const categoryName = meta?.category_name ?? '';
-    const fmt = (amount?: number) => formatCurrency(amount ?? 0, undefined, currencyCode);
-
-    switch (insight.type) {
-      case 'spending_increase': {
-        if (meta?.percent_change != null && meta?.current_amount != null && meta?.previous_amount != null) {
-          return {
-            title: t('spending_increase_title', {
-              categoryName,
-              percent: Math.round(meta.percent_change),
-            }),
-            description: t('spending_increase_desc', {
-              categoryName,
-              percent: Math.round(meta.percent_change),
-              currentAmount: fmt(meta.current_amount),
-              previousAmount: fmt(meta.previous_amount),
-            }),
-          };
-        }
-        break;
-      }
-      case 'budget_recommendation': {
-        if (meta?.recommended_budget != null && meta?.three_month_average != null) {
-          return {
-            title: t('budget_recommendation_title', {
-              budget: fmt(meta.recommended_budget),
-              categoryName,
-            }),
-            description: t('budget_recommendation_desc', {
-              average: fmt(meta.three_month_average),
-              budget: fmt(meta.recommended_budget),
-              categoryName,
-            }),
-          };
-        }
-        break;
-      }
-      case 'unusual_expense': {
-        if (meta?.transaction_amount != null && meta?.category_average != null) {
-          return {
-            title: t('unusual_expense_title', {
-              categoryName,
-              amount: fmt(meta.transaction_amount),
-            }),
-            description: t('unusual_expense_desc', {
-              categoryName,
-              amount: fmt(meta.transaction_amount),
-              typical: fmt(meta.category_average),
-            }),
-          };
-        }
-        break;
-      }
-      case 'positive_reinforcement': {
-        if (meta?.percent_under_budget != null && meta?.savings_amount != null) {
-          return {
-            title: t('positive_reinforcement_title', { categoryName }),
-            description: t('positive_reinforcement_desc', {
-              categoryName,
-              percent: Math.round(meta.percent_under_budget),
-              savings: fmt(meta.savings_amount),
-            }),
-          };
-        }
-        break;
-      }
-    }
-    // Fallback to stored values if metadata is missing
-    return { title: insight.title ?? '', description: insight.description ?? '' };
-  };
-
-  const { title: localizedTitle, description: localizedDescription } = getLocalizedText();
+  const { title: localizedTitle, description: localizedDescription } = getLocalizedInsightText(
+    insight,
+    t,
+    currencyCode
+  );
 
   // Story 16.4: colour comes from the shared taxonomy (semantic tokens), not a
   // per-component Chakra colour scheme.
