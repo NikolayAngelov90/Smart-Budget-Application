@@ -106,6 +106,52 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 }
 
 /**
+ * Every key `preferences` is allowed to hold. An unknown key would be merged
+ * into the JSONB verbatim and then live there forever, invisible to the types.
+ */
+const KNOWN_PREFERENCE_KEYS = new Set<string>([
+  'currency_format',
+  'date_format',
+  'onboarding_completed',
+  'language',
+  'weekly_digest_enabled',
+  'push_nudges_enabled',
+  'push_milestones_enabled',
+  'push_household_enabled',
+  'push_digest_enabled',
+  'push_reengagement_enabled',
+  'quiet_hours_start',
+  'quiet_hours_end',
+  'reengagement_dismissed_at',
+  'gamification_enabled',
+  'disclosure_show_all',
+]);
+
+export class UnknownPreferenceKeyError extends Error {
+  constructor(public readonly keys: string[]) {
+    super(`Unknown preference key(s): ${keys.join(', ')}`);
+    this.name = 'UnknownPreferenceKeyError';
+  }
+}
+
+function assertKnownPreferenceKeys(patch: Partial<UserPreferences>): void {
+  const unknown = Object.keys(patch).filter((k) => !KNOWN_PREFERENCE_KEYS.has(k));
+  if (unknown.length > 0) throw new UnknownPreferenceKeyError(unknown);
+}
+
+/** Postgres 42883 = undefined_function; PostgREST also 404s an unknown RPC. */
+function isMissingFunction(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  if (!e) return false;
+  return (
+    e.code === '42883' ||
+    e.code === 'PGRST202' ||
+    /could not find the function|does not exist/i.test(e.message ?? '')
+  );
+}
+
+
+/**
  * Update user profile
  * AC-8.3.6: Optimistic UI updates for profile changes
  * AC-8.3.7: Success feedback after update
@@ -133,26 +179,73 @@ export async function updateUserProfile(
       updatePayload.profile_picture_url = updates.profile_picture_url;
     }
 
+    // DW-2: preferences are merged by POSTGRES, not here.
+    //
+    // This used to SELECT the current object, spread the partial over it in JS,
+    // and UPDATE the whole thing. Two overlapping writes both read the same
+    // starting point, so the second one resurrected the first one's previous
+    // value — a toggle flipping itself back on. Logged three times; Story 16-8
+    // put the digest and all five push toggles in one section, which turned it
+    // from an edge case into the normal interaction.
+    //
+    // `patch_user_preferences` (migration 041) does `preferences || p_patch`
+    // inside the UPDATE. No SELECT means no window to interleave.
+    let patchedProfile: UserProfile | null = null;
     if (updates.preferences !== undefined) {
-      // Merge with existing preferences
-      const { data: currentProfile } = await supabase
-        .from('user_profiles')
-        .select('preferences')
-        .eq('id', userId)
-        .single();
+      assertKnownPreferenceKeys(updates.preferences);
 
-      const currentPreferences =
-        (currentProfile?.preferences as unknown as UserPreferences) || {
-          // eslint-disable-next-line no-restricted-syntax
-          currency_format: 'EUR',
-          date_format: 'MM/DD/YYYY',
-          onboarding_completed: false,
-        };
+      // Not in the generated Database types (same as goals/gamification) —
+      // generic client, per the project convention.
+      const { data: patched, error: patchError } = await (
+        supabase as unknown as {
+          rpc: (
+            fn: string,
+            args: Record<string, unknown>
+          ) => Promise<{ data: unknown; error: unknown }>;
+        }
+      ).rpc('patch_user_preferences', { p_patch: updates.preferences });
 
-      updatePayload.preferences = {
-        ...currentPreferences,
-        ...updates.preferences,
-      };
+      if (patchError) {
+        if (isMissingFunction(patchError)) {
+          // Migration 041 not applied yet. Fall back to the old merge rather
+          // than failing every preference write — this restores the race, but
+          // only until the migration lands, and a broken Settings page is
+          // strictly worse. Loud on purpose.
+          logger.warn(
+            'SettingsService',
+            'patch_user_preferences missing (migration 041 not applied) — ' +
+              'falling back to read-modify-write; preference writes can race'
+          );
+          const { data: currentProfile } = await supabase
+            .from('user_profiles')
+            .select('preferences')
+            .eq('id', userId)
+            .single();
+
+          const currentPreferences =
+            (currentProfile?.preferences as unknown as UserPreferences) || {
+              // eslint-disable-next-line no-restricted-syntax
+              currency_format: 'EUR',
+              date_format: 'MM/DD/YYYY',
+              onboarding_completed: false,
+            };
+
+          updatePayload.preferences = {
+            ...currentPreferences,
+            ...updates.preferences,
+          };
+        } else {
+          logger.error('SettingsService', 'Preference patch failed:', patchError);
+          throw new Error('Failed to update preferences');
+        }
+      } else {
+        patchedProfile = (patched as unknown as UserProfile) ?? null;
+      }
+    }
+
+    // Nothing else to write — return the row the atomic patch already produced.
+    if (patchedProfile && Object.keys(updatePayload).length === 0) {
+      return patchedProfile;
     }
 
     // Update profile with RLS enforcement
