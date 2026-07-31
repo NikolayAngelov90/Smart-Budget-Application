@@ -103,3 +103,46 @@ export async function markDelivered(
     );
   }
 }
+
+/**
+ * Like {@link getAlreadyDelivered}, but for a cohort whose members each belong
+ * to a DIFFERENT period.
+ *
+ * Re-engagement scans a window of inactivity days, so two users in the same run
+ * can be in different episodes. Keying the marker by episode (their
+ * `last_log_date`) rather than by today is what keeps a multi-day window to one
+ * push per episode instead of one per day.
+ *
+ * Returns keys of the form `${userId}:${periodKey}`.
+ */
+export async function getAlreadyDeliveredByPeriod(
+  supabase: SupabaseClient,
+  kind: NotificationKind,
+  entries: { userId: string; periodKey: string }[]
+): Promise<Set<string>> {
+  if (entries.length === 0) return new Set();
+
+  const { data, error } = await supabase
+    .from('notification_deliveries')
+    .select('user_id, period_key')
+    .eq('kind', kind)
+    .in('user_id', [...new Set(entries.map((e) => e.userId))])
+    .in('period_key', [...new Set(entries.map((e) => e.periodKey))]);
+
+  if (error) {
+    // Fail CLOSED, as above: without this we cannot tell who was already
+    // served, and sending would risk duplicating the cohort.
+    logger.error(
+      'NotificationDelivery',
+      `delivery lookup failed for ${kind}: ${error.message}`
+    );
+    throw new Error('delivery lookup failed');
+  }
+
+  // The two `in` filters are a cross-product, so pair them back up exactly.
+  return new Set(
+    ((data ?? []) as { user_id: string; period_key: string }[]).map(
+      (r) => `${r.user_id}:${r.period_key}`
+    )
+  );
+}
