@@ -16,6 +16,7 @@ import {
   VStack,
   HStack,
   Heading,
+  Stack,
   Text,
   Input,
   Button,
@@ -140,7 +141,7 @@ export function ContributionSplitCard() {
 
           {/* Set the caller's own percentage */}
           {editing ? (
-            <HStack>
+            <Stack direction={{ base: 'column', sm: 'row' }} spacing={2} align="stretch">
               <Input
                 type="number"
                 min={0}
@@ -150,7 +151,8 @@ export function ContributionSplitCard() {
                 onChange={(e) => setValue(e.target.value)}
                 placeholder={t('yourPercentage')}
                 aria-label={t('yourPercentage')}
-                maxW="120px"
+                maxW={{ base: 'full', sm: '120px' }}
+                minH={{ base: '44px', sm: '40px' }}
               />
               <Button size="sm" colorScheme="brand" onClick={handleSave} isLoading={isSaving} loadingText={t('save')}>
                 {t('save')}
@@ -158,7 +160,7 @@ export function ContributionSplitCard() {
               <Button size="sm" variant="ghost" onClick={() => setEditing(false)} isDisabled={isSaving}>
                 {t('cancel')}
               </Button>
-            </HStack>
+            </Stack>
           ) : (
             <Button size="sm" variant="outline" alignSelf="flex-start" onClick={beginEdit}>
               {t('yourPercentage')}

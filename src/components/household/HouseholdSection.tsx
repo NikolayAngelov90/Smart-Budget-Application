@@ -21,6 +21,7 @@ import {
   Button,
   Badge,
   Skeleton,
+  Stack,
   Select,
   Divider,
   useToast,
@@ -160,6 +161,7 @@ export function HouseholdSection() {
                     if (e.target.value) handlePreset(e.target.value as HouseholdPreset);
                   }}
                   aria-label={t('presetHeading')}
+                  minH={{ base: '44px', sm: '40px' }}
                 >
                   <option value="newlyweds">{t('presetNewlyweds')}</option>
                   <option value="roommates">{t('presetRoommates')}</option>
@@ -195,13 +197,14 @@ export function HouseholdSection() {
               <Text fontSize="sm" color="fg.muted">
                 {t('emptyPrompt')}
               </Text>
-              <HStack>
+              <Stack direction={{ base: 'column', sm: 'row' }} spacing={2}>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t('namePlaceholder')}
                   maxLength={100}
                   aria-label={t('namePlaceholder')}
+                  minH={{ base: '44px', sm: '40px' }}
                 />
                 <Button
                   colorScheme="brand"
@@ -210,10 +213,11 @@ export function HouseholdSection() {
                   loadingText={t('creating')}
                   isDisabled={!name.trim()}
                   flexShrink={0}
+                  minH={{ base: '44px', sm: '40px' }}
                 >
                   {t('create')}
                 </Button>
-              </HStack>
+              </Stack>
             </VStack>
           )}
         </VStack>
