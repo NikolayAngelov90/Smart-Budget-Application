@@ -16,6 +16,7 @@ import {
   VStack,
   HStack,
   Heading,
+  Stack,
   Text,
   Input,
   Select,
@@ -109,7 +110,7 @@ export function AllowanceCard() {
 
       {isEditing ? (
         <VStack align="stretch" spacing={2}>
-          <HStack>
+          <Stack direction={{ base: 'column', sm: 'row' }} spacing={2}>
             <Input
               type="number"
               min={0}
@@ -118,12 +119,14 @@ export function AllowanceCard() {
               onChange={(e) => setAmount(e.target.value)}
               placeholder={t('amountLabel')}
               aria-label={t('amountLabel')}
+              minH={{ base: '44px', sm: '40px' }}
             />
             <Select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
               aria-label={t('currencyLabel')}
-              maxW="100px"
+              maxW={{ base: 'full', sm: '100px' }}
+              minH={{ base: '44px', sm: '40px' }}
             >
               {SUPPORTED_CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -131,7 +134,7 @@ export function AllowanceCard() {
                 </option>
               ))}
             </Select>
-          </HStack>
+          </Stack>
           <HStack justify="flex-end">
             <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} isDisabled={isSaving}>
               {t('cancel')}

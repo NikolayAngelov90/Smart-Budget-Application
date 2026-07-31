@@ -15,6 +15,7 @@ import {
   VStack,
   HStack,
   Heading,
+  Stack,
   Text,
   Input,
   Button,
@@ -112,11 +113,11 @@ export function SharedGoalsCard() {
 
           {creating && (
             <VStack align="stretch" spacing={2} bg="surface.sunken" p={3} borderRadius="md">
-              <Input size="sm" placeholder={t('name')} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} aria-label={t('name')} />
-              <HStack>
-                <Input size="sm" type="number" min={0} step="0.01" placeholder={t('target')} value={target} onChange={(e) => setTarget(e.target.value)} aria-label={t('target')} />
-                <Input size="sm" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} aria-label={t('deadline')} />
-              </HStack>
+              <Input size="sm" placeholder={t('name')} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} aria-label={t('name')} minH={{ base: '44px', sm: '32px' }} />
+              <Stack direction={{ base: 'column', sm: 'row' }} spacing={2}>
+                <Input size="sm" type="number" min={0} step="0.01" placeholder={t('target')} value={target} onChange={(e) => setTarget(e.target.value)} aria-label={t('target')} minH={{ base: '44px', sm: '32px' }} />
+                <Input size="sm" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} aria-label={t('deadline')} minH={{ base: '44px', sm: '32px' }} />
+              </Stack>
               <HStack justify="flex-end">
                 <Button size="sm" variant="ghost" onClick={() => setCreating(false)} isDisabled={busy}>
                   {t('cancel')}
@@ -164,7 +165,7 @@ export function SharedGoalsCard() {
                   )}
 
                   {contributeFor === goal.id ? (
-                    <HStack>
+                    <Stack direction={{ base: 'column', sm: 'row' }} spacing={2}>
                       <Input
                         size="sm"
                         type="number"
@@ -174,7 +175,8 @@ export function SharedGoalsCard() {
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         aria-label={t('contributeAmount')}
-                        maxW="140px"
+                        maxW={{ base: 'full', sm: '140px' }}
+                        minH={{ base: '44px', sm: '32px' }}
                       />
                       <Button size="sm" colorScheme="brand" onClick={() => handleContribute(goal.id)} isLoading={busy} loadingText={t('save')}>
                         {t('save')}
@@ -182,7 +184,7 @@ export function SharedGoalsCard() {
                       <Button size="sm" variant="ghost" onClick={() => setContributeFor(null)} isDisabled={busy}>
                         {t('cancel')}
                       </Button>
-                    </HStack>
+                    </Stack>
                   ) : (
                     <Button size="sm" variant="outline" onClick={() => { setContributeFor(goal.id); setAmount(''); }}>
                       {t('contribute')}

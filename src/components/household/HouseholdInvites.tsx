@@ -13,6 +13,7 @@ import {
   Box,
   VStack,
   HStack,
+  Stack,
   Heading,
   Text,
   Input,
@@ -96,7 +97,11 @@ export function HouseholdInvites() {
         {t('heading')}
       </Heading>
 
-      <HStack mb={pending.length > 0 ? 4 : 0}>
+      <Stack
+        direction={{ base: 'column', sm: 'row' }}
+        spacing={2}
+        mb={pending.length > 0 ? 4 : 0}
+      >
         <Input
           type="email"
           value={email}
@@ -104,6 +109,7 @@ export function HouseholdInvites() {
           placeholder={t('emailPlaceholder')}
           maxLength={254}
           aria-label={t('emailPlaceholder')}
+          minH={{ base: '44px', sm: '40px' }}
         />
         <Button
           colorScheme="brand"
@@ -115,7 +121,7 @@ export function HouseholdInvites() {
         >
           {t('send')}
         </Button>
-      </HStack>
+      </Stack>
 
       {pending.length > 0 && (
         <VStack align="stretch" spacing={2}>
