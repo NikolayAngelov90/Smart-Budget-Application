@@ -10,6 +10,7 @@
  */
 
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Box,
   Text,
@@ -66,8 +67,13 @@ export function SpendingTrendsChart({
   months = 6,
   height = 300,
 }: SpendingTrendsChartProps) {
+  const t = useTranslations('dashboard');
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const { data, error, isLoading, mutate } = useTrends(isMobile ? 3 : months);
+  // Mobile renders a SHORTER series. The window label is derived from this same
+  // value rather than hardcoded, because the old copy read "(Last 6 Months)"
+  // above a chart that was showing three.
+  const shownMonths = isMobile ? 3 : months;
+  const { data, error, isLoading, mutate } = useTrends(shownMonths);
   const { preferences } = useUserPreferences();
   const router = useRouter();
   const currencyCode = preferences?.currency_format;
@@ -109,10 +115,10 @@ export function SpendingTrendsChart({
             {tooltipData.month}
           </Text>
           <Text fontSize="sm" color="income" mb={1}>
-            Income: {formatCurrency(Number(income), undefined, currencyCode)}
+            {t('seriesIncome')}: {formatCurrency(Number(income), undefined, currencyCode)}
           </Text>
           <Text fontSize="sm" color="expense">
-            Expenses: {formatCurrency(Number(expenses), undefined, currencyCode)}
+            {t('seriesExpenses')}: {formatCurrency(Number(expenses), undefined, currencyCode)}
           </Text>
         </Box>
       );
@@ -132,10 +138,8 @@ export function SpendingTrendsChart({
     return (
       <Alert status="error" borderRadius="md">
         <AlertIcon />
-        <AlertTitle>Failed to load spending trends</AlertTitle>
-        <AlertDescription>
-          Unable to fetch trends data. Please try refreshing the page.
-        </AlertDescription>
+        <AlertTitle>{t('trendsError')}</AlertTitle>
+        <AlertDescription>{t('trendsErrorHint')}</AlertDescription>
       </Alert>
     );
   }
@@ -181,10 +185,10 @@ export function SpendingTrendsChart({
       >
         <Icon as={MdShowChart} boxSize={12} color="fg.subtle" mb={3} />
         <Text fontSize="lg" fontWeight="medium" color="fg.muted">
-          Add transactions to see trends
+          {t('trendsEmpty')}
         </Text>
         <Text fontSize="sm" color="fg.subtle" mt={1}>
-          Your spending patterns will appear here
+          {t('trendsEmptyHint')}
         </Text>
       </Flex>
     );
@@ -207,10 +211,10 @@ export function SpendingTrendsChart({
       >
         <Icon as={MdShowChart} boxSize={12} color="fg.subtle" mb={3} />
         <Text fontSize="lg" fontWeight="medium" color="fg.muted">
-          Add transactions to see trends
+          {t('trendsEmpty')}
         </Text>
         <Text fontSize="sm" color="fg.subtle" mt={1}>
-          Your spending patterns will appear here
+          {t('trendsEmptyHint')}
         </Text>
       </Flex>
     );
@@ -218,6 +222,12 @@ export function SpendingTrendsChart({
 
   return (
     <Box>
+      {/* States the window actually rendered. The page heading used to carry
+          "(Last 6 Months)" while this chart dropped to 3 points on mobile —
+          derived from `shownMonths` here, so the two cannot disagree. */}
+      <Text fontSize="sm" color="fg.muted" mb={2}>
+        {t('spendingTrendsWindow', { count: shownMonths })}
+      </Text>
       <ResponsiveContainer width="100%" height={height}>
         <LineChart
           data={chartData}
@@ -230,7 +240,7 @@ export function SpendingTrendsChart({
           }}
           role="button"
           tabIndex={0}
-          aria-label="Spending trends chart. Click on a data point to view transactions for that month."
+          aria-label={t('trendsChartAria')}
         >
           <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
           <XAxis
@@ -253,7 +263,7 @@ export function SpendingTrendsChart({
           <Line
             type="monotone"
             dataKey="income"
-            name="Income"
+            name={t('seriesIncome')}
             stroke={chart.income}
             strokeWidth={2}
             dot={{ fill: chart.income, r: 4, cursor: 'pointer' }}
@@ -263,7 +273,7 @@ export function SpendingTrendsChart({
           <Line
             type="monotone"
             dataKey="expenses"
-            name="Expenses"
+            name={t('seriesExpenses')}
             stroke={chart.expense}
             strokeWidth={2}
             dot={{ fill: chart.expense, r: 4, cursor: 'pointer' }}
@@ -275,7 +285,7 @@ export function SpendingTrendsChart({
 
       {/* Accessible data table (visually hidden) */}
       <table
-        aria-label="Spending trends over time"
+        aria-label={t('trendsTableLabel')}
         style={{
           position: 'absolute',
           width: '1px',
@@ -290,10 +300,10 @@ export function SpendingTrendsChart({
       >
         <thead>
           <tr>
-            <th>Month</th>
-            <th>Income</th>
-            <th>Expenses</th>
-            <th>Net</th>
+            <th>{t('tableMonth')}</th>
+            <th>{t('seriesIncome')}</th>
+            <th>{t('seriesExpenses')}</th>
+            <th>{t('tableNet')}</th>
           </tr>
         </thead>
         <tbody>

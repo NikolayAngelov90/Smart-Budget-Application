@@ -9,6 +9,7 @@
  */
 
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Box,
   Text,
@@ -49,6 +50,7 @@ function ChangeItem({
   onClick: () => void;
   currencyCode?: string;
 }) {
+  const t = useTranslations('dashboard');
   const isIncrease = change.direction === 'increase';
   const ArrowIcon = isIncrease ? MdTrendingUp : MdTrendingDown;
   const colorScheme = isIncrease ? 'red' : 'green';
@@ -96,7 +98,10 @@ function ChangeItem({
             {arrow} {Math.abs(change.percentChange).toFixed(0)}%
           </Badge>
           <Text fontSize={{ base: '0.625rem', md: '0.75rem' }} color="fg.muted" whiteSpace="nowrap" display={{ base: 'none', sm: 'block' }}>
-            {formatCurrency(change.currentAmount, undefined, currencyCode)} vs {formatCurrency(change.previousAmount, undefined, currencyCode)}
+            {t('momComparison', {
+              current: formatCurrency(change.currentAmount, undefined, currencyCode),
+              previous: formatCurrency(change.previousAmount, undefined, currencyCode),
+            })}
           </Text>
         </Flex>
       </Flex>
@@ -109,6 +114,7 @@ function ChangeItem({
  * Renders a list of significant spending changes between months
  */
 export function MonthOverMonth({ month }: MonthOverMonthProps) {
+  const t = useTranslations('dashboard');
   const router = useRouter();
   const { data, error, isLoading, mutate } = useMonthOverMonth(month);
   const { preferences } = useUserPreferences();
@@ -131,8 +137,13 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   if (isLoading) {
     return (
       <Box>
-        <Text fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
-          This Month vs Last Month
+        <Text
+          as="h3"
+          fontSize={{ base: '1.125rem', lg: '1.25rem' }}
+          fontWeight="bold"
+          mb={4}
+        >
+          {t('momTitle')}
         </Text>
         <Stack spacing={3}>
           <Skeleton height="60px" borderRadius="md" />
@@ -147,15 +158,18 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   if (error) {
     return (
       <Box>
-        <Text fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
-          This Month vs Last Month
+        <Text
+          as="h3"
+          fontSize={{ base: '1.125rem', lg: '1.25rem' }}
+          fontWeight="bold"
+          mb={4}
+        >
+          {t('momTitle')}
         </Text>
         <Alert status="error" borderRadius="md">
           <AlertIcon />
-          <AlertTitle>Failed to load comparison</AlertTitle>
-          <AlertDescription>
-            Unable to fetch month-over-month data. Please try refreshing the page.
-          </AlertDescription>
+          <AlertTitle>{t('momError')}</AlertTitle>
+          <AlertDescription>{t('momErrorHint')}</AlertDescription>
         </Alert>
       </Box>
     );
@@ -165,8 +179,13 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   if (!data || data.changes.length === 0) {
     return (
       <Box>
-        <Text fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
-          This Month vs Last Month
+        <Text
+          as="h3"
+          fontSize={{ base: '1.125rem', lg: '1.25rem' }}
+          fontWeight="bold"
+          mb={4}
+        >
+          {t('momTitle')}
         </Text>
         <Flex
           direction="column"
@@ -180,10 +199,10 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
         >
           <Icon as={MdShowChart} boxSize={10} color="fg.subtle" mb={2} />
           <Text fontSize={{ base: '0.875rem', lg: '1rem' }} fontWeight="medium" color="fg.muted">
-            No significant changes this month
+            {t('momEmpty')}
           </Text>
           <Text fontSize={{ base: '0.75rem', lg: '0.875rem' }} color="fg.subtle" mt={1}>
-            Spending changes &lt;20% are not shown
+            {t('momEmptyHint')}
           </Text>
         </Flex>
       </Box>
@@ -193,8 +212,13 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   // Render changes list
   return (
     <Box>
-      <Text fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
-        This Month vs Last Month
+      <Text
+        as="h3"
+        fontSize={{ base: '1.125rem', lg: '1.25rem' }}
+        fontWeight="bold"
+        mb={4}
+      >
+        {t('momTitle')}
       </Text>
       <List spacing={3}>
         {data.changes.map((change) => (

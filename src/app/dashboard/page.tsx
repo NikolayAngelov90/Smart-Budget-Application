@@ -51,8 +51,18 @@ import type { StreakResponse } from '@/types/database.types';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { FeatureIntroCard } from '@/components/dashboard/FeatureIntroCard';
 import { useDashboardStats, DASHBOARD_STATS_KEY } from '@/lib/hooks/useDashboardStats';
+import { useSpendingByCategory } from '@/lib/hooks/useSpendingByCategory';
+import type { DashboardPeriod } from '@/lib/utils/dashboardPeriod';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
+
+/** Section eyebrow per period — a lookup, because Bulgarian inflects these. */
+const PERIOD_EYEBROW: Record<DashboardPeriod, string> = {
+  week: 'thisWeek',
+  month: 'thisMonth',
+  quarter: 'thisQuarter',
+  year: 'thisYear',
+};
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
@@ -60,9 +70,20 @@ export default function DashboardPage() {
   const { preferences } = useUserPreferences();
   // Pass 'month' explicitly so this shares the hero's default SWR key instead
   // of fetching the same aggregate twice on every dashboard load. This gate
-  // stays month-scoped whatever the hero shows.
+  // stays month-scoped whatever the hero shows: it decides whether the user has
+  // ANY data at all, which is not a period question.
   const { data: stats } = useDashboardStats(undefined, preferences?.currency_format, 'month');
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+
+  // HP-1: the hero's period now also drives the category donut, so it lives
+  // here rather than inside the hero.
+  const [period, setPeriod] = useState<DashboardPeriod>('month');
+  // Same key the donut builds, so SWR dedupes it — no second request. Read for
+  // the eyebrow only: label from the window the SERVER echoed back, never from
+  // the pending selection, or `keepPreviousData` prints "This year" above last
+  // month's chart while the new one loads (the Story 16-6 lesson).
+  const { data: spending } = useSpendingByCategory(undefined, period);
+  const shownPeriod = spending?.period ?? period;
   // Progressive disclosure: the advanced forecast/projection tail is collapsed
   // by default so the dashboard stays scannable (FR / brief §5E, §9).
   const [showAhead, setShowAhead] = useState(false);
@@ -198,7 +219,7 @@ export default function DashboardPage() {
       {/* Signature hero: greeting + total balance + this-month flow bar.
           Replaces the old page title + 4-up StatCard grid (Story 5.2). */}
       <Box mb={{ base: 4, md: 5 }}>
-        <BalanceFlowHero />
+        <BalanceFlowHero period={period} onPeriodChange={setPeriod} />
       </Box>
 
       {/* Story 15.1: logging streak — single mount point (15-6 opt-out gates here).
@@ -242,20 +263,30 @@ export default function DashboardPage() {
 
       {/* ── Where it's going ──────────────────────────────────────────────── */}
       <Box as="section" mb={{ base: 8, md: 10 }}>
-        <SectionHeader eyebrow={t('thisMonth')} title={t('sectionWhereGoing')} />
+        {/* HP-1: the eyebrow names the period the donut is actually showing.
+            It used to be hardcoded "This month", so selecting Year in the hero
+            left the page reading "This year" over a section captioned "This
+            month" over a month-scoped chart. */}
+        <SectionHeader
+          eyebrow={t(PERIOD_EYEBROW[shownPeriod])}
+          title={t('sectionWhereGoing')}
+        />
         <Grid
           templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }}
           gap={{ base: 5, md: 6 }}
         >
-          {/* Category Spending Chart - Story 5.3 */}
+          {/* Category Spending Chart - Story 5.3 (follows the period; the
+              eyebrow above states the window, so the card doesn't repeat it) */}
           <Box>
             <Heading as="h3" fontSize="md" fontWeight={600} mb={3} color="fg.muted">
               {t('spendingByCategory')}
             </Heading>
-            <CategorySpendingChart chartType="donut" height={300} />
+            <CategorySpendingChart chartType="donut" height={300} period={period} />
           </Box>
 
-          {/* Spending Trends Chart - Story 5.4 */}
+          {/* Spending Trends Chart - Story 5.4. Keeps its own fixed window —
+              it IS a time axis — and states it, since it differs from the
+              eyebrow above. */}
           <Box>
             <Heading as="h3" fontSize="md" fontWeight={600} mb={3} color="fg.muted">
               {t('spendingTrends')}

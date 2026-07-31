@@ -5,15 +5,16 @@
  * Story 5.3: Monthly Spending by Category (Pie/Donut Chart)
  * Story 5.6: Added onClick handler for drill-down navigation
  * Story 7.3: Refactored to use centralized Realtime subscription manager
+ * HP-1: follows the dashboard period selector; localized.
  *
  * Displays expense breakdown by category using Recharts PieChart
  */
 
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import {
   Box,
-  Heading,
   Text,
   VStack,
   Alert,
@@ -35,12 +36,24 @@ import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency } from '@/lib/utils/currency';
 import { useChartColors } from '@/lib/hooks/useChartColors';
+import type { DashboardPeriod } from '@/lib/utils/dashboardPeriod';
 
 export interface CategorySpendingChartProps {
   month?: string; // YYYY-MM format, defaults to current month
+  /** Dashboard period. Ignored when an explicit `month` is given. */
+  period?: DashboardPeriod;
   chartType?: 'pie' | 'donut'; // Default: 'donut'
   height?: number; // Default: 300
 }
+
+/** Empty-state copy per period. A lookup, not a built string: Bulgarian
+ *  inflects these differently and interpolation produces broken grammar. */
+const EMPTY_COPY: Record<DashboardPeriod, string> = {
+  week: 'noExpensesWeek',
+  month: 'noExpensesMonth',
+  quarter: 'noExpensesQuarter',
+  year: 'noExpensesYear',
+};
 
 interface ChartDataPoint {
   name: string;
@@ -53,17 +66,25 @@ interface ChartDataPoint {
 
 export function CategorySpendingChart({
   month,
+  period,
   chartType = 'donut',
   height = 300,
 }: CategorySpendingChartProps) {
+  const t = useTranslations('dashboard');
   const chart = useChartColors();
-  const { data, error, isLoading, mutate } = useSpendingByCategory(month);
+  const { data, error, isLoading, mutate } = useSpendingByCategory(month, period);
   const { preferences } = useUserPreferences();
   const router = useRouter();
   const currencyCode = preferences?.currency_format;
 
+  // Empty-state copy follows the window the SERVER aggregated, not the pending
+  // selection: `keepPreviousData` keeps the outgoing figures on screen while the
+  // next window loads, so labelling by selection would caption this year's
+  // request with last month's data (the Story 16-6 lesson).
+  const shownPeriod = data?.period ?? period ?? 'month';
+
   // Get current month in YYYY-MM format for drill-down navigation
-  const currentMonth = month || format(new Date(), 'yyyy-MM');
+  const currentMonth = month || data?.month || format(new Date(), 'yyyy-MM');
 
   // Subscribe to real-time transaction changes via centralized manager
   useRealtimeSubscription((event) => {
@@ -77,10 +98,8 @@ export function CategorySpendingChart({
       <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
         <Alert status="error" borderRadius="md">
           <AlertIcon />
-          <AlertTitle>Failed to load spending data</AlertTitle>
-          <AlertDescription>
-            Unable to fetch category spending breakdown. Please try refreshing the page.
-          </AlertDescription>
+          <AlertTitle>{t('categoryChartError')}</AlertTitle>
+          <AlertDescription>{t('categoryChartErrorHint')}</AlertDescription>
         </Alert>
       </Box>
     );
@@ -99,19 +118,19 @@ export function CategorySpendingChart({
   // Empty state
   if (!data || data.categories.length === 0) {
     return (
+      // The card title lives on the page (one heading per card — the two used
+      // to render on top of each other, the page's localized and this one's
+      // hardcoded English).
       <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
-        <Heading as="h3" size="md" mb={4} color="fg">
-          Spending by Category
-        </Heading>
         <VStack py={8} spacing={3}>
-          <Text fontSize="4xl" color="fg.subtle">
+          <Text fontSize="4xl" color="fg.subtle" aria-hidden="true">
             📊
           </Text>
           <Text fontSize="lg" fontWeight="medium" color="fg.muted">
-            No expenses this month
+            {t(EMPTY_COPY[shownPeriod])}
           </Text>
-          <Text fontSize="sm" color="fg.subtle">
-            Start adding transactions to see your spending breakdown
+          <Text fontSize="sm" color="fg.subtle" textAlign="center">
+            {t('noExpensesHint')}
           </Text>
         </VStack>
       </Box>
@@ -154,7 +173,7 @@ export function CategorySpendingChart({
             {formatCurrency(data.value, undefined, currencyCode)}
           </Text>
           <Text fontSize="xs" color="fg.subtle">
-            {data.percentage.toFixed(1)}% of total
+            {t('ofTotal', { percent: data.percentage.toFixed(1) })}
           </Text>
         </Box>
       );
@@ -172,14 +191,13 @@ export function CategorySpendingChart({
       borderColor="border"
     >
       <VStack align="stretch" spacing={4}>
-        <Box>
-          <Heading as="h3" size="md" color="fg" mb={1}>
-            Spending by Category
-          </Heading>
-          <Text fontSize="sm" color="fg.muted">
-            Total: {formatCurrency(data.total, undefined, currencyCode)}
-          </Text>
-        </Box>
+        {/* No heading here: the page titles this card. Rendering one in both
+            places printed it twice, and only the page's was localized. */}
+        <Text fontSize="sm" color="fg.muted">
+          {t('categoryChartTotal', {
+            amount: formatCurrency(data.total, undefined, currencyCode),
+          })}
+        </Text>
 
         <ResponsiveContainer width="100%" height={height}>
           <PieChart>
@@ -196,7 +214,7 @@ export function CategorySpendingChart({
               cursor="pointer"
               role="button"
               tabIndex={0}
-              aria-label="Category spending chart. Click on a category to view detailed transactions."
+              aria-label={t('categoryChartAria')}
             >
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
@@ -215,7 +233,7 @@ export function CategorySpendingChart({
 
         {/* Accessible data table (visually hidden) */}
         <table
-          aria-label="Category spending breakdown"
+          aria-label={t('categoryTableLabel')}
           style={{
             position: 'absolute',
             width: '1px',
@@ -230,9 +248,9 @@ export function CategorySpendingChart({
         >
           <thead>
             <tr>
-              <th>Category</th>
-              <th>Amount</th>
-              <th>Percentage</th>
+              <th>{t('tableCategory')}</th>
+              <th>{t('tableAmount')}</th>
+              <th>{t('tablePercentage')}</th>
             </tr>
           </thead>
           <tbody>

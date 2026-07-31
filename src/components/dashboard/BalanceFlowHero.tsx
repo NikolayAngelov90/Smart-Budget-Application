@@ -151,9 +151,24 @@ const COPY: Record<
   },
 };
 
-export function BalanceFlowHero() {
+export interface BalanceFlowHeroProps {
+  /**
+   * HP-1: the period lifted to the page so the "Where it's going" section can
+   * follow it. Left OPTIONAL with internal state as the fallback — the hero is
+   * the dashboard's signature and must stay renderable on its own.
+   */
+  period?: DashboardPeriod;
+  onPeriodChange?: (period: DashboardPeriod) => void;
+}
+
+export function BalanceFlowHero({
+  period: periodProp,
+  onPeriodChange,
+}: BalanceFlowHeroProps = {}) {
   const t = useTranslations('dashboard');
-  const [period, setPeriod] = useState<DashboardPeriod>('month');
+  const [internalPeriod, setInternalPeriod] = useState<DashboardPeriod>('month');
+  const period = periodProp ?? internalPeriod;
+  const setPeriod = onPeriodChange ?? setInternalPeriod;
   const locale = useLocale();
   const dateLocale = getDateLocale(locale);
   const reduce = useReducedMotion();
