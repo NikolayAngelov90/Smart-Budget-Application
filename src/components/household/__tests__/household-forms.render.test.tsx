@@ -188,14 +188,36 @@ describe('HouseholdSection', () => {
 });
 
 describe('SharedGoalsCard', () => {
-  it('opens the new-goal form with all three fields labelled', () => {
+  it('opens the new-goal form with all three fields labelled, and accepts input', () => {
     renderIt(<SharedGoalsCard />);
 
     fireEvent.click(screen.getByRole('button', { name: 'newGoal' }));
 
-    expect(screen.getByLabelText('name')).toBeInTheDocument();
-    expect(screen.getByLabelText('target')).toBeInTheDocument();
-    expect(screen.getByLabelText('deadline')).toBeInTheDocument();
+    const name = screen.getByLabelText('name');
+    const target = screen.getByLabelText('target');
+    const deadline = screen.getByLabelText('deadline');
+    expect(name).toBeInTheDocument();
+    expect(target).toBeInTheDocument();
+    expect(deadline).toBeInTheDocument();
+
+    // Typing, not just presence: each field's onChange is its own closure, and
+    // a field that renders but does not accept input looks identical to a
+    // working one until someone tries to use it.
+    fireEvent.change(name, { target: { value: 'New sofa' } });
+    fireEvent.change(target, { target: { value: '750' } });
+    fireEvent.change(deadline, { target: { value: '2026-12-31' } });
+
+    expect(name).toHaveValue('New sofa');
+    expect(target).toHaveValue(750);
+    expect(deadline).toHaveValue('2026-12-31');
+  });
+
+  it('closes the new-goal form on cancel', () => {
+    renderIt(<SharedGoalsCard />);
+    fireEvent.click(screen.getByRole('button', { name: 'newGoal' }));
+    fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
+
+    expect(screen.queryByLabelText('name')).not.toBeInTheDocument();
   });
 
   it('offers a contribute field on an existing goal', () => {
@@ -223,6 +245,35 @@ describe('SharedGoalsCard', () => {
 
     // The row the source guard caught after the browser pass missed it — this
     // form only exists once a goal does.
-    expect(screen.getByLabelText('contributeAmount')).toBeInTheDocument();
+    const amount = screen.getByLabelText('contributeAmount');
+    expect(amount).toBeInTheDocument();
+
+    fireEvent.change(amount, { target: { value: '25.50' } });
+    expect(amount).toHaveValue(25.5);
+  });
+
+  it('shows the goal it is contributing to', () => {
+    mockGoals.mockReturnValue({
+      goals: [
+        {
+          goal: {
+            id: 'g-1',
+            name: 'Vacation',
+            target_amount: 1000,
+            current_amount: 250,
+            deadline: null,
+            currency: 'EUR',
+          },
+          breakdown: [],
+        },
+      ],
+      isLoading: false,
+      error: undefined,
+      mutate: jest.fn(),
+    });
+
+    renderIt(<SharedGoalsCard />);
+
+    expect(screen.getByText('Vacation')).toBeInTheDocument();
   });
 });
