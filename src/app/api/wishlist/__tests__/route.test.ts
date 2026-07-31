@@ -288,7 +288,7 @@ describe('GET /api/wishlist', () => {
     mockCreateClient.mockResolvedValue(
       makeSupabase({
         transactions: {
-          data: [{ amount: 100, type: 'income', exchange_rate: 2 }],
+          data: [{ amount: 100, type: 'income', currency: 'USD', exchange_rate: 2 }],
           error: null,
         },
         categories: { data: [], error: null },

@@ -154,7 +154,9 @@ describe('GET /api/what-if', () => {
     mockCreateClient.mockResolvedValue(
       makeSupabase({
         transactions: {
-          data: [{ category_id: 'cat-1', amount: 100, exchange_rate: 2, date: '2026-06-01' }],
+          data: [
+            { category_id: 'cat-1', amount: 100, currency: 'USD', exchange_rate: 2, date: '2026-06-01' },
+          ],
           error: null,
         },
         categories: { data: [CATEGORIES[0]], error: null },

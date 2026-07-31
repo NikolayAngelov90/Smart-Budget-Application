@@ -22,6 +22,11 @@ import { fixedWindowMonthlyAverage, AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spend
 import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 import type { WhatIfContextResponse, WhatIfSubscription } from '@/types/database.types';
+import {
+  buildLiveRateMap,
+  convertToPreferred,
+} from '@/lib/services/currencyConversion';
+import { resolvePreferredCurrency } from '@/lib/services/preferredCurrency';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +79,7 @@ export async function GET(request: NextRequest) {
       // Prior 3 calendar months of expenses (excludes the partial current month)
       supabase
         .from('transactions')
-        .select('category_id, amount, exchange_rate, date')
+        .select('category_id, amount, currency, exchange_rate, date')
         .eq('user_id', user.id)
         .eq('type', 'expense')
         .gte('date', threeMonthsAgo)
@@ -112,13 +117,19 @@ export async function GET(request: NextRequest) {
 
     // Per-category average: bucket by category × YYYY-MM month key (timezone-safe
     // string slice), fixed window — see fixedWindowMonthlyAverage. Same divisor
-    // semantics as the nudge helper / forecastEngine (summands differ: this route
-    // converts stored exchange rates; currency unification is a deferred item).
+    // semantics as the nudge helper / forecastEngine. Currency conversion now
+    // matches the dashboard exactly (DW-1) - stored rate, then live fallback.
+    // DW-1: stored entry-time rate first, live rate as the fallback, matching
+    // the dashboard. A foreign row with no stored rate used to be summed raw.
+    const preferredCurrency = await resolvePreferredCurrency(supabase, user.id);
+    const historyRows = historyResult.data ?? [];
+    const liveRates = await buildLiveRateMap(historyRows, preferredCurrency, 'WhatIf');
+
     const monthMaps = new Map<string, Map<string, number>>();
-    for (const tx of historyResult.data ?? []) {
+    for (const tx of historyRows) {
       if (!tx.category_id) continue;
       const monthKey = String(tx.date).slice(0, 7);
-      const amount = tx.exchange_rate ? tx.amount * tx.exchange_rate : tx.amount;
+      const amount = convertToPreferred(tx, preferredCurrency, liveRates);
       if (!monthMaps.has(tx.category_id)) monthMaps.set(tx.category_id, new Map());
       const byMonth = monthMaps.get(tx.category_id)!;
       byMonth.set(monthKey, (byMonth.get(monthKey) ?? 0) + amount);

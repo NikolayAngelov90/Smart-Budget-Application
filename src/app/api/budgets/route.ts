@@ -18,6 +18,11 @@ import { budgetStatusFor } from '@/lib/ai/budgetResolver';
 import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 import type { BudgetsResponse, BudgetSummary } from '@/types/database.types';
+import {
+  buildLiveRateMap,
+  convertToPreferred,
+} from '@/lib/services/currencyConversion';
+import { resolvePreferredCurrency } from '@/lib/services/preferredCurrency';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +79,9 @@ export async function GET(request: NextRequest) {
         .in('id', categoryIds),
       supabase
         .from('transactions')
-        .select('category_id, amount, exchange_rate')
+        // `currency` is required to tell a foreign row from a domestic one —
+        // without it a NULL rate is indistinguishable from 'already preferred'.
+        .select('category_id, amount, currency, exchange_rate')
         .eq('user_id', user.id)
         .eq('type', 'expense')
         .gte('date', monthStart)
@@ -88,11 +95,17 @@ export async function GET(request: NextRequest) {
     const categoryMap = new Map(
       (categoriesResult.data ?? []).map((c) => [c.id, { name: c.name, color: c.color }])
     );
+    // DW-1: stored entry-time rate first, live rate as the fallback — the same
+    // conversion the dashboard uses. Previously a foreign row with no stored
+    // rate was summed RAW, so this page and the dashboard reported different
+    // totals for the same month while both labelled them with the same symbol.
+    const preferredCurrency = await resolvePreferredCurrency(supabase, user.id);
+    const spendRows = spendResult.data ?? [];
+    const liveRates = await buildLiveRateMap(spendRows, preferredCurrency, 'Budgets');
+
     const spendMap = new Map<string, number>();
-    for (const tx of spendResult.data ?? []) {
-      // Foreign-currency transactions store the entry-time rate to the user's
-      // preferred currency (same semantics as the dashboard stats route).
-      const amount = tx.exchange_rate ? tx.amount * tx.exchange_rate : tx.amount;
+    for (const tx of spendRows) {
+      const amount = convertToPreferred(tx, preferredCurrency, liveRates);
       spendMap.set(tx.category_id, (spendMap.get(tx.category_id) ?? 0) + amount);
     }
 

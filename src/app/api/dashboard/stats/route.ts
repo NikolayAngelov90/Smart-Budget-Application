@@ -12,8 +12,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { format } from 'date-fns';
 import { createClient } from '@/lib/supabase/server';
 import { calculateTrend } from '@/lib/utils/currency';
-import { getExchangeRates } from '@/lib/services/exchangeRateService';
 import { logger } from '@/lib/utils/logger';
+import {
+  buildLiveRateMap,
+  convertToPreferred,
+} from '@/lib/services/currencyConversion';
 import { resolveClientToday } from '@/lib/utils/date';
 import {
   isDashboardPeriod,
@@ -137,27 +140,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Find unique currencies that need live rate lookup (no stored exchange_rate)
-    const currenciesNeedingRates = new Set<string>();
-    for (const tx of [...(currentData || []), ...(previousData || [])]) {
-      if (tx.currency && tx.currency !== preferredCurrency && !tx.exchange_rate) {
-        currenciesNeedingRates.add(tx.currency);
-      }
-    }
-
-    // Fetch live rates for those currencies (cached via Redis, max 1 API call/hour)
-    const liveRateMap: Record<string, number> = {};
-    for (const fromCurrency of currenciesNeedingRates) {
-      try {
-        const rateData = await getExchangeRates(fromCurrency);
-        const rate = rateData.rates[preferredCurrency];
-        if (rate != null) {
-          liveRateMap[fromCurrency] = rate;
-        }
-      } catch (e) {
-        logger.warn('Dashboard', `Could not fetch live rate for ${fromCurrency}->${preferredCurrency}:`, e);
-      }
-    }
+    // DW-1: this route's conversion is now the SHARED implementation, used by
+    // budgets, wishlist and what-if too. Four copies is how those three drifted
+    // from this one and started reporting different totals for the same month.
+    const liveRateMap = await buildLiveRateMap(
+      [...(currentData || []), ...(previousData || [])],
+      preferredCurrency,
+      'Dashboard'
+    );
 
     // Aggregate current month data (convert to preferred currency using stored or live exchange rates)
     const currentAggregates = aggregateTransactions(currentData || [], preferredCurrency, liveRateMap);
@@ -221,17 +211,7 @@ function aggregateTransactions(
 ): AggregateResult {
   return transactions.reduce(
     (acc, transaction) => {
-      let amount = transaction.amount;
-      // Convert to preferred currency if transaction was entered in a different currency
-      if (transaction.currency && transaction.currency !== preferredCurrency) {
-        if (transaction.exchange_rate) {
-          // Use stored exchange rate (most accurate — rate at time of entry)
-          amount = amount * transaction.exchange_rate;
-        } else if (liveRates[transaction.currency] != null) {
-          // Fallback to live rate (for transactions entered before currency preference was set)
-          amount = amount * (liveRates[transaction.currency] ?? 1);
-        }
-      }
+      const amount = convertToPreferred(transaction, preferredCurrency, liveRates);
       if (transaction.type === 'income') {
         acc.income += amount;
       } else if (transaction.type === 'expense') {

@@ -28,6 +28,11 @@ import type {
   WishlistResponse,
   ValueWithCategories,
 } from '@/types/database.types';
+import {
+  buildLiveRateMap,
+  convertToPreferred,
+} from '@/lib/services/currencyConversion';
+import { resolvePreferredCurrency } from '@/lib/services/preferredCurrency';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,7 +90,7 @@ export async function GET(request: NextRequest) {
     const [txResult, budgetsResult, goalsResult, categoriesResult, plan] = await Promise.all([
       supabase
         .from('transactions')
-        .select('amount, type, exchange_rate')
+        .select('amount, type, currency, exchange_rate')
         .eq('user_id', user.id)
         .gte('date', monthStart)
         .lte('date', monthEnd),
@@ -116,6 +121,11 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // DW-1: stored entry-time rate first, live rate as the fallback, matching
+    // the dashboard. A foreign row with no stored rate used to be summed raw,
+    // so this screen and the dashboard disagreed about the same month.
+    const preferredCurrency = await resolvePreferredCurrency(supabase, user.id);
+
     // Month totals — on failure the balance becomes null downstream (an honest
     // "unknown" beats fabricating income 0 − expenses 0 − price = a red −price).
     const monthTotalsKnown = !txResult.error;
@@ -124,8 +134,10 @@ export async function GET(request: NextRequest) {
     if (txResult.error) {
       logger.warn('Wishlist', 'month transactions unavailable:', txResult.error);
     } else {
-      for (const tx of txResult.data ?? []) {
-        const amount = tx.exchange_rate ? tx.amount * tx.exchange_rate : tx.amount;
+      const monthRows = txResult.data ?? [];
+      const monthRates = await buildLiveRateMap(monthRows, preferredCurrency, 'Wishlist');
+      for (const tx of monthRows) {
+        const amount = convertToPreferred(tx, preferredCurrency, monthRates);
         if (tx.type === 'income') monthIncome += amount;
         else if (tx.type === 'expense') monthExpenses += amount;
       }
@@ -176,7 +188,7 @@ export async function GET(request: NextRequest) {
     if (budgetedLinkedCategoryIds.length > 0) {
       const { data: spendRows, error: spendError } = await supabase
         .from('transactions')
-        .select('category_id, amount, exchange_rate')
+        .select('category_id, amount, currency, exchange_rate')
         .eq('user_id', user.id)
         .eq('type', 'expense')
         .gte('date', monthStart)
@@ -186,8 +198,10 @@ export async function GET(request: NextRequest) {
         logger.warn('Wishlist', 'category spend unavailable:', spendError);
         spendKnown = false;
       } else {
-        for (const tx of spendRows ?? []) {
-          const amount = tx.exchange_rate ? tx.amount * tx.exchange_rate : tx.amount;
+        const rows = spendRows ?? [];
+        const spendRates = await buildLiveRateMap(rows, preferredCurrency, 'Wishlist');
+        for (const tx of rows) {
+          const amount = convertToPreferred(tx, preferredCurrency, spendRates);
           spendByCategory.set(tx.category_id, (spendByCategory.get(tx.category_id) ?? 0) + amount);
         }
       }

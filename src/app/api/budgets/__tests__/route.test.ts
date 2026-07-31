@@ -76,6 +76,8 @@ function chain(result: { data: unknown; error: unknown }) {
   for (const m of ['select', 'eq', 'gte', 'lte', 'in', 'is']) {
     q[m] = jest.fn(() => q);
   }
+  // The preferred-currency lookup ends in .single() (DW-1).
+  q.single = jest.fn(async () => result);
   q.then = (resolve: (v: unknown) => unknown) => resolve(result);
   return q;
 }
@@ -90,6 +92,11 @@ function makeSupabase(overrides: {
     auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: null }) },
     from: jest.fn((table: string) => {
       if (table === 'categories') return chain({ data: categories, error: null });
+      // DW-1: the preferred currency is resolved server-side so the value used
+      // to CONVERT and the value used to LABEL cannot drift apart.
+      if (table === 'user_profiles') {
+        return chain({ data: { preferences: { currency_format: 'EUR' } }, error: null });
+      }
       return chain({ data: transactions, error: null });
     }),
   };
@@ -165,8 +172,8 @@ describe('GET /api/budgets', () => {
       makeSupabase({
         categories: [{ id: 'cat-1', name: 'Dining', color: '#aaa' }],
         transactions: [
-          { category_id: 'cat-1', amount: 100, exchange_rate: 2 }, // foreign → 200
-          { category_id: 'cat-1', amount: 50, exchange_rate: null }, // preferred currency
+          { category_id: 'cat-1', amount: 100, currency: 'USD', exchange_rate: 2 }, // foreign → 200
+          { category_id: 'cat-1', amount: 50, currency: 'EUR', exchange_rate: null }, // preferred currency
         ],
       }) as never
     );
