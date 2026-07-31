@@ -30,36 +30,38 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import { logger } from '@/lib/utils/logger';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { GET } from '../route';
 
 const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
 const mockDispatch = dispatchCategorizedPush as jest.MockedFunction<typeof dispatchCategorizedPush>;
 
-// One thenable per .range() page — the route paginates until a short page
+/**
+ * Uses the shared chain mock (`@/test-utils/supabaseChain`).
+ *
+ * This suite is why that helper exists: it broke twice in one epic — first when
+ * the route began reading `notification_deliveries`, then again when the cohort
+ * scan moved from `.eq()` to `.gte()/.lte()`. Both times a hand-rolled stub
+ * returned `undefined` for the new method, the call threw into a catch, and the
+ * route degraded to a 500 that looked like a behaviour bug.
+ *
+ * The shared chain answers any method, so neither change would break it now.
+ */
 function makeClient(pages: Array<{ data: unknown; error: unknown }>) {
-  const q: Record<string, jest.Mock> = {};
-  // The cohort scan is a RANGE now (7-10 days inactive), not an exact day.
-  for (const m of ['select', 'eq', 'gte', 'lte', 'order']) q[m] = jest.fn(() => q);
-  let call = 0;
-  q.range = jest.fn(() => {
-    const result = pages[Math.min(call, pages.length - 1)];
-    call++;
-    return Promise.resolve(result);
+  const db = createSupabaseMock({
+    tables: {
+      streaks: pages,
+      // Nothing delivered yet, so every eligible user is still pending.
+      notification_deliveries: { data: [], error: null },
+    },
   });
-  // DW-4: the route now also reads `notification_deliveries` to skip users
-  // already served this period, and upserts a marker after a successful send.
-  // Default: nobody delivered yet, so every eligible user is still pending.
-  // The per-episode lookup chains .eq().in().in(), so every method returns the
-  // chain and the chain itself is awaitable.
-  const deliveries: Record<string, jest.Mock> = {};
-  for (const m of ['select', 'eq', 'in', 'upsert']) deliveries[m] = jest.fn(() => deliveries);
-  deliveries.then = ((resolve: (v: unknown) => unknown) =>
-    resolve({ data: [], error: null })) as unknown as jest.Mock;
-
   return {
-    from: jest.fn((table: string) => (table === 'notification_deliveries' ? deliveries : q)),
-    chain: q,
-    deliveries,
+    ...db.client,
+    // Kept so existing assertions on the streaks query keep reading naturally.
+    get chain() {
+      return db.chainFor('streaks');
+    },
+    db,
   };
 }
 
@@ -117,8 +119,8 @@ describe('GET /api/cron/reengagement-push', () => {
     // allows one cron run per day, so the window is what makes a missed run
     // recoverable. The per-EPISODE marker (period key = last_log_date) is what
     // stops a 4-day window becoming 4 pushes.
-    expect(client.chain.gte).toHaveBeenCalledWith('last_log_date', expect.any(String));
-    expect(client.chain.lte).toHaveBeenCalledWith('last_log_date', expectedDayKey);
+    expect(client.chain.callsTo('gte')[0]![0]).toBe('last_log_date');
+    expect(client.chain.calledWith('lte', 'last_log_date', expectedDayKey)).toBe(true);
     expect(mockDispatch).toHaveBeenCalledWith(
       'u-1',
       'reengagement',
@@ -167,9 +169,12 @@ describe('GET /api/cron/reengagement-push', () => {
 
     expect(res.status).toBe(200);
     expect(body.usersFound).toBe(501);
-    expect(client.chain.range).toHaveBeenCalledTimes(2);
-    expect(client.chain.range).toHaveBeenNthCalledWith(1, 0, 499);
-    expect(client.chain.range).toHaveBeenNthCalledWith(2, 500, 999);
+    // Pagination calls from() once per page, so the range() calls live on
+    // different chains — asserting on the first alone would check one page.
+    expect(client.db.allCallsTo('streaks', 'range')).toEqual([
+      [0, 499],
+      [500, 999],
+    ]);
     expect(mockDispatch).toHaveBeenCalledTimes(501);
   });
 
@@ -184,7 +189,8 @@ describe('GET /api/cron/reengagement-push', () => {
 
     expect(res.status).toBe(200);
     expect(body.usersFound).toBe(5000);
-    expect(client.chain.range).toHaveBeenCalledTimes(10);
+    // Again across chains: one from() per page.
+    expect(client.db.allCallsTo('streaks', 'range')).toHaveLength(10);
     expect(logger.warn).toHaveBeenCalledWith(
       'ReengagementPushCron',
       expect.stringContaining('cap')

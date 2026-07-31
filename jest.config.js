@@ -20,6 +20,9 @@ const customJestConfig = {
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',
     '!src/**/*.stories.{js,jsx,ts,tsx}',
+    // Test-only helper — exercised by its own suite, but it is scaffolding,
+    // not shipped code, so it should not move the coverage ratio.
+    '!src/test-utils/**',
   ],
   coverageReporters: [
     'text',           // Display coverage in terminal
