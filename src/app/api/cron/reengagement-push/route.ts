@@ -33,13 +33,22 @@ import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import { logger } from '@/lib/utils/logger';
 import {
-  dayPeriodKey,
-  getAlreadyDelivered,
+  getAlreadyDeliveredByPeriod,
   markDelivered,
 } from '@/lib/services/notificationDeliveryService';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+/**
+ * Re-engagement fires for users inactive 7-10 days.
+ *
+ * A RANGE rather than an exact day because Vercel Hobby permits one cron run
+ * per day: widening the window is the only way to get a second attempt if a
+ * run is missed. The per-episode marker keeps it to one push per episode.
+ */
+const REENGAGEMENT_WINDOW_START_DAYS = 7;
+const REENGAGEMENT_WINDOW_END_DAYS = 10;
 
 const PAGE_SIZE = 500;
 // Safety valve, not an expected ceiling. If ever hit, the remainder of that
@@ -67,19 +76,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Users whose last log was exactly 7 days ago (paginated — a bare
-    //    .limit() would silently truncate the cohort)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const targetDayKey = localDayKey(sevenDaysAgo);
+    // 2. Users whose last log falls in the re-engagement WINDOW.
+    //
+    // This was `.eq(last_log_date, exactly 7 days ago)` — a single instant
+    // matched against a single day. If the cron run was missed (deploy,
+    // incident, platform blip) that day's cohort was skipped PERMANENTLY,
+    // because the next run matched a different day.
+    //
+    // A range makes a missed run recoverable: someone who became eligible on
+    // day 7 is still a candidate on days 8-10. The per-EPISODE marker below is
+    // what stops that turning into four pushes.
+    //
+    // Vercel Hobby allows one cron run per day, so widening the window is the
+    // only way to get more than one attempt — running hourly is not available.
+    const dayKeyOffset = (days: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      return localDayKey(d);
+    };
+    // Inclusive bounds, oldest first: [today-10 .. today-7].
+    const windowOldest = dayKeyOffset(REENGAGEMENT_WINDOW_END_DAYS);
+    const windowNewest = dayKeyOffset(REENGAGEMENT_WINDOW_START_DAYS);
 
     const supabase = createServiceRoleClient() as unknown as SupabaseClient;
-    const users: Array<{ user_id: string }> = [];
+    const users: Array<{ user_id: string; last_log_date: string }> = [];
     for (let from = 0; from < MAX_USERS; from += PAGE_SIZE) {
       const { data: rows, error } = await supabase
         .from('streaks')
-        .select('user_id')
-        .eq('last_log_date', targetDayKey)
+        // `last_log_date` identifies the inactivity EPISODE, and becomes the
+        // period key — so one push per episode, not one per day in the window.
+        .select('user_id, last_log_date')
+        .gte('last_log_date', windowOldest)
+        .lte('last_log_date', windowNewest)
         .order('user_id')
         .range(from, from + PAGE_SIZE - 1);
 
@@ -88,7 +116,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Scan failed' }, { status: 500 });
       }
 
-      const page = (rows ?? []) as Array<{ user_id: string }>;
+      const page = (rows ?? []) as Array<{ user_id: string; last_log_date: string }>;
       users.push(...page);
       if (page.length < PAGE_SIZE) break;
     }
@@ -110,14 +138,14 @@ export async function GET(request: NextRequest) {
     // The period key also gives expiry for free: it is today's day key, so a
     // notification that never became sendable simply stops being offered when
     // the day rolls over, rather than arriving late describing a stale day.
-    const periodKey = dayPeriodKey();
+    // The period is the user's inactivity EPISODE (their last_log_date), not
+    // today — otherwise a four-day window would push them four times.
     let alreadyDelivered: Set<string>;
     try {
-      alreadyDelivered = await getAlreadyDelivered(
+      alreadyDelivered = await getAlreadyDeliveredByPeriod(
         supabase,
         'reengagement',
-        periodKey,
-        users.map((u) => u.user_id)
+        users.map((u) => ({ userId: u.user_id, periodKey: u.last_log_date }))
       );
     } catch {
       // Fail closed — see getAlreadyDelivered. The next hourly run retries.
@@ -127,7 +155,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const pending = users.filter((u) => !alreadyDelivered.has(u.user_id));
+    const pending = users.filter(
+      (u) => !alreadyDelivered.has(`${u.user_id}:${u.last_log_date}`)
+    );
 
     // 4. Dispatch through the gate (opt-in toggle + quiet hours enforced
     //    there). The gate never throws — outcomes are the honest telemetry.
@@ -146,7 +176,7 @@ export async function GET(request: NextRequest) {
         // unmarked; it costs one cheap gate check per hour and keeps the marker
         // meaning exactly "this user was served".
         if (outcome === 'sent') {
-          await markDelivered(supabase, 'reengagement', periodKey, row.user_id);
+          await markDelivered(supabase, 'reengagement', row.last_log_date, row.user_id);
         }
         return outcome;
       })

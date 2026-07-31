@@ -38,7 +38,8 @@ const mockDispatch = dispatchCategorizedPush as jest.MockedFunction<typeof dispa
 // One thenable per .range() page — the route paginates until a short page
 function makeClient(pages: Array<{ data: unknown; error: unknown }>) {
   const q: Record<string, jest.Mock> = {};
-  for (const m of ['select', 'eq', 'order']) q[m] = jest.fn(() => q);
+  // The cohort scan is a RANGE now (7-10 days inactive), not an exact day.
+  for (const m of ['select', 'eq', 'gte', 'lte', 'order']) q[m] = jest.fn(() => q);
   let call = 0;
   q.range = jest.fn(() => {
     const result = pages[Math.min(call, pages.length - 1)];
@@ -48,11 +49,12 @@ function makeClient(pages: Array<{ data: unknown; error: unknown }>) {
   // DW-4: the route now also reads `notification_deliveries` to skip users
   // already served this period, and upserts a marker after a successful send.
   // Default: nobody delivered yet, so every eligible user is still pending.
+  // The per-episode lookup chains .eq().in().in(), so every method returns the
+  // chain and the chain itself is awaitable.
   const deliveries: Record<string, jest.Mock> = {};
-  for (const m of ['select', 'eq', 'upsert']) deliveries[m] = jest.fn(() => deliveries);
-  deliveries.in = jest.fn(() => Promise.resolve({ data: [], error: null }));
+  for (const m of ['select', 'eq', 'in', 'upsert']) deliveries[m] = jest.fn(() => deliveries);
   deliveries.then = ((resolve: (v: unknown) => unknown) =>
-    resolve({ data: null, error: null })) as unknown as jest.Mock;
+    resolve({ data: [], error: null })) as unknown as jest.Mock;
 
   return {
     from: jest.fn((table: string) => (table === 'notification_deliveries' ? deliveries : q)),
@@ -91,7 +93,7 @@ describe('GET /api/cron/reengagement-push', () => {
 
   it('pushes exactly the day-7 users through the gate (opt-in enforced there)', async () => {
     const client = makeClient([
-      { data: [{ user_id: 'u-1' }, { user_id: 'u-2' }], error: null },
+      { data: [{ user_id: 'u-1', last_log_date: expectedDayKey }, { user_id: 'u-2', last_log_date: expectedDayKey }], error: null },
     ]);
     mockServiceClient.mockReturnValue(client as never);
 
@@ -111,8 +113,12 @@ describe('GET /api/cron/reengagement-push', () => {
       suppressed: 0,
       failed: 0,
     });
-    // Scans for last_log_date EXACTLY 7 days ago — >= would push daily forever
-    expect(client.chain.eq).toHaveBeenCalledWith('last_log_date', expectedDayKey);
+    // Scans a WINDOW of inactivity days, not a single instant: Vercel Hobby
+    // allows one cron run per day, so the window is what makes a missed run
+    // recoverable. The per-EPISODE marker (period key = last_log_date) is what
+    // stops a 4-day window becoming 4 pushes.
+    expect(client.chain.gte).toHaveBeenCalledWith('last_log_date', expect.any(String));
+    expect(client.chain.lte).toHaveBeenCalledWith('last_log_date', expectedDayKey);
     expect(mockDispatch).toHaveBeenCalledWith(
       'u-1',
       'reengagement',
@@ -124,7 +130,7 @@ describe('GET /api/cron/reengagement-push', () => {
   it('counts gate outcomes truthfully (the gate never throws — outcomes ARE the telemetry)', async () => {
     const client = makeClient([
       {
-        data: [{ user_id: 'u-1' }, { user_id: 'u-2' }, { user_id: 'u-3' }],
+        data: [{ user_id: 'u-1', last_log_date: expectedDayKey }, { user_id: 'u-2', last_log_date: expectedDayKey }, { user_id: 'u-3', last_log_date: expectedDayKey }],
         error: null,
       },
     ]);
@@ -149,10 +155,10 @@ describe('GET /api/cron/reengagement-push', () => {
   });
 
   it('paginates past a full page instead of truncating the cohort', async () => {
-    const fullPage = Array.from({ length: 500 }, (_, i) => ({ user_id: `u-${i}` }));
+    const fullPage = Array.from({ length: 500 }, (_, i) => ({ user_id: `u-${i}`, last_log_date: expectedDayKey }));
     const client = makeClient([
       { data: fullPage, error: null },
-      { data: [{ user_id: 'u-500' }], error: null },
+      { data: [{ user_id: 'u-500', last_log_date: expectedDayKey }], error: null },
     ]);
     mockServiceClient.mockReturnValue(client as never);
 
@@ -168,7 +174,7 @@ describe('GET /api/cron/reengagement-push', () => {
   });
 
   it('warns when the cohort hits the hard cap (remainder is permanently skipped)', async () => {
-    const fullPage = Array.from({ length: 500 }, (_, i) => ({ user_id: `u-${i}` }));
+    const fullPage = Array.from({ length: 500 }, (_, i) => ({ user_id: `u-${i}`, last_log_date: expectedDayKey }));
     // Every page full — the route stops at MAX_USERS (5000 = 10 pages)
     const client = makeClient([{ data: fullPage, error: null }]);
     mockServiceClient.mockReturnValue(client as never);
