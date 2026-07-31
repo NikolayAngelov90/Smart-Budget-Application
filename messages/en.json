@@ -946,7 +946,8 @@
     "goalDelay": "{goal} would be delayed by about {days, plural, one {1 day} other {# days}}",
     "showHistory": "Show history ({count})",
     "hideHistory": "Hide history",
-    "goalDelayBeyondCap": "{goal} would be delayed by more than 2 years"
+    "goalDelayBeyondCap": "{goal} would be delayed by more than 2 years",
+    "categoriesUnavailable": "Categories couldn't be loaded — you can still add the item without one."
   },
   "streaks": {
     "dayStreak": "{days, plural, one {1-day streak} other {#-day streak}}",

@@ -8,6 +8,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { WishlistSection } from '@/components/goals/WishlistSection';
+import useSWR from 'swr';
 import { useWishlist } from '@/lib/hooks/useWishlist';
 import type { WishlistItemWithImpact } from '@/types/database.types';
 
@@ -42,6 +43,8 @@ jest.mock('next-intl', () => ({
       price: 'Price',
       categoryOptional: 'Category (optional)',
       noCategory: 'No category',
+      categoriesUnavailable:
+        "Categories couldn't be loaded — you can still add the item without one.",
       addItem: 'Add to wishlist',
       invalidName: 'Enter a name (1–100 characters)',
       invalidPrice: 'Enter a valid positive price (max 2 decimals)',
@@ -307,5 +310,112 @@ describe('WishlistSection', () => {
 
     fireEvent.click(screen.getByText('Show history (1)'));
     expect(screen.getByText('Old thing')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Category-picker degradation — deferred item re-rated at the Epic 16 retro.
+ *
+ * The `/api/categories` fetch had its `error` discarded, so a failure rendered a
+ * picker holding nothing but the "No category" placeholder. That reads as "you
+ * have no categories", not "we couldn't load them" — a silent failure, which
+ * the project's degradation policy says enrichment must not be.
+ */
+describe('WishlistSection category picker', () => {
+  const mockUseSWR = useSWR as unknown as jest.Mock;
+  const HINT = "Categories couldn't be loaded — you can still add the item without one.";
+  const LOADED = {
+    data: { data: [{ id: 'cat-1', name: 'Electronics', isOwn: true }] },
+    error: undefined,
+    isLoading: false,
+    mutate: jest.fn(),
+  };
+  const FAILED = {
+    data: undefined,
+    error: new Error('network'),
+    isLoading: false,
+    mutate: jest.fn(),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // A sibling describe stubs this in its own beforeEach, which does not reach
+    // here.
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: {} }),
+    }) as jest.Mock;
+    mockUseWishlist.mockReturnValue(hookResult({ data: { items: [] } }));
+  });
+
+  afterEach(() => {
+    // Restore the file-wide default so suite ordering cannot matter.
+    mockUseSWR.mockReturnValue(LOADED);
+  });
+
+  it('says so when the categories cannot be loaded', () => {
+    mockUseSWR.mockReturnValue(FAILED);
+
+    renderWithChakra(<WishlistSection />);
+
+    expect(screen.getByText(HINT)).toBeInTheDocument();
+  });
+
+  it('disables the empty picker rather than inviting a pointless tap', () => {
+    mockUseSWR.mockReturnValue(FAILED);
+
+    renderWithChakra(<WishlistSection />);
+
+    expect(screen.getByRole('combobox')).toBeDisabled();
+  });
+
+  it('ties the hint to the picker for screen readers', () => {
+    // A disabled control with an unassociated explanation tells a screen-reader
+    // user nothing. FormControl generates the id and the link; this asserts the
+    // wiring survives, since an explicit id on either side silently breaks it.
+    mockUseSWR.mockReturnValue(FAILED);
+
+    renderWithChakra(<WishlistSection />);
+
+    const describedBy = screen.getByRole('combobox').getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+
+    const described = describedBy!
+      .split(/\s+/)
+      .map((id) => document.getElementById(id))
+      .filter((node): node is HTMLElement => node !== null);
+
+    expect(described.some((node) => node.textContent === HINT)).toBe(true);
+  });
+
+  it('still lets the item be added — the category is optional', async () => {
+    // The point of warning rather than blocking: a failed enrichment fetch must
+    // not cost the user the thing they came to do.
+    mockUseSWR.mockReturnValue(FAILED);
+
+    renderWithChakra(<WishlistSection />);
+
+    fireEvent.change(screen.getByLabelText('Item'), { target: { value: 'Headphones' } });
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '99' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to wishlist' }));
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const call = (global.fetch as jest.Mock).mock.calls.find(
+      ([url]) => typeof url === 'string' && url.includes('/api/wishlist')
+    );
+    expect(call).toBeTruthy();
+    expect(JSON.parse(call![1].body as string)).toMatchObject({
+      name: 'Headphones',
+      category_id: null,
+    });
+  });
+
+  it('shows no hint when the categories load', () => {
+    mockUseSWR.mockReturnValue(LOADED);
+
+    renderWithChakra(<WishlistSection />);
+
+    expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox')).not.toBeDisabled();
   });
 });
