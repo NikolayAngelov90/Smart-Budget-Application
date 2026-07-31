@@ -45,7 +45,20 @@ function makeClient(pages: Array<{ data: unknown; error: unknown }>) {
     call++;
     return Promise.resolve(result);
   });
-  return { from: jest.fn(() => q), chain: q };
+  // DW-4: the route now also reads `notification_deliveries` to skip users
+  // already served this period, and upserts a marker after a successful send.
+  // Default: nobody delivered yet, so every eligible user is still pending.
+  const deliveries: Record<string, jest.Mock> = {};
+  for (const m of ['select', 'eq', 'upsert']) deliveries[m] = jest.fn(() => deliveries);
+  deliveries.in = jest.fn(() => Promise.resolve({ data: [], error: null }));
+  deliveries.then = ((resolve: (v: unknown) => unknown) =>
+    resolve({ data: null, error: null })) as unknown as jest.Mock;
+
+  return {
+    from: jest.fn((table: string) => (table === 'notification_deliveries' ? deliveries : q)),
+    chain: q,
+    deliveries,
+  };
 }
 
 const req = (auth?: string) =>
@@ -86,7 +99,18 @@ describe('GET /api/cron/reengagement-push', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ success: true, usersFound: 2, sent: 2, suppressed: 0, failed: 0 });
+    // DW-4: `pending` (cohort minus already-delivered) and `deferred` (quiet
+    // hours, retried next run) are part of the telemetry now — a deferral must
+    // not be reported as a suppression.
+    expect(body).toEqual({
+      success: true,
+      usersFound: 2,
+      pending: 2,
+      sent: 2,
+      deferred: 0,
+      suppressed: 0,
+      failed: 0,
+    });
     // Scans for last_log_date EXACTLY 7 days ago — >= would push daily forever
     expect(client.chain.eq).toHaveBeenCalledWith('last_log_date', expectedDayKey);
     expect(mockDispatch).toHaveBeenCalledWith(
@@ -113,7 +137,15 @@ describe('GET /api/cron/reengagement-push', () => {
     const res = await GET(req('Bearer shhh-secret-42'));
     const body = await res.json();
     expect(res.status).toBe(200);
-    expect(body).toEqual({ success: true, usersFound: 3, sent: 1, suppressed: 1, failed: 1 });
+    expect(body).toEqual({
+      success: true,
+      usersFound: 3,
+      pending: 3,
+      sent: 1,
+      deferred: 0,
+      suppressed: 1,
+      failed: 1,
+    });
   });
 
   it('paginates past a full page instead of truncating the cohort', async () => {

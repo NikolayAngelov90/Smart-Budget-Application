@@ -60,7 +60,14 @@ const CATEGORY_PREFS: Record<PushCategory, { flag: string; defaultEnabled: boole
  * 'sent' = handed to web-push, 'suppressed' = toggle off or quiet hours,
  * 'failed' = preferences unreadable or internal error.
  */
-export type PushDispatchOutcome = 'sent' | 'suppressed' | 'failed';
+/**
+ * DW-4: 'deferred' is distinct from 'suppressed' on purpose. Suppressed means
+ * the user opted out and nothing should ever be sent. Deferred means "not
+ * now" — the caller is expected to try again once quiet hours are over. Folding
+ * the two together is what made a mild preference read as a permanent opt-out,
+ * and it also made the telemetry lie about why nothing arrived.
+ */
+export type PushDispatchOutcome = 'sent' | 'suppressed' | 'deferred' | 'failed';
 
 /**
  * Story 15.5: THE single dispatch gate (AC5) — every push in the app goes
@@ -118,7 +125,12 @@ export async function dispatchCategorizedPush(
 
     const quietStart = (prefs.quiet_hours_start as number | undefined) ?? 22;
     const quietEnd = (prefs.quiet_hours_end as number | undefined) ?? 8;
-    if (isWithinQuietHours(quietStart, quietEnd)) return 'suppressed';
+    // Evaluated in the USER's timezone. Before DW-4 this compared against UTC
+    // hours, so "22:00-08:00" was applied at 22:00 UTC — 01:00-11:00 for a
+    // Sofia user. The window was shifted by their whole offset.
+    if (isWithinQuietHours(quietStart, quietEnd, prefs.timezone as string | undefined)) {
+      return 'deferred';
+    }
 
     await sendPushToUser(supabase, userId, payload);
     return 'sent';
@@ -129,11 +141,21 @@ export async function dispatchCategorizedPush(
 }
 
 /**
- * Returns true if the current UTC hour falls within the configured quiet window.
+ * Returns true if the user's LOCAL hour falls within their quiet window.
  * Supports overnight ranges (e.g., 22-08) and same-day ranges (e.g., 02-06).
+ *
+ * `timeZone` is an IANA name captured from the browser. Without one this falls
+ * back to UTC, which is the pre-DW-4 behaviour — wrong for most people, but the
+ * only thing available for a profile that has never opened the app since the
+ * preference was added.
  */
-export function isWithinQuietHours(quietStart: number, quietEnd: number): boolean {
-  const hour = new Date().getUTCHours();
+export function isWithinQuietHours(
+  quietStart: number,
+  quietEnd: number,
+  timeZone?: string,
+  now: Date = new Date()
+): boolean {
+  const hour = localHourIn(timeZone, now);
   if (quietStart === quietEnd) return false; // degenerate range — never quiet
   if (quietStart > quietEnd) {
     // Spans midnight: quiet if hour >= start OR hour < end
@@ -141,6 +163,29 @@ export function isWithinQuietHours(quietStart: number, quietEnd: number): boolea
   }
   // Same-day range: quiet if start <= hour < end
   return hour >= quietStart && hour < quietEnd;
+}
+
+/**
+ * The hour (0-23) it currently is for the given IANA timezone.
+ *
+ * `Intl` does the offset arithmetic, including DST, which hand-rolled offsets
+ * get wrong twice a year. An unknown or malformed zone falls back to UTC rather
+ * than throwing — a bad stored value must not stop a notification.
+ */
+export function localHourIn(timeZone: string | undefined, now: Date = new Date()): number {
+  if (!timeZone) return now.getUTCHours();
+  try {
+    const hour = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: 'numeric',
+      hour12: false,
+    }).format(now);
+    const parsed = Number.parseInt(hour, 10);
+    // 'en-US' with hour12:false renders midnight as 24 in some ICU versions.
+    return Number.isNaN(parsed) ? now.getUTCHours() : parsed % 24;
+  } catch {
+    return now.getUTCHours();
+  }
 }
 
 /**

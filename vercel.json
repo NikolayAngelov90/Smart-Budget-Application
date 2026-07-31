@@ -2,7 +2,9 @@
   "git": {
     "deploymentEnabled": false
   },
-  "regions": ["arn1"],
+  "regions": [
+    "arn1"
+  ],
   "crons": [
     {
       "path": "/api/cron/generate-insights",
@@ -14,11 +16,11 @@
     },
     {
       "path": "/api/cron/weekly-digest",
-      "schedule": "0 8 * * 1"
+      "schedule": "0 * * * 1"
     },
     {
       "path": "/api/cron/reengagement-push",
-      "schedule": "0 10 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

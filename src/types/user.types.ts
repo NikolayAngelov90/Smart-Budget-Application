@@ -24,6 +24,13 @@ export interface UserPreferences {
   /** UI language preference (Story 10-1) */
   language: 'en' | 'bg';
 
+  /**
+   * IANA timezone (e.g. 'Europe/Sofia'), captured from the browser (DW-4).
+   * Quiet hours are evaluated in this zone; without it they fall back to UTC,
+   * which is what made "22:00-08:00" mean 01:00-11:00 for a Sofia user.
+   */
+  timezone?: string;
+
   /** Opt-in/out for weekly financial digest (Story 11.7, default: true) */
   weekly_digest_enabled?: boolean;
 

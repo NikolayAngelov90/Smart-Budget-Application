@@ -20,6 +20,12 @@ import { startOfWeek, subWeeks } from 'date-fns';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { generateDigestForUser } from '@/lib/services/digestService';
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  getAlreadyDelivered,
+  markDelivered,
+  weekPeriodKey,
+} from '@/lib/services/notificationDeliveryService';
 import { logger } from '@/lib/utils/logger';
 
 export async function GET(request: NextRequest) {
@@ -54,6 +60,13 @@ export async function GET(request: NextRequest) {
 
     // 3. Query all user profiles including preferences
     const supabase = createServiceRoleClient();
+
+    // DW-4: one marker per ISO week. Users already pushed this week are skipped
+    // entirely — which also stops the (idempotent) digest upsert from re-running
+    // for them on every hourly pass.
+    const periodKey = weekPeriodKey();
+    let pushesSent = 0;
+    let pushesDeferred = 0;
     const { data: users, error: usersError } = await supabase
       .from('user_profiles')
       .select('id, preferences')
@@ -86,6 +99,24 @@ export async function GET(request: NextRequest) {
     const errors: Array<{ userId: string; error: string }> = [];
 
     const batchSize = 20;
+    let deliveredThisWeek: Set<string>;
+    try {
+      deliveredThisWeek = await getAlreadyDelivered(
+        supabase as unknown as SupabaseClient,
+        'weekly_digest',
+        periodKey,
+        (users ?? []).map((u: { id: string }) => u.id)
+      );
+    } catch {
+      // Fail closed: without the marker set we cannot tell who was already
+      // pushed, and sending would risk duplicating the whole cohort. The next
+      // hourly run retries.
+      return NextResponse.json(
+        { success: false, error: 'Delivery lookup failed' },
+        { status: 500 }
+      );
+    }
+
     for (let i = 0; i < usersToProcess.length; i += batchSize) {
       const batch = usersToProcess.slice(i, i + batchSize);
 
@@ -101,24 +132,39 @@ export async function GET(request: NextRequest) {
             return;
           }
 
+          // Already pushed for this week — nothing left to do for them.
+          if (deliveredThisWeek.has(user.id)) return;
+
           // Pass the user's currency preference so digest amounts match their settings
           // eslint-disable-next-line no-restricted-syntax
           const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : 'EUR';
           await generateDigestForUser(user.id, weekStart, currency);
           digestsGenerated++;
 
-          // Story 15.5: heads-up push — the gate owns the 'digest' toggle +
-          // quiet hours; best-effort, never fails the generation. Documented
-          // decision (review 15-5): quiet hours SUPPRESS, never defer — a
-          // quiet window covering this cron's hour drops the digest push for
-          // good (the digest itself is still generated and visible in-app);
-          // defer/sent-marker design tracked in deferred-work.md.
-          await dispatchCategorizedPush(user.id, 'digest', {
+          // DW-4: the heads-up push now DEFERS instead of being dropped.
+          //
+          // This job used to run once, Monday 08:00 UTC. A quiet window
+          // covering that hour killed the digest push every single week. It now
+          // runs hourly on Mondays and records a per-week marker, so the push
+          // lands as soon as the user's quiet hours are over.
+          //
+          // Expiry comes from the period key: once the ISO week rolls over the
+          // marker is never consulted again, so nothing arrives describing a
+          // week the user has long since moved past.
+          const outcome = await dispatchCategorizedPush(user.id, 'digest', {
             type: 'digest',
             title: 'Your weekly digest is ready',
             body: 'See how last week went and what to watch this week.',
             data: { url: '/insights' },
           });
+
+          if (outcome === 'sent') {
+            await markDelivered(supabase as unknown as SupabaseClient, 'weekly_digest', periodKey, user.id);
+            pushesSent++;
+          } else if (outcome === 'deferred') {
+            // Left unmarked ON PURPOSE so the next hourly run retries.
+            pushesDeferred++;
+          }
 
           logger.info('WeeklyDigestCron', `Digest generated for user ${user.id}`);
         } catch (error) {
@@ -136,7 +182,9 @@ export async function GET(request: NextRequest) {
     const elapsedMs = Date.now() - startTime;
     logger.info(
       'WeeklyDigestCron',
-      `Completed: ${usersProcessed} users processed, ${digestsGenerated} digests generated, ${errors.length} errors, ${elapsedMs}ms`
+      `Completed: ${usersProcessed} users processed, ${digestsGenerated} digests generated, ` +
+        `${pushesSent} pushes sent, ${pushesDeferred} deferred (quiet hours - retried next run), ` +
+        `${errors.length} errors, ${elapsedMs}ms`
     );
 
     return NextResponse.json(
