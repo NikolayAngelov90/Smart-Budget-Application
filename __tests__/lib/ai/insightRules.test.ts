@@ -167,15 +167,22 @@ describe('recommendBudgetLimit', () => {
   const categoryName = 'Dining';
 
   it('should recommend budget with 3 months of data', () => {
-    // Last 3 months: Current month (Jan), -1 month (Dec), -2 months (Nov)
-    // $300 + $340 + $360 = $1000 / 3 = $333.33 => recommend $367 (with 10% buffer)
-    // Need at least 5 transactions for the rule to trigger
+    // D1: the window is the three COMPLETE months before this one — Dec, Nov,
+    // Oct — and the current month (Jan) is deliberately excluded. It used to be
+    // included as bucket 0, which averaged a part-month into a figure the copy
+    // calls a "3-month average" and made this rule disagree with the forecast
+    // card on every day but the last of the month.
+    //
+    // Oct 300 + Nov 440 + Dec 460 = 1200 / 3 = 400, +10% buffer => 440.
     const transactions: Transaction[] = [
-      createMockTransaction(300, subMonths(currentMonth, 2), categoryId), // Nov
-      createMockTransaction(340, subMonths(currentMonth, 1), categoryId), // Dec
+      createMockTransaction(300, subMonths(currentMonth, 3), categoryId), // Oct
+      createMockTransaction(340, subMonths(currentMonth, 2), categoryId), // Nov
+      createMockTransaction(100, subMonths(currentMonth, 2), categoryId), // Nov
+      createMockTransaction(360, subMonths(currentMonth, 1), categoryId), // Dec
       createMockTransaction(100, subMonths(currentMonth, 1), categoryId), // Dec
-      createMockTransaction(360, currentMonth, categoryId), // Jan
-      createMockTransaction(100, currentMonth, categoryId), // Jan
+      // Current month, present precisely to prove it is ignored: were it
+      // counted, the average would drop and this assertion would fail.
+      createMockTransaction(9999, currentMonth, categoryId), // Jan
     ];
 
     const result = recommendBudgetLimit({
@@ -190,7 +197,6 @@ describe('recommendBudgetLimit', () => {
     expect(result).not.toBeNull();
     expect(result!.type).toBe('budget_recommendation');
     expect(result!.priority).toBe(3);
-    // Avg of $300, $440, $460 = $400, with 10% buffer = $440
     expect((result!.metadata as InsightMetadata).recommended_budget).toBe(440);
   });
 
@@ -256,12 +262,13 @@ describe('recommendBudgetLimit', () => {
   });
 
   it('should use supportive tone in description', () => {
+    // Three COMPLETE months back — see the D1 note above.
     const transactions: Transaction[] = [
-      createMockTransaction(300, subMonths(currentMonth, 2), categoryId),
-      createMockTransaction(340, subMonths(currentMonth, 1), categoryId),
+      createMockTransaction(300, subMonths(currentMonth, 3), categoryId),
+      createMockTransaction(340, subMonths(currentMonth, 2), categoryId),
+      createMockTransaction(100, subMonths(currentMonth, 2), categoryId),
+      createMockTransaction(360, subMonths(currentMonth, 1), categoryId),
       createMockTransaction(100, subMonths(currentMonth, 1), categoryId),
-      createMockTransaction(360, currentMonth, categoryId),
-      createMockTransaction(100, currentMonth, categoryId),
     ];
 
     const result = recommendBudgetLimit({

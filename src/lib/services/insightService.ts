@@ -10,7 +10,7 @@
  */
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
-import { endOfMonth, subMonths } from 'date-fns';
+import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { toLocalISODate } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 import { DEFAULT_CURRENCY } from '@/lib/utils/constants';
@@ -102,7 +102,19 @@ export async function generateInsights(
   // Query user data
   const supabase = await createClient();
   const currentMonth = new Date();
-  const threeMonthsAgo = subMonths(currentMonth, 3);
+  // START OF the month three back, not the same day three months back.
+  //
+  // `subMonths(2026-07-15, 3)` is 2026-04-15, so the oldest month arrived
+  // half-missing. `recommendBudgetLimit` now averages the three COMPLETE months
+  // before this one (D1), and a half-fetched April would understate that
+  // average — the same defect in a different place.
+  //
+  // Knock-on, stated rather than hidden: `flagUnusualExpense` computes its mean
+  // and standard deviation over this whole set with no date filter of its own,
+  // so its sample also becomes month-aligned instead of ragged. That shifts its
+  // outlier threshold slightly. It is a more defensible baseline than half a
+  // month, but it IS a behaviour change to a rule D1 did not set out to touch.
+  const threeMonthsAgo = startOfMonth(subMonths(currentMonth, 3));
 
   // Fetch transactions for the last 3 months (including current month)
   const { data: transactions, error: txError } = await supabase

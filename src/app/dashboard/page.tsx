@@ -52,7 +52,7 @@ import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionP
 import { FeatureIntroCard } from '@/components/dashboard/FeatureIntroCard';
 import { useDashboardStats, DASHBOARD_STATS_KEY } from '@/lib/hooks/useDashboardStats';
 import { useSpendingByCategory } from '@/lib/hooks/useSpendingByCategory';
-import type { DashboardPeriod } from '@/lib/utils/dashboardPeriod';
+import { isDashboardPeriod, type DashboardPeriod } from '@/lib/utils/dashboardPeriod';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 
@@ -83,7 +83,12 @@ export default function DashboardPage() {
   // the pending selection, or `keepPreviousData` prints "This year" above last
   // month's chart while the new one loads (the Story 16-6 lesson).
   const { data: spending } = useSpendingByCategory(undefined, period);
-  const shownPeriod = spending?.period ?? period;
+  // Narrowed, not trusted: an unrecognised value from the wire or the persisted
+  // cache would index PERIOD_EYEBROW to `undefined`, and `t(undefined)` throws
+  // in the page body — taking down the WHOLE dashboard, not just this eyebrow.
+  const shownPeriod: DashboardPeriod = isDashboardPeriod(spending?.period)
+    ? spending.period
+    : period;
   // Progressive disclosure: the advanced forecast/projection tail is collapsed
   // by default so the dashboard stays scannable (FR / brief §5E, §9).
   const [showAhead, setShowAhead] = useState(false);

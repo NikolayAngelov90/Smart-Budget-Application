@@ -137,13 +137,19 @@ export function detectSpendingIncrease(input: RuleInput): InsightInsert | null {
 export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | null {
   const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currentBudget, currency } = input;
 
-  // One window back. Driven by the shared constant so the fetch, the loop below
-  // and the guard cannot drift apart.
-  const threeMonthsAgo = subMonths(currentMonth, AVERAGE_WINDOW_MONTHS);
+  // The window is the AVERAGE_WINDOW_MONTHS **complete** months before this one.
+  // The current month is deliberately excluded — see the guard below.
+  //
+  // `startOfMonth` matters: `subMonths(2026-07-15, 3)` is 2026-04-15, which let
+  // transactions from 15-30 April satisfy the "at least 5" floor while falling
+  // into no bucket at all. The prefilter now covers exactly the months the
+  // buckets cover.
+  const windowStart = startOfMonth(subMonths(currentMonth, AVERAGE_WINDOW_MONTHS));
+  const windowEnd = endOfMonth(subMonths(currentMonth, 1));
 
   const recentTransactions = transactions.filter((t) => {
     const txDate = parseISO(t.date);
-    return txDate >= threeMonthsAgo && txDate <= endOfMonth(currentMonth);
+    return txDate >= windowStart && txDate <= windowEnd;
   });
 
   // Need sufficient data (at least 5 transactions across 3 months)
@@ -155,7 +161,8 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
   const monthlyTotals: number[] = [];
   const monthsAnalyzed: string[] = [];
 
-  for (let i = 0; i < AVERAGE_WINDOW_MONTHS; i++) {
+  // Start at 1: bucket 0 would be the CURRENT, still-incomplete month.
+  for (let i = 1; i <= AVERAGE_WINDOW_MONTHS; i++) {
     const month = subMonths(currentMonth, i);
     const monthStart = startOfMonth(month);
     const monthEnd = endOfMonth(month);
@@ -172,25 +179,31 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
     }
   }
 
-  // A FULL three months, not two.
+  // AVERAGE_WINDOW_MONTHS **complete** months, none of them the current one.
   //
-  // This used to accept two while the copy said "3-month average" — so it
-  // divided by 2 and called the result a 3-month figure. That also made it the
-  // last holdout from the epic-14 ÷3 decision: every other baseline
-  // (nudge, forecastEngine, recoveryPlanner) uses `fixedWindowMonthlyAverage`,
-  // so a 2-month category showed "typical 300" here and "usual 200" on the
-  // forecast card, for the same category on the same dashboard.
+  // History, because this took two attempts:
   //
-  // Porting the ÷3 window here — what the deferred note literally proposed —
-  // would have been worse: a steady [300, 300] spender becomes 200, and we
-  // would recommend a 220 budget to someone who reliably spends 300, then flag
-  // them for overspending every month. The ÷3 rule stops a spike posing as
-  // "usual", which is right for DETECTION and wrong for a RECOMMENDATION.
+  // Originally the guard accepted TWO months while the copy said "3-month
+  // average" — it divided by 2 and called the result a 3-month figure. It was
+  // also the last holdout from the epic-14 ÷3 decision, so a 2-month category
+  // showed "typical 300" here and "usual 200" on the forecast card.
   //
-  // Requiring the full window resolves both: at exactly 3 buckets the two
-  // formulas are identical, so no disagreement is possible and the copy is
-  // finally true. The cost is a month's wait for a category with only two
-  // months of history — a budget inferred from two months is a guess anyway.
+  // HP-2 raised the guard to 3 and claimed that settled it: "at exactly three
+  // buckets the two formulas are identical, so no disagreement is possible".
+  // The post-merge review (all three layers, independently) showed that claim
+  // was FALSE. The formulas are identical; the INPUTS were not. This loop
+  // started at i = 0 — the current, partial month — while forecastEngine builds
+  // its baseline from completed months only. A steady 300/month spender on the
+  // 10th produced [100, 300, 300] -> 233 here against 300 there: still
+  // disagreeing, and now UNDER-recommending, the very failure HP-2 said it
+  // prevented. Worse, on the 1st the empty current bucket left only two entries
+  // and the guard returned null, so the recommendation vanished at the start of
+  // every month — a regression HP-2 introduced.
+  //
+  // Excluding the current month is what actually makes the two agree, on every
+  // day of the month, because it is the same set of months forecastEngine uses.
+  // Accepted cost (D1, settled with Nikit): a new user waits until three
+  // complete months exist. A budget inferred from a part-month is a guess.
   if (monthlyTotals.length < AVERAGE_WINDOW_MONTHS) {
     return null;
   }

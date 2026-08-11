@@ -184,12 +184,23 @@ function TransactionsContent() {
 
     const categoryParam = searchParams.get('category');
     const monthParam = searchParams.get('month');
+    const startParam = searchParams.get('startDate');
+    const endParam = searchParams.get('endDate');
 
     if (categoryParam) {
       setCategoryFilter(categoryParam);
     }
 
-    if (monthParam) {
+    // D2: an explicit range wins over `month`.
+    //
+    // The dashboard donut can now aggregate a week, a quarter or a year, and it
+    // sends the window's real bounds. `month` stays supported because every
+    // other drill-down link in the app still uses it.
+    const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+    if (startParam && endParam && ISO_DAY.test(startParam) && ISO_DAY.test(endParam)) {
+      setStartDate(startParam);
+      setEndDate(endParam);
+    } else if (monthParam) {
       // Parse month in YYYY-MM format and set date range
       try {
         const monthDate = new Date(`${monthParam}-01`);

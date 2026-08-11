@@ -418,4 +418,41 @@ describe('WishlistSection category picker', () => {
     expect(screen.queryByText(HINT)).not.toBeInTheDocument();
     expect(screen.getByRole('combobox')).not.toBeDisabled();
   });
+
+  // The case the first version of this suite never exercised. Both fixtures
+  // above are clean states — data XOR error — so the combination that actually
+  // occurs in production went untested, and the bug shipped.
+  describe('stale data survives a failed revalidation', () => {
+    const STALE = { ...LOADED, error: new Error('revalidation 500') };
+
+    it('keeps the picker usable when cached options are still present', () => {
+      // SWR retains `data` when a background revalidation fails.
+      // `docs/api-conventions.md` names hiding it as the WRONG behaviour and
+      // lists this hook as the example.
+      mockUseSWR.mockReturnValue(STALE);
+
+      renderWithChakra(<WishlistSection />);
+
+      expect(screen.getByRole('combobox')).not.toBeDisabled();
+      expect(screen.getByRole('option', { name: 'Electronics' })).toBeInTheDocument();
+    });
+
+    it('does not claim the categories are unavailable while showing them', () => {
+      mockUseSWR.mockReturnValue(STALE);
+
+      renderWithChakra(<WishlistSection />);
+
+      expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+    });
+
+    it('still degrades when the error leaves nothing to show', () => {
+      // Guards the guard: if the condition were simply inverted, this fails.
+      mockUseSWR.mockReturnValue({ ...FAILED, data: { data: [] } });
+
+      renderWithChakra(<WishlistSection />);
+
+      expect(screen.getByText(HINT)).toBeInTheDocument();
+      expect(screen.getByRole('combobox')).toBeDisabled();
+    });
+  });
 });

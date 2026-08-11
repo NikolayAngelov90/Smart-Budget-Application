@@ -168,6 +168,79 @@ describe('window boundaries stay on the user calendar day', () => {
   });
 });
 
+describe('currency conversion (D3)', () => {
+  // This route summed raw `amount`, so a mixed-currency donut added 100 USD to
+  // 100 EUR and labelled the result with the user's preferred symbol. DW-1
+  // fixed exactly this for /budgets, /wishlist and /what-if and skipped here;
+  // widening the window to a year made one foreign trip permanently visible.
+  const cat = { id: 'c1', name: 'Groceries', color: '#0B5E4A' };
+
+  it('applies the stored entry-time rate', async () => {
+    const db = makeDb([
+      { amount: 100, category_id: 'c1', currency: 'EUR', exchange_rate: null, categories: cat },
+      // 50 USD at a stored 0.9 -> 45 preferred.
+      { amount: 50, category_id: 'c1', currency: 'USD', exchange_rate: 0.9, categories: cat },
+    ]);
+    mockCreateClient.mockResolvedValue(db.client);
+
+    const body = await (await call(`?period=month&today=${TODAY}`)).json();
+
+    expect(body.total).toBeCloseTo(145, 5);
+  });
+
+  it('does not convert rows already in the preferred currency', async () => {
+    // `currency = NULL` means "already preferred" — treating it as foreign
+    // would double-convert.
+    const db = makeDb([
+      { amount: 100, category_id: 'c1', currency: null, exchange_rate: null, categories: cat },
+    ]);
+    mockCreateClient.mockResolvedValue(db.client);
+
+    const body = await (await call(`?period=month&today=${TODAY}`)).json();
+
+    expect(body.total).toBe(100);
+  });
+
+  it('leaves a row unconverted rather than failing the whole donut', async () => {
+    // Degradation policy: a missing rate is an ENRICHMENT failure — warn and
+    // carry the raw amount. A 500 here would blank the chart and poison the
+    // SWR localStorage cache.
+    const db = makeDb([
+      { amount: 100, category_id: 'c1', currency: 'XYZ', exchange_rate: null, categories: cat },
+    ]);
+    mockCreateClient.mockResolvedValue(db.client);
+
+    const response = await call(`?period=month&today=${TODAY}`);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ total: 100 });
+  });
+});
+
+describe('the window bounds are published (D2)', () => {
+  it('echoes the real start and end, not just the anchor month', async () => {
+    // The drill-down navigates with these. It used to use `month`, so a slice
+    // worth a year opened a single month's transactions.
+    makeDb();
+
+    const body = await (await call(`?period=year&today=${TODAY}`)).json();
+
+    expect(body).toMatchObject({ start: '2026-01-01', end: '2026-12-31', month: '2026-07' });
+  });
+
+  it('publishes bounds for a week that straddles a month edge', async () => {
+    jest.setSystemTime(new Date('2026-08-01T09:00:00'));
+    makeDb();
+
+    const body = await (await call('?period=week&today=2026-08-01')).json();
+
+    // The `month` echo says August while the window starts in July — which is
+    // exactly why the drill-down cannot rely on it.
+    expect(body).toMatchObject({ start: '2026-07-27', end: '2026-08-02' });
+    jest.setSystemTime(new Date(`${TODAY}T09:00:00`));
+  });
+});
+
 describe('scoping', () => {
   it('filters to the signed-in user and to expenses', async () => {
     const db = makeDb();
