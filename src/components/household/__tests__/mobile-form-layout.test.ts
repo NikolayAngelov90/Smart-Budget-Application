@@ -53,8 +53,19 @@ const read = (file: string) => fs.readFileSync(path.join(DIR, file), 'utf8');
 function openingTags(src: string, name: string): string[] {
   const tags: string[] = [];
   const needle = `<${name}`;
+  /**
+   * The character after the name must not continue an identifier, or
+   * `<Input` also matches `<InputGroup` / `<InputLeftElement` and `<Stack`
+   * matches nothing sensible inside `<HStack`. Without this the 44px rule
+   * would be demanded of Chakra input WRAPPERS the moment anyone used one.
+   */
+  const isWholeTag = (at: number) => !/[A-Za-z0-9_]/.test(src[at + needle.length] ?? '');
   let i = src.indexOf(needle);
   while (i !== -1) {
+    if (!isWholeTag(i)) {
+      i = src.indexOf(needle, i + needle.length);
+      continue;
+    }
     let depth = 0;
     let quote: string | null = null;
     for (let j = i + needle.length; j < src.length; j++) {
@@ -76,11 +87,42 @@ function openingTags(src: string, name: string): string[] {
   return tags;
 }
 
-/** `<HStack …>` blocks, with enough following text to see what they wrap. */
+/**
+ * `<HStack …>` blocks, each running to its matching `</HStack>`.
+ *
+ * The first version of this used `/<HStack[^>]*>/` and a fixed 400-character
+ * slice — the exact `[^>]*` mistake the docblock above spends a paragraph
+ * explaining, left in place two functions below the explanation.
+ * `HouseholdInvites.tsx` already carries `mb={pending.length > 0 ? 4 : 0}` on a
+ * stack, so the tag truncated in this very repo; it only passed because
+ * `direction` happened to precede `mb`. The 400-char window was the second
+ * half of the bug: a control further down was invisible, and a sibling past the
+ * closing tag counted as inside.
+ */
 function hstackBlocks(src: string): string[] {
-  return [...src.matchAll(/<HStack[^>]*>/g)].map((m) =>
-    src.slice(m.index!, m.index! + 400)
-  );
+  const blocks: string[] = [];
+  for (const tag of openingTags(src, 'HStack')) {
+    const start = src.indexOf(tag);
+    // Balance nested HStacks so an inner one cannot end the outer block early.
+    let depth = 0;
+    let cursor = start;
+    while (cursor < src.length) {
+      const open = src.indexOf('<HStack', cursor + 1);
+      const close = src.indexOf('</HStack>', cursor + 1);
+      if (close === -1) break;
+      if (open !== -1 && open < close) {
+        depth++;
+        cursor = open;
+      } else if (depth > 0) {
+        depth--;
+        cursor = close;
+      } else {
+        blocks.push(src.slice(start, close));
+        break;
+      }
+    }
+  }
+  return blocks;
 }
 
 describe('household forms stack on a phone', () => {
@@ -89,20 +131,19 @@ describe('household forms stack on a phone', () => {
 
     // An HStack is fine around badges, headings or icon buttons — it is only a
     // problem when it holds a control that has to stay readable.
-    const offenders = hstackBlocks(src).filter((block) => {
-      const untilClose = block.split('</HStack>')[0]!;
-      const firstChild = untilClose.replace(/<HStack[^>]*>/, '');
-      return /<(Input|Select|Textarea)\b/.test(firstChild.split('<HStack')[0]!);
-    });
+    const offenders = hstackBlocks(src).filter(
+      (block) => openingTags(block, 'Input').length > 0 || openingTags(block, 'Select').length > 0
+    );
 
-    expect(offenders).toEqual([]);
+    expect(offenders.map((b) => b.replace(/\s+/g, ' ').slice(0, 80))).toEqual([]);
   });
 
   it.each(FORM_COMPONENTS)('%s uses a responsive direction where it stacks', (file) => {
     const src = read(file);
     if (!src.includes('<Stack')) return; // not every file needed one
 
-    const stacks = [...src.matchAll(/<Stack\b[^>]*>/gs)].map((m) => m[0]);
+    // Same brace-aware extractor, not `/<Stack\b[^>]*>/` — see hstackBlocks.
+    const stacks = openingTags(src, 'Stack');
     expect(stacks.length).toBeGreaterThan(0);
     for (const s of stacks) {
       // A bare <Stack> is column at EVERY width — that would fix the phone and
@@ -122,11 +163,33 @@ describe('mobile tap targets', () => {
     const src = read(file);
 
     const controls = [...openingTags(src, 'Input'), ...openingTags(src, 'Select')];
-    if (controls.length === 0) return;
+    expect(controls.length).toBeGreaterThan(0);
 
     const missing = controls.filter((c) => !/minH=\{\{\s*base:\s*'44px'/.test(c));
 
     expect(missing.map((c) => c.replace(/\s+/g, ' ').slice(0, 70))).toEqual([]);
+  });
+
+  it.each(FORM_COMPONENTS)('%s sizes its buttons too', (file) => {
+    // HP-4's docblock claimed "all 8 controls were below 44px", then checked
+    // Input/Select only — so `<Button size="sm">` (Chakra sm = 32px) survived on
+    // Save / Cancel / Contribute / Send in every form it touched. On mobile
+    // those rows are stacked full-width, which makes them the largest-LOOKING
+    // and still-shortest targets on the screen.
+    //
+    // EVERY Button, not just those inside a responsive Stack. The first version
+    // of this check scoped itself to Stack blocks and was therefore VACUOUS for
+    // SharedGoalsCard, whose form buttons sit in an `<HStack justify="flex-end">`
+    // — stripping a minH there did not fail the suite. The buttons that OPEN
+    // each form ("Настройване", "Нова цел") are tap targets too; the browser
+    // audit measured them at 38px.
+    const src = read(file);
+    const buttons = openingTags(src, 'Button');
+    expect(buttons.length).toBeGreaterThan(0);
+
+    const missing = buttons.filter((b) => !/minH=\{\{\s*base:\s*'44px'/.test(b));
+
+    expect(missing.map((b) => b.replace(/\s+/g, ' ').slice(0, 70))).toEqual([]);
   });
 
   it('is not a vacuous check — the pattern it looks for is real', () => {
@@ -135,6 +198,26 @@ describe('mobile tap targets', () => {
     const src = read('HouseholdInvites.tsx');
     expect(openingTags(src, 'Input').length).toBeGreaterThan(0);
     expect(src).toContain("minH={{ base: '44px'");
+  });
+
+  it('extracts whole tags past a `>` inside a prop expression', () => {
+    // The real case this repo already contains: HouseholdInvites' Stack carries
+    // `mb={pending.length > 0 ? 4 : 0}`. A `[^>]*` extractor truncates there,
+    // and the suite passed only because `direction` happened to come first.
+    const tag = openingTags(
+      `<Stack direction={{ base: 'column' }} mb={pending.length > 0 ? 4 : 0} spacing={2}>`,
+      'Stack'
+    )[0]!;
+
+    expect(tag).toContain('spacing={2}');
+  });
+
+  it('does not treat <InputGroup as an <Input', () => {
+    // Otherwise the 44px rule gets demanded of Chakra input WRAPPERS.
+    const src = `<InputGroup><InputLeftElement /><Input value={x} /></InputGroup>`;
+
+    expect(openingTags(src, 'Input')).toHaveLength(1);
+    expect(openingTags(src, 'Input')[0]).toContain('value={x}');
   });
 
   it('extracts whole tags, past an arrow function', () => {

@@ -5,10 +5,15 @@
  *
  *  1. the category donut follows the period selector, and labels itself from the
  *     window the SERVER echoed rather than the pending selection;
- *  2. nothing in these three components renders a hardcoded English literal —
- *     they predate next-intl and were shipping English into the Bulgarian UI;
+ *  2. CategorySpendingChart renders no hardcoded English literal. Note the
+ *     limit, which the first version of this docblock overstated: only that
+ *     component is RENDERED here. SpendingTrendsChart and MonthOverMonth are
+ *     reached solely by the key-extraction check below, which proves their keys
+ *     resolve — it can say nothing about literals still sitting in their JSX;
  *  3. every key they reference actually exists in BOTH message files, so a
- *     typo'd key cannot reach production as a visible `dashboard.foo`.
+ *     typo'd key cannot reach production as a visible `dashboard.foo`. Dynamic
+ *     lookups (`t(EMPTY_COPY[period])`) are invisible to that regex, which is
+ *     why the period-keyed maps get their own explicit check.
  */
 
 import React from 'react';

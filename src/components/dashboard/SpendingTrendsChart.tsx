@@ -68,12 +68,14 @@ export function SpendingTrendsChart({
   height = 300,
 }: SpendingTrendsChartProps) {
   const t = useTranslations('dashboard');
-  const isMobile = useBreakpointValue({ base: true, md: false });
-  // Mobile renders a SHORTER series. The window label is derived from this same
-  // value rather than hardcoded, because the old copy read "(Last 6 Months)"
-  // above a chart that was showing three.
-  const shownMonths = isMobile ? 3 : months;
-  const { data, error, isLoading, mutate } = useTrends(shownMonths);
+  // `ssr: false` so this resolves on the first CLIENT render instead of
+  // returning `undefined` and then flipping. Without it a phone painted "Last 6
+  // months", fired a `months=6` request, then re-rendered to 3 and fired a
+  // SECOND request — a visible caption flip and a wasted fetch on every mobile
+  // dashboard load, showing the mislabelled window this change exists to fix.
+  const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
+  const requestedMonths = isMobile ? 3 : months;
+  const { data, error, isLoading, mutate } = useTrends(requestedMonths);
   const { preferences } = useUserPreferences();
   const router = useRouter();
   const currencyCode = preferences?.currency_format;
@@ -222,11 +224,16 @@ export function SpendingTrendsChart({
 
   return (
     <Box>
-      {/* States the window actually rendered. The page heading used to carry
-          "(Last 6 Months)" while this chart dropped to 3 points on mobile —
-          derived from `shownMonths` here, so the two cannot disagree. */}
+      {/* States the window actually DRAWN, counted from the response — not the
+          number requested.
+          The page heading used to carry "(Last 6 Months)" while the chart
+          dropped to 3 points on mobile. HP-1 fixed that by labelling from the
+          request, which is still the wrong source: a user with two months of
+          history got a 2-point line under "Last 6 months", because the point
+          count comes from the API. The sibling donut labels from `data.period`
+          for exactly this reason. */}
       <Text fontSize="sm" color="fg.muted" mb={2}>
-        {t('spendingTrendsWindow', { count: shownMonths })}
+        {t('spendingTrendsWindow', { count: chartData.length || requestedMonths })}
       </Text>
       <ResponsiveContainer width="100%" height={height}>
         <LineChart

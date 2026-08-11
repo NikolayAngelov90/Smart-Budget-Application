@@ -105,7 +105,7 @@ export function SharedGoalsCard() {
               {t('heading')}
             </Heading>
             {!creating && (
-              <Button size="sm" colorScheme="brand" variant="ghost" onClick={() => setCreating(true)}>
+              <Button size="sm" colorScheme="brand" variant="ghost" onClick={() => setCreating(true)} minH={{ base: '44px', sm: '32px' }}>
                 {t('newGoal')}
               </Button>
             )}
@@ -119,10 +119,10 @@ export function SharedGoalsCard() {
                 <Input size="sm" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} aria-label={t('deadline')} minH={{ base: '44px', sm: '32px' }} />
               </Stack>
               <HStack justify="flex-end">
-                <Button size="sm" variant="ghost" onClick={() => setCreating(false)} isDisabled={busy}>
+                <Button size="sm" variant="ghost" onClick={() => setCreating(false)} isDisabled={busy} minH={{ base: '44px', sm: '32px' }}>
                   {t('cancel')}
                 </Button>
-                <Button size="sm" colorScheme="brand" onClick={handleCreate} isLoading={busy} loadingText={t('create')}>
+                <Button size="sm" colorScheme="brand" onClick={handleCreate} isLoading={busy} loadingText={t('create')} minH={{ base: '44px', sm: '32px' }}>
                   {t('create')}
                 </Button>
               </HStack>
@@ -178,15 +178,15 @@ export function SharedGoalsCard() {
                         maxW={{ base: 'full', sm: '140px' }}
                         minH={{ base: '44px', sm: '32px' }}
                       />
-                      <Button size="sm" colorScheme="brand" onClick={() => handleContribute(goal.id)} isLoading={busy} loadingText={t('save')}>
+                      <Button size="sm" colorScheme="brand" onClick={() => handleContribute(goal.id)} isLoading={busy} loadingText={t('save')} minH={{ base: '44px', sm: '32px' }}>
                         {t('save')}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setContributeFor(null)} isDisabled={busy}>
+                      <Button size="sm" variant="ghost" onClick={() => setContributeFor(null)} isDisabled={busy} minH={{ base: '44px', sm: '32px' }}>
                         {t('cancel')}
                       </Button>
                     </Stack>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => { setContributeFor(goal.id); setAmount(''); }}>
+                    <Button size="sm" variant="outline" onClick={() => { setContributeFor(goal.id); setAmount(''); }} minH={{ base: '44px', sm: '32px' }}>
                       {t('contribute')}
                     </Button>
                   )}
