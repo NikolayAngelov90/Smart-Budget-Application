@@ -430,13 +430,30 @@ Aggregated statistics and visualizations for dashboard.
 **Purpose:** Get expense breakdown by category for pie chart.
 
 **Query Parameters:**
-- `month` (optional): YYYY-MM format (default: current month)
+- `period` (optional): `week` | `month` | `quarter` | `year` (default: `month`).
+  `quarter` is a ROLLING 3 months, not the calendar quarter. An unrecognised
+  value falls back to `month` rather than erroring — a chart that renders the
+  default window beats one that renders an error because a stale client sent a
+  period this build no longer knows.
+- `month` (optional): `YYYY-MM`. A drill-down at a named month; **wins over
+  `period`**. A malformed value is ignored and `period` applies, for the same
+  reason.
+- `today` (optional): the client's local `YYYY-MM-DD`, clamped to ±1 day of the
+  server date. The server runs UTC, so without this the window is wrong for
+  anyone not on UTC for part of every day.
+
+Amounts are converted to the user's preferred currency (stored entry-time rate
+first, live rate as the fallback). A missing rate is an enrichment failure: warn
+and leave that row unconverted, never fail the request.
 
 **Response (200):**
 ```json
 {
   "data": {
     "month": "2024-11",
+    "period": "month",
+    "start": "2024-11-01",
+    "end": "2024-11-30",
     "total": 500.00,
     "categories": [
       {

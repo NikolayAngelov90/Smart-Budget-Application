@@ -99,7 +99,7 @@ export function AllowanceCard() {
           <Icon as={LockIcon} boxSize={3} color="fg.subtle" aria-hidden />
         </HStack>
         {!isEditing && (
-          <Button size="sm" variant="ghost" onClick={beginEdit}>
+          <Button size="sm" variant="ghost" onClick={beginEdit} minH={{ base: '44px', sm: '32px' }}>
             {allowance ? t('edit') : t('setup')}
           </Button>
         )}
@@ -136,10 +136,10 @@ export function AllowanceCard() {
             </Select>
           </Stack>
           <HStack justify="flex-end">
-            <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} isDisabled={isSaving}>
+            <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} isDisabled={isSaving} minH={{ base: '44px', sm: '32px' }}>
               {t('cancel')}
             </Button>
-            <Button size="sm" colorScheme="brand" onClick={handleSave} isLoading={isSaving} loadingText={t('save')}>
+            <Button size="sm" colorScheme="brand" onClick={handleSave} isLoading={isSaving} loadingText={t('save')} minH={{ base: '44px', sm: '32px' }}>
               {t('save')}
             </Button>
           </HStack>

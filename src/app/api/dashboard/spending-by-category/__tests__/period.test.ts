@@ -38,6 +38,13 @@ beforeAll(() => {
   jest.setSystemTime(new Date(`${TODAY}T09:00:00`));
 });
 
+afterEach(() => {
+  // Reset here, not at the end of a test body: a failed assertion skips the
+  // rest of the body, leaving every later test on the wrong system date and
+  // failing them for an unrelated reason.
+  jest.setSystemTime(new Date(`${TODAY}T09:00:00`));
+});
+
 afterAll(() => {
   jest.useRealTimers();
 });
@@ -103,6 +110,23 @@ describe('period windows', () => {
     await expect(response.json()).resolves.toMatchObject({ period: 'month' });
   });
 
+  it.each(['banana', '2026-13', '2026', '2026-3', ''])(
+    'falls back to the period window for ?month=%s',
+    async (bad) => {
+      // Unvalidated, `new Date("banana-01T00:00:00")` was an Invalid Date, so
+      // getFullYear() was NaN and `NaN-NaN-NaN` reached the DATE filter —
+      // Postgres rejected it and the donut 500'd. `?period=` was given a
+      // documented fallback for exactly this reasoning; the parameter that
+      // WINS over it had none.
+      const db = makeDb();
+
+      const response = await call(`?month=${bad}&period=year&today=${TODAY}`);
+
+      expect(response.status).toBe(200);
+      expect(windowOf(db)).toEqual(['2026-01-01', '2026-12-31']);
+    }
+  );
+
   it('lets an explicit ?month= win over ?period=', async () => {
     // `?month=` is a drill-down at a named month; it has no "year" reading.
     const db = makeDb();
@@ -155,7 +179,6 @@ describe('window boundaries stay on the user calendar day', () => {
     await call('?period=month&today=2026-08-01');
 
     expect(windowOf(db)).toEqual(['2026-08-01', '2026-08-31']);
-    jest.setSystemTime(new Date(`${TODAY}T09:00:00`));
   });
 
   it('ignores a client day beyond the clamp', async () => {
@@ -237,7 +260,6 @@ describe('the window bounds are published (D2)', () => {
     // The `month` echo says August while the window starts in July — which is
     // exactly why the drill-down cannot rely on it.
     expect(body).toMatchObject({ start: '2026-07-27', end: '2026-08-02' });
-    jest.setSystemTime(new Date(`${TODAY}T09:00:00`));
   });
 });
 

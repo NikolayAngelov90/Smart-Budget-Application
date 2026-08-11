@@ -12,6 +12,7 @@ import {
   createQueryChain,
   createSupabaseMock,
   expectUserScoped,
+  expectChainUserScoped,
 } from '@/test-utils/supabaseChain';
 
 describe('createQueryChain', () => {
@@ -130,7 +131,7 @@ describe('createSupabaseMock', () => {
 
     expect(db.callsTo('transactions', 'eq')).toContainEqual(['user_id', 'user-1']);
     expect(db.callsTo('transactions', 'gte')).toContainEqual(['date', '2026-07-01']);
-    expectUserScoped(db.chainFor('transactions'), 'user-1');
+    expectUserScoped(db, 'transactions', 'user-1');
   });
 
   it('distinguishes repeated queries against the same table', async () => {
@@ -181,11 +182,11 @@ describe('createSupabaseMock', () => {
   });
 });
 
-describe('expectUserScoped', () => {
+describe('expectChainUserScoped', () => {
   it('fails when the user filter is missing — the leak it guards', () => {
     const chain = createQueryChain();
     chain.select('*').eq('type', 'expense');
 
-    expect(() => expectUserScoped(chain, 'user-1')).toThrow();
+    expect(() => expectChainUserScoped(chain, 'user-1')).toThrow();
   });
 });

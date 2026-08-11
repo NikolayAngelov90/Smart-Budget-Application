@@ -287,7 +287,7 @@
     "noExpensesQuarter": "No expenses in the last 3 months",
     "noExpensesYear": "No expenses this year",
     "noExpensesHint": "Start adding transactions to see your spending breakdown",
-    "spendingTrendsWindow": "Last {count} months",
+    "spendingTrendsWindow": "{count, plural, one {Last month} other {Last # months}}",
     "trendsError": "Failed to load spending trends",
     "trendsErrorHint": "Unable to fetch trends data. Please try refreshing the page.",
     "trendsEmpty": "Add transactions to see trends",

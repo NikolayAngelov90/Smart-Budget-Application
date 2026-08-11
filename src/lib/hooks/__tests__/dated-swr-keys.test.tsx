@@ -158,3 +158,36 @@ describe('dated SWR keys', () => {
     expect(passedKey.split('?')).toHaveLength(2);
   });
 });
+
+describe('useSpendingByCategory sends what it was asked for', () => {
+  // Nothing proved `period` ever reached the network. Deleting
+  // `params.set('period', period)` left every other test green: the component
+  // test mocks this hook wholesale and only checks it was CALLED with 'year',
+  // the route test invokes GET directly, and the key tests above render it with
+  // no arguments. The user-visible effect of that deletion is the whole feature
+  // silently reverting to month scope.
+
+  it.each(['week', 'month', 'quarter', 'year'] as const)('puts period=%s in the URL', (period) => {
+    renderHook(() => useSpendingByCategory(undefined, period));
+
+    expect(mockUseSWR.mock.calls[0]![0]).toContain(`period=${period}`);
+  });
+
+  it('sends month instead of period when a month is given', () => {
+    // `?month=` is a drill-down at a named month; the route makes it win, so
+    // sending both would be ambiguous.
+    renderHook(() => useSpendingByCategory('2026-03', 'year'));
+
+    const key = mockUseSWR.mock.calls[0]![0] as string;
+    expect(key).toContain('month=2026-03');
+    expect(key).not.toContain('period=');
+  });
+
+  it('sends neither when neither is given', () => {
+    renderHook(() => useSpendingByCategory());
+
+    const key = mockUseSWR.mock.calls[0]![0] as string;
+    expect(key).not.toContain('period=');
+    expect(key).not.toContain('month=');
+  });
+});

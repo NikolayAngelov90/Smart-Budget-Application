@@ -151,15 +151,18 @@ const COPY: Record<
   },
 };
 
-export interface BalanceFlowHeroProps {
-  /**
-   * HP-1: the period lifted to the page so the "Where it's going" section can
-   * follow it. Left OPTIONAL with internal state as the fallback — the hero is
-   * the dashboard's signature and must stay renderable on its own.
-   */
-  period?: DashboardPeriod;
-  onPeriodChange?: (period: DashboardPeriod) => void;
-}
+/**
+ * HP-1: the period lifted to the page so the "Where it's going" section can
+ * follow it. Still renderable on its own — the hero is the dashboard's
+ * signature — but controlled and uncontrolled are now all-or-nothing.
+ *
+ * They used to be independently optional, so `<BalanceFlowHero period={p} />`
+ * compiled and produced a selector whose every click wrote to dead internal
+ * state: it rendered, highlighted nothing new, and did nothing.
+ */
+export type BalanceFlowHeroProps =
+  | { period: DashboardPeriod; onPeriodChange: (period: DashboardPeriod) => void }
+  | { period?: undefined; onPeriodChange?: undefined };
 
 export function BalanceFlowHero({
   period: periodProp,

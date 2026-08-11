@@ -154,15 +154,15 @@ export function ContributionSplitCard() {
                 maxW={{ base: 'full', sm: '120px' }}
                 minH={{ base: '44px', sm: '40px' }}
               />
-              <Button size="sm" colorScheme="brand" onClick={handleSave} isLoading={isSaving} loadingText={t('save')}>
+              <Button size="sm" colorScheme="brand" onClick={handleSave} isLoading={isSaving} loadingText={t('save')} minH={{ base: '44px', sm: '32px' }}>
                 {t('save')}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(false)} isDisabled={isSaving}>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(false)} isDisabled={isSaving} minH={{ base: '44px', sm: '32px' }}>
                 {t('cancel')}
               </Button>
             </Stack>
           ) : (
-            <Button size="sm" variant="outline" alignSelf="flex-start" onClick={beginEdit}>
+            <Button size="sm" variant="outline" alignSelf="flex-start" onClick={beginEdit} minH={{ base: '44px', sm: '32px' }}>
               {t('yourPercentage')}
             </Button>
           )}

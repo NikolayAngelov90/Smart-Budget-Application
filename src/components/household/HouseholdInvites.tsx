@@ -118,6 +118,7 @@ export function HouseholdInvites() {
           loadingText={t('sending')}
           isDisabled={!email.trim()}
           flexShrink={0}
+          minH={{ base: '44px', sm: '40px' }}
         >
           {t('send')}
         </Button>

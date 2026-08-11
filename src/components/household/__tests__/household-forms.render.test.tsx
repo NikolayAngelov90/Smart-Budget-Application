@@ -148,6 +148,14 @@ describe('ContributionSplitCard', () => {
     // survive — this is the field that had 58px for a 172px label.
     expect(field).toHaveAttribute('placeholder', 'yourPercentage');
   });
+
+  it('closes the percentage form on cancel', () => {
+    renderIt(<ContributionSplitCard />);
+    fireEvent.click(screen.getByRole('button', { name: 'yourPercentage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
+
+    expect(screen.queryByLabelText('yourPercentage')).not.toBeInTheDocument();
+  });
 });
 
 describe('HouseholdSection', () => {
@@ -250,6 +258,39 @@ describe('SharedGoalsCard', () => {
 
     fireEvent.change(amount, { target: { value: '25.50' } });
     expect(amount).toHaveValue(25.5);
+  });
+
+  it('offers save and cancel on the contribute row', () => {
+    // These buttons were 32px until HP-6 — and on mobile they are stacked
+    // full-width, so they look like primary targets while being the shortest
+    // things on screen.
+    mockGoals.mockReturnValue({
+      goals: [
+        {
+          goal: {
+            id: 'g-1',
+            name: 'Vacation',
+            target_amount: 1000,
+            current_amount: 250,
+            deadline: null,
+            currency: 'EUR',
+          },
+          breakdown: [],
+        },
+      ],
+      isLoading: false,
+      error: undefined,
+      mutate: jest.fn(),
+    });
+
+    renderIt(<SharedGoalsCard />);
+    fireEvent.click(screen.getByRole('button', { name: 'contribute' }));
+
+    expect(screen.getByRole('button', { name: 'save' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'cancel' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
+    expect(screen.queryByLabelText('contributeAmount')).not.toBeInTheDocument();
   });
 
   it('shows the goal it is contributing to', () => {

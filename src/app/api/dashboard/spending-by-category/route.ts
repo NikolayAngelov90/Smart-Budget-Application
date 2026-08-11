@@ -74,8 +74,17 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const monthParam = searchParams.get('month');
     const periodParam = searchParams.get('period');
+
+    // `?month=` is validated for the same reason `?period=` has a fallback: a
+    // chart that renders the default window beats one that renders an error.
+    // Unvalidated, `?month=banana` became an Invalid Date, `getFullYear()` was
+    // NaN, and `NaN-NaN-NaN` reached the DATE filter — Postgres rejected it and
+    // the whole donut 500'd. `?period=` got that reasoning and the parameter
+    // that WINS over it did not.
+    const rawMonth = searchParams.get('month');
+    const monthParam =
+      rawMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(rawMonth) ? rawMonth : null;
 
     // The server runs UTC; `transactions.date` holds the client's LOCAL day, so
     // a window derived from the server clock is wrong for anyone east or west of
