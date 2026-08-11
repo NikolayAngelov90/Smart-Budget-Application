@@ -36,7 +36,7 @@ import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency } from '@/lib/utils/currency';
 import { useChartColors } from '@/lib/hooks/useChartColors';
-import type { DashboardPeriod } from '@/lib/utils/dashboardPeriod';
+import { isDashboardPeriod, type DashboardPeriod } from '@/lib/utils/dashboardPeriod';
 
 export interface CategorySpendingChartProps {
   month?: string; // YYYY-MM format, defaults to current month
@@ -44,6 +44,34 @@ export interface CategorySpendingChartProps {
   period?: DashboardPeriod;
   chartType?: 'pie' | 'donut'; // Default: 'donut'
   height?: number; // Default: 300
+}
+
+/**
+ * The drill-down query for a slice.
+ *
+ * Exported and pure because it cannot be reached through the rendered chart:
+ * Recharts draws into a `ResponsiveContainer`, which has zero width in jsdom,
+ * so the clickable `<Pie>` never exists in a test. Testing the navigation
+ * through the UI is therefore impossible; testing the URL is not.
+ *
+ * D2: prefer the window's real bounds. `month` is only the ANCHOR month, so a
+ * slice representing a year of spend used to open a single month's
+ * transactions. The fallback exists because the persisted SWR cache can replay
+ * a response written before the route sent bounds.
+ */
+export function buildDrillDownQuery(
+  categoryId: string,
+  data: { start?: string; end?: string; month?: string } | undefined,
+  monthProp?: string
+): string {
+  const params = new URLSearchParams({ category: categoryId });
+  if (data?.start && data?.end) {
+    params.set('startDate', data.start);
+    params.set('endDate', data.end);
+  } else {
+    params.set('month', monthProp || data?.month || format(new Date(), 'yyyy-MM'));
+  }
+  return params.toString();
 }
 
 /** Empty-state copy per period. A lookup, not a built string: Bulgarian
@@ -81,10 +109,17 @@ export function CategorySpendingChart({
   // selection: `keepPreviousData` keeps the outgoing figures on screen while the
   // next window loads, so labelling by selection would caption this year's
   // request with last month's data (the Story 16-6 lesson).
-  const shownPeriod = data?.period ?? period ?? 'month';
+  //
+  // Narrowed rather than trusted: `data.period` is untyped JSON off the wire (or
+  // out of the persisted cache, written by an older build). An unrecognised
+  // value would index EMPTY_COPY to `undefined` and `t(undefined)` throws,
+  // taking the card down instead of showing a wrong word.
+  const shownPeriod: DashboardPeriod = isDashboardPeriod(data?.period)
+    ? data.period
+    : (period ?? 'month');
 
-  // Get current month in YYYY-MM format for drill-down navigation
-  const currentMonth = month || data?.month || format(new Date(), 'yyyy-MM');
+  // D2: drill down into the window the user is actually looking at.
+  const drillDownParams = (categoryId: string) => buildDrillDownQuery(categoryId, data, month);
 
   // Subscribe to real-time transaction changes via centralized manager
   useRealtimeSubscription((event) => {
@@ -148,7 +183,7 @@ export function CategorySpendingChart({
 
   // Handle pie slice click for drill-down navigation (Story 5.6)
   const handlePieClick = (data: ChartDataPoint) => {
-    router.push(`/transactions?category=${data.category_id}&month=${currentMonth}`);
+    router.push(`/transactions?${drillDownParams(data.category_id)}`);
   };
 
   // Custom tooltip

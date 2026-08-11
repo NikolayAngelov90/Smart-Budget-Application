@@ -17,6 +17,12 @@ import {
   resolvePeriodRanges,
   type DashboardPeriod,
 } from '@/lib/utils/dashboardPeriod';
+import {
+  buildLiveRateMap,
+  convertToPreferred,
+  type ConvertibleRow,
+} from '@/lib/services/currencyConversion';
+import { resolvePreferredCurrency } from '@/lib/services/preferredCurrency';
 
 // Force dynamic rendering and disable caching for real-time data
 export const dynamic = 'force-dynamic';
@@ -31,6 +37,13 @@ export interface SpendingByCategoryResponse {
    *  figures on screen while the next window loads, so labelling by selection
    *  prints "This year" over last month's money (the Story 16-6 lesson). */
   period: DashboardPeriod;
+  /** The window's real bounds as `yyyy-MM-dd`.
+   *
+   *  D2: the drill-down needs these. It used to navigate with `month`, which is
+   *  only the ANCHOR month — so clicking a slice worth a year of spend opened a
+   *  single month's transactions and the totals disagreed with no explanation. */
+  start: string;
+  end: string;
   total: number; // Total expenses for the window
   categories: Array<{
     category_id: string;
@@ -88,12 +101,20 @@ export async function GET(request: NextRequest) {
       ? new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
       : current.end;
 
-    // Query expense transactions with category information
+    // Query expense transactions with category information.
+    // D3: `currency` and `exchange_rate` are selected because this route summed
+    // raw `amount`, so a mixed-currency user's donut added 100 USD to 100 EUR
+    // and labelled the result with their preferred symbol. DW-1 fixed exactly
+    // this for /budgets, /wishlist and /what-if and skipped here; widening the
+    // window from a month to a year made a single foreign trip permanently
+    // visible in the total and in every percentage.
     const { data: transactions, error: transactionsError } = await supabase
       .from('transactions')
       .select(`
         amount,
         category_id,
+        currency,
+        exchange_rate,
         categories (
           id,
           name,
@@ -127,24 +148,36 @@ export async function GET(request: NextRequest) {
 
     let totalExpenses = 0;
 
-    for (const transaction of transactions || []) {
+    // One lookup per currency, never per row. A missing rate is an ENRICHMENT
+    // failure: the helper warns and leaves that row unconverted rather than
+    // 500-ing the whole donut over one unavailable rate.
+    const rows = (transactions ?? []) as unknown as Array<
+      ConvertibleRow & { category_id: string; categories: { id: string; name: string; color: string } | null }
+    >;
+    const preferredCurrency = await resolvePreferredCurrency(supabase, user.id);
+    const liveRates = await buildLiveRateMap(rows, preferredCurrency, 'SpendingByCategory');
+
+    for (const transaction of rows) {
       const categoryId = transaction.category_id;
-      const category = transaction.categories as { id: string; name: string; color: string } | null;
+      const category = transaction.categories;
 
       if (!category) continue;
 
-      totalExpenses += transaction.amount;
+      // Stored entry-time rate first, live rate as the fallback — the same
+      // conversion /budgets, /wishlist and /what-if already use.
+      const amount = convertToPreferred(transaction, preferredCurrency, liveRates);
+      totalExpenses += amount;
 
       if (categoryMap.has(categoryId)) {
         const existing = categoryMap.get(categoryId)!;
-        existing.amount += transaction.amount;
+        existing.amount += amount;
         existing.transaction_count += 1;
       } else {
         categoryMap.set(categoryId, {
           category_id: categoryId,
           category_name: category.name,
           category_color: category.color,
-          amount: transaction.amount,
+          amount,
           transaction_count: 1,
         });
       }
@@ -163,6 +196,8 @@ export async function GET(request: NextRequest) {
     const response: SpendingByCategoryResponse = {
       month: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`,
       period,
+      start: toLocalISODate(windowStart),
+      end: toLocalISODate(windowEnd),
       total: totalExpenses,
       categories,
     };

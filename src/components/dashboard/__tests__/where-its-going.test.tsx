@@ -16,7 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import { render, screen } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
-import { CategorySpendingChart } from '../CategorySpendingChart';
+import { CategorySpendingChart, buildDrillDownQuery } from '../CategorySpendingChart';
 
 const mockUseSpendingByCategory = jest.fn();
 jest.mock('@/lib/hooks/useSpendingByCategory', () => ({
@@ -92,6 +92,59 @@ describe('category donut follows the period', () => {
 
     expect(screen.getByText('noExpensesMonth')).toBeInTheDocument();
     expect(screen.queryByText('noExpensesYear')).not.toBeInTheDocument();
+  });
+});
+
+describe('drill-down follows the window (D2)', () => {
+  // Asserted on the pure builder, not through a click: Recharts draws inside a
+  // ResponsiveContainer, which is zero-width in jsdom, so the clickable slice
+  // never exists in a test. Pretending otherwise would mean a test that renders
+  // nothing and proves nothing.
+
+  it('uses the window bounds, not the anchor month', () => {
+    // The defect: `month` is only the ANCHOR month, so clicking a slice worth a
+    // year of spend opened one month's transactions and the totals disagreed
+    // with nothing on screen to explain it.
+    const query = buildDrillDownQuery(
+      'c1',
+      { month: '2026-07', start: '2026-01-01', end: '2026-12-31' }
+    );
+
+    expect(query).toBe('category=c1&startDate=2026-01-01&endDate=2026-12-31');
+    expect(query).not.toContain('month=');
+  });
+
+  it('falls back to the month when the window is unknown', () => {
+    // The persisted SWR cache can replay a response written before the route
+    // sent bounds.
+    expect(buildDrillDownQuery('c1', { month: '2026-07' })).toBe(
+      'category=c1&month=2026-07'
+    );
+  });
+
+  it('prefers an explicit month prop over the echoed one', () => {
+    expect(buildDrillDownQuery('c1', { month: '2026-07' }, '2026-03')).toBe(
+      'category=c1&month=2026-03'
+    );
+  });
+
+  it('needs BOTH bounds before it will use a range', () => {
+    // A half-populated response must not produce an open-ended filter.
+    expect(buildDrillDownQuery('c1', { month: '2026-07', start: '2026-01-01' })).toBe(
+      'category=c1&month=2026-07'
+    );
+  });
+});
+
+describe('an unrecognised period cannot crash the card', () => {
+  it('falls back instead of calling t(undefined)', () => {
+    // `data.period` is untyped JSON off the wire or out of the persisted cache.
+    mockUseSpendingByCategory.mockReturnValue(
+      result({ period: 'fortnight' as unknown as string, categories: [] })
+    );
+
+    expect(() => renderChart({ period: 'week' })).not.toThrow();
+    expect(screen.getByText('noExpensesWeek')).toBeInTheDocument();
   });
 });
 

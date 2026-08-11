@@ -9,7 +9,7 @@
  * (auto-calculate on save falls out of POST → revalidate).
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   AlertIcon,
@@ -33,6 +33,7 @@ import {
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
 import { useWishlist } from '@/lib/hooks/useWishlist';
+import { logger } from '@/lib/utils/logger';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { WishlistItem } from './WishlistItem';
 import type { WishlistItemWithImpact, WishlistStatus } from '@/types/database.types';
@@ -68,6 +69,29 @@ export function WishlistSection() {
     categoriesFetcher
   );
   const categories = (categoriesData?.data ?? []).filter((c) => c.isOwn !== false);
+
+  // Stale-THROUGH-error, not stale-hidden.
+  //
+  // The first version of this gated on `categoriesError` alone. SWR keeps
+  // `data` when a REVALIDATION fails, so a background 500 disabled a picker
+  // that was still holding every option and captioned it "couldn't be loaded" —
+  // and if the user had already chosen a category they could no longer change
+  // it. `docs/api-conventions.md` names that exact behaviour as the wrong one
+  // ("hiding cached data because a background revalidation failed") and lists
+  // this hook as the example, so the original comment cited the policy while
+  // breaking it. Degrade only when there is genuinely nothing to show.
+  const categoriesUnavailable = !!categoriesError && categories.length === 0;
+
+  useEffect(() => {
+    if (categoriesError) {
+      logger.warn(
+        'WishlistSection',
+        `category list unavailable (${categories.length} cached): ${
+          categoriesError instanceof Error ? categoriesError.message : 'unknown'
+        }`
+      );
+    }
+  }, [categoriesError, categories.length]);
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -237,9 +261,9 @@ export function WishlistSection() {
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 placeholder={t('noCategory')}
-                // An enabled control with nothing in it invites a tap that does
-                // nothing. Disabled + the hint below says why.
-                isDisabled={!!categoriesError}
+                // Only when the list is genuinely empty — a picker still holding
+                // cached options stays usable through a failed revalidation.
+                isDisabled={categoriesUnavailable}
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -250,7 +274,7 @@ export function WishlistSection() {
               {/* No explicit id/aria-describedby: FormControl wires the helper
                   text to the field itself, and setting our own overrode the
                   generated id on one side only, breaking the association. */}
-              {categoriesError && (
+              {categoriesUnavailable && (
                 <FormHelperText color="fg.muted">{t('categoriesUnavailable')}</FormHelperText>
               )}
             </FormControl>

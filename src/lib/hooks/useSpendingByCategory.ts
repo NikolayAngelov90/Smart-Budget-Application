@@ -22,6 +22,14 @@ export interface SpendingByCategoryResponse {
   /** The window the server actually aggregated — label from this, not from the
    *  pending selection (see the hook's note below). */
   period?: DashboardPeriod;
+  /** The window's real bounds, `yyyy-MM-dd`. Used by the drill-down (D2).
+   *
+   *  Optional on purpose, and NOT because the route may omit them — it always
+   *  sends both. The localStorage cache provider can replay a response
+   *  persisted by an earlier build that predates these fields, so the client
+   *  has to cope with their absence. Callers must guard rather than assume. */
+  start?: string;
+  end?: string;
   total: number; // Total expenses for the window
   categories: Array<{
     category_id: string;
