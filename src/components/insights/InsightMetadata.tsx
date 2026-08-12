@@ -17,6 +17,7 @@ import { formatCurrency } from '@/lib/utils/currency';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { useLocale, useTranslations } from 'next-intl';
 import { getDateLocale } from '@/lib/utils/dateFormatter';
+import { getInsightToneTokens } from '@/lib/utils/insightGroups';
 
 interface InsightMetadataProps {
   insight: Insight;
@@ -94,9 +95,24 @@ interface MetadataFieldProps {
   label: string;
   value: string | number | React.ReactNode;
   highlight?: boolean;
+  /**
+   * Token for a highlighted value, from the insight's TONE.
+   *
+   * This was hardcoded to `accent` (evergreen), so an unusual-expense card
+   * showed a clay badge above evergreen numbers — green reads as "good" on a
+   * card whose whole point is "this looks wrong". `insightGroups.ts` already
+   * says its tokens exist "so every insight surface colours identically"; this
+   * component simply was not consulting them.
+   */
+  highlightColor?: string;
 }
 
-function MetadataField({ label, value, highlight = false }: MetadataFieldProps) {
+function MetadataField({
+  label,
+  value,
+  highlight = false,
+  highlightColor = 'accent',
+}: MetadataFieldProps) {
   return (
     <GridItem>
       <VStack align="start" spacing={1}>
@@ -106,7 +122,7 @@ function MetadataField({ label, value, highlight = false }: MetadataFieldProps) 
         <Text
           fontSize="md"
           fontWeight={highlight ? 'bold' : 'semibold'}
-          color={highlight ? 'accent' : 'fg'}
+          color={highlight ? highlightColor : 'fg'}
         >
           {value}
         </Text>
@@ -136,6 +152,9 @@ export function hasInsightMetadata(insight: Pick<Insight, 'type'>): boolean {
 }
 
 export function InsightMetadata({ insight }: InsightMetadataProps) {
+  // Highlighted values inherit the insight's tone (clay for expense, amber for
+  // warning, evergreen for recommendations and progress).
+  const toneFg = getInsightToneTokens(insight.type).fg;
   const t = useTranslations('insights');
   // Dates in the panel follow the UI language too — the shared helper, not
   // a fifth inlined `locale === 'bg' ? bg : undefined`.
@@ -182,11 +201,13 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
                 label={t('meta_absolute_change')}
                 value={formatCurrency((meta.current_amount ?? 0) - (meta.previous_amount ?? 0), undefined, currencyCode)}
                 highlight
+                highlightColor={toneFg}
               />
               <MetadataField
                 label={t('meta_percentage_change')}
                 value={formatPercent(meta.percent_change ?? 0)}
                 highlight
+                highlightColor={toneFg}
               />
             </Grid>
 
@@ -232,6 +253,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
                 label={t('meta_recommended_budget')}
                 value={formatCurrency(meta.recommended_budget ?? 0, undefined, currencyCode)}
                 highlight
+                highlightColor={toneFg}
               />
             </Grid>
 
@@ -284,6 +306,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
                 label={t('meta_transaction_amount')}
                 value={formatCurrency(meta.transaction_amount ?? 0, undefined, currencyCode)}
                 highlight
+                highlightColor={toneFg}
               />
               <MetadataField
                 label={t('meta_category_average')}
@@ -297,6 +320,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
                 label={t('meta_deviation')}
                 value={`${(meta.std_devs_from_mean ?? 0).toFixed(1)} σ above average`}
                 highlight
+                highlightColor={toneFg}
               />
             </Grid>
 
@@ -353,11 +377,13 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
                 label={t('meta_savings')}
                 value={formatCurrency(meta.savings_amount ?? 0, undefined, currencyCode)}
                 highlight
+                highlightColor={toneFg}
               />
               <MetadataField
                 label={t('meta_under_budget')}
                 value={formatPercent(meta.percent_under_budget ?? 0)}
                 highlight
+                highlightColor={toneFg}
               />
             </Grid>
 

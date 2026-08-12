@@ -509,7 +509,17 @@ export default function TransactionEntryModal({
               aria-label={t('amount')}
               autoComplete="off"
               autoCorrect="off"
-              autoFocus
+              // Desktop only. On iOS a bare `autoFocus` raises the keyboard
+              // while the bottom-sheet Drawer is still animating in; the browser
+              // then scrolls the document to bring the focused input into the
+              // shrunken visual viewport, and because the Drawer is a
+              // fixed-position overlay sized in vh, that scroll drags the whole
+              // sheet up past its own header — leaving the user typing into an
+              // Amount field that has scrolled off the top of the screen.
+              //
+              // `isMobile` is the breakpoint value the component already
+              // computes (line 164), not a user-agent sniff.
+              autoFocus={!isMobile}
               {...register('amount')}
               onBlur={handleAmountBlur}
               variant="unstyled"
@@ -810,7 +820,18 @@ export default function TransactionEntryModal({
     return (
       <Drawer isOpen={isOpen} onClose={onClose} placement="bottom" size="full">
         <DrawerOverlay />
-        <DrawerContent borderTopRadius="xl" maxH="95vh" bg="surface">
+        {/* `dvh` tracks the VISUAL viewport, so a raised keyboard shrinks the
+            sheet instead of leaving a band of dead space between the last
+            control and the keyboard accessory bar. `vh` fallback for iOS <15.4,
+            matching AppLayout. */}
+        <DrawerContent
+          borderTopRadius="xl"
+          bg="surface"
+          sx={{
+            maxHeight: '95vh',
+            '@supports (height: 100dvh)': { maxHeight: '95dvh' },
+          }}
+        >
           {/* Drag handle — inset below the iPhone Dynamic Island / status bar so
               the header and fields never collide with the system status bar. */}
           <Box

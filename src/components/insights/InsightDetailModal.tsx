@@ -73,10 +73,29 @@ export function InsightDetailModal({
     >
       <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
       <ModalContent
-        maxH={{ base: '100vh', md: '90vh' }}
+        // `viewportFit: 'cover'` (layout.tsx) puts the content box at the
+        // PHYSICAL top of the display, so a full-screen modal renders its first
+        // line underneath the Dynamic Island and the status icons. This was the
+        // only modal in the codebase with no safe-area handling: the title was
+        // drawn through the system clock and the close button sat in the band
+        // where a downward swipe opens Control Centre.
+        //
+        // Pattern copied from TransactionEntryModal (the mobile Drawer) and
+        // AppLayout's 100dvh-with-100vh-fallback; not invented here.
+        sx={{
+          maxHeight: '100vh',
+          '@supports (height: 100dvh)': { maxHeight: '100dvh' },
+        }}
+        maxH={{ md: '90vh' }}
         m={{ base: 0, md: 4 }}
+        pt={{ base: 'env(safe-area-inset-top)', md: 0 }}
+        pb={{ base: 'env(safe-area-inset-bottom)', md: 0 }}
       >
-        <ModalHeader pb={2}>
+        {/* Reserve the close button's column. The button is absolutely
+            positioned, so it is out of flow and the header laid its badge
+            straight underneath it — visible once the safe-area fix pushed the
+            two into the same band. 44px control + 1rem inset + breathing room. */}
+        <ModalHeader pb={2} pr="4rem">
           <HStack spacing={3} align="start" flexWrap="wrap">
             <Text fontSize={{ base: 'lg', md: 'xl' }} fontWeight="bold" flex="1">
               {localizedTitle}
@@ -103,9 +122,15 @@ export function InsightDetailModal({
           </Text>
         </ModalHeader>
 
+        {/* Absolutely positioned, so it does not inherit the content padding
+            above and needs its own offset — same as the Drawer's close button.
+            Measured at 40x40 with `size="lg"` alone, so minW/minH pin it to the
+            44px the repo enforces for mobile controls. */}
         <ModalCloseButton
           size="lg"
-          top={4}
+          minW="44px"
+          minH="44px"
+          top={{ base: 'calc(env(safe-area-inset-top) + 0.75rem)', md: 4 }}
           right={4}
           aria-label={tCommon('close')}
         />
