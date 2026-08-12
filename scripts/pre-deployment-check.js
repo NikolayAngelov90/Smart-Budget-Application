@@ -47,11 +47,20 @@ function runCheck(name, fn) {
   }
 }
 
+function tail(text, lines) {
+  const all = text.split('\n');
+  return all.length <= lines ? text : all.slice(-lines).join('\n');
+}
+
 function runCommand(command, options = {}) {
   return execSync(command, {
     stdio: 'pipe',
     encoding: 'utf-8',
     timeout: options.timeout || 120000,
+    // execSync defaults maxBuffer to 1MB and KILLS the child when output
+    // exceeds it, throwing ENOBUFS. A verbose `next build` can pass 1MB, and
+    // the result is indistinguishable from a genuine compile failure.
+    maxBuffer: 64 * 1024 * 1024,
     cwd: process.cwd(),
     ...options,
   });
@@ -142,7 +151,33 @@ if (skipBuild) {
       runCommand('npx next build', { timeout: 300000 });
       return { status: 'pass', message: 'Success' };
     } catch (error) {
-      return { status: 'fail', message: 'Build failed (see logs above)' };
+      // runCommand uses stdio:'pipe', so the build's output is captured on the
+      // error and nothing reaches the log by itself. This used to say
+      // "see logs above" — there were no logs above, and a CI build failure was
+      // undiagnosable without reproducing it locally. Print what actually broke.
+      const stdout = (error.stdout || '').toString();
+      const stderr = (error.stderr || '').toString();
+      const combined = `${stdout}\n${stderr}`.trim();
+
+      console.log('\n--- next build output ---');
+      console.log(combined ? tail(combined, 80) : '(no output captured)');
+      if (error.signal) console.log(`signal: ${error.signal}`);
+      if (typeof error.status === 'number') console.log(`exit code: ${error.status}`);
+      // execSync sets ETIMEDOUT/SIGTERM on timeout and ENOBUFS when output
+      // overflows maxBuffer; both otherwise look identical to a compile error.
+      if (error.code) console.log(`error code: ${error.code}`);
+      console.log('--- end build output ---\n');
+
+      // Match only lines that are actually error headers. A loose /error|failed/i
+      // matched next-pwa's "Fallback to precache routes when fetch failed…"
+      // notice and reported it as the build failure.
+      const firstError = combined
+        .split('\n')
+        .find((l) => /^\s*(\[?Error:|Failed to compile|Type error:|Module not found)/.test(l));
+      return {
+        status: 'fail',
+        message: firstError ? firstError.trim().slice(0, 160) : 'Build failed — see output above',
+      };
     }
   })) {
     allPassed = false;
