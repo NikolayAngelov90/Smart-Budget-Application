@@ -107,7 +107,7 @@ So that I have a solid foundation to build all features on.
 
 ### Architecture Context
 
-This story establishes the complete frontend foundation for the Smart Budget Application following the architecture defined in [docs/architecture.md](../architecture.md) and technical specification in [docs/sprint-artifacts/tech-spec-epic-1.md](tech-spec-epic-1.md).
+This story establishes the complete frontend foundation for the Smart Budget Application following the architecture defined in [docs/phase-1/architecture.md](../architecture.md) and technical specification in [docs/sprint-artifacts/tech-spec-epic-1.md](tech-spec-epic-1.md).
 
 **Key Architecture Decisions:**
 - **ADR-001:** Next.js 15+ with App Router pattern for SSR/SSG capabilities

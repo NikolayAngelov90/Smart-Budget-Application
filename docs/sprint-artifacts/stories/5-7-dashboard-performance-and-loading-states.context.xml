@@ -91,7 +91,7 @@
 
       <!-- Architecture: SWR and Realtime -->
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>State Management and Caching</section>
         <snippet>React Context + SWR for state management - server state caching, optimistic updates, automatic revalidation. Supabase provides PostgreSQL database, authentication, and real-time subscriptions. Performance-First architecture with <2s load time, <200ms transaction saves.</snippet>
@@ -99,7 +99,7 @@
 
       <!-- UX Design: Loading States -->
       <doc>
-        <path>docs/ux-design-specification.md</path>
+        <path>docs/phase-1/ux-design-specification.md</path>
         <title>UX Design Specification</title>
         <section>Loading States and Feedback</section>
         <snippet>Speed & Responsiveness - Instant feedback, no loading spinners for local operations, optimistic UI updates. Chakra UI Feedback components: Skeleton for loading states of charts and data. Speed & Responsiveness - no loading spinners for local operations.</snippet>

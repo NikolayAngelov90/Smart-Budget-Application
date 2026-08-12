@@ -116,19 +116,19 @@
         <snippet>Defines AC-10.1.1 through AC-10.1.10 with detailed acceptance criteria for next-intl setup, translation files, string extraction, language switcher, preference persistence, locale detection, date/number formatting, and testing.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart-Budget-Application - Technical Architecture</title>
         <section>Core Technologies, State Management, Testing Strategy</section>
         <snippet>Next.js 15+ App Router, Chakra UI 2.8+, SWR for server state management, React Context for UI state. Jest + React Testing Library for testing. date-fns for date handling, Intl.NumberFormat patterns for currency.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart-Budget-Application - Technical Architecture</title>
         <section>Project Structure</section>
         <snippet>Feature-based structure within Next.js App Router pattern. Components in src/components/ by feature. Business logic in src/lib/. Types in src/types/. Tests in src/__tests__/.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart-Budget-Application - Technical Architecture</title>
         <section>Data Architecture - Database Schema</section>
         <snippet>PostgreSQL via Supabase with RLS. user_profiles table stores preferences as JSONB. Categories table with predefined names (11 defaults). Transactions with amount DECIMAL(12,2).</snippet>

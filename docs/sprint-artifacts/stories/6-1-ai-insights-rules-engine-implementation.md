@@ -243,8 +243,8 @@ CREATE TABLE insights (
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Services-and-Modules]
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Data-Models-and-Contracts]
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Acceptance-Criteria]
-- [Source: docs/epics.md#Story-6.1]
-- [Source: docs/architecture.md#Database-Schema]
+- [Source: docs/phase-1/epics.md#Story-6.1]
+- [Source: docs/phase-1/architecture.md#Database-Schema]
 
 ## Dev Agent Record
 

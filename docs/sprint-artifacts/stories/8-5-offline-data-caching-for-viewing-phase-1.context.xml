@@ -103,19 +103,19 @@
         <snippet>localStorage cache contains unencrypted financial data (browser security model). Clear cache on logout to prevent data leakage. Service Worker scope limited to app origin only. No sensitive data in SW cache (only app shell HTML/CSS/JS).</snippet>
       </doc>
       <doc>
-        <path>docs/epics.md</path>
+        <path>docs/phase-1/epics.md</path>
         <title>Epic Breakdown</title>
         <section>Story 7.5: Offline Data Caching (renumbered to 8.5)</section>
         <snippet>Configure Next.js PWA (next-pwa plugin), create manifest.json for PWA, Service Worker caches app shell, SWR cache persistence with localStorage, offline detection via useOnlineStatus hook, disable mutations offline, reconnection triggers SWR revalidation. Note: Phase 1 read-only, Phase 2 offline write queue.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>State Management</section>
         <snippet>SWR for client-side data fetching with automatic revalidation. Can be extended with localStorage provider for cache persistence across sessions.</snippet>
       </doc>
       <doc>
-        <path>docs/ux-design-specification.md</path>
+        <path>docs/phase-1/ux-design-specification.md</path>
         <title>UX Design Specification</title>
         <section>Offline Mode UX</section>
         <snippet>Show clear offline indicators (banner + header badge). Disable unavailable actions with tooltips. Provide reassurance that data will sync when back online. Use orange/yellow for offline warnings, green for back online confirmation.</snippet>

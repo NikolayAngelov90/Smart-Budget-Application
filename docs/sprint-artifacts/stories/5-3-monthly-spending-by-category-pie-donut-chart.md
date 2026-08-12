@@ -183,15 +183,15 @@ ORDER BY total DESC
 
 ### References
 
-- [Source: docs/PRD.md#FR21] - Pie chart showing spending by category
-- [Source: docs/PRD.md#FR22] - Category colors match user-defined colors
-- [Source: docs/PRD.md#FR23] - Hover tooltips show exact amounts
-- [Source: docs/PRD.md#FR26] - Chart updates in real-time (<300ms)
-- [Source: docs/architecture.md#Recharts-Integration] - Recharts 2.12+ for charts
-- [Source: docs/ux-design-specification.md#Spending-Breakdown-Chart] - Pie/donut design, legend placement
+- [Source: docs/phase-1/PRD.md#FR21] - Pie chart showing spending by category
+- [Source: docs/phase-1/PRD.md#FR22] - Category colors match user-defined colors
+- [Source: docs/phase-1/PRD.md#FR23] - Hover tooltips show exact amounts
+- [Source: docs/phase-1/PRD.md#FR26] - Chart updates in real-time (<300ms)
+- [Source: docs/phase-1/architecture.md#Recharts-Integration] - Recharts 2.12+ for charts
+- [Source: docs/phase-1/ux-design-specification.md#Spending-Breakdown-Chart] - Pie/donut design, legend placement
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#Spending-by-Category-API] - API contract, SQL implementation
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#SpendingByCategory-Component] - Recharts usage, responsive design
-- [Source: docs/epics.md#Story-5.3] - Full acceptance criteria and technical notes
+- [Source: docs/phase-1/epics.md#Story-5.3] - Full acceptance criteria and technical notes
 
 ## Dev Agent Record
 

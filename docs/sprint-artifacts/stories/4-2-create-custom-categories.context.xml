@@ -106,7 +106,7 @@ AC7: Error Handling
         <snippet>POST /api/categories endpoint accepts request body: { name: string (1-100 chars), color: string (hex #RRGGBB), type: 'income'|'expense' }. Returns 201 with created Category on success. Error responses: 400 (validation error), 401 (unauthorized), 409 (duplicate name for type), 500 (server error)</snippet>
       </artifact>
       <artifact>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>Database Schema - Categories Table</section>
         <snippet>Categories table with RLS policies: SELECT, INSERT, UPDATE (non-predefined only), DELETE (non-predefined only). UNIQUE constraint on (user_id, name, type) prevents duplicate category names per type. Foreign key relationship with transactions table.</snippet>

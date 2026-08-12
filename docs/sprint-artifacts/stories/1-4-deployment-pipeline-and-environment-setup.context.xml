@@ -38,12 +38,12 @@
 
   <artifacts>
     <docs>
-      <doc path="docs/PRD.md" title="Product Requirements Document">
+      <doc path="docs/phase-1/PRD.md" title="Product Requirements Document">
         <section name="Implementation Planning">
           Defines next steps after PRD including deployment requirements.
         </section>
       </doc>
-      <doc path="docs/architecture.md" title="Technical Architecture">
+      <doc path="docs/phase-1/architecture.md" title="Technical Architecture">
         <section name="Deployment Architecture">
           Deployment to Vercel with automatic CI/CD pipelines. Production on main branch, preview on feature branches. Build: npm run build. Environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
         </section>
@@ -51,7 +51,7 @@
           Vercel chosen for Next.js hosting, automatic deployment on GitHub pushes, environment variable management.
         </section>
       </doc>
-      <doc path="docs/epics.md" title="Epic Breakdown">
+      <doc path="docs/phase-1/epics.md" title="Epic Breakdown">
         <section name="Story 1.4: Deployment Pipeline">
           GitHub repository connected to Vercel, automatic deployments on main push, preview deployments for branches, environment variables configured, HTTPS enabled, build time &lt; 2 minutes.
         </section>

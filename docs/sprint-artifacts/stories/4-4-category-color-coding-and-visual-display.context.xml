@@ -51,7 +51,7 @@
         <snippet>CategoryBadge component: Visual category display with name + color dot, used across transactions, forms, and dashboard. Chakra UI Badge with color props.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart Budget Application - Technical Architecture</title>
         <section>Custom Components #2, #3, #5 (lines 205-214)</section>
         <snippet>Custom components include CategorySelector (#3) for quick category selection with recent categories first, and ChartContainer (#5) for Recharts with loading/error states.</snippet>

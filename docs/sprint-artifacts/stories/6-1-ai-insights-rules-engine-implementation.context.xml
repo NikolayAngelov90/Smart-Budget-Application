@@ -126,10 +126,10 @@
       <artifact path="docs/sprint-artifacts/tech-spec-epic-6.md" title="Epic 6 Technical Specification" section="Acceptance Criteria">
         Normalized acceptance criteria covering all 9 functional requirements (FR29-FR37) for insight generation, display, filtering, metadata, and scheduling.
       </artifact>
-      <artifact path="docs/architecture.md" title="System Architecture" section="Database Schema">
+      <artifact path="docs/phase-1/architecture.md" title="System Architecture" section="Database Schema">
         Insights table schema with RLS policies. Indexes for performance: idx_insights_user_id, idx_insights_user_priority, idx_insights_user_type, idx_insights_dismissed.
       </artifact>
-      <artifact path="docs/epics.md" title="Epics" section="Epic 6: AI Budget Insights">
+      <artifact path="docs/phase-1/epics.md" title="Epics" section="Epic 6: AI Budget Insights">
         Epic overview, business value, 4 insight rule types with examples and thresholds. Statistical formulas for mean, stdDev, monthOverMonth calculations.
       </artifact>
     </docs>

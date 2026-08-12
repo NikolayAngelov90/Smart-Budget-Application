@@ -16,28 +16,38 @@
 #   - skipped: Optional/conditional workflow that was skipped
 
 generated: "2025-11-14"
+updated: "2026-08-12"
 project: "Smart-Budget-Application"
 project_type: "software"
 selected_track: "method"
 field_type: "greenfield"
 workflow_path: "method-greenfield.yaml"
+
+# Paths below point at the LIVE artifacts under _bmad-output/, which now carry
+# Phase 2 (Epics 11-16). Until 2026-08-12 they pointed at the 2025-11-14 copies
+# in docs/, which stop at Epic 7 — so anything reading this file was handed the
+# wrong document. Those copies are kept, with headers, in docs/phase-1/.
 workflow_status:
   # Phase 0: Discovery (Optional)
-  product-brief: docs/product-brief-Smart-Budget-Application-2025-11-14.md  # agent: analyst
+  # Never re-run; the 2025-11-14 brief is still the only one.
+  product-brief: docs/phase-1/product-brief-Smart-Budget-Application-2025-11-14.md  # agent: analyst
 
   # Phase 1: Planning
-  prd: docs/PRD.md  # agent: pm
+  prd: _bmad-output/planning-artifacts/prd.md  # agent: pm
   validate-prd: optional  # agent: pm
-  create-ux-design: docs/ux-design-specification.md  # agent: ux-designer
+  create-ux-design: _bmad-output/planning-artifacts/ux-design-specification.md  # agent: ux-designer
 
   # Phase 2: Solutioning
-  architecture: docs/architecture.md  # agent: architect
+  architecture: _bmad-output/planning-artifacts/architecture.md  # agent: architect
   test-design: recommended  # agent: tea
   validate-architecture: optional  # agent: architect
-  solutioning-gate-check: docs/implementation-readiness-report-2025-11-14.md  # agent: architect
+  solutioning-gate-check: _bmad-output/planning-artifacts/implementation-readiness-report-2026-06-02.md  # agent: architect
 
   # Phase 2.5: Epic Breakdown
-  create-epics-and-stories: docs/epics.md  # agent: pm
+  # Covers Epics 11-16. Epics 1-7 are in docs/phase-1/epics.md; Epics 8-10 were
+  # specced straight to docs/sprint-artifacts/tech-spec-epic-{8,9,10}.md and
+  # appear in no epics.md at all.
+  create-epics-and-stories: _bmad-output/planning-artifacts/epics.md  # agent: pm
 
   # Phase 3: Implementation
-  sprint-planning: required  # agent: sm
+  sprint-planning: _bmad-output/implementation-artifacts/sprint-status.yaml  # agent: sm

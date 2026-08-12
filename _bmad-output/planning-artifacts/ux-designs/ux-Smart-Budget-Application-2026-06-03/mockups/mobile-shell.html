@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart Budget — Mobile Shell Mock (Story UX-1)</title>
+<style>
+  :root{
+    --blue:#2b6cb0; --blue-600:#1e88e5; --blue-50:#e3f2fd;
+    --canvas:#F4F6FA; --gray-50:#f7fafc; --gray-200:#e2e8f0; --gray-400:#a0aec0; --gray-500:#718096; --gray-700:#2d3748; --gray-800:#1a202c;
+    --orange:#dd6b20; --green:#38a169;
+    --island-h:34px; --home-h:22px; /* simulated safe-area insets */
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f172a;color:#e2e8f0;padding:32px 16px 64px;display:flex;flex-direction:column;align-items:center;gap:8px}
+  h1{font-size:18px;font-weight:700;margin-bottom:4px}
+  .sub{color:#94a3b8;font-size:13px;margin-bottom:24px;text-align:center;max-width:640px}
+  .stage{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .caption{color:#94a3b8;font-size:12px;text-align:center;margin-top:10px}
+
+  /* iPhone frame */
+  .phone{position:relative;width:320px;height:680px;background:#000;border-radius:46px;padding:10px;box-shadow:0 20px 60px rgba(0,0,0,.55)}
+  .screen{position:relative;width:100%;height:100%;background:var(--canvas);border-radius:38px;overflow:hidden;display:flex;flex-direction:column}
+  /* Dynamic Island */
+  .island{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:108px;height:30px;background:#000;border-radius:18px;z-index:50}
+
+  /* Header — fills safe-area-top, content pushed BELOW the island */
+  .header{background:var(--blue);color:#fff;padding-top:calc(.75rem + var(--island-h));padding-bottom:12px;padding-left:16px;padding-right:16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,.15);z-index:10}
+  .header h2{font-size:18px;font-weight:700}
+  .avatar{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;cursor:pointer}
+
+  /* Content */
+  .content{flex:1;overflow-y:auto;padding:16px;padding-bottom:96px}
+  .h1c{font-size:24px;font-weight:800;color:var(--gray-800);margin-bottom:2px}
+  .h1s{font-size:13px;color:var(--gray-500);margin-bottom:16px}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .card{background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:12px}
+  .card .l{font-size:11px;color:var(--gray-500)}
+  .card .v{font-size:18px;font-weight:700;color:var(--gray-800);margin-top:2px}
+  .panel{background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:14px;margin-bottom:12px}
+  .panel h3{font-size:13px;color:var(--gray-700);margin-bottom:10px}
+  .bar{height:8px;border-radius:99px;background:var(--gray-200);overflow:hidden;margin:8px 0}
+  .bar > i{display:block;height:100%;background:var(--blue)}
+  .nudge{background:#ebf8ff;border-left:4px solid var(--blue);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--gray-700)}
+  .badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:#feebcb;color:var(--orange)}
+
+  /* Bottom tab bar — translucent blur, safe-area-bottom */
+  .tabbar{position:absolute;left:0;right:0;bottom:0;height:calc(56px + 8px);padding-bottom:8px;
+    background:rgba(255,255,255,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-top:1px solid var(--gray-200);box-shadow:0 -2px 12px rgba(0,0,0,.05);display:flex;align-items:flex-start;justify-content:space-around;z-index:40}
+  /* Transactions: collapsed filter + search always visible */
+  .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .filterbtn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--blue);border:1px solid var(--blue);border-radius:8px;padding:6px 10px;background:#fff}
+  .filterbtn .count{background:var(--blue);color:#fff;border-radius:99px;font-size:10px;padding:1px 6px}
+  .search{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--gray-400);margin-bottom:12px}
+  .txn{background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+  .txn .meta{font-size:11px;color:var(--gray-500)}
+  .txn .cat{font-size:13px;color:var(--gray-800);font-weight:600;margin-top:2px}
+  .txn .amt{font-size:16px;font-weight:700}
+  .amt.exp{color:#e53e3e} .amt.inc{color:var(--green)}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:56px;gap:3px;color:var(--gray-500);cursor:pointer}
+  .tab.active{color:var(--blue)}
+  .tab svg{width:22px;height:22px}
+  .tab span{font-size:10px;line-height:1}
+  .tab.active span{font-weight:700}
+  .addwrap{flex:1;display:flex;flex-direction:column;align-items:center;margin-top:-22px}
+  .add{width:52px;height:52px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(43,108,176,.45);font-size:26px;font-weight:300}
+  .addwrap span{font-size:10px;color:var(--blue);font-weight:700;margin-top:3px}
+  .home-indicator{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:120px;height:5px;border-radius:99px;background:rgba(0,0,0,.28);z-index:60}
+
+  /* Account bottom-sheet */
+  .scrim{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:70;display:flex;align-items:flex-end}
+  .sheet{width:100%;background:#fff;border-radius:16px 16px 0 0;padding:0 16px;padding-bottom:calc(16px + var(--home-h));box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+  .handle{width:36px;height:4px;border-radius:99px;background:var(--gray-200);margin:8px auto 4px}
+  .id{display:flex;align-items:center;gap:12px;padding:12px 4px}
+  .id .av{width:44px;height:44px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .id .nm{font-weight:600;color:var(--gray-800)}
+  .id .em{font-size:13px;color:var(--gray-500)}
+  .hr{border-top:1px solid var(--gray-200);margin:4px 0}
+  .row{display:flex;align-items:center;gap:12px;padding:14px 8px;border-radius:8px;min-height:48px;cursor:pointer;color:var(--gray-800)}
+  .row:hover{background:var(--gray-50)}
+  .row.danger{color:#e53e3e}
+  .dot{width:20px;height:20px;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+  <h1>Smart Budget — Mobile Shell (Story UX-1)</h1>
+  <p class="sub">Visual confirmation of the redesigned iPhone shell: header clears the Dynamic Island, single bottom tab bar (translucent blur, safe-area home indicator), and the account bottom-sheet replacing the top-right dropdown. Trust Blue #2b6cb0.</p>
+
+  <div class="stage">
+    <!-- Frame 1: default shell -->
+    <div>
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="header">
+            <h2>Smart Budget</h2>
+            <div class="avatar">N</div>
+          </div>
+          <div class="content">
+            <div class="h1c">Dashboard</div>
+            <div class="h1s">Your money at a glance</div>
+            <div class="cards">
+              <div class="card"><div class="l">Income</div><div class="v">$3,200</div></div>
+              <div class="card"><div class="l">Expenses</div><div class="v">$1,840</div></div>
+            </div>
+            <div class="panel">
+              <h3>End-of-Month Forecast <span class="badge">At risk</span></h3>
+              <div style="font-size:12px;color:var(--gray-500)">Dining · projected $480</div>
+              <div class="bar"><i style="width:78%"></i></div>
+            </div>
+            <div class="panel">
+              <h3>AI Budget Coach</h3>
+              <div class="nudge">Your Dining spending is 60% above your recent average. Worth keeping an eye on. <em style="color:var(--gray-400)">For educational purposes only.</em></div>
+            </div>
+          </div>
+          <nav class="tabbar">
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg><span>Dashboard</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Transactions</span></div>
+            <div class="addwrap"><div class="add">+</div><span>Add</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>Insights</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 00-1.7-1l-.3-2.5H10l-.3 2.5a7 7 0 00-1.7 1l-2.3-1-2 3.4L5.7 11a7 7 0 000 2l-2 1.6 2 3.4 2.3-1a7 7 0 001.7 1l.3 2.5h3.6l.3-2.5a7 7 0 001.7-1l2.3 1 2-3.4-2-1.6a7 7 0 00.1-1z"/></svg><span>Settings</span></div>
+          </nav>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+      <p class="caption">Default shell — header below the Dynamic Island, blurred bottom tab bar above the home indicator.</p>
+    </div>
+
+    <!-- Frame 2: account bottom-sheet -->
+    <div>
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="header">
+            <h2>Smart Budget</h2>
+            <div class="avatar">N</div>
+          </div>
+          <div class="content" style="filter:brightness(.96)">
+            <div class="h1c">Dashboard</div>
+            <div class="h1s">Your money at a glance</div>
+            <div class="cards">
+              <div class="card"><div class="l">Income</div><div class="v">$3,200</div></div>
+              <div class="card"><div class="l">Expenses</div><div class="v">$1,840</div></div>
+            </div>
+          </div>
+          <!-- Account sheet open -->
+          <div class="scrim">
+            <div class="sheet">
+              <div class="handle"></div>
+              <div class="id">
+                <div class="av">N</div>
+                <div><div class="nm">Nikit</div><div class="em">nikit@example.com</div></div>
+              </div>
+              <div class="hr"></div>
+              <div class="row"><span class="dot">⚙️</span> Account &amp; settings</div>
+              <div class="row danger"><span class="dot">⎋</span> Logout</div>
+            </div>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+      <p class="caption">Tap the avatar → account bottom-sheet (thumb-reachable), replacing the old top-right dropdown.</p>
+    </div>
+
+    <!-- Frame 3: Transactions with collapsed filter -->
+    <div>
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="header">
+            <h2>Transactions</h2>
+            <div class="avatar">N</div>
+          </div>
+          <div class="content">
+            <div class="toolbar">
+              <div class="filterbtn">Filters <span class="count">2</span> ▾</div>
+              <div style="font-size:13px;color:var(--gray-500)">Clear</div>
+            </div>
+            <div class="search">🔍 Search by notes, category, amount…</div>
+            <div class="txn"><div><div class="meta">Jun 2 · expense</div><div class="cat">● Dining</div></div><div class="amt exp">−$24.00</div></div>
+            <div class="txn"><div><div class="meta">Jun 1 · income</div><div class="cat">● Salary</div></div><div class="amt inc">+$3,200.00</div></div>
+            <div class="txn"><div><div class="meta">May 31 · expense</div><div class="cat">● Transport</div></div><div class="amt exp">−$12.50</div></div>
+            <div class="txn"><div><div class="meta">May 30 · expense</div><div class="cat">● Groceries</div></div><div class="amt exp">−$58.20</div></div>
+          </div>
+          <nav class="tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg><span>Dashboard</span></div>
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Transactions</span></div>
+            <div class="addwrap"><div class="add">+</div><span>Add</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>Insights</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 00-1.7-1l-.3-2.5H10l-.3 2.5a7 7 0 00-1.7 1l-2.3-1-2 3.4L5.7 11a7 7 0 000 2l-2 1.6 2 3.4 2.3-1a7 7 0 001.7 1l.3 2.5h3.6l.3-2.5a7 7 0 001.7-1l2.3 1 2-3.4-2-1.6a7 7 0 00.1-1z"/></svg><span>Settings</span></div>
+          </nav>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+      <p class="caption">Transactions — filters collapse behind a “Filters (2)” toggle so the list shows immediately; search stays visible. Soft #F4F6FA canvas; white cards pop.</p>
+    </div>
+  </div>
+</body>
+</html>

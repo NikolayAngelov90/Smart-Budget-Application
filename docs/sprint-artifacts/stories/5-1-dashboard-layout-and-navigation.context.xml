@@ -71,25 +71,25 @@
   <artifacts>
     <docs>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/phase-1/PRD.md</path>
         <title>Product Requirements Document</title>
         <section>FR18</section>
         <snippet>Dashboard is default landing page after login, loads within 60 seconds. Core PRD promise of visual spending insights.</snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/phase-1/PRD.md</path>
         <title>Product Requirements Document</title>
         <section>FR44-FR46</section>
         <snippet>Responsive design requirements: mobile 320px minimum, tablet 768px breakpoint, desktop 1024px+. Touch targets 44x44px minimum on mobile.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Technical Architecture</title>
         <section>Frontend Architecture</section>
         <snippet>Next.js 15+ App Router with route groups for authenticated pages. Chakra UI 2.8+ for components with Trust Blue theme. Mobile-first responsive design.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Technical Architecture</title>
         <section>Project Structure</section>
         <snippet>Dashboard pages under src/app/(dashboard)/ route group. Layout component at src/app/(dashboard)/layout.tsx provides consistent wrapper. Shared layout components in src/components/layout/.</snippet>

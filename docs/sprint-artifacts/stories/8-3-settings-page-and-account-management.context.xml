@@ -95,19 +95,19 @@
         <snippet>Profile updates require authenticated session. Account deletion requires password re-entry via Supabase Auth. Deleted user data cascades via ON DELETE CASCADE. Profile picture uploads validated for type, size (<2MB), sanitized filenames.</snippet>
       </artifact>
       <artifact>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>Database Schema & RLS Patterns</section>
         <snippet>All tables use auth.uid() = user_id for RLS. Users can only view/modify own records. Foreign keys reference auth.users(id) with ON DELETE CASCADE. CREATE POLICY pattern: "Users can view their own X" ON table FOR SELECT USING (auth.uid() = user_id).</snippet>
       </artifact>
       <artifact>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>Authentication & API Patterns</section>
         <snippet>Supabase Auth handles email/password and social login. API routes follow RESTful convention in src/app/api/. Responses: {data: T} for success, {error: {message, code?, details?}} for failures. Forms use React Hook Form + Zod for validation.</snippet>
       </artifact>
       <artifact>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>Data Fetching with SWR</section>
         <snippet>SWR provides automatic caching and revalidation. Configuration: dedupingInterval 5s, revalidateOnFocus disabled. Optimistic updates: mutate([...data, newItem], false) for immediate UI, then revalidate.</snippet>

@@ -93,7 +93,7 @@
       </doc>
 
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart Budget Application Technical Architecture</title>
         <section>Technology Stack</section>
         <snippet>Next.js 15+ on Vercel with Supabase for database and auth. Architecture prioritizes performance (sub-2s load), type safety (TypeScript strict mode), and cloud-native design. Deployment on Vercel supports multi-instance scaling when Redis-backed rate limiting is configured.</snippet>

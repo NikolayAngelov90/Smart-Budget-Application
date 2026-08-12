@@ -253,8 +253,8 @@ const { data, error, mutate } = useSWR(
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Services-and-Modules]
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#APIs-and-Interfaces]
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Acceptance-Criteria]
-- [Source: docs/epics.md#Story-6.2]
-- [Source: docs/ux-design-specification.md#Components] (if available)
+- [Source: docs/phase-1/epics.md#Story-6.2]
+- [Source: docs/phase-1/ux-design-specification.md#Components] (if available)
 
 ## Dev Agent Record
 

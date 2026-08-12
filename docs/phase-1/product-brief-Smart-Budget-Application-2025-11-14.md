@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Archived — Phase 1.** The original product brief (2025-11-14). Not superseded by a newer brief — it is the only one.
+>
+> Current product direction lives in [../../_bmad-output/planning-artifacts/prd.md](../../_bmad-output/planning-artifacts/prd.md); read this for founding intent, not for scope.
+
 # Product Brief: Smart-Budget-Application
 
 **Date:** 2025-11-14

@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Archived — Phase 1.** Original Phase 1 UX specification (2025-11-14).
+>
+> The live UX specification is [../../_bmad-output/planning-artifacts/ux-design-specification.md](../../_bmad-output/planning-artifacts/ux-design-specification.md). The current visual language is the Quiet Ledger redesign, which supersedes the colour and type choices here.
+
 # Smart-Budget-Application UX Design Specification
 
 _Created on 2025-11-14 by Niki_
@@ -213,7 +218,7 @@ Predefined categories use distinct, accessible colors for quick visual identific
 
 **Interactive Visualizations:**
 
-- Color Theme Explorer: [ux-color-themes.html](./ux-color-themes.html) - View all 4 theme options with live component examples
+- Color Theme Explorer: [ux-color-themes.html](../ux-color-themes.html) - View all 4 theme options with live component examples
 
 ---
 
@@ -278,7 +283,7 @@ The Visual Intelligence Dashboard direction best serves the core value propositi
 
 **Interactive Mockups:**
 
-- Design Direction Showcase: [ux-design-directions.html](./ux-design-directions.html) - Explore all 6 design directions with full-screen mockups
+- Design Direction Showcase: [ux-design-directions.html](../ux-design-directions.html) - Explore all 6 design directions with full-screen mockups
 
 ---
 
@@ -865,12 +870,12 @@ These UX patterns ensure consistent behavior across the entire application, prev
 
 **Design Deliverables Created:**
 
-1. **UX Design Specification** - [docs/ux-design-specification.md](./ux-design-specification.md) (this document)
-2. **Interactive Color Theme Visualizer** - [docs/ux-color-themes.html](./ux-color-themes.html)
+1. **UX Design Specification** - [docs/phase-1/ux-design-specification.md](./ux-design-specification.md) (this document)
+2. **Interactive Color Theme Visualizer** - [docs/ux-color-themes.html](../ux-color-themes.html)
    - 4 complete color themes with live component examples
    - Side-by-side comparison
    - Real UI components in each theme
-3. **Design Direction Mockups** - [docs/ux-design-directions.html](./ux-design-directions.html)
+3. **Design Direction Mockups** - [docs/ux-design-directions.html](../ux-design-directions.html)
    - 6 full-screen design direction explorations
    - Interactive navigation between directions
    - Complete dashboard mockups showing layout, density, and hierarchy decisions
@@ -929,8 +934,8 @@ This specification provides:
 
 ### Related Documents
 
-- Product Requirements: `docs/PRD.md`
-- Product Brief: `docs/product-brief-Smart-Budget-Application-2025-11-14.md`
+- Product Requirements: `docs/phase-1/PRD.md`
+- Product Brief: `docs/phase-1/product-brief-Smart-Budget-Application-2025-11-14.md`
 
 ### Core Interactive Deliverables
 

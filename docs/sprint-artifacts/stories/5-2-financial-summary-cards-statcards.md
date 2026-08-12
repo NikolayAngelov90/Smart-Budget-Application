@@ -180,14 +180,14 @@ WHERE user_id = :id
 
 ### References
 
-- [Source: docs/PRD.md#FR19] - Dashboard shows Total Balance, Monthly Income, Monthly Expenses
-- [Source: docs/PRD.md#FR20] - Each metric shows trend indicator (percentage change vs last month)
-- [Source: docs/PRD.md#FR25] - Dashboard loads within 2 seconds
-- [Source: docs/architecture.md#Dashboard-Components] - StatCard component design, SWR usage
-- [Source: docs/ux-design-specification.md#Financial-Summary-Cards] - Visual design specs (colors, sizing, trends)
+- [Source: docs/phase-1/PRD.md#FR19] - Dashboard shows Total Balance, Monthly Income, Monthly Expenses
+- [Source: docs/phase-1/PRD.md#FR20] - Each metric shows trend indicator (percentage change vs last month)
+- [Source: docs/phase-1/PRD.md#FR25] - Dashboard loads within 2 seconds
+- [Source: docs/phase-1/architecture.md#Dashboard-Components] - StatCard component design, SWR usage
+- [Source: docs/phase-1/ux-design-specification.md#Financial-Summary-Cards] - Visual design specs (colors, sizing, trends)
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#Dashboard-Stats-API] - API contract, SQL implementation
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#StatCard-Component] - Component props, Chakra UI usage
-- [Source: docs/epics.md#Story-5.2] - Full acceptance criteria and technical notes
+- [Source: docs/phase-1/epics.md#Story-5.2] - Full acceptance criteria and technical notes
 
 ## Dev Agent Record
 

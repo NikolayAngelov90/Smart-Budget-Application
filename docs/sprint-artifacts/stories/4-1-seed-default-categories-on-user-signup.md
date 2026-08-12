@@ -189,8 +189,8 @@ so that I can immediately start categorizing transactions without manual setup.
 
 **Source Documents**:
 - [Technical Specification: Epic 4](docs/sprint-artifacts/tech-spec-epic-4.md#acceptance-criteria) - AC1, Workflow 1
-- [PRD](docs/PRD.md) - FR11 (expense categories), FR12 (income categories)
-- [Architecture](docs/architecture.md) - Database schema lines 366-375, seed data lines 484-499
+- [PRD](docs/phase-1/PRD.md) - FR11 (expense categories), FR12 (income categories)
+- [Architecture](docs/phase-1/architecture.md) - Database schema lines 366-375, seed data lines 484-499
 
 **Tech Spec Details**:
 - Default categories list: [tech-spec-epic-4.md lines 151-167](docs/sprint-artifacts/tech-spec-epic-4.md#L151-L167)

@@ -343,7 +343,7 @@ if (!isFirstOfMonth) {
 
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Workflows-and-Sequencing]
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Acceptance-Criteria]
-- [Source: docs/epics.md#Story-6.5]
+- [Source: docs/phase-1/epics.md#Story-6.5]
 - [Source: Vercel docs: Cron Jobs configuration]
 - [Source: Next.js docs: API Routes, environment variables]
 - [Source: Chakra UI docs: useToast, Button, Spinner]

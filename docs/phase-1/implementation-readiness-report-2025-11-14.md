@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Archived — Phase 1.** Phase 1 readiness assessment (2025-11-14).
+>
+> Superseded by the later gate checks [../../_bmad-output/planning-artifacts/implementation-readiness-report-2026-03-25.md](../../_bmad-output/planning-artifacts/implementation-readiness-report-2026-03-25.md) and [../../_bmad-output/planning-artifacts/implementation-readiness-report-2026-06-02.md](../../_bmad-output/planning-artifacts/implementation-readiness-report-2026-06-02.md).
+
 # Smart-Budget-Application - Implementation Readiness Assessment
 
 **Author:** BMad Solutioning Gate Check Workflow
@@ -34,7 +39,7 @@ The Smart-Budget-Application has completed all required planning and solutioning
 ### 1.1 Available Documents
 
 **✅ Product Requirements Document (PRD)**
-- **File:** [docs/PRD.md](../docs/PRD.md)
+- **File:** [docs/phase-1/PRD.md](./PRD.md)
 - **Size:** 583 lines
 - **Status:** Complete
 - **Quality:** Excellent - comprehensive MVP scope, 47 FRs, clear success criteria, NFRs specified
@@ -46,7 +51,7 @@ The Smart-Budget-Application has completed all required planning and solutioning
   - Growth features roadmap (Phase 2 & 3)
 
 **✅ Technical Architecture**
-- **File:** [docs/architecture.md](../docs/architecture.md)
+- **File:** [docs/phase-1/architecture.md](./architecture.md)
 - **Size:** 1,112 lines
 - **Status:** Complete
 - **Quality:** Excellent - comprehensive technical design with full schema and API contracts
@@ -62,7 +67,7 @@ The Smart-Budget-Application has completed all required planning and solutioning
   - Security architecture (RLS, authentication)
 
 **✅ UX Design Specification**
-- **File:** [docs/ux-design-specification.md](../docs/ux-design-specification.md)
+- **File:** [docs/phase-1/ux-design-specification.md](./ux-design-specification.md)
 - **Size:** 945 lines
 - **Status:** Complete
 - **Quality:** Excellent - detailed design system with interactive mockups
@@ -871,11 +876,11 @@ All UX components map to architecture file paths. All design system choices (Cha
 
 ### 9.2 Reference Documents
 
-- Product Requirements: [docs/PRD.md](../docs/PRD.md)
-- Technical Architecture: [docs/architecture.md](../docs/architecture.md)
-- UX Design Specification: [docs/ux-design-specification.md](../docs/ux-design-specification.md)
-- Product Brief: [docs/product-brief-Smart-Budget-Application-2025-11-14.md](../docs/product-brief-Smart-Budget-Application-2025-11-14.md)
-- Workflow Status: [docs/bmm-workflow-status.yaml](../docs/bmm-workflow-status.yaml)
+- Product Requirements: [docs/phase-1/PRD.md](./PRD.md)
+- Technical Architecture: [docs/phase-1/architecture.md](./architecture.md)
+- UX Design Specification: [docs/phase-1/ux-design-specification.md](./ux-design-specification.md)
+- Product Brief: [docs/phase-1/product-brief-Smart-Budget-Application-2025-11-14.md](./product-brief-Smart-Budget-Application-2025-11-14.md)
+- Workflow Status: [docs/bmm-workflow-status.yaml](../bmm-workflow-status.yaml)
 
 ### 9.3 Workflow Metadata
 

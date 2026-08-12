@@ -142,12 +142,12 @@ So that I can access all features and see my financial overview immediately.
 
 ### References
 
-- [Source: docs/PRD.md#FR18] - Dashboard is default landing page, loads within 60s
-- [Source: docs/PRD.md#FR44-FR46] - Responsive design requirements (mobile 320px, tablet 768px, desktop 1024px+)
-- [Source: docs/architecture.md#Frontend-Architecture] - Next.js App Router structure, Chakra UI components
-- [Source: docs/ux-design-specification.md#Dashboard-Layout] - Sidebar navigation design, active state styling
+- [Source: docs/phase-1/PRD.md#FR18] - Dashboard is default landing page, loads within 60s
+- [Source: docs/phase-1/PRD.md#FR44-FR46] - Responsive design requirements (mobile 320px, tablet 768px, desktop 1024px+)
+- [Source: docs/phase-1/architecture.md#Frontend-Architecture] - Next.js App Router structure, Chakra UI components
+- [Source: docs/phase-1/ux-design-specification.md#Dashboard-Layout] - Sidebar navigation design, active state styling
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#Dashboard-Layout] - Layout component design, responsive strategy
-- [Source: docs/epics.md#Story-5.1] - Full acceptance criteria and technical notes
+- [Source: docs/phase-1/epics.md#Story-5.1] - Full acceptance criteria and technical notes
 
 ## Dev Agent Record
 

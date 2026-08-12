@@ -176,15 +176,15 @@ So that I can explore my data in more detail.
 
 ### References
 
-- [Source: docs/PRD.md#FR28] - Clickable charts drill down to filtered transactions
-- [Source: docs/PRD.md#FR23] - Hover tooltips with exact values
-- [Source: docs/PRD.md#FR26] - Chart updates and interactivity targets
-- [Source: docs/PRD.md#FR46] - Touch targets 44x44px minimum on mobile
-- [Source: docs/architecture.md#Navigation-Patterns] - Client-side navigation with query params
-- [Source: docs/ux-design-specification.md#Chart-Interactivity] - Cursor feedback, drill-down UX
+- [Source: docs/phase-1/PRD.md#FR28] - Clickable charts drill down to filtered transactions
+- [Source: docs/phase-1/PRD.md#FR23] - Hover tooltips with exact values
+- [Source: docs/phase-1/PRD.md#FR26] - Chart updates and interactivity targets
+- [Source: docs/phase-1/PRD.md#FR46] - Touch targets 44x44px minimum on mobile
+- [Source: docs/phase-1/architecture.md#Navigation-Patterns] - Client-side navigation with query params
+- [Source: docs/phase-1/ux-design-specification.md#Chart-Interactivity] - Cursor feedback, drill-down UX
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#Chart-Interactivity] - Recharts onClick implementation
-- [Source: docs/epics.md#Story-5.6] - Full acceptance criteria and technical notes
-- [Source: docs/epics.md#Story-3.2] - Transaction list filtering (prerequisite)
+- [Source: docs/phase-1/epics.md#Story-5.6] - Full acceptance criteria and technical notes
+- [Source: docs/phase-1/epics.md#Story-3.2] - Transaction list filtering (prerequisite)
 
 ## Dev Agent Record
 

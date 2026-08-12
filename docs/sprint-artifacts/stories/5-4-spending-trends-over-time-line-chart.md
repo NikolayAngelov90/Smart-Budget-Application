@@ -196,15 +196,15 @@ ORDER BY month
 
 ### References
 
-- [Source: docs/PRD.md#FR24] - Line chart showing income vs expenses over 6 months
-- [Source: docs/PRD.md#FR23] - Hover tooltips show exact amounts
-- [Source: docs/PRD.md#FR26] - Chart updates in real-time (<300ms)
-- [Source: docs/PRD.md#FR45] - Mobile responsive design
-- [Source: docs/architecture.md#Recharts-Integration] - Recharts for line charts
-- [Source: docs/ux-design-specification.md#Spending-Trends-Chart] - Line chart design, colors, grid
+- [Source: docs/phase-1/PRD.md#FR24] - Line chart showing income vs expenses over 6 months
+- [Source: docs/phase-1/PRD.md#FR23] - Hover tooltips show exact amounts
+- [Source: docs/phase-1/PRD.md#FR26] - Chart updates in real-time (<300ms)
+- [Source: docs/phase-1/PRD.md#FR45] - Mobile responsive design
+- [Source: docs/phase-1/architecture.md#Recharts-Integration] - Recharts for line charts
+- [Source: docs/phase-1/ux-design-specification.md#Spending-Trends-Chart] - Line chart design, colors, grid
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#Trends-API] - API contract, SQL implementation
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#SpendingTrends-Component] - Recharts LineChart usage
-- [Source: docs/epics.md#Story-5.4] - Full acceptance criteria and technical notes
+- [Source: docs/phase-1/epics.md#Story-5.4] - Full acceptance criteria and technical notes
 
 ## Dev Agent Record
 

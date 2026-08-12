@@ -39,31 +39,31 @@
   <artifacts>
     <docs>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Technical Architecture - Project Initialization</title>
         <section>Project Initialization (lines 34-40)</section>
         <snippet>First implementation story should execute: npx create-next-app@latest smart-budget-application --example https://github.com/agustinusnathaniel/nextarter-chakra. This establishes the base architecture with decisions on Language/TypeScript, Styling (Chakra UI), and project structure.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Technical Architecture - Project Structure</title>
         <section>Project Structure (lines 66-203)</section>
         <snippet>Complete Next.js App Router structure with route groups: (auth) for authentication pages and (dashboard) for main application. Feature-based organization in src/components with layout, transactions, dashboard, categories subdirectories. Theme customization in src/theme/ including colors.ts for Trust Blue palette.</snippet>
       </doc>
       <doc>
-        <path>docs/ux-design-specification.md</path>
+        <path>docs/phase-1/ux-design-specification.md</path>
         <title>UX Design - Trust Blue Color Theme</title>
         <section>Visual Foundation - Color System (lines 135-175)</section>
         <snippet>Primary color #2b6cb0 (Trust Blue) for main actions and brand elements. Complete color palette includes semantic colors for success (#38a169), warning (#dd6b20), error (#e53e3e). Typography uses system font stack with Trust Blue theme applied via Chakra UI.</snippet>
       </doc>
       <doc>
-        <path>docs/ux-design-specification.md</path>
+        <path>docs/phase-1/ux-design-specification.md</path>
         <title>UX Design - Design System Choice</title>
         <section>Design System Foundation (lines 33-64)</section>
         <snippet>Chakra UI v2.8+ selected for built-in accessibility (WCAG 2.1 compliant), excellent developer experience, moderate bundle size meeting <500KB gzipped requirement. Provides 50+ components out of the box including layout, forms, feedback, and navigation components.</snippet>
       </doc>
       <doc>
-        <path>docs/epics.md</path>
+        <path>docs/phase-1/epics.md</path>
         <title>Epic 1 - Story 1.1 Details</title>
         <section>Story 1.1: Project Initialization and Base Setup (lines 122-149)</section>
         <snippet>Initialize Next.js project using Nextarter Chakra starter. Configure TypeScript strict mode, ESLint and Prettier. Set up src/ directory structure with app/, components/, lib/, types/, theme/ folders. Create initial Chakra theme with Trust Blue color palette. Verify dependencies: Next.js 15+, Chakra UI 2.8+, TypeScript 5+.</snippet>

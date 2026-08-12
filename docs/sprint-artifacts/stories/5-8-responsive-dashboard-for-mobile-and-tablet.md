@@ -216,14 +216,14 @@ So that I can check my finances on the go.
 
 ### References
 
-- [Source: docs/PRD.md#FR44] - Mobile responsive: 320px minimum width
-- [Source: docs/PRD.md#FR45] - Tablet responsive: 768px breakpoint
-- [Source: docs/PRD.md#FR46] - Touch targets 44x44px minimum
-- [Source: docs/architecture.md#Responsive-Design] - Chakra UI breakpoints, mobile-first
-- [Source: docs/ux-design-specification.md#Responsive-Layouts] - Breakpoint designs for all devices
+- [Source: docs/phase-1/PRD.md#FR44] - Mobile responsive: 320px minimum width
+- [Source: docs/phase-1/PRD.md#FR45] - Tablet responsive: 768px breakpoint
+- [Source: docs/phase-1/PRD.md#FR46] - Touch targets 44x44px minimum
+- [Source: docs/phase-1/architecture.md#Responsive-Design] - Chakra UI breakpoints, mobile-first
+- [Source: docs/phase-1/ux-design-specification.md#Responsive-Layouts] - Breakpoint designs for all devices
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#Responsive-Strategy] - Layout grid, Recharts responsive
-- [Source: docs/epics.md#Story-5.8] - Full acceptance criteria and technical notes
-- [Source: docs/epics.md#Story-5.1] - Sidebar responsive behavior (prerequisite)
+- [Source: docs/phase-1/epics.md#Story-5.8] - Full acceptance criteria and technical notes
+- [Source: docs/phase-1/epics.md#Story-5.1] - Sidebar responsive behavior (prerequisite)
 
 ## Dev Agent Record
 

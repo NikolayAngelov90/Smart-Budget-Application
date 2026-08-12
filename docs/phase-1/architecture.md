@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Archived — Phase 1.** Original Phase 1 architecture (2025-11-14).
+>
+> The live architecture doc is [../../_bmad-output/planning-artifacts/architecture.md](../../_bmad-output/planning-artifacts/architecture.md). Cross-cutting conventions that are still authoritative live in [../api-conventions.md](../api-conventions.md) and [../testing-guidelines.md](../testing-guidelines.md).
+
 # Smart-Budget-Application - Technical Architecture
 
 **Author:** Niki

@@ -93,7 +93,7 @@
 
       <!-- Architecture -->
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>Navigation Patterns</section>
         <snippet>Client-side navigation with query params using Next.js App Router. Transaction list filtering supports URL parameters for category and date ranges.</snippet>
@@ -101,7 +101,7 @@
 
       <!-- UX Design -->
       <doc>
-        <path>docs/ux-design-specification.md</path>
+        <path>docs/phase-1/ux-design-specification.md</path>
         <title>UX Design Specification</title>
         <section>Chart Interactivity</section>
         <snippet>Cursor feedback on hover (pointer), drill-down UX pattern navigates same tab with back button. Touch targets minimum 44x44px on mobile.</snippet>
@@ -109,7 +109,7 @@
 
       <!-- PRD References -->
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/phase-1/PRD.md</path>
         <title>Product Requirements Document</title>
         <section>FR28: Interactive Charts</section>
         <snippet>Clickable charts drill down to filtered transactions. FR23: Hover tooltips with exact values. FR46: Touch targets 44x44px minimum on mobile.</snippet>
