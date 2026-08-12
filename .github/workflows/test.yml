@@ -107,8 +107,15 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
+      # TEMPORARY PROBE — this build PASSES while the identical commit fails the
+      # deploy job's build. Names only, never values. Remove once the difference
+      # between the two jobs is settled.
       - name: Build production app for benchmarks
-        run: npm run build
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE var count: $(env | grep -c NEXT_PUBLIC_SUPABASE || true)"
+          echo "build-relevant vars visible to this job:"
+          env | grep -oE '^(NEXT_PUBLIC_[A-Z_]+|VAPID_[A-Z_]+|SUPABASE_[A-Z_]+|UPSTASH_[A-Z_]+|BENCHMARK_MODE|CRON_SECRET)' | sort || true
+          npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
@@ -285,7 +292,17 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-        run: node scripts/pre-deployment-check.js
+        # TEMPORARY PROBE — same two lines as the benchmark build above, so the
+        # two environments can be compared directly instead of argued about.
+        # `next build` runs as a CHILD of this script and inherits exactly what
+        # is printed here; Next.js does not read .vercel/.env.production.local.
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE var count: $(env | grep -c NEXT_PUBLIC_SUPABASE || true)"
+          echo "build-relevant vars visible to this job:"
+          env | grep -oE '^(NEXT_PUBLIC_[A-Z_]+|VAPID_[A-Z_]+|SUPABASE_[A-Z_]+|UPSTASH_[A-Z_]+|BENCHMARK_MODE|CRON_SECRET)' | sort || true
+          echo "--- .vercel/.env.production.local keys (names only) ---"
+          [ -f .vercel/.env.production.local ] && grep -oE '^[A-Z_]+' .vercel/.env.production.local | sort || echo "(file absent)"
+          node scripts/pre-deployment-check.js
 
       - name: Build Project Artifacts
         env:
