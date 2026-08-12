@@ -84,3 +84,70 @@ describe('loadPersistedEntries', () => {
     expect(localStorage.getItem(VERSION_KEY)).toBe(CURRENT_VERSION);
   });
 });
+
+/**
+ * HP-7: the persisted cache grew without bound.
+ *
+ * Every dated SWR key (`?today=YYYY-MM-DD`) mints a NEW key each day — roughly
+ * six of them — and nothing removed the old ones. `metadata.keys` only ever
+ * grew, so each write paid an O(n) `includes()` scan plus a full metadata
+ * re-serialise, and each mount read and re-hydrated every dead day.
+ *
+ * The 50MB limit did not save it either: these entries are tiny, so the cache
+ * could hold thousands of dead days without approaching the ceiling — and on
+ * reaching it the provider printed a warning and silently stopped persisting
+ * anything new, freezing rather than rotating.
+ */
+describe('dated cache keys are pruned', () => {
+  const today = new Date().toISOString().slice(0, 10);
+
+  it('drops entries pinned to a day that is not today', () => {
+    localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+    seedEntry(`/api/budgets?today=2020-01-01`, { data: { stale: true } });
+    seedEntry(`/api/budgets?today=${today}`, { data: { fresh: true } });
+
+    const entries = loadPersistedEntries();
+
+    expect(entries.map(([k]) => k)).toEqual([`/api/budgets?today=${today}`]);
+    // Removed from storage, not merely skipped — otherwise it still costs a
+    // scan and a read on every future mount.
+    expect(localStorage.getItem(`${PREFIX}-/api/budgets?today=2020-01-01`)).toBeNull();
+  });
+
+  it('shrinks the key list so writes stop paying for dead days', () => {
+    localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+    for (const day of ['2020-01-01', '2020-01-02', '2020-01-03']) {
+      seedEntry(`/api/wishlist?today=${day}`, { data: { day } });
+    }
+    seedEntry(`/api/wishlist?today=${today}`, { data: { day: today } });
+
+    loadPersistedEntries();
+
+    const meta = JSON.parse(localStorage.getItem(META_KEY)!);
+    expect(meta.keys).toEqual([`/api/wishlist?today=${today}`]);
+  });
+
+  it('leaves undated keys alone', () => {
+    // Most of the cache is not dated; pruning must not touch it.
+    localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+    seedEntry('/api/categories', { data: ['a'] });
+    seedEntry('/api/transactions?page=2', { data: ['b'] });
+
+    const entries = loadPersistedEntries();
+
+    expect(entries.map(([k]) => k).sort()).toEqual([
+      '/api/categories',
+      '/api/transactions?page=2',
+    ]);
+  });
+
+  it('keeps a key whose date merely looks similar', () => {
+    // Guards the regex: `?today=` must match the whole day, not a prefix.
+    localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+    seedEntry(`/api/score?today=${today}&period=year`, { data: { ok: true } });
+
+    const entries = loadPersistedEntries();
+
+    expect(entries).toHaveLength(1);
+  });
+});

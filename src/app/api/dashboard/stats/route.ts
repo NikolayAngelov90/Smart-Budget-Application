@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
     // pre-16.6 callers and keep their original whole-window comparison.
     const currentDate = monthParam
       ? new Date(`${monthParam}-01T00:00:00`)
-      : resolveClientToday(searchParams.get('today'));
+      : resolveClientToday(searchParams.get('today'), searchParams.get('tz'));
     const ranges = resolvePeriodRanges(monthParam ? 'month' : period, currentDate, {
       comparePartial: !monthParam && periodParam !== null,
     });

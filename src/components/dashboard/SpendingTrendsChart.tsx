@@ -9,8 +9,9 @@
  * Displays a line chart showing income vs expenses trends over the last 6 months
  */
 
+import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Box,
   Text,
@@ -39,6 +40,7 @@ import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatCurrency } from '@/lib/utils/currency';
 import { useChartColors } from '@/lib/hooks/useChartColors';
+import { getDateLocale } from '@/lib/utils/dateFormatter';
 
 /**
  * Component props
@@ -68,6 +70,27 @@ export function SpendingTrendsChart({
   height = 300,
 }: SpendingTrendsChartProps) {
   const t = useTranslations('dashboard');
+  const locale = useLocale();
+  const dateLocale = getDateLocale(locale);
+
+  /**
+   * Month names in the user's language.
+   *
+   * The route emits `monthLabel` as `format(date, 'MMM')` with no locale, so a
+   * Bulgarian user read "Jan / Feb / Mar" on the axis, in the tooltip and in
+   * the hidden data table. Formatting here rather than sending a locale to the
+   * API keeps the response locale-free and cacheable, and reuses the mapping
+   * every other date in the app already goes through.
+   *
+   * `monthKey` is `YYYY-MM`; parsed as `-01` at midday so no timezone can push
+   * it into the previous month. Falls back to the server's label if the key is
+   * ever malformed — a wrong-language month beats a blank axis.
+   */
+  const localMonthLabel = (monthKey: string, fallback: string): string => {
+    const parsed = new Date(`${monthKey}-01T12:00:00`);
+    if (Number.isNaN(parsed.getTime())) return fallback;
+    return format(parsed, 'LLL', dateLocale ? { locale: dateLocale } : undefined);
+  };
   // `ssr: false` so this resolves on the first CLIENT render instead of
   // returning `undefined` and then flipping. Without it a phone painted "Last 6
   // months", fired a `months=6` request, then re-rendered to 3 and fired a
@@ -159,7 +182,7 @@ export function SpendingTrendsChart({
   // Transform data for Recharts
   const chartData: LineChartDataPoint[] =
     data?.months.map((monthData: MonthlyTrendData) => ({
-      month: monthData.monthLabel,
+      month: localMonthLabel(monthData.month, monthData.monthLabel),
       monthYYYYMM: monthData.month, // YYYY-MM format for navigation
       income: monthData.income,
       expenses: monthData.expenses,
@@ -316,7 +339,7 @@ export function SpendingTrendsChart({
         <tbody>
           {data?.months.map((monthData: MonthlyTrendData) => (
             <tr key={monthData.month}>
-              <td>{monthData.monthLabel}</td>
+              <td>{localMonthLabel(monthData.month, monthData.monthLabel)}</td>
               <td>{formatCurrency(monthData.income, undefined, currencyCode)}</td>
               <td>{formatCurrency(monthData.expenses, undefined, currencyCode)}</td>
               <td>{formatCurrency(monthData.net, undefined, currencyCode)}</td>

@@ -8,7 +8,7 @@
 
 import useSWR from 'swr';
 import type { BudgetsResponse } from '@/types/database.types';
-import { clientTodayParam } from '@/lib/utils/date';
+import { useDatedParams } from '@/lib/hooks/useClientToday';
 
 /**
  * The KEY constants are now PREFIXES, not whole keys: each request carries the
@@ -22,8 +22,8 @@ import { clientTodayParam } from '@/lib/utils/date';
 export const BUDGETS_KEY = '/api/budgets';
 
 /** Full request URL for the client's current local day. */
-function budgetsUrl(): string {
-  return `${BUDGETS_KEY}?today=${clientTodayParam()}`;
+function budgetsUrl(dated: string): string {
+  return `${BUDGETS_KEY}?${dated}`;
 }
 
 async function fetcher(url: string): Promise<BudgetsResponse> {
@@ -41,8 +41,16 @@ export interface UseBudgetsResult {
   mutate: () => void;
 }
 
+/**
+ * HP-7: the day comes from `useClientToday()`, which re-renders when the
+ * local day changes. Calling `clientTodayParam()` inline looked equivalent
+ * but only recomputed on a render that happened for some OTHER reason — an
+ * idle tab kept yesterday's key and `revalidateOnFocus` refetched that same
+ * stale key, so a dashboard left open overnight showed last month on the 1st.
+ */
 export function useBudgets(): UseBudgetsResult {
-  const { data, error, isLoading, mutate } = useSWR<BudgetsResponse>(budgetsUrl(), fetcher, {
+  const dated = useDatedParams();
+  const { data, error, isLoading, mutate } = useSWR<BudgetsResponse>(budgetsUrl(dated), fetcher, {
     dedupingInterval: 5000,
     revalidateOnFocus: true,
     revalidateOnReconnect: true,

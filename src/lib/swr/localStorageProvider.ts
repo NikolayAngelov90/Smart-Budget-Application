@@ -4,6 +4,8 @@
  * Implements cache size monitoring (max 50MB) and expiration
  */
 
+import { toLocalISODate } from '@/lib/utils/date';
+
 const CACHE_SIZE_LIMIT = 50 * 1024 * 1024; // 50MB in bytes
 const CACHE_KEY_PREFIX = 'smart-budget-swr-cache';
 const CACHE_METADATA_KEY = 'smart-budget-cache-metadata';
@@ -15,7 +17,27 @@ interface CacheMetadata {
   cacheTimestamp: number;
   totalSize: number;
   keys: string[];
+  /**
+   * key -> last write time, for LRU eviction.
+   *
+   * Added in HP-7. Before this the provider had no recency information at all,
+   * so on reaching the size limit it printed a warning and silently stopped
+   * persisting anything new — the cache froze rather than rotating.
+   */
+  lastAccess?: Record<string, number>;
 }
+
+/**
+ * A persisted key that pins a specific calendar day, e.g.
+ * `/api/budgets?today=2026-08-11`.
+ *
+ * Six or so of these are minted every day (budgets, wishlist, what-if,
+ * forecast, score, spending-by-category × period), and nothing ever removed
+ * them: `metadata.keys` only grew. That made `includes()` an O(n) scan plus a
+ * full metadata re-serialise on EVERY cache write, and made
+ * `loadPersistedEntries()` read and re-hydrate every dead day at mount.
+ */
+const DATED_KEY = /[?&]today=(\d{4}-\d{2}-\d{2})/;
 
 /**
  * Calculate approximate size of a value in bytes
@@ -116,6 +138,46 @@ export function clearSWRCache(): void {
 }
 
 /**
+ * Drop persisted entries pinned to a day that is not today.
+ *
+ * The size-based LRU alone would not fix this: these entries are small, so the
+ * cache could hold thousands of dead days without ever reaching 50MB, while
+ * every write paid an O(n) `includes()` scan and every mount re-hydrated the
+ * lot. A yesterday-key is also worthless by definition — nothing will ever
+ * request it again, because the key embeds the day.
+ *
+ * Runs once per mount, before hydration, so the dead days never reach SWR.
+ */
+function pruneStaleDatedKeys(metadata: CacheMetadata): CacheMetadata {
+  const today = toLocalISODate(new Date());
+  const stale = metadata.keys.filter((key) => {
+    const match = DATED_KEY.exec(key);
+    return match !== null && match[1] !== today;
+  });
+
+  if (stale.length === 0) return metadata;
+
+  const access = { ...(metadata.lastAccess ?? {}) };
+  let freed = 0;
+  for (const key of stale) {
+    const stored = localStorage.getItem(`${CACHE_KEY_PREFIX}-${key}`);
+    if (stored) freed += getItemSize(stored);
+    localStorage.removeItem(`${CACHE_KEY_PREFIX}-${key}`);
+    delete access[key];
+  }
+
+  const staleSet = new Set(stale);
+  const pruned: CacheMetadata = {
+    ...metadata,
+    keys: metadata.keys.filter((k) => !staleSet.has(k)),
+    lastAccess: access,
+    totalSize: Math.max(metadata.totalSize - freed, 0),
+  };
+  updateCacheMetadata(pruned);
+  return pruned;
+}
+
+/**
  * Read the persisted SWR entries from localStorage.
  *
  * Returns the `[key, state]` pairs (state is SWR's stored cache value, i.e.
@@ -146,7 +208,7 @@ export function loadPersistedEntries(): Array<[string, any]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const entries: Array<[string, any]> = [];
   try {
-    const metadata = getCacheMetadata();
+    const metadata = pruneStaleDatedKeys(getCacheMetadata());
     metadata.keys.forEach((key) => {
       try {
         const item = localStorage.getItem(`${CACHE_KEY_PREFIX}-${key}`);
@@ -216,14 +278,38 @@ export function localStorageProvider(): Map<string, any> {
       const existingSize = existingItem ? getItemSize(existingItem) : 0;
       const newTotalSize = metadata.totalSize - existingSize + itemSize;
 
-      if (newTotalSize > CACHE_SIZE_LIMIT) {
-        console.warn(
-          `Cache size limit exceeded: ${(newTotalSize / (1024 * 1024)).toFixed(2)}MB > ${(CACHE_SIZE_LIMIT / (1024 * 1024)).toFixed(2)}MB`
-        );
+      let projectedSize = newTotalSize;
 
-        // Optionally, implement LRU eviction here
-        // For now, just warn and don't cache this item
-        return originalSet(key, value);
+      if (projectedSize > CACHE_SIZE_LIMIT) {
+        // Evict least-recently-written entries until this one fits.
+        //
+        // This used to warn and return, which froze the cache: nothing new was
+        // ever persisted again, with only a console message to say so. Evicting
+        // is what the original TODO intended and what a size limit implies.
+        const access = metadata.lastAccess ?? {};
+        const evictable = metadata.keys
+          .filter((k) => k !== key)
+          .sort((a, b) => (access[a] ?? 0) - (access[b] ?? 0));
+
+        for (const victim of evictable) {
+          if (projectedSize <= CACHE_SIZE_LIMIT) break;
+          const stored = localStorage.getItem(`${CACHE_KEY_PREFIX}-${victim}`);
+          localStorage.removeItem(`${CACHE_KEY_PREFIX}-${victim}`);
+          projectedSize -= stored ? getItemSize(stored) : 0;
+          metadata.keys = metadata.keys.filter((k) => k !== victim);
+          delete access[victim];
+        }
+        metadata.lastAccess = access;
+
+        if (projectedSize > CACHE_SIZE_LIMIT) {
+          // A single entry larger than the whole budget. Keep it in memory and
+          // leave the persisted cache as it is.
+          console.warn(
+            `Cache entry too large to persist: ${(itemSize / (1024 * 1024)).toFixed(2)}MB`
+          );
+          updateCacheMetadata({ ...metadata, totalSize: Math.max(projectedSize - itemSize, 0) });
+          return originalSet(key, value);
+        }
       }
 
       // Save to localStorage
@@ -233,7 +319,8 @@ export function localStorageProvider(): Map<string, any> {
       if (!metadata.keys.includes(key)) {
         metadata.keys.push(key);
       }
-      metadata.totalSize = newTotalSize;
+      metadata.lastAccess = { ...(metadata.lastAccess ?? {}), [key]: Date.now() };
+      metadata.totalSize = projectedSize;
       metadata.cacheTimestamp = Date.now();
       updateCacheMetadata(metadata);
     } catch (error) {

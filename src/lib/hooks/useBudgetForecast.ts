@@ -8,7 +8,7 @@
 
 import useSWR, { type KeyedMutator } from 'swr';
 import type { CategoryForecast, ForecastResponse } from '@/types/database.types';
-import { clientTodayParam } from '@/lib/utils/date';
+import { useDatedParams } from '@/lib/hooks/useClientToday';
 
 /** PREFIX, not a whole key — requests carry the client's local `?today=`. */
 export const BUDGET_FORECAST_KEY = '/api/dashboard/budget-forecast';
@@ -22,9 +22,17 @@ export interface UseBudgetForecastResult {
   mutate: KeyedMutator<ForecastResponse>;
 }
 
+/**
+ * HP-7: the day comes from `useClientToday()`, which re-renders when the
+ * local day changes. Calling `clientTodayParam()` inline looked equivalent
+ * but only recomputed on a render that happened for some OTHER reason — an
+ * idle tab kept yesterday's key and `revalidateOnFocus` refetched that same
+ * stale key, so a dashboard left open overnight showed last month on the 1st.
+ */
 export function useBudgetForecast(): UseBudgetForecastResult {
+  const dated = useDatedParams();
   const { data, error, isLoading, mutate } = useSWR<ForecastResponse>(
-    `${BUDGET_FORECAST_KEY}?today=${clientTodayParam()}`,
+    `${BUDGET_FORECAST_KEY}?${dated}`,
     async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) {
