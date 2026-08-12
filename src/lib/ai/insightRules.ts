@@ -271,8 +271,22 @@ export function flagUnusualExpense(input: RuleInput): InsightInsert | null {
   const mean = calculateMean(amounts);
   const stdDev = calculateStdDev(amounts, mean);
 
-  // Find outlier transactions (>2 standard deviations)
-  const outliers = transactions.filter((t) => isOutlier(t.amount, mean, stdDev, 2));
+  // Find outlier transactions (>2 standard deviations ABOVE the mean).
+  //
+  // `isOutlier` is deliberately two-sided — it measures |value - mean| — so it
+  // answers "is this unusual", not "is this large". Without the `> mean` filter
+  // this rule fired on transactions 2σ BELOW the mean and then described them
+  // with hardcoded "much higher than your typical" copy, at priority 5. A real
+  // card read "Unusual Dining expense: €13.72 — much higher than your typical
+  // €34.00" while its own metadata said -2.1σ. Backwards advice in a budgeting
+  // app is worse than no advice.
+  //
+  // An unusually LOW spend is not an unusual EXPENSE. If it is ever worth
+  // surfacing it belongs in positive_reinforcement with its own copy, not here
+  // — this rule's voice is the most urgent one the product has.
+  const outliers = transactions.filter(
+    (t) => t.amount > mean && isOutlier(t.amount, mean, stdDev, 2)
+  );
 
   if (outliers.length === 0) {
     return null;
