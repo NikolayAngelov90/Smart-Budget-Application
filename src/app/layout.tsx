@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
-import { Space_Grotesk, Onest } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Providers } from './providers';
 import './globals.css';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -16,18 +16,30 @@ import { ServiceWorkerRegistrar } from '@/components/pwa/ServiceWorkerRegistrar'
  * Onest via the font stack in the Chakra theme — numerals are locale-neutral.)
  * Onest — the calm, highly legible UI/body face; ships Latin + Cyrillic so the
  * Bulgarian locale stays first-class.
+ *
+ * SELF-HOSTED, and that is load-bearing rather than a preference. These came
+ * from `next/font/google`, which fetches ~14 woff2 files from fonts.gstatic.com
+ * DURING `next build` — so a Google Fonts hiccup failed the deploy outright
+ * ("Failed to fetch `Onest` from Google Fonts"). Fonts were the only network
+ * access on the build path. Do not reintroduce `next/font/google`; there is a
+ * guard test for it. See src/fonts/README.md.
+ *
+ * One variable file per family replaces the fourteen static subsets, so the
+ * weight ranges below are axis ranges, not a fixed list.
  */
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+const spaceGrotesk = localFont({
+  src: '../fonts/SpaceGrotesk-Variable.woff2',
+  weight: '300 700', // upstream wght axis; covers the 400-700 actually used
+  style: 'normal',
   variable: '--font-space-grotesk',
   display: 'swap',
   fallback: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
 });
 
-const onest = Onest({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '600', '700', '800'],
+const onest = localFont({
+  src: '../fonts/Onest-Variable.woff2',
+  weight: '100 900', // upstream wght axis; covers the 400-800 actually used
+  style: 'normal',
   variable: '--font-onest',
   display: 'swap',
   fallback: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
