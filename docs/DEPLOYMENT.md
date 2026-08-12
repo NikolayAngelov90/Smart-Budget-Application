@@ -168,7 +168,9 @@ NEXT_PUBLIC_APP_URL=https://your-project.vercel.app
 - [ ] Ensure categories table has user_id filter
 
 **Database Schema:**
-- [ ] Run all migrations from `supabase/migrations/`
+- [ ] Migrations apply themselves on merge to `main` — confirm the **Supabase
+      Preview** check is green on the merge commit rather than running them by
+      hand (see [deployment-checklist.md](deployment-checklist.md#2-database-migrations))
 - [ ] Verify all tables exist: `profiles`, `transactions`, `categories`, `insights`
 - [ ] Check indexes are created for performance
 - [ ] Verify foreign key constraints
