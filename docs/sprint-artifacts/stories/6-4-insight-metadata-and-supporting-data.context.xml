@@ -143,7 +143,7 @@
         <snippet>AIInsightCard component renders individual insight card with color coding, icons, priority badges, and dismiss button. Story 6.4 extends this with expandable metadata section. InsightDetailModal for mobile full-screen view. InsightMetadata component renders type-specific metadata fields.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart Budget Application - Technical Architecture</title>
         <section>UI Framework and Responsive Design</section>
         <snippet>Chakra UI v2.8 provides Accordion, Disclosure, Modal components for expandable content. Use useBreakpointValue hook for conditional rendering based on viewport. Pattern: const isMobile = useBreakpointValue({ base: true, md: false }). Mobile-first approach with responsive props.</snippet>

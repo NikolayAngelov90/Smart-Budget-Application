@@ -191,15 +191,15 @@ npx lighthouse http://localhost:3000/dashboard --view
 
 ### References
 
-- [Source: docs/PRD.md#FR25] - Dashboard loads within 2 seconds
-- [Source: docs/PRD.md#FR26] - Chart updates complete within 300ms
-- [Source: docs/PRD.md#FR43] - Skeleton loaders during data fetch
-- [Source: docs/architecture.md#SWR-Configuration] - Caching strategy, revalidation
-- [Source: docs/architecture.md#Supabase-Realtime] - Real-time subscriptions
-- [Source: docs/ux-design-specification.md#Loading-States] - Skeleton loader design
+- [Source: docs/phase-1/PRD.md#FR25] - Dashboard loads within 2 seconds
+- [Source: docs/phase-1/PRD.md#FR26] - Chart updates complete within 300ms
+- [Source: docs/phase-1/PRD.md#FR43] - Skeleton loaders during data fetch
+- [Source: docs/phase-1/architecture.md#SWR-Configuration] - Caching strategy, revalidation
+- [Source: docs/phase-1/architecture.md#Supabase-Realtime] - Real-time subscriptions
+- [Source: docs/phase-1/ux-design-specification.md#Loading-States] - Skeleton loader design
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#Performance-Strategy] - SSR, caching, Realtime
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#Loading-States] - Skeleton implementation
-- [Source: docs/epics.md#Story-5.7] - Full acceptance criteria and technical notes
+- [Source: docs/phase-1/epics.md#Story-5.7] - Full acceptance criteria and technical notes
 
 ## Dev Agent Record
 

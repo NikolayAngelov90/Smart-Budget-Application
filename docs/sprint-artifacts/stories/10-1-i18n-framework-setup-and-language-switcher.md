@@ -152,16 +152,16 @@ so that I can use the budget application entirely in my native language.
 ### Architecture Patterns and Constraints
 
 - **Next.js App Router**: The app uses Next.js 15+ with App Router pattern. `next-intl` v3+ has first-class App Router support with server components. Use `next-intl`'s recommended App Router setup (not Pages Router patterns).
-  [Source: docs/architecture.md#Core-Technologies]
+  [Source: docs/phase-1/architecture.md#Core-Technologies]
 
 - **Provider Chain**: Current providers are ChakraProvider > SWRConfig > PWAAnalyticsProvider (in `src/app/providers.tsx`). The `NextIntlClientProvider` should wrap at the layout level, above or alongside existing providers.
   [Source: src/app/providers.tsx]
 
 - **SWR for Data Fetching**: User preferences are fetched via SWR (`useUserPreferences` hook). Language preference should follow the same pattern - read from cached preferences, update via PATCH endpoint.
-  [Source: docs/architecture.md#State-Management-Strategy]
+  [Source: docs/phase-1/architecture.md#State-Management-Strategy]
 
 - **Chakra UI Components**: All UI uses Chakra UI 2.8+. The language switcher should use Chakra's `Select` or `Menu` component to match existing Settings page styling.
-  [Source: docs/architecture.md#UI-Framework]
+  [Source: docs/phase-1/architecture.md#UI-Framework]
 
 - **Existing Currency Formatting**: `src/lib/utils/currency.ts` already uses `Intl.NumberFormat` with hardcoded `'en-US'`. This is a clean foundation - just parameterize the locale.
   [Source: src/lib/utils/currency.ts]
@@ -176,7 +176,7 @@ so that I can use the budget application entirely in my native language.
   [Source: src/app/(dashboard)/settings/page.tsx]
 
 - **Testing Framework**: Jest + React Testing Library. Use existing `renderWithProviders()` from test utilities (Story 9-2) and extend it to include i18n context.
-  [Source: docs/architecture.md#Testing-Strategy]
+  [Source: docs/phase-1/architecture.md#Testing-Strategy]
 
 - **200+ Hardcoded Strings**: The codebase has ~200+ hardcoded English strings across ~15 component files. The highest density files are: Settings page (~30+), TransactionEntryModal (~20+), OnboardingModal (~10+), and various shared components.
 
@@ -226,9 +226,9 @@ so that I can use the budget application entirely in my native language.
 ### References
 
 - [Source: docs/sprint-artifacts/tech-spec-epic-10.md#Story-10-1] - Acceptance criteria and technical requirements
-- [Source: docs/architecture.md#Core-Technologies] - Next.js App Router, Chakra UI, SWR patterns
-- [Source: docs/architecture.md#Testing-Strategy] - Jest + React Testing Library approach
-- [Source: docs/architecture.md#Performance-Architecture] - SWR caching, code splitting patterns
+- [Source: docs/phase-1/architecture.md#Core-Technologies] - Next.js App Router, Chakra UI, SWR patterns
+- [Source: docs/phase-1/architecture.md#Testing-Strategy] - Jest + React Testing Library approach
+- [Source: docs/phase-1/architecture.md#Performance-Architecture] - SWR caching, code splitting patterns
 - [Source: src/lib/utils/currency.ts] - Existing currency formatting with Intl.NumberFormat
 - [Source: src/lib/utils/dateFormatter.ts] - Existing date formatting with date-fns
 - [Source: src/types/user.types.ts] - UserPreferences interface

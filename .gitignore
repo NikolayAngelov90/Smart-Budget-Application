@@ -30,8 +30,13 @@ node_modules/
 .gemini/
 .github/copilot/
 
-# BMAD Method Output (artifacts are project-specific, not framework)
-_bmad-output/
+# _bmad-output/ is TRACKED. It holds the live PRD, architecture, epics and every
+# story record — the only copy that describes what was actually built. The old
+# comment here read "artifacts are project-specific, not framework", which is
+# exactly backwards as a reason to ignore them: project-specific is what belongs
+# in the project's repo. The framework itself (_bmad/) is the regenerable half.
+
+# A ~9MB BMAD documentation dump, re-downloadable by the installer.
 docs/llms-full.txt
 
 # BMAD personal install answers (user_name, communication_language, skill level).

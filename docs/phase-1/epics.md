@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Archived — Phase 1.** Original Phase 1 epic breakdown (2025-11-14). Covers **Epics 1-7 only**.
+>
+> The live epic breakdown is [../../_bmad-output/planning-artifacts/epics.md](../../_bmad-output/planning-artifacts/epics.md), which covers **Epics 11-16**. Epics 8, 9 and 10 are in neither file — they were specced directly as [../sprint-artifacts/tech-spec-epic-8.md](../sprint-artifacts/tech-spec-epic-8.md), [-9](../sprint-artifacts/tech-spec-epic-9.md) and [-10](../sprint-artifacts/tech-spec-epic-10.md).
+
 # Smart-Budget-Application - Epic Breakdown
 
 **Author:** Niki
@@ -1879,7 +1884,7 @@ This epic breakdown is the **initial version**. It will be updated as you progre
 
 **✅ Epic Breakdown Complete!**
 
-**Created:** [docs/epics.md](./epics.md) with 7 epics and 42 detailed stories
+**Created:** [docs/phase-1/epics.md](./epics.md) with 7 epics and 42 detailed stories
 
 **FR Coverage:** 100% - All 52 functional requirements mapped to implementable stories
 

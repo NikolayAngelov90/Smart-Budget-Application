@@ -378,8 +378,8 @@ EXCHANGE_RATE_API_URL=https://api.exchangerate-api.com/v4/latest/EUR
 - [Epic 8 Retrospective](epic-8-retrospective.md) - Carry-forward items (pre-review checklist)
 
 **Architecture Documents:**
-- [Architecture](../../docs/architecture.md) - Technology stack and patterns
-- [PRD](../../docs/PRD.md) - Functional requirements and growth phases
+- [Architecture](../../docs/phase-1/architecture.md) - Technology stack and patterns
+- [PRD](../../docs/phase-1/PRD.md) - Functional requirements and growth phases
 
 **Policy Documents:**
 - [Infrastructure Policy](../../docs/process/infrastructure-policy.md) - 20% rule governing Story 10-9, 10-10

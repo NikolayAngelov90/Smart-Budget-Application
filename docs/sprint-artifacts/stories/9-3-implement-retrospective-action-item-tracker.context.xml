@@ -63,7 +63,7 @@
         <snippet>Current retrospective workflow YAML structure. Needs extension to add: action item extraction step, YAML file update step, aged item warning step.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart Budget Application Architecture</title>
         <section>Project Structure</section>
         <snippet>BMAD workflow system uses .bmad/ directory for workflow configurations. YAML files used for configuration (sprint-status.yaml pattern). Node.js/JavaScript used for scripting tasks.</snippet>

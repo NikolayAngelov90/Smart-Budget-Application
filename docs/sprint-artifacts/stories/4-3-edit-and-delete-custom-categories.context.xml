@@ -76,7 +76,7 @@
         <snippet>User clicks delete → Confirmation dialog → DELETE /api/categories/:id → Check transaction count → If count > 0 return 400 error → Guide user to reassign first → DELETE if no transactions → SWR mutate + success toast</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart Budget Application - Technical Architecture</title>
         <section>React Best Practices and Patterns</section>
         <snippet>React Hook Form + Zod for forms, SWR for data fetching with optimistic updates, Chakra UI components for accessibility, TypeScript strict mode</snippet>

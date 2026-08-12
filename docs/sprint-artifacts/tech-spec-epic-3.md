@@ -28,7 +28,7 @@ This epic will utilize the established technical stack. No new major dependencie
 | File/Module | Purpose | Relevance to Epic 3 |
 | :--- | :--- | :--- |
 | `supabase/migrations/001_initial_schema.sql` | **Database Schema:** Defines the `transactions` table structure, indexes, and RLS policies. | This is the blueprint for the data model. All CRUD operations must adhere to this schema. |
-| `docs/architecture.md` | **API Contracts & Component Design:** Outlines the expected API endpoints for `/api/transactions` and lists the custom components to be built. | Provides the high-level plan for the API and frontend component structure. |
+| `docs/phase-1/architecture.md` | **API Contracts & Component Design:** Outlines the expected API endpoints for `/api/transactions` and lists the custom components to be built. | Provides the high-level plan for the API and frontend component structure. |
 | `src/lib/supabase/client.ts` & `server.ts` | **Supabase Clients:** Provide the interface for all database interactions. | Will be used in API routes to execute queries against the `transactions` table. |
 | `src/app/(dashboard)/transactions/` | **Transactions Page:** The main UI for listing, filtering, and managing transactions. | This directory will house the primary page component for Story 3.2. |
 | `src/components/transactions/` | **Transaction Components:** Directory for reusable components like `TransactionCard`, `TransactionEntryModal`, etc. | This is where the core frontend components for this epic will be built. |

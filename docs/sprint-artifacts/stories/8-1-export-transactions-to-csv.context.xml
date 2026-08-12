@@ -54,19 +54,19 @@
         <snippet>Function signature: exportTransactionsToCSV(transactions, categories) returns void. Uses Papa.unparse() for CSV generation, Blob API for download trigger, format() from date-fns for ISO date formatting.</snippet>
       </doc>
       <doc>
-        <path>docs/epics.md</path>
+        <path>docs/phase-1/epics.md</path>
         <title>Epic 7 (renumbered to 8): Data Export and Settings</title>
         <section>Story 7.1: Export Transactions to CSV</section>
         <snippet>Technical Notes include papaparse installation, client-side CSV generation code example, column mapping, null handling for notes, special character testing requirements.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>ADR: Client-Side Export (papaparse, jsPDF)</section>
         <snippet>Decision to use client-side libraries for privacy. Data never leaves browser. Rationale: Privacy-first, offloads processing to client, no server costs. Consequence: May be slow for very large datasets, sufficient for MVP.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>Project Structure</section>
         <snippet>Export service location: src/lib/services/exportService.ts. API routes at src/app/api/. Settings page at src/app/(dashboard)/settings/page.tsx.</snippet>

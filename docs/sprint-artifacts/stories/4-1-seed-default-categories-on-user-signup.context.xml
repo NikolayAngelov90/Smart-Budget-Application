@@ -76,13 +76,13 @@
         <snippet>AC1: Given new user completes signup, When user account created, Then 11 predefined categories automatically seeded (7 expense, 4 income), And predefined categories have is_predefined=true, And categories available immediately on first transaction entry.</snippet>
       </artifact>
       <artifact>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>Database Schema - Categories Table</section>
         <snippet>categories table with columns: id (UUID PK), user_id (UUID FK → auth.users ON DELETE CASCADE), name (VARCHAR 100), color (VARCHAR 7, hex format), type (transaction_type ENUM), is_predefined (BOOLEAN), created_at (TIMESTAMPTZ). UNIQUE constraint on (user_id, name, type). Indexes: idx_categories_user_id, idx_categories_type. RLS policies: SELECT (all), INSERT (all), UPDATE (is_predefined=false only), DELETE (is_predefined=false only).</snippet>
       </artifact>
       <artifact>
-        <path>docs/ux-design-specification.md</path>
+        <path>docs/phase-1/ux-design-specification.md</path>
         <title>UX Design Specification</title>
         <section>Category Visual Design</section>
         <snippet>Categories displayed with color badges throughout application for visual consistency. Color codes must meet WCAG AA contrast requirements. CategoryBadge component shows category name with color dot indicator.</snippet>

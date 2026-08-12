@@ -309,7 +309,7 @@ const debouncedSearch = useDebouncedCallback((value) => {
 
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#APIs-and-Interfaces]
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Acceptance-Criteria]
-- [Source: docs/epics.md#Story-6.3]
+- [Source: docs/phase-1/epics.md#Story-6.3]
 - [Source: Next.js docs: useRouter, useSearchParams]
 - [Source: Chakra UI docs: Select, Switch, Input, Stack components]
 

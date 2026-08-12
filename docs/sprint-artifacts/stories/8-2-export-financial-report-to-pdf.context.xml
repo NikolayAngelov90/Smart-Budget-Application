@@ -66,13 +66,13 @@
   <artifacts>
     <docs>
       <artifact>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart Budget Application - Technical Architecture</title>
         <section>Project Structure - Export Service</section>
         <snippet>Architecture specifies exportService.ts in src/lib/services/ for CSV/PDF export functionality. Client-side processing using libraries like jsPDF for privacy-first design.</snippet>
       </artifact>
       <artifact>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart Budget Application - Technical Architecture</title>
         <section>Decision Summary</section>
         <snippet>Date handling uses date-fns 3+ (lightweight, tree-shakeable). UI Framework is Chakra UI 2.8+ for WCAG 2.1 compliance and consistent styling. Testing with Jest + React Testing Library.</snippet>

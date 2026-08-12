@@ -280,7 +280,7 @@ So that I understand the basis for recommendations.
 
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Data-Models-and-Contracts]
 - [Source: docs/sprint-artifacts/tech-spec-epic-6.md#Acceptance-Criteria]
-- [Source: docs/epics.md#Story-6.4]
+- [Source: docs/phase-1/epics.md#Story-6.4]
 - [Source: Chakra UI docs: Accordion, Disclosure, Modal components]
 - [Source: Recharts docs: LineChart component]
 

@@ -207,14 +207,14 @@ LIMIT 5
 
 ### References
 
-- [Source: docs/PRD.md#FR27] - Month-over-month comparison highlights
-- [Source: docs/PRD.md#FR28] - Clickable categories drill down to transactions
-- [Source: docs/PRD.md#FR26] - Real-time updates (<300ms)
-- [Source: docs/architecture.md#Dashboard-Components] - Component organization
-- [Source: docs/ux-design-specification.md#Month-over-Month-Section] - Visual design (arrows, colors)
+- [Source: docs/phase-1/PRD.md#FR27] - Month-over-month comparison highlights
+- [Source: docs/phase-1/PRD.md#FR28] - Clickable categories drill down to transactions
+- [Source: docs/phase-1/PRD.md#FR26] - Real-time updates (<300ms)
+- [Source: docs/phase-1/architecture.md#Dashboard-Components] - Component organization
+- [Source: docs/phase-1/ux-design-specification.md#Month-over-Month-Section] - Visual design (arrows, colors)
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#Month-over-Month-API] - API contract, SQL with CTEs
 - [Source: docs/sprint-artifacts/tech-spec-epic-5.md#MonthOverMonth-Component] - Component design, drill-down
-- [Source: docs/epics.md#Story-5.5] - Full acceptance criteria and technical notes
+- [Source: docs/phase-1/epics.md#Story-5.5] - Full acceptance criteria and technical notes
 
 ## Dev Agent Record
 

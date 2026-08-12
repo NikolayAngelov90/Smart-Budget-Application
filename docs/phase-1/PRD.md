@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Archived — Phase 1.** Original Phase 1 PRD (2025-11-14). Defines Epics 1-7.
+>
+> The live PRD is [../../_bmad-output/planning-artifacts/prd.md](../../_bmad-output/planning-artifacts/prd.md) — it carries Phase 2 (Epics 11-16) and the Phase 3 Vision list.
+
 # Smart-Budget-Application - Product Requirements Document
 
 **Author:** Niki
@@ -555,7 +560,7 @@ The 52 functional requirements must be organized into implementable epics and bi
 **UX Design (Conditional - High Priority):**
 Since this application has significant UI components and visual intelligence is a core differentiator, UX design is highly recommended before architecture.
 
-**Action:** Run workflow `/bmad:bmm:workflows:create-ux-design` ✅ **COMPLETED** - See [docs/ux-design-specification.md](docs/ux-design-specification.md)
+**Action:** Run workflow `/bmad:bmm:workflows:create-ux-design` ✅ **COMPLETED** - See [docs/phase-1/ux-design-specification.md](docs/phase-1/ux-design-specification.md)
 
 **Architecture (Required):**
 Technical architecture will make key decisions on:
@@ -566,14 +571,14 @@ Technical architecture will make key decisions on:
 - Authentication provider selection
 - AI/ML implementation (rule-based vs. ML model)
 
-**Action:** Run workflow `/bmad:bmm:workflows:architecture` ✅ **COMPLETED** - See [docs/architecture.md](docs/architecture.md)
+**Action:** Run workflow `/bmad:bmm:workflows:architecture` ✅ **COMPLETED** - See [docs/phase-1/architecture.md](docs/phase-1/architecture.md)
 
 ---
 
 ## References
 
 **Source Documents:**
-- Product Brief: [docs/product-brief-Smart-Budget-Application-2025-11-14.md](docs/product-brief-Smart-Budget-Application-2025-11-14.md)
+- Product Brief: [docs/phase-1/product-brief-Smart-Budget-Application-2025-11-14.md](docs/phase-1/product-brief-Smart-Budget-Application-2025-11-14.md)
 
 **Context:**
 - User: Niki (Primary user and developer)
@@ -589,17 +594,17 @@ Technical architecture will make key decisions on:
    - Decomposes 52 FRs into implementable stories
    - Creates development roadmap
 
-2. ✅ **UX Design** (COMPLETED) - See: [docs/ux-design-specification.md](docs/ux-design-specification.md)
+2. ✅ **UX Design** (COMPLETED) - See: [docs/phase-1/ux-design-specification.md](docs/phase-1/ux-design-specification.md)
    - Dashboard layouts and visualizations designed
    - Transaction entry flow created (20-30 second target)
    - Mobile and desktop experiences defined
 
-3. ✅ **Architecture** (COMPLETED) - See: [docs/architecture.md](docs/architecture.md)
+3. ✅ **Architecture** (COMPLETED) - See: [docs/phase-1/architecture.md](docs/phase-1/architecture.md)
    - Technology stack selected (Next.js + Supabase + Chakra UI)
    - Data architecture designed (PostgreSQL with RLS)
    - AI implementation planned (rule-based engine)
 
-4. ✅ **Solutioning Gate Check** (COMPLETED) - See: [docs/implementation-readiness-report-2025-11-14.md](docs/implementation-readiness-report-2025-11-14.md)
+4. ✅ **Solutioning Gate Check** (COMPLETED) - See: [docs/phase-1/implementation-readiness-report-2025-11-14.md](docs/phase-1/implementation-readiness-report-2025-11-14.md)
    - PRD ↔ Architecture ↔ UX alignment validated
    - Gaps and risks identified with mitigation strategies
    - Project ready for implementation phase

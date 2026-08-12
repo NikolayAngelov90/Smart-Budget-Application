@@ -66,7 +66,7 @@
         <snippet>Insight generation must complete in less than 2 seconds (FR20). Manual refresh less than 2 seconds with loading indicator. Dashboard insights load in less than 500ms using SWR cache.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart Budget Application - Technical Architecture</title>
         <section>Project Structure - API Routes</section>
         <snippet>API routes follow Next.js 15 App Router pattern. Cron jobs configured in vercel.json. Use Route Handlers (route.ts files) for serverless functions.</snippet>

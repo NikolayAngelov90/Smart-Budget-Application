@@ -1,0 +1,194 @@
+# generated: 2026-06-02
+# project: Smart-Budget-Application
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+#
+# NOTE: Phase 1 (Epics 1-10 + Phase 1 Epic 11 Security Hardening) tracked in docs/sprint-artifacts/sprint-status.yaml
+# Phase 2 epics (11-15) are numbered per the Phase 2 PRD and epics.md
+
+generated: 2026-06-02
+last_updated: 2026-08-12
+project: Smart-Budget-Application
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 11: Smart Financial Awareness
+  # Users gain passive financial intelligence through automated visualizations,
+  # subscription tracking, savings goals, and a weekly digest.
+  epic-11: done
+  11-1-streamlined-onboarding-flow: done
+  11-2-subscription-detection: done
+  11-3-spending-heatmap: done
+  11-4-annualized-spending-projections: done
+  11-5-savings-goals: done
+  11-6-goal-milestone-celebrations: done
+  11-7-weekly-financial-digest: done
+  11-8-gdpr-account-deletion: done
+  epic-11-retrospective: done
+
+  # Epic 12: AI Financial Intelligence
+  # The app transforms from a passive tracker into a proactive financial coach
+  # that detects patterns, predicts budget outcomes, delivers smart nudges.
+  epic-12: done
+  12-1-spending-anomaly-trend-detection: done
+  12-2-end-of-month-budget-projections: done
+  12-3-real-time-smart-nudges: done
+  12-4-30-day-budget-recovery-plans: done
+  12-5-seasonal-cyclical-spending-awareness: done
+  12-6-lapsed-user-re-engagement-analysis: done
+  12-7-financial-advice-disclaimers: done
+  12-8-engagement-analytics-dashboard: done
+  epic-12-retrospective: done
+
+  # Epic 13: Household Collaboration
+  # Partners, couples, and roommates co-manage budgets with privacy-respecting
+  # transparency controls, shared categories, contribution tracking.
+  epic-13: done
+  13-1-household-creation-database-foundation: done
+  13-2-household-invitation-flow: done
+  13-3-join-household-via-invitation: done
+  # Reorder (2026-06-04): 13-5 pulled ahead of 13-4 — transparency (13-4) depends on
+  # shared categories (13-5) existing. 13-5 done first, then 13-4 layers visibility_level on top.
+  13-4-transparency-presets-per-category-controls: done
+  13-5-shared-budget-categories: done
+  13-6-personal-allowance-system: done
+  13-7-income-proportional-contribution-splits: done
+  13-8-shared-household-dashboard: done
+  13-9-shared-household-savings-goals: done
+  13-10-household-level-ai-insights: done
+  13-11-member-removal-access-revocation: done
+  epic-13-retrospective: done
+
+  # Epic 14: Values & Financial Planning
+  # Users align spending with personal priorities through values-based budgeting,
+  # wishlist impact analysis, and "What If" savings simulations.
+  epic-14: done
+  14-1-values-based-spending-plan: done
+  14-2-values-context-spending-view: done
+  14-3-wishlist-with-budget-impact-analysis: done
+  14-4-what-if-savings-simulations: done
+  epic-14-retrospective: done
+
+  # Epic 15: Gamification & Engagement
+  # Engagement mechanics transform budgeting from a chore into a rewarding habit
+  # through streaks, scores, achievements, push notifications.
+  epic-15: done
+  15-1-logging-streaks-with-streak-freeze: done
+  15-2-budget-score: done
+  15-3-achievement-badge-system: done
+  15-4-comeback-challenges: done
+  15-5-push-notifications: done
+  15-6-gamification-opt-in-out: done
+  15-7-progressive-feature-disclosure: done
+  15-8-accessibility-compliance-for-engagement-features: done
+  epic-15-retrospective: done
+
+  # Epic 16: Design System Rollout (Phase 3)
+  # Roll the Quiet Ledger design system into every remaining primary screen.
+  epic-16: done
+  16-1-transactions-screen-redesign: done
+  16-2-transaction-composer-redesign: done
+  16-3-categories-screen-redesign: done
+  16-4-insights-screen-redesign: done
+  16-5-settings-screen-redesign-dark-mode: done
+  16-6-dashboard-period-selector: done
+  16-7-goals-household-screen-polish: done
+  16-8-settings-information-architecture: done
+  epic-16-retrospective: done
+
+# Closed non-story work. Deliberately NOT under development_status: these are
+# neither epics, stories, nor retrospectives, so the sprint-status schema
+# (epic-N / N-M-slug / epic-N-retrospective) has no key shape for them and
+# `sprint_plan.py validate` rejects them there. Kept as the historical record —
+# every entry below is terminal. Moved out of development_status 2026-08-12.
+closed_work_log:
+  # Deferred-work backlog (from deferred-work.md, reviewed 2026-07-30)
+  # Clusters A/B/D/F shipped in PR #21 (1515d55). These are what remains.
+  dw-1-currency-live-rate-fallback: done
+  dw-2-preferences-single-key-patch: done
+  dw-3-insight-detail-localisation: done
+  dw-4-quiet-hours-deferred-pushes: done
+  dw-5-product-decisions: decided
+  dw-6-shared-goal-achievements: done
+  dw-7-decided-small-items: done
+  # Not scheduled: the four maybeSingle()/TOCTOU items are gated on
+  # multi-household support and must not be picked up as bug fixes.
+
+
+  # Post-Epic-16 hardening pass (epics.md ends at 16; this is polish, not scope)
+  # Retro action #1 (shared chain mock) shipped in PR #29 (6030a71).
+  #
+  # NOTE 2026-08-11: all four HP items were merged after the standard gate
+  # (tsc/lint/jest/build/CI) but WITHOUT the adversarial code-review step the
+  # workflow calls for. hp-3 and hp-4 were never entered here at all.
+  #
+  # That review RAN as a post-merge audit over 84f6c8c..a7190ae — all three
+  # layers, none failed — and was NOT clean: 2 HIGH defects found independently
+  # by all three layers, plus 20 patch items. Report: hp-review-2026-08-11.md.
+  #
+  # All findings are now closed (PR #34 decisions, PR #35 patches) except four
+  # explicitly DEFERRED with reasons, tracked below. These four are therefore
+  # genuinely done-and-reviewed — the first point in this sequence where that
+  # claim is true.
+  hp-1-where-its-going-period-and-localisation: done
+  hp-2-budget-recommendation-full-window: done
+  hp-3-wishlist-category-degradation: done
+  hp-4-household-mobile-form-layout: done
+  # Follow-up work created by the audit.
+  # HP-5 = the four decisions, settled with Nikit and shipped in PR #34.
+  # Covers D1-D4 plus P1 (wishlist policy violation) and P10 (t(undefined)).
+  hp-5-review-followup-decisions: done
+  # HP-6 = the patch items from hp-review-2026-08-11.md, shipped in PR #35.
+  # Chain-mock helper (P2-P6), the 44px tap targets HP-4 claimed but applied to
+  # inputs only (P7), and the [^>]* regex bug still sitting in the guard that
+  # documents it (P8). Plus P9, P11, P12, P15-P19.
+  hp-6-review-followup-patches: done
+  # All four audit-deferred items, shipped in PR #36 (fb20e4b):
+  #   - trends month names localize client-side from the YYYY-MM key
+  #   - useClientToday() re-renders on midnight/visibility/focus, so an idle tab
+  #     stops refetching yesterday's key
+  #   - the persisted cache prunes stale dated keys at mount AND evicts at the
+  #     size limit instead of freezing (the LRU was a `// for now, just warn` TODO)
+  #   - the +/-1-day clamp turned out NOT to be the filed bug: the amplified case
+  #     is CORRECT for a genuine UTC+14 user. Clients now send `?tz=` and the
+  #     server derives the day itself from its own clock in that zone, so a wrong
+  #     device clock cannot shift any window. Closes the class, not just bounds it.
+  hp-7-audit-deferred-items: done
+  # hp-9: mobile modal safe-area + keyboard (P2 of the 2026-08-12 prompt set).
+  # hp-8 (insights cold-start) and hp-10 (fingerprint+UPSERT) are specified in
+  # insights-lifecycle-audit-2026-08-12.md and not yet started.
+  hp-9-mobile-modal-safe-area-and-keyboard: in-review
+  # Epic 16 retro action #4 (re-triage of remaining LOW items) recorded in
+  # deferred-work.md. Engineering backlog now empty.

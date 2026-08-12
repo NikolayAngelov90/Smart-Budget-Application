@@ -49,7 +49,7 @@
       <artifact path="docs/sprint-artifacts/tech-spec-epic-9.md" title="Epic 9 Technical Specification" section="Story 9-2 Design">
         Shared test utilities include: renderWithProviders() function wrapping Chakra UI, SWR, Supabase Client, Supabase Auth, Next.js Router, react-hot-toast. Custom mock helpers export mockSupabase, mockAuth, mockSWR, mockRouter, mockToast for test customization.
       </artifact>
-      <artifact path="docs/architecture.md" title="Technical Architecture" section="Testing Stack">
+      <artifact path="docs/phase-1/architecture.md" title="Technical Architecture" section="Testing Stack">
         Testing framework uses Jest + Testing Library pattern. Full TypeScript coverage with strict mode. Accessibility tested with WCAG 2.1 Level A compliance via Chakra UI.
       </artifact>
       <artifact path="docs/sprint-artifacts/epic-8-retrospective.md" title="Epic 8 Retrospective" section="Test Mocking Complexity Barrier">

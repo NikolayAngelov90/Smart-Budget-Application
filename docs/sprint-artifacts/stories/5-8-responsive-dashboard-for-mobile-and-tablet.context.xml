@@ -107,7 +107,7 @@
 
       <!-- Architecture: Chakra UI Responsive Design -->
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>System Architecture</title>
         <section>UI Framework and Responsive Design</section>
         <snippet>Chakra UI 2.8+ for accessibility, components, and responsive design. Mobile-first approach with progressive enhancement. Breakpoints: base (0px), sm (480px), md (768px), lg (1024px), xl (1280px), 2xl (1536px).</snippet>
@@ -115,7 +115,7 @@
 
       <!-- PRD: Responsive Requirements -->
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/phase-1/PRD.md</path>
         <title>Product Requirements Document</title>
         <section>Non-Functional Requirements</section>
         <snippet>FR44: Mobile responsive 320px minimum width. FR45: Tablet responsive 768px breakpoint. FR46: Touch targets 44x44px minimum (WCAG accessibility).</snippet>

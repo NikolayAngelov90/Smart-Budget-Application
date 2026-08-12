@@ -179,7 +179,7 @@
         <snippet>Story 9-4 implements a generic analytics events table for tracking insight engagement (views, dismissals, category breakdown) plus export and PWA usage. Uses analytics_events table with JSONB event_properties for flexibility.</snippet>
       </doc>
       <doc>
-        <path>docs/architecture.md</path>
+        <path>docs/phase-1/architecture.md</path>
         <title>Smart Budget Application - Technical Architecture</title>
         <section>Data Architecture</section>
         <snippet>Application uses PostgreSQL via Supabase with Row Level Security (RLS). Existing tables include categories, transactions, insights. New analytics_events table follows same RLS patterns.</snippet>
