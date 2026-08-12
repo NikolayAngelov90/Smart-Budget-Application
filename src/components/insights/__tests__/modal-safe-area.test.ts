@@ -39,11 +39,19 @@ const INSIGHT_MODAL = 'src/components/insights/InsightDetailModal.tsx';
 const COMPOSER = 'src/components/transactions/TransactionEntryModal.tsx';
 
 describe('InsightDetailModal respects the safe area', () => {
-  it('reserves both the top and bottom insets', () => {
+  it('reserves both insets ON THE CONTENT BOX', () => {
+    // Tied to the PROPERTY, not merely to the file.
+    //
+    // The first version asserted only that `env(safe-area-inset-top)` appeared
+    // somewhere in the source — which the close button's own `top` already
+    // satisfied. Mutation-tested during review: deleting the `pt` that stops
+    // the title rendering under the Dynamic Island — the defect this story
+    // exists for — left all ten tests green. A guard that passes without the
+    // fix is not a guard.
     const src = read(INSIGHT_MODAL);
 
-    expect(src).toMatch(/env\(safe-area-inset-top\)/);
-    expect(src).toMatch(/env\(safe-area-inset-bottom\)/);
+    expect(src).toMatch(/pt=\{\{\s*base: 'env\(safe-area-inset-top\)'/);
+    expect(src).toMatch(/pb=\{\{\s*base: 'env\(safe-area-inset-bottom\)'/);
   });
 
   it('offsets the absolutely-positioned close button by the top inset', () => {
@@ -54,13 +62,21 @@ describe('InsightDetailModal respects the safe area', () => {
     expect(src).toMatch(/top=\{\{[^}]*calc\(env\(safe-area-inset-top\)/);
   });
 
-  it('sizes with dvh and keeps a vh fallback', () => {
+  it('sizes with dvh and a vh fallback at BOTH tiers', () => {
     // `100vh` alone is wrong on iOS: it is the LAYOUT viewport, so it ignores
     // the browser chrome and the keyboard. Pattern from AppLayout.
+    //
+    // Values asserted, not just the @supports condition — the first version
+    // passed with `maxHeight: '10vh'` inside the block. And the media query has
+    // to be here: an UNSCOPED @supports block outranked the md breakpoint and
+    // made the DESKTOP dialog full-height (810 -> 900px at 1440x900).
     const src = read(INSIGHT_MODAL);
 
-    expect(src).toMatch(/@supports \(height: 100dvh\)/);
     expect(src).toMatch(/maxHeight: '100vh'/);
+    expect(src).toMatch(/maxHeight: '100dvh'/);
+    expect(src).toMatch(/@media screen and \(min-width: 48em\)/);
+    expect(src).toMatch(/maxHeight: '90vh'/);
+    expect(src).toMatch(/maxHeight: '90dvh'/);
   });
 
   it('gives the close button a 44px tap target', () => {
@@ -94,12 +110,28 @@ describe('the composer does not raise the keyboard on mobile', () => {
     expect(/autoFocus(?!\s*=)/.test(src)).toBe(false);
   });
 
-  it('gates focus on the breakpoint value, not a user-agent sniff', () => {
+  it('gates focus on pointer type as well as width', () => {
+    // Comments stripped, same reason as the sibling test.
+    //
+    // Width alone is the wrong question: iPhone 15 Pro Max in LANDSCAPE is
+    // 932x430, which resolves to `md`, so a width-only gate re-enabled
+    // autoFocus on the exact device this story targets. A coarse pointer is
+    // the real condition, and it is a media query rather than a UA sniff.
+    const src = read(COMPOSER).replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+
+    expect(src).toMatch(/autoFocus=\{!isMobile && !hasCoarsePointer\}/);
+    expect(src).toMatch(/useMediaQuery\('\(pointer: coarse\)'/);
+    expect(src).toMatch(/const isMobile = useBreakpointValue\(/);
+  });
+
+  it('gives the drawer close button a 44px target', () => {
+    // With autoFocus gone it is the first tabbable in the focus lock, so it is
+    // now the primary mobile control — and it rendered at Chakra's 32x32
+    // default while this story cited the 44px rule for the other modal.
     const src = read(COMPOSER);
 
-    expect(src).toMatch(/autoFocus=\{!isMobile\}/);
-    // `isMobile` must come from the breakpoint the component already computes.
-    expect(src).toMatch(/const isMobile = useBreakpointValue\(/);
+    expect(src).toMatch(/<DrawerCloseButton[\s\S]{0,200}minW="44px"/);
+    expect(src).toMatch(/<DrawerCloseButton[\s\S]{0,200}minH="44px"/);
   });
 
   it('sizes the sheet against the visual viewport', () => {
@@ -131,7 +163,12 @@ describe('highlighted metadata inherits the insight tone', () => {
     const src = read('src/components/insights/InsightMetadata.tsx');
 
     expect(src).not.toMatch(/color=\{highlight \? 'accent' : 'fg'\}/);
-    expect(src).toMatch(/color=\{highlight \? highlightColor : 'fg'\}/);
+    expect(src).toMatch(/color=\{highlight \? \(highlightColor \?\? 'fg'\) : 'fg'\}/);
     expect(src).toMatch(/getInsightToneTokens\(insight\.type\)/);
+    // The prop must NOT default back to `accent`: every current call site
+    // passes a tone, so the default is unreachable today and would silently
+    // hand the next `highlight` site green text on a warning card — exactly
+    // the bug this replaced.
+    expect(src).not.toMatch(/highlightColor = 'accent'/);
   });
 });

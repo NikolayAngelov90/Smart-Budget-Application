@@ -104,6 +104,7 @@ interface MetadataFieldProps {
    * says its tokens exist "so every insight surface colours identically"; this
    * component simply was not consulting them.
    */
+  /** Required when `highlight` is set — see above. */
   highlightColor?: string;
 }
 
@@ -111,7 +112,7 @@ function MetadataField({
   label,
   value,
   highlight = false,
-  highlightColor = 'accent',
+  highlightColor,
 }: MetadataFieldProps) {
   return (
     <GridItem>
@@ -122,7 +123,7 @@ function MetadataField({
         <Text
           fontSize="md"
           fontWeight={highlight ? 'bold' : 'semibold'}
-          color={highlight ? highlightColor : 'fg'}
+          color={highlight ? (highlightColor ?? 'fg') : 'fg'}
         >
           {value}
         </Text>

@@ -82,11 +82,22 @@ export function InsightDetailModal({
         //
         // Pattern copied from TransactionEntryModal (the mobile Drawer) and
         // AppLayout's 100dvh-with-100vh-fallback; not invented here.
+        // The breakpoint lives INSIDE `sx`, and that is not stylistic.
+        //
+        // `maxH={{ md: '90vh' }}` emits a `@media` rule; an unscoped
+        // `@supports (height: 100dvh)` in `sx` emits another at the same
+        // specificity, and Emotion places `sx` last — so the `@supports` block
+        // won at EVERY width and the desktop dialog lost its 90vh cap, going
+        // full-viewport-height (measured 810px -> 900px at 1440x900). Caught in
+        // review. Scoping both tiers here keeps the cascade unambiguous.
         sx={{
           maxHeight: '100vh',
           '@supports (height: 100dvh)': { maxHeight: '100dvh' },
+          '@media screen and (min-width: 48em)': {
+            maxHeight: '90vh',
+            '@supports (height: 100dvh)': { maxHeight: '90dvh' },
+          },
         }}
-        maxH={{ md: '90vh' }}
         m={{ base: 0, md: 4 }}
         pt={{ base: 'env(safe-area-inset-top)', md: 0 }}
         pb={{ base: 'env(safe-area-inset-bottom)', md: 0 }}
@@ -95,7 +106,7 @@ export function InsightDetailModal({
             positioned, so it is out of flow and the header laid its badge
             straight underneath it — visible once the safe-area fix pushed the
             two into the same band. 44px control + 1rem inset + breathing room. */}
-        <ModalHeader pb={2} pr="4rem">
+        <ModalHeader pb={2} pr={{ base: '4rem', md: 6 }}>
           <HStack spacing={3} align="start" flexWrap="wrap">
             <Text fontSize={{ base: 'lg', md: 'xl' }} fontWeight="bold" flex="1">
               {localizedTitle}
