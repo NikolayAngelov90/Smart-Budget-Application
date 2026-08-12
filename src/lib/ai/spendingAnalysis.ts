@@ -172,11 +172,21 @@ export function compareMonthlySpending(
 /**
  * Check if a value is an outlier based on standard deviations from mean
  *
+ * TWO-SIDED BY DESIGN: this measures |value - mean|, so a value far BELOW the
+ * mean is just as much an outlier as one far above. It answers "is this
+ * unusual", never "is this large".
+ *
+ * Callers that only care about one direction MUST filter on the sign
+ * themselves — comparing against `mean` before calling — and callers that phrase
+ * results in words ("higher than typical") are exactly those callers. Getting
+ * this wrong shipped a critical-priority insight that told users a below-average
+ * expense was alarmingly high; see flagUnusualExpense in insightRules.ts.
+ *
  * @param value - Value to check
  * @param mean - Mean of the dataset
  * @param stdDev - Standard deviation of the dataset
  * @param threshold - Number of standard deviations to consider as outlier (default: 2)
- * @returns True if value is an outlier, false otherwise
+ * @returns True if value is an outlier in EITHER direction, false otherwise
  */
 export function isOutlier(
   value: number,
