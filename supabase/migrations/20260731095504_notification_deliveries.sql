@@ -1,4 +1,15 @@
--- Migration 042: deferred notification delivery (DW-4)
+-- FILENAME NOTE: this file is named with a Supabase TIMESTAMP version
+-- (20260731095504), not the `NNN_` prefix used by 001-040.
+--
+-- It has to match the version recorded in the remote
+-- `supabase_migrations.schema_migrations` table. 001-040 were applied by hand
+-- in the SQL editor, which records nothing, so the remote history is empty for
+-- them. This one was applied through the Supabase MCP `apply_migration` tool,
+-- which DOES record a row — and the "Supabase Preview" check then failed on
+-- every push to main with "Remote migration versions not found in local
+-- migrations directory" until the filename matched.
+--
+-- Migration 20260731095504: deferred notification delivery (DW-4)
 --
 -- The quiet-hours gate SUPPRESSED rather than deferred, and each cron matched
 -- its cohort with an equality scan at one fixed instant. Together that turned a

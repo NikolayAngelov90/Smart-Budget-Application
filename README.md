@@ -187,7 +187,7 @@ src/
 ├── theme/              # Chakra design system (Quiet Ledger)
 └── types/
 messages/               # next-intl en + bg (key parity enforced in CI)
-supabase/migrations/    # Applied in order; 040+ are current
+supabase/migrations/    # Applied in filename order (001-040, then timestamped)
 docs/                   # Architecture, API conventions, testing, deployment
 ```
 

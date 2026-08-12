@@ -1,4 +1,15 @@
--- Migration 041: atomic single-key preference writes (DW-2)
+-- FILENAME NOTE: this file is named with a Supabase TIMESTAMP version
+-- (20260731072929), not the `NNN_` prefix used by 001-040.
+--
+-- It has to match the version recorded in the remote
+-- `supabase_migrations.schema_migrations` table. 001-040 were applied by hand
+-- in the SQL editor, which records nothing, so the remote history is empty for
+-- them. This one was applied through the Supabase MCP `apply_migration` tool,
+-- which DOES record a row — and the "Supabase Preview" check then failed on
+-- every push to main with "Remote migration versions not found in local
+-- migrations directory" until the filename matched.
+--
+-- Migration 20260731072929: atomic single-key preference writes (DW-2)
 --
 -- `user_profiles.preferences` is one JSONB column, and every preference write
 -- went through a read-modify-write in application code: SELECT the current
