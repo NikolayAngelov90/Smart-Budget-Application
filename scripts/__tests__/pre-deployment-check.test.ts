@@ -97,10 +97,21 @@ describe('deployment-checklist.md', () => {
     expect(content).toContain('pre-deployment-check.js');
   });
 
-  it('lists all migration files', () => {
+  it('explains how a migration actually reaches production', () => {
+    // Was `lists all migration files`, asserting on `001_initial_schema.sql`
+    // and `006_user_sessions_table.sql`. It checked 2 of 41 files and its list
+    // had stopped at 006 — 34 migrations ago — so "all" was never true.
+    // Enumerating filenames in prose is precisely the thing that goes stale,
+    // and pinning that enumeration made the doc harder to correct.
+    //
+    // What has to stay true is the PROCESS: migrations apply themselves on
+    // merge, the Supabase Preview check is the signal, and applying by hand as
+    // well now double-applies (the ledger stays empty for that file, so the
+    // integration retries it on the next push).
     const content = nodeFs.readFileSync(checklistPath, 'utf-8');
-    expect(content).toContain('001_initial_schema.sql');
-    expect(content).toContain('006_user_sessions_table.sql');
+    expect(content).toContain('supabase/migrations/');
+    expect(content).toContain('Supabase Preview');
+    expect(content).toMatch(/do not apply them by hand/i);
   });
 
   it('documents exit codes', () => {
