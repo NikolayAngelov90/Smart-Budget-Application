@@ -40,24 +40,38 @@ node scripts/check-env-vars.js
 
 ### 2. Database Migrations
 
-Ensure all Supabase migrations have been applied.
+**Migrations deploy themselves on merge to `main`. Do not apply them by hand.**
 
-**Migration files (in order):**
-1. `001_initial_schema.sql` - Core tables (users, transactions, categories)
-2. `002_insights_rls_policies.sql` - Row-level security for insights
-3. `003_insights_engagement_analytics.sql` - Analytics tracking tables
-4. `004_user_profiles_table.sql` - User profile data
-5. `005_analytics_events_table.sql` - Event analytics
-6. `006_user_sessions_table.sql` - Device session management
+The Supabase GitHub integration applies anything in `supabase/migrations/` that
+is not yet recorded in the production ledger
+(`supabase_migrations.schema_migrations`), and reports the outcome as the
+**Supabase Preview** check on the merge commit.
 
-**Verification:**
-```bash
-# Check for pending migrations
-supabase db diff
+**Why this changed (2026-08-12).** Migrations `001`–`040` were applied manually
+in the SQL editor, which records nothing in the ledger. The integration therefore
+believed all 39 were pending and, on every push to `main`, tried to replay them
+against the live database — failing on the first `CREATE TYPE` because
+production already had it. The check had never once succeeded. The ledger has now
+been backfilled so it reflects reality.
 
-# Apply migrations
-supabase db push
-```
+**What that means in practice:**
+
+- Add the migration file, open a PR, merge it. That is the whole process.
+- **Check the "Supabase Preview" check on the merge commit** — it is the only
+  signal that the migration actually landed. Green means applied.
+- Applying by hand *as well* is now actively harmful: the statement runs, the
+  ledger stays empty for that file, and the integration tries to apply it again
+  on the next push.
+
+**Filename convention.** `001`–`040` use an `NNN_` prefix. The two newest use
+Supabase timestamp versions (`20260731072929_…`) because they were applied via
+the MCP `apply_migration` tool, which records that form and requires the
+filename to match. **New migrations should use the timestamp form** — it is what
+the tooling expects, and it sorts after the numbered ones.
+
+**Verification:** compare `supabase/migrations/` against the ledger — Supabase
+dashboard → Database → Migrations. Anything in the folder but not in that list is
+pending.
 
 ### 3. Type Check
 
