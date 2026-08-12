@@ -14,13 +14,32 @@ node_modules/
 .env.save
 
 # Personal IDE AI Configuration
+#
+# These are per-IDE COPIES of the BMAD skills, written by the installer from the
+# tracked `_bmad/` framework install. They are 100% regenerable — recreate them
+# with `npx bmad-method@<version> install` (the pinned version lives in
+# _bmad/_config/manifest.yaml). Tracking them buys nothing and made every BMAD
+# update a ~200-file diff.
+#
+# NOTE: .agents/ and .github/agents/ are the CURRENT installer output paths.
+# .gemini/ and .github/copilot/ are the pre-6.x paths, kept so an older install
+# or a stale working copy can't leak back in.
 .claude/
+.agents/
+.github/agents/
 .gemini/
 .github/copilot/
 
 # BMAD Method Output (artifacts are project-specific, not framework)
 _bmad-output/
 docs/llms-full.txt
+
+# BMAD personal install answers (user_name, communication_language, skill level).
+# The team-wide equivalents live in the tracked _bmad/config.toml and
+# _bmad/custom/config.toml; this file is per-developer and the installer
+# recreates it. Its sibling _bmad/custom/config.user.toml is already ignored by
+# _bmad/custom/.gitignore.
+_bmad/config.user.toml
 
 # IDE & Editor
 .vscode/
