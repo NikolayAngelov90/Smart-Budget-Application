@@ -8,7 +8,7 @@
 
 import useSWR, { type KeyedMutator } from 'swr';
 import type { WishlistResponse } from '@/types/database.types';
-import { clientTodayParam } from '@/lib/utils/date';
+import { useDatedParams } from '@/lib/hooks/useClientToday';
 
 /**
  * The KEY constants are now PREFIXES, not whole keys: each request carries the
@@ -22,8 +22,8 @@ import { clientTodayParam } from '@/lib/utils/date';
 export const WISHLIST_KEY = '/api/wishlist';
 
 /** Full request URL for the client's current local day. */
-function wishlistUrl(): string {
-  return `${WISHLIST_KEY}?today=${clientTodayParam()}`;
+function wishlistUrl(dated: string): string {
+  return `${WISHLIST_KEY}?${dated}`;
 }
 
 async function fetcher(url: string): Promise<WishlistResponse> {
@@ -42,8 +42,16 @@ export interface UseWishlistResult {
   mutate: KeyedMutator<WishlistResponse>;
 }
 
+/**
+ * HP-7: the day comes from `useClientToday()`, which re-renders when the
+ * local day changes. Calling `clientTodayParam()` inline looked equivalent
+ * but only recomputed on a render that happened for some OTHER reason — an
+ * idle tab kept yesterday's key and `revalidateOnFocus` refetched that same
+ * stale key, so a dashboard left open overnight showed last month on the 1st.
+ */
 export function useWishlist(): UseWishlistResult {
-  const { data, error, isLoading, mutate } = useSWR<WishlistResponse>(wishlistUrl(), fetcher, {
+  const dated = useDatedParams();
+  const { data, error, isLoading, mutate } = useSWR<WishlistResponse>(wishlistUrl(dated), fetcher, {
     dedupingInterval: 5000,
     revalidateOnFocus: true,
     keepPreviousData: true,

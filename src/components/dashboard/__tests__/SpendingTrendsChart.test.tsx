@@ -34,9 +34,14 @@ jest.mock('@/lib/hooks/useChartColors', () => ({
 }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 // Interpolating so the count is visible in the assertion.
+// `useLocale` is mocked too — the component reads it to localize month names,
+// and omitting it is the partial-mock trap this repo has hit repeatedly: the
+// component throws, and the failure reads as a rendering bug rather than a
+// missing mock export.
 jest.mock('next-intl', () => ({
   useTranslations: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${JSON.stringify(values)}` : key,
+  useLocale: () => 'bg',
 }));
 
 const monthsOf = (n: number) =>
@@ -91,6 +96,49 @@ describe('the window label counts what was drawn', () => {
     // "Last 1 months" was the bug; the ICU plural in the message file resolves
     // this, and the component's job is only to hand over the real number.
     expect(screen.getByText('spendingTrendsWindow:{"count":1}')).toBeInTheDocument();
+  });
+});
+
+describe('month names follow the locale (HP-7)', () => {
+  it('does not render the server-generated English label', () => {
+    // The route emits `monthLabel: format(date, 'MMM')` with no locale, so a
+    // Bulgarian user read "Jan / Feb / Mar" on the axis, in the tooltip and in
+    // the hidden data table. The label is now derived client-side from the
+    // `YYYY-MM` key. The locale mock above is 'bg'.
+    mockUseTrends.mockReturnValue({
+      data: {
+        months: [
+          { month: '2026-01', monthLabel: 'Jan', income: 100, expenses: 50, net: 50 },
+        ],
+      },
+      error: undefined,
+      isLoading: false,
+      mutate: jest.fn(),
+    });
+
+    const { container } = renderChart();
+
+    // The hidden a11y table renders regardless of Recharts' zero width.
+    expect(container.textContent).toContain('яну');
+    expect(container.textContent).not.toContain('Jan');
+  });
+
+  it('falls back to the server label when the key is malformed', () => {
+    // A wrong-language month beats a blank axis.
+    mockUseTrends.mockReturnValue({
+      data: {
+        months: [
+          { month: 'not-a-month', monthLabel: 'Feb', income: 100, expenses: 50, net: 50 },
+        ],
+      },
+      error: undefined,
+      isLoading: false,
+      mutate: jest.fn(),
+    });
+
+    const { container } = renderChart();
+
+    expect(container.textContent).toContain('Feb');
   });
 });
 

@@ -36,8 +36,32 @@ function calendarDaysApart(a: Date, b: Date): number {
  * Returns midday local, so a DST shift can never push the value across a date
  * boundary.
  */
-export function resolveClientToday(todayParam: string | null | undefined): Date {
+export function resolveClientToday(
+  todayParam: string | null | undefined,
+  timeZoneParam?: string | null
+): Date {
   const serverNow = new Date();
+
+  // Preferred path: derive the day from the client's TIME ZONE using the
+  // server's own clock.
+  //
+  // HP-7. The ±1-day clamp below bounds a wrong clock, but one day of tolerance
+  // becomes a whole different window once the day drives a week, a quarter or a
+  // year: a device one day fast on 31 Dec asking for `period=year` got the
+  // NEXT year, and an empty donut. The clamp could not be tightened, because
+  // that same ±1 day is exactly what a legitimate UTC+14 user needs — at 00:30
+  // on 1 Jan their year really has rolled over while the UTC server is still on
+  // the 31st. The two cases are indistinguishable from a date alone.
+  //
+  // A time zone distinguishes them. `Intl` resolves it from the tz database
+  // rather than the clock, so a device with the wrong time still reports the
+  // right zone — and the day is then computed from the SERVER's trusted clock.
+  // Nothing about the client's own notion of "now" is trusted at all.
+  const zoned = todayInTimeZone(timeZoneParam, serverNow);
+  if (zoned) return zoned;
+
+  // Fallback for clients that send only `?today=` (older bundles, and the
+  // handful of callers not yet migrated). Clamped as before.
   if (!todayParam || !/^\d{4}-\d{2}-\d{2}$/.test(todayParam)) return serverNow;
 
   const candidate = new Date(`${todayParam}T12:00:00`);
@@ -47,7 +71,47 @@ export function resolveClientToday(todayParam: string | null | undefined): Date 
   return candidate;
 }
 
+/**
+ * `now` rendered as a local calendar day in `timeZone`, at midday.
+ *
+ * Midday for the same reason as above: a DST shift can never push it across a
+ * date boundary. Returns null for a missing or unrecognised zone — `Intl`
+ * throws `RangeError` on one it does not know.
+ */
+function todayInTimeZone(timeZone: string | null | undefined, now: Date): Date | null {
+  if (!timeZone) return null;
+  try {
+    // `en-CA` formats as YYYY-MM-DD, which is the shape we already use.
+    const day = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+    const resolved = new Date(`${day}T12:00:00`);
+    return Number.isNaN(resolved.getTime()) ? null : resolved;
+  } catch {
+    // Unknown or malformed zone — fall through to the clamped `today`.
+    return null;
+  }
+}
+
 /** The `?today=` value a client should send: its own local calendar day. */
 export function clientTodayParam(): string {
   return toLocalISODate(new Date());
+}
+
+/**
+ * The `?tz=` value a client should send: its IANA zone.
+ *
+ * Read from the tz database via `Intl`, so it stays correct even when the
+ * device clock is wrong — which is the whole point (see `resolveClientToday`).
+ */
+export function clientTimeZoneParam(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  } catch {
+    return '';
+  }
 }

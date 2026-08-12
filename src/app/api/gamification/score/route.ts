@@ -44,8 +44,12 @@ export async function GET(request: NextRequest) {
 
     // The server runs UTC; `transactions.date` holds the client's LOCAL day, so
     // a window derived from the server clock is wrong for anyone east or west of
-    // UTC for part of every day. Clamped to +/-1 day server-side.
-    const today = resolveClientToday(new URL(request.url).searchParams.get('today'));
+    // UTC for part of every day. The ZONE is authoritative when sent;  is
+    // the clamped fallback for clients that do not send one (HP-7).
+    const today = resolveClientToday(
+      new URL(request.url).searchParams.get('today'),
+      new URL(request.url).searchParams.get('tz')
+    );
     const todayKey = localDayKey(today);
     // DATE columns compare as YYYY-MM-DD strings (never toISOString) — house rule
     const currentMonthStart = toLocalISODate(new Date(today.getFullYear(), today.getMonth(), 1));

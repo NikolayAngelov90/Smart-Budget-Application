@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     // UTC for part of every day. Clamped to +/-1 day server-side.
     const currentDate = monthParam
       ? new Date(`${monthParam}-01T00:00:00`)
-      : resolveClientToday(searchParams.get('today'));
+      : resolveClientToday(searchParams.get('today'), searchParams.get('tz'));
 
     // An explicit ?month= is a drill-down at a named month and always wins; it
     // has no meaningful "week" or "year" reading. Otherwise the dashboard

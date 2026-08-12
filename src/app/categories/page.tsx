@@ -62,7 +62,7 @@ import { formatCurrency } from '@/lib/utils/currency';
 import { EmptyState } from '@/components/shared/EmptyState';
 import type { BudgetSummary } from '@/types/database.types';
 import type { Category } from '@/types/category.types';
-import { clientTodayParam } from '@/lib/utils/date';
+import { useDatedParams } from '@/lib/hooks/useClientToday';
 
 // Throws on HTTP errors so SWR surfaces the error state instead of treating
 // an error payload as a successful (empty) categories response.
@@ -122,7 +122,9 @@ export default function CategoriesPage() {
   );
 
   // Story 16.3: current-month spend per category (expenses) for the card caption.
-  const { data: spendingData, mutate: mutateSpending } = useSWR(`/api/dashboard/spending-by-category?today=${clientTodayParam()}`, fetcher);
+  // HP-7: live local day, so this key rolls over at midnight in an idle tab.
+  const dated = useDatedParams();
+  const { data: spendingData, mutate: mutateSpending } = useSWR(`/api/dashboard/spending-by-category?${dated}`, fetcher);
   const spentByCategory = new Map<string, number>(
     (Array.isArray(spendingData?.categories)
       ? (spendingData.categories as Array<{ category_id: string; amount: number }>)

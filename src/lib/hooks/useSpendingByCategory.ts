@@ -8,7 +8,8 @@
  */
 
 import useSWR from 'swr';
-import { clientTodayParam } from '@/lib/utils/date';
+import { clientTimeZoneParam } from '@/lib/utils/date';
+import { useClientToday } from '@/lib/hooks/useClientToday';
 import type { DashboardPeriod } from '@/lib/utils/dashboardPeriod';
 
 /** PREFIX, not a whole key — requests carry `?today=` and may carry `?period=`. */
@@ -84,13 +85,18 @@ export function useSpendingByCategory(
   month?: string,
   period?: DashboardPeriod
 ): UseSpendingByCategoryResult {
+  // HP-7: live local day, so the key rolls over at midnight in an idle tab.
+  const today = useClientToday();
   const params = new URLSearchParams();
   if (month) {
     params.set('month', month);
   } else if (period) {
     params.set('period', period);
   }
-  params.set('today', clientTodayParam());
+  params.set('today', today);
+  // The server trusts the ZONE over the claimed day — see resolveClientToday.
+  const tz = clientTimeZoneParam();
+  if (tz) params.set('tz', tz);
   const url = `${SPENDING_BY_CATEGORY_KEY}?${params.toString()}`;
 
   const { data, error, isLoading, mutate } = useSWR<SpendingByCategoryResponse>(

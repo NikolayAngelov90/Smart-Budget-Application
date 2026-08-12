@@ -11,7 +11,7 @@
 import useSWR, { type KeyedMutator } from 'swr';
 import { useGamification } from '@/lib/hooks/useGamification';
 import type { BudgetScoreResponse } from '@/types/database.types';
-import { clientTodayParam } from '@/lib/utils/date';
+import { useDatedParams } from '@/lib/hooks/useClientToday';
 
 /**
  * The KEY constants are now PREFIXES, not whole keys: each request carries the
@@ -25,8 +25,8 @@ import { clientTodayParam } from '@/lib/utils/date';
 export const SCORE_KEY = '/api/gamification/score';
 
 /** Full request URL for the client's current local day. */
-function scoreUrl(): string {
-  return `${SCORE_KEY}?today=${clientTodayParam()}`;
+function scoreUrl(dated: string): string {
+  return `${SCORE_KEY}?${dated}`;
 }
 
 async function fetcher(url: string): Promise<BudgetScoreResponse> {
@@ -44,7 +44,15 @@ export interface UseBudgetScoreResult {
   mutate: KeyedMutator<BudgetScoreResponse>;
 }
 
+/**
+ * HP-7: the day comes from `useClientToday()`, which re-renders when the
+ * local day changes. Calling `clientTodayParam()` inline looked equivalent
+ * but only recomputed on a render that happened for some OTHER reason — an
+ * idle tab kept yesterday's key and `revalidateOnFocus` refetched that same
+ * stale key, so a dashboard left open overnight showed last month on the 1st.
+ */
 export function useBudgetScore(): UseBudgetScoreResult {
+  const dated = useDatedParams();
   // Story 15.6: null key while opted out. Best-effort (the authoritative gate
   // is the component null-return + the pushService suppression): the score GET
   // is also a server-side achievement-evaluation point, so this reduces — but
@@ -52,7 +60,7 @@ export function useBudgetScore(): UseBudgetScoreResult {
   // revalidations (AppLayout quick-add, dashboard pull-to-refresh) are gated
   // separately on the same pref so the reduction actually holds.
   const { enabled } = useGamification();
-  const { data, error, isLoading, mutate } = useSWR<BudgetScoreResponse>(enabled ? scoreUrl() : null, fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<BudgetScoreResponse>(enabled ? scoreUrl(dated) : null, fetcher, {
     dedupingInterval: 5000,
     revalidateOnFocus: true,
     keepPreviousData: true,

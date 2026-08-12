@@ -9,7 +9,7 @@
 
 import useSWR from 'swr';
 import type { WhatIfContextResponse } from '@/types/database.types';
-import { clientTodayParam } from '@/lib/utils/date';
+import { useDatedParams } from '@/lib/hooks/useClientToday';
 
 /**
  * The KEY constants are now PREFIXES, not whole keys: each request carries the
@@ -23,8 +23,8 @@ import { clientTodayParam } from '@/lib/utils/date';
 export const WHAT_IF_KEY = '/api/what-if';
 
 /** Full request URL for the client's current local day. */
-function what_ifUrl(): string {
-  return `${WHAT_IF_KEY}?today=${clientTodayParam()}`;
+function what_ifUrl(dated: string): string {
+  return `${WHAT_IF_KEY}?${dated}`;
 }
 
 async function fetcher(url: string): Promise<WhatIfContextResponse> {
@@ -42,8 +42,16 @@ export interface UseWhatIfResult {
   mutate: () => void;
 }
 
+/**
+ * HP-7: the day comes from `useClientToday()`, which re-renders when the
+ * local day changes. Calling `clientTodayParam()` inline looked equivalent
+ * but only recomputed on a render that happened for some OTHER reason — an
+ * idle tab kept yesterday's key and `revalidateOnFocus` refetched that same
+ * stale key, so a dashboard left open overnight showed last month on the 1st.
+ */
 export function useWhatIf(): UseWhatIfResult {
-  const { data, error, isLoading, mutate } = useSWR<WhatIfContextResponse>(what_ifUrl(), fetcher, {
+  const dated = useDatedParams();
+  const { data, error, isLoading, mutate } = useSWR<WhatIfContextResponse>(what_ifUrl(dated), fetcher, {
     dedupingInterval: 5000,
     revalidateOnFocus: true,
     keepPreviousData: true,
