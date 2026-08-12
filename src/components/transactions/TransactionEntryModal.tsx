@@ -58,6 +58,7 @@ import {
   Flex,
   useToast,
   useBreakpointValue,
+  useMediaQuery,
   Box,
   Text,
   Spinner,
@@ -162,6 +163,23 @@ export default function TransactionEntryModal({
   const { nudge, showNudge, dismissNudge } = useSmartNudge();
   // AC-10.8.8: Use bottom sheet Drawer on mobile, centered Modal on desktop
   const isMobile = useBreakpointValue({ base: true, md: false }) ?? false;
+  /**
+   * Whether the primary input is a finger — i.e. whether focusing a field
+   * raises an on-screen keyboard.
+   *
+   * `isMobile` is a WIDTH breakpoint, and width is the wrong question here.
+   * iPhone 15 Pro Max in landscape is 932x430, which resolves to `md`, so a
+   * width-only gate re-enabled autoFocus on the exact device this fix targets
+   * — caught in review. A coarse pointer is the actual condition, and it is a
+   * media query rather than a user-agent sniff.
+   */
+  // NOTE: no `{ ssr: false }`. That option makes Chakra read `window`
+  // immediately, which throws `ReferenceError: window is not defined` during
+  // server rendering and 500s the whole page — caught in the browser, not by
+  // the test suite. The SSR-safe default returns `false` on the server and
+  // corrects after hydration, which is the right way round here: on a phone
+  // `isMobile` is already true on first render, so focus stays suppressed.
+  const [hasCoarsePointer] = useMediaQuery('(pointer: coarse)');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [recentCategories, setRecentCategories] = useState<Category[]>([]);
@@ -509,7 +527,17 @@ export default function TransactionEntryModal({
               aria-label={t('amount')}
               autoComplete="off"
               autoCorrect="off"
-              autoFocus
+              // Desktop only. On iOS a bare `autoFocus` raises the keyboard
+              // while the bottom-sheet Drawer is still animating in; the browser
+              // then scrolls the document to bring the focused input into the
+              // shrunken visual viewport, and because the Drawer is a
+              // fixed-position overlay sized in vh, that scroll drags the whole
+              // sheet up past its own header — leaving the user typing into an
+              // Amount field that has scrolled off the top of the screen.
+              //
+              // `isMobile` is the breakpoint value the component already
+              // computes (line 164), not a user-agent sniff.
+              autoFocus={!isMobile && !hasCoarsePointer}
               {...register('amount')}
               onBlur={handleAmountBlur}
               variant="unstyled"
@@ -810,7 +838,18 @@ export default function TransactionEntryModal({
     return (
       <Drawer isOpen={isOpen} onClose={onClose} placement="bottom" size="full">
         <DrawerOverlay />
-        <DrawerContent borderTopRadius="xl" maxH="95vh" bg="surface">
+        {/* `dvh` tracks the VISUAL viewport, so a raised keyboard shrinks the
+            sheet instead of leaving a band of dead space between the last
+            control and the keyboard accessory bar. `vh` fallback for iOS <15.4,
+            matching AppLayout. */}
+        <DrawerContent
+          borderTopRadius="xl"
+          bg="surface"
+          sx={{
+            maxHeight: '95vh',
+            '@supports (height: 100dvh)': { maxHeight: '95dvh' },
+          }}
+        >
           {/* Drag handle — inset below the iPhone Dynamic Island / status bar so
               the header and fields never collide with the system status bar. */}
           <Box
@@ -824,7 +863,11 @@ export default function TransactionEntryModal({
           <DrawerHeader borderBottomWidth="1px" py={3}>
             {mode === 'edit' ? t('editTransaction') : t('addTransaction')}
             {/* Absolutely-positioned close button needs its own safe-area offset. */}
-            <DrawerCloseButton top="calc(env(safe-area-inset-top) + 0.75rem)" />
+            <DrawerCloseButton
+              top="calc(env(safe-area-inset-top) + 0.75rem)"
+              minW="44px"
+              minH="44px"
+            />
           </DrawerHeader>
           <DrawerBody overflowY="auto" pb="env(safe-area-inset-bottom)">
             {formContent}
