@@ -283,21 +283,26 @@ jobs:
       # Sensitive Vercel env vars pull as EMPTY strings (vercel pull omits their
       # values), so this step gets them from GitHub Secrets.
       #
-      # The NEXT_PUBLIC_SUPABASE_* pair is here for a subtler reason. `vercel
-      # pull` writes them to .vercel/.env.production.local, and the CHECKER reads
-      # that file — which is why it reported "All 14 required variables present".
-      # But `next build` runs as a CHILD PROCESS and inherits only this `env:`
-      # block; Next.js never reads .vercel/.env.production.local. The probe added
-      # in #42 measured it: `NEXT_PUBLIC_SUPABASE var count: 0`.
+      # NEXT_PUBLIC_SUPABASE_URL is here and is LOAD-BEARING: `next lint`, which
+      # this step runs, loads next.config.ts, and that config throws when the
+      # variable is unset. Verified by hiding it — `next lint` fails on the
+      # throw, `tsc --noEmit` does not.
       #
-      # So the gate's green was NARROWER THAN IT LOOKED — true of the checker's
-      # file read, false of the build it then spawned.
+      # Its two former companions (_ANON_KEY, NEXT_PUBLIC_APP_URL) were removed.
+      # They were added in hp-13 so the gate's `next build` would match
+      # production's, and #46 removed that build, which made them cargo the same
+      # day. Verified rather than assumed: with each hidden in turn, nothing in
+      # this step notices — check-env-vars.js reads
+      # .vercel/.env.production.local (scripts/check-env-vars.js:60), so it still
+      # reports 14/14, and next.config.ts reads only the URL.
       #
-      # STILL REQUIRED AFTER --skip-build: `next lint`, which this step does run,
-      # loads next.config.ts, and that config now THROWS when
-      # NEXT_PUBLIC_SUPABASE_URL is unset. Verified — with the variable hidden,
-      # `next lint` fails on the throw while `tsc --noEmit` does not. These are
-      # not leftovers from the build; deleting them reddens the gate.
+      # HISTORY, so the probe line below is not mistaken for decoration: the
+      # CHECKER reads the pulled file, but `next build` ran as a CHILD PROCESS
+      # inheriting only this `env:` block, and Next.js never reads that file. So
+      # "All 14 required variables present" was true of the check and false of
+      # the build it spawned — the gate's green was NARROWER THAN IT LOOKED. The
+      # #42 probe measured it at 0. That build is gone now; the probe stays
+      # because it is the cheapest way to see the divergence return.
       - name: Run pre-deployment checks
         env:
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
@@ -307,13 +312,15 @@ jobs:
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
         # One line, kept: it is the only thing that would show this divergence
-        # returning. It read 0 before hp-13 and reads 2 after — TWO, not three:
-        # the pattern is NEXT_PUBLIC_SUPABASE, which matches _URL and _ANON_KEY;
-        # NEXT_PUBLIC_APP_URL does not contain that substring and was never
-        # counted. (The previous comment here said 3. It was wrong.)
+        # returning. Expected value now 1 — only NEXT_PUBLIC_SUPABASE_URL is
+        # passed. It read 0 before hp-13, 2 while _ANON_KEY was also set, and 1
+        # from here.
+        #
+        # The number has been wrong in a comment twice, so state the rule rather
+        # than the answer: the pattern is `NEXT_PUBLIC_SUPABASE`, so it counts
+        # only variables whose NAME contains that substring. NEXT_PUBLIC_APP_URL
+        # never matched it and was never counted, whatever the env block says.
         #
         # --skip-build: the build is deliberately NOT run here. See the commit
         # that added this flag — in short, `deploy` has `needs: test`, and the
@@ -334,5 +341,12 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
+      # NOTE — GitHub's Deployments API is EMPTY for these, by design. Deploying
+      # with the Vercel CLI does not create GitHub deployment records; the last
+      # ones in that API are from Dec 2025, when the Git integration was still
+      # doing the deploying. So `gh api repos/:owner/:repo/deployments` is not a
+      # way to confirm what shipped, and its silence is not evidence of failure.
+      # To verify a deployed commit, read it from Vercel (dashboard or MCP), or
+      # fall back to this job's own success plus a live health check.
       - name: Deploy Project Artifacts to Vercel
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
