@@ -291,8 +291,13 @@ jobs:
       # in #42 measured it: `NEXT_PUBLIC_SUPABASE var count: 0`.
       #
       # So the gate's green was NARROWER THAN IT LOOKED — true of the checker's
-      # file read, false of the build it then spawned. Passing them here makes
-      # the gate build what production builds.
+      # file read, false of the build it then spawned.
+      #
+      # STILL REQUIRED AFTER --skip-build: `next lint`, which this step does run,
+      # loads next.config.ts, and that config now THROWS when
+      # NEXT_PUBLIC_SUPABASE_URL is unset. Verified — with the variable hidden,
+      # `next lint` fails on the throw while `tsc --noEmit` does not. These are
+      # not leftovers from the build; deleting them reddens the gate.
       - name: Run pre-deployment checks
         env:
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
@@ -305,10 +310,19 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
         # One line, kept: it is the only thing that would show this divergence
-        # returning. It read 0 before this change and must read 3 after.
+        # returning. It read 0 before hp-13 and reads 2 after — TWO, not three:
+        # the pattern is NEXT_PUBLIC_SUPABASE, which matches _URL and _ANON_KEY;
+        # NEXT_PUBLIC_APP_URL does not contain that substring and was never
+        # counted. (The previous comment here said 3. It was wrong.)
+        #
+        # --skip-build: the build is deliberately NOT run here. See the commit
+        # that added this flag — in short, `deploy` has `needs: test`, and the
+        # test job already builds this same commit, so a compile error never
+        # reaches this step. Everything else the gate checks (env, types, lint,
+        # tests) is not duplicated anywhere and stays.
         run: |
           echo "NEXT_PUBLIC_SUPABASE var count: $(env | grep -c NEXT_PUBLIC_SUPABASE || true)"
-          node scripts/pre-deployment-check.js
+          node scripts/pre-deployment-check.js --skip-build
 
       - name: Build Project Artifacts
         env:
