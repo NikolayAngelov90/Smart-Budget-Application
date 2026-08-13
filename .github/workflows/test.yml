@@ -348,6 +348,24 @@ jobs:
       # way to confirm what shipped, and its silence is not evidence of failure.
       # To verify a deployed commit, read it from Vercel (dashboard or MCP), or
       # fall back to this job's own success plus a live health check.
+      # Captured BEFORE deploying, so the smoke step below has something to
+      # restore to. Read from the REST API rather than parsing `vercel ls`,
+      # whose human-readable output is not a contract.
+      - name: Capture current production deployment
+        id: last_good
+        run: |
+          PROJECT_ID=$(jq -r .projectId .vercel/project.json)
+          TEAM_ID=$(jq -r .orgId .vercel/project.json)
+          URL=$(curl -sS -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&target=production&state=READY&limit=1" \
+            | jq -r '.deployments[0].url // empty')
+          if [ -z "$URL" ]; then
+            echo "no previous READY production deployment found — rollback will be skipped"
+          else
+            echo "last known good: https://$URL"
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
       - name: Deploy Project Artifacts to Vercel
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
 
@@ -370,6 +388,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Smoke test the deployed app (authenticated, read-only)
+        id: smoke
         env:
           # Literal, not a secret: this is the public production alias, already
           # published in the README. Reading it from NEXT_PUBLIC_APP_URL would
@@ -380,3 +399,26 @@ jobs:
           QA_EMAIL: ${{ secrets.QA_EMAIL }}
           QA_PASSWORD: ${{ secrets.QA_PASSWORD }}
         run: npm run smoke
+
+      # A red X on an already-deployed workflow is an alarm with nobody
+      # contracted to hear it. On a solo project "one minute of exposure"
+      # silently means "until someone opens the tab", which is the same days
+      # this check exists to prevent. So the response is automatic.
+      #
+      # PROMOTE, NOT ROLLBACK, and the difference is not cosmetic. `vercel
+      # rollback` TURNS OFF auto-assignment of production domains, so every
+      # later push would build, report success, and NOT go live — trading one
+      # silent divergence for a worse one. `vercel promote` restores the good
+      # deployment AND re-enables auto-assignment, so the next push deploys
+      # normally. Neither rebuilds; both re-point the alias at an existing
+      # deployment, so the bad --prebuilt artefact simply stops being aliased.
+      #
+      # Scoped to the smoke step alone. A failure in deploy itself must not
+      # trigger a promote, because then there is nothing new to undo.
+      - name: Roll back on smoke failure
+        if: failure() && steps.smoke.outcome == 'failure' && steps.last_good.outputs.url != ''
+        run: |
+          echo "::error::Smoke test failed against production. Restoring ${{ steps.last_good.outputs.url }}"
+          vercel promote "https://${{ steps.last_good.outputs.url }}" \
+            --yes --timeout 3m --token=${{ secrets.VERCEL_TOKEN }}
+          echo "::notice::Production restored to the previous deployment. This commit is on main but NOT live."
