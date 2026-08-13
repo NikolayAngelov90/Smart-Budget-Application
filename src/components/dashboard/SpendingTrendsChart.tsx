@@ -91,14 +91,24 @@ export function SpendingTrendsChart({
     if (Number.isNaN(parsed.getTime())) return fallback;
     return format(parsed, 'LLL', dateLocale ? { locale: dateLocale } : undefined);
   };
-  // `ssr: false` so this resolves on the first CLIENT render instead of
-  // returning `undefined` and then flipping. Without it a phone painted "Last 6
-  // months", fired a `months=6` request, then re-rendered to 3 and fired a
-  // SECOND request — a visible caption flip and a wasted fetch on every mobile
-  // dashboard load, showing the mislabelled window this change exists to fix.
-  const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
-  const requestedMonths = isMobile ? 3 : months;
-  const { data, error, isLoading, mutate } = useTrends(requestedMonths);
+  // This carried `{ ssr: false }`, which makes Chakra read `window` DURING
+  // RENDER — so every authenticated /dashboard request 500'd on the server and
+  // was rescued only by the client re-rendering. The build never noticed: a
+  // build compiles, it does not render.
+  //
+  // The option was there for a real reason, and dropping it alone would bring
+  // that back: a phone painted "Last 6 months", fired `months=6`, then
+  // re-rendered to 3 and fired a SECOND request — a caption flip and a wasted
+  // fetch on every mobile load. So instead of guessing before we know, we WAIT:
+  // `undefined` means the breakpoint is unresolved, and a null key tells SWR not
+  // to fetch yet. One request, no flip, and nothing touches `window` on the
+  // server. The cost is that SSR renders the skeleton, which is honest — the
+  // server genuinely cannot know the viewport.
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  const breakpointPending = isMobile === undefined;
+  const requestedMonths = breakpointPending ? null : isMobile ? 3 : months;
+  const { data, error, isLoading: trendsLoading, mutate } = useTrends(requestedMonths);
+  const isLoading = trendsLoading || breakpointPending;
   const { preferences } = useUserPreferences();
   const router = useRouter();
   const currencyCode = preferences?.currency_format;
@@ -256,7 +266,10 @@ export function SpendingTrendsChart({
           count comes from the API. The sibling donut labels from `data.period`
           for exactly this reason. */}
       <Text fontSize="sm" color="fg.muted" mb={2}>
-        {t('spendingTrendsWindow', { count: chartData.length || requestedMonths })}
+        {/* `requestedMonths` is null only while the breakpoint is unresolved,
+            and that path returns the skeleton above — so this falls back to the
+            prop rather than asserting a non-null we would rather not assume. */}
+        {t('spendingTrendsWindow', { count: chartData.length || requestedMonths || months })}
       </Text>
       <ResponsiveContainer width="100%" height={height}>
         <LineChart
