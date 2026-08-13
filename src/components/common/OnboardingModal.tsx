@@ -94,8 +94,34 @@ export function OnboardingModal({
       size={{ base: 'full', md: 'md' }}
     >
       <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(4px)" />
-      <ModalContent mx={{ base: 0, md: 4 }} my={{ base: 0, md: 4 }}>
-        <ModalHeader pt={8} pb={2}>
+      {/* hp-11. THIS IS THE FIRST SCREEN A NEW USER SEES, and at `base: 'full'`
+          with `viewportFit: 'cover'` it drew "Welcome" under the Dynamic Island
+          and put its footer buttons in the home-indicator strip.
+
+          The old `pt={8}` (32px) did not clear a 59px top inset and `pb={8}`
+          (32px) did not clear a 34px bottom one, so both are now ADDED TO the
+          inset rather than replaced by it — the padding was there for spacing,
+          not for the notch, and dropping it would crowd the heading.
+
+          Height tiers live inside `sx`: an unscoped `@supports` block outranks
+          `maxH={{ md: … }}` at equal specificity because Emotion places `sx`
+          last, which cost the desktop dialog its cap in hp-9. */}
+      <ModalContent
+        sx={{
+          maxHeight: '100vh',
+          '@supports (height: 100dvh)': { maxHeight: '100dvh' },
+          '@media screen and (min-width: 48em)': {
+            maxHeight: '90vh',
+            '@supports (height: 100dvh)': { maxHeight: '90dvh' },
+          },
+        }}
+        mx={{ base: 0, md: 4 }}
+        my={{ base: 0, md: 4 }}
+      >
+        <ModalHeader
+          pt={{ base: 'calc(env(safe-area-inset-top) + 2rem)', md: 8 }}
+          pb={2}
+        >
           <VStack spacing={2} align="stretch">
             <Heading as="h2" size="lg" textAlign="center" color="fg">
               {t('welcome')}
@@ -156,7 +182,11 @@ export function OnboardingModal({
           </form>
         </ModalBody>
 
-        <ModalFooter justifyContent="space-between" pb={8}>
+        {/* Added to the inset, not replacing it — see the ModalContent note. */}
+        <ModalFooter
+          justifyContent="space-between"
+          pb={{ base: 'calc(env(safe-area-inset-bottom) + 2rem)', md: 8 }}
+        >
           <Button
             variant="ghost"
             onClick={onSkip}

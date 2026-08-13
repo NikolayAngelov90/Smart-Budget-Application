@@ -350,3 +350,33 @@ jobs:
       # fall back to this job's own success plus a live health check.
       - name: Deploy Project Artifacts to Vercel
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      # hp-11. The gate compiles; it does not render. /dashboard returned HTTP
+      # 500 on every authenticated render (hp-13) while lint, type-check, jest
+      # and the build were all green — only opening the page finds that class.
+      #
+      # WHY THIS RUNS AFTER DEPLOY, not before: NEXT_PUBLIC_* values are INLINED
+      # INTO THE CLIENT BUNDLE at build time, so the only artifact that can talk
+      # to real Supabase is the one built with real env — i.e. the deployed one.
+      # The test job's server is built with test.supabase.co AND runs with
+      # BENCHMARK_MODE=true, which bypasses auth outright (middleware.ts:28), so
+      # an authenticated smoke test there would prove nothing. Pre-deploy
+      # smoking would need a third real-env build, which is what #46 removed.
+      #
+      # The trade is honest: this detects a broken deploy a minute after it goes
+      # live rather than before, which is still the difference between "known
+      # bad, roll back" and "silently broken for days".
+      - name: Install Chromium for smoke test
+        run: npx playwright install chromium --with-deps
+
+      - name: Smoke test the deployed app (authenticated, read-only)
+        env:
+          # Literal, not a secret: this is the public production alias, already
+          # published in the README. Reading it from NEXT_PUBLIC_APP_URL would
+          # make the target depend on a value neither reviewable nor visible in
+          # logs — if that secret ever held a dev URL, this step would fail for a
+          # reason no one could see. Credentials are secrets; the address is not.
+          SMOKE_BASE_URL: https://smart-budget-application.vercel.app
+          QA_EMAIL: ${{ secrets.QA_EMAIL }}
+          QA_PASSWORD: ${{ secrets.QA_PASSWORD }}
+        run: npm run smoke
