@@ -280,10 +280,19 @@ jobs:
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
-      # Sensitive Vercel env vars pull as EMPTY strings (vercel pull omits
-      # their values), so the check and the build get them from GitHub
-      # Secrets. Non-sensitive vars (URLs, publishable key) come from the
-      # pulled .vercel/.env.production.local, which the checker now reads.
+      # Sensitive Vercel env vars pull as EMPTY strings (vercel pull omits their
+      # values), so this step gets them from GitHub Secrets.
+      #
+      # The NEXT_PUBLIC_SUPABASE_* pair is here for a subtler reason. `vercel
+      # pull` writes them to .vercel/.env.production.local, and the CHECKER reads
+      # that file — which is why it reported "All 14 required variables present".
+      # But `next build` runs as a CHILD PROCESS and inherits only this `env:`
+      # block; Next.js never reads .vercel/.env.production.local. The probe added
+      # in #42 measured it: `NEXT_PUBLIC_SUPABASE var count: 0`.
+      #
+      # So the gate's green was NARROWER THAN IT LOOKED — true of the checker's
+      # file read, false of the build it then spawned. Passing them here makes
+      # the gate build what production builds.
       - name: Run pre-deployment checks
         env:
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
@@ -292,16 +301,13 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-        # TEMPORARY PROBE — same two lines as the benchmark build above, so the
-        # two environments can be compared directly instead of argued about.
-        # `next build` runs as a CHILD of this script and inherits exactly what
-        # is printed here; Next.js does not read .vercel/.env.production.local.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+        # One line, kept: it is the only thing that would show this divergence
+        # returning. It read 0 before this change and must read 3 after.
         run: |
           echo "NEXT_PUBLIC_SUPABASE var count: $(env | grep -c NEXT_PUBLIC_SUPABASE || true)"
-          echo "build-relevant vars visible to this job:"
-          env | grep -oE '^(NEXT_PUBLIC_[A-Z_]+|VAPID_[A-Z_]+|SUPABASE_[A-Z_]+|UPSTASH_[A-Z_]+|BENCHMARK_MODE|CRON_SECRET)' | sort || true
-          echo "--- .vercel/.env.production.local keys (names only) ---"
-          [ -f .vercel/.env.production.local ] && grep -oE '^[A-Z_]+' .vercel/.env.production.local | sort || echo "(file absent)"
           node scripts/pre-deployment-check.js
 
       - name: Build Project Artifacts

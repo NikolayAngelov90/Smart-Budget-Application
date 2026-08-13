@@ -59,10 +59,17 @@ export interface UseTrendsResult {
  * @param months - Optional number of months to fetch (defaults to 6)
  * @returns Trends data, error, loading state, and mutate function
  */
-export function useTrends(months?: number): UseTrendsResult {
-  const url = months
-    ? `/api/dashboard/trends?months=${months}`
-    : '/api/dashboard/trends';
+export function useTrends(months?: number | null): UseTrendsResult {
+  // `null` means "the caller does not know yet" and SWR treats a null key as
+  // "do not fetch". That lets a caller defer until a CLIENT-ONLY value resolves
+  // — a viewport breakpoint, say — without reading `window` during render.
+  // `undefined` keeps its old meaning: fetch the route's default window.
+  const url =
+    months === null
+      ? null
+      : months
+        ? `/api/dashboard/trends?months=${months}`
+        : '/api/dashboard/trends';
 
   const { data, error, isLoading, mutate } = useSWR<SpendingTrendsResponse>(
     url,

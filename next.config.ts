@@ -4,9 +4,49 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+/**
+ * FAIL LOUDLY. This used to fall back to '*.supabase.co' when the variable was
+ * unset, which silently widened the image allowlist from ONE project host to
+ * EVERY Supabase project on the internet. Next's image optimizer would then
+ * fetch and re-serve third-party content under our own domain — an open-proxy
+ * shape, burning the transformation quota. Narrow, because of the
+ * `/storage/v1/object/public/**` path constraint, but the property that makes it
+ * bad is that a security control weakened WITH NO SIGNAL.
+ *
+ * It was not hypothetical: the pre-deployment gate's `next build` ran with this
+ * variable absent (measured — `NEXT_PUBLIC_SUPABASE var count: 0`) on every
+ * deploy, and nothing said so.
+ *
+ * THE TRAP THIS ALSO GUARDS, for whoever optimises this pipeline next:
+ * `NEXT_PUBLIC_*` values are INLINED INTO THE CLIENT BUNDLE at build time. A
+ * build without them does not merely use a different config — it emits an
+ * artifact whose client bundle has `undefined` where the Supabase URL should be.
+ * That artifact is harmless today for exactly one reason: `vercel build --prod`
+ * rebuilds afterwards and its output is what ships. Reuse the gate's output to
+ * "save a build" and you ship a dead app. Throwing here makes that impossible
+ * to do by accident.
+ *
+ * Excluded under NODE_ENV=test because `next/jest` loads this config to build
+ * the Jest transform, and it does so BEFORE .env.local reaches process.env — a
+ * bare throw took the whole suite down at startup. Measured, not assumed: at
+ * config load Jest reports NODE_ENV=test with no URL, `next build` reports
+ * NODE_ENV=production with one, and NEXT_PHASE is undefined in both, so the
+ * phase constant is not usable here. The test runner never emits an image
+ * allowlist or a client bundle, so it has nothing to get wrong.
+ */
+if (process.env.NODE_ENV !== 'test' && !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error(
+    'NEXT_PUBLIC_SUPABASE_URL is not set. Refusing to build: the image ' +
+      'remotePatterns allowlist would silently widen to every *.supabase.co ' +
+      'host, and NEXT_PUBLIC_* values are inlined into the client bundle, so ' +
+      'this build would also ship an app that cannot reach Supabase.'
+  );
+}
+
 const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
-  : '*.supabase.co';
+  // Only reachable under NODE_ENV=test, where remotePatterns is never used.
+  : 'localhost';
 
 const nextConfig: NextConfig = {
   experimental: {
