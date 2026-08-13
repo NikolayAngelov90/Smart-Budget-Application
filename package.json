@@ -22,7 +22,8 @@
     "pre-deploy": "node scripts/pre-deployment-check.js",
     "pre-deploy:quick": "node scripts/pre-deployment-check.js --skip-build",
     "check-env": "node scripts/check-env-vars.js",
-    "check-infra": "node scripts/check-infra-percentage.js"
+    "check-infra": "node scripts/check-infra-percentage.js",
+    "smoke": "node --import tsx scripts/smoke-routes.ts"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",
