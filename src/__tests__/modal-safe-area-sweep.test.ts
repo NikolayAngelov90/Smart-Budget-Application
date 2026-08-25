@@ -25,6 +25,21 @@
  * `env(safe-area-inset-top)` anywhere in the file. hp-9 learned that the hard
  * way: its guard was satisfied by the close button's own `top`, so deleting the
  * `pt` that fixes the actual defect left every test green.
+ *
+ * WHY THE NON-FULL-BLEED MODALS ARE NOT CHECKED, AND HOW THIN THAT IS.
+ * The seven centred modals (sm/md/lg/default) are excluded because Chakra gives
+ * ModalContent `my="3.75rem"` = 60px, which clears the iPhone 15 Pro / Pro Max
+ * portrait top inset of 59px.
+ *
+ * That is a ONE PIXEL margin. It is incidental, not designed — nobody chose
+ * 3.75rem to clear a notch — and it was measured on one device family. A phone
+ * with a deeper inset, or a future Chakra changing that default, breaks it with
+ * no warning and no test.
+ *
+ * So do not read "the centred modals are fine" as headroom. If you are here
+ * because something looks clipped on a device with a deeper inset, this
+ * exclusion is the first thing to re-check, and the fix is to bring those
+ * modals into the sweep rather than to widen the margin.
  */
 import fs from 'fs';
 import path from 'path';
