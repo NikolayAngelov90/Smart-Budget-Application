@@ -19,3 +19,16 @@ ignore:
   - "src/**/*.stories.*"
   - "src/app/layout.tsx"
   - "src/app/globals.css"
+  # CI tooling, not shipped code. jest's collectCoverageFrom is `src/**`, so
+  # nothing here is instrumented and every line reads as missed — scripts/
+  # smoke-routes.ts alone put a patch at 0.00%.
+  #
+  # This is an exclusion, not a lowered bar. The smoke script IS tested, by the
+  # only instrument that suits it: reintroducing the hp-13 bug and confirming it
+  # goes red, running it with a wrong password and confirming exit 1, and
+  # checking every error marker against a known-good page. Unit-testing a
+  # Playwright driver means mocking Playwright, which tests the mock.
+  #
+  # Same reasoning as src/test-utils/** in jest.config.js: scaffolding should
+  # not move the ratio for shipped code either way.
+  - "scripts/**"

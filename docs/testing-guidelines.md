@@ -9,6 +9,7 @@ This document outlines testing standards, patterns, and best practices for the S
 - [Test File Organization](#test-file-organization)
 - [Testing Tools and Setup](#testing-tools-and-setup)
 - [Mocking Strategies](#mocking-strategies)
+- [Browser Tests (Playwright)](#browser-tests-playwright)
 - [Writing Good Tests](#writing-good-tests)
 - [Coverage Expectations](#coverage-expectations)
 - [Running Tests](#running-tests)
@@ -360,6 +361,86 @@ describe('Toast Test', () => {
   });
 });
 ```
+
+## Browser Tests (Playwright)
+
+Jest and jsdom cannot catch a page that fails to render. A build compiles; it
+does not render, and jsdom has no server and no layout engine. `/dashboard`
+returned **HTTP 500 on every authenticated render** while lint, type-check, jest
+and the build were all green (hp-13). Browser tests are the only instrument for
+that class.
+
+`scripts/smoke-routes.ts` is the working example — authenticated, read-only,
+run against the deployed app by the `Tests` workflow. Read it before writing
+another one.
+
+### Four traps, all of which cost real time here
+
+**1. `fill()` before hydration silently does nothing.**
+
+The login submit button is `isDisabled={!email || !password}`, bound to React
+state. Playwright's `fill()` sets the DOM value and dispatches input events —
+but if React has not hydrated yet, nothing is listening, state never updates,
+and the button stays disabled **forever**. `click()` then waits out its whole
+timeout on an element that will never become actionable.
+
+This **passed locally and hung against production**: fast local hydration hid it.
+Anything bound to React state has this problem, not just this button.
+
+```ts
+await field.fill(value);
+// Then WAIT for the state-derived effect, and re-fill if hydration lost the race.
+await page.waitForFunction(() => {
+  const b = document.querySelector('form button[type="submit"]');
+  return b instanceof HTMLButtonElement && !b.disabled;
+}, undefined, { timeout: 10_000 });
+```
+
+**2. Error-page markers can ship in every healthy page.**
+
+`"This page could not be found"` is bundled into **every** page by Next, so using
+it as a failure marker failed all seven routes on a perfectly healthy build. That
+is the mirror image of a vacuous guard — a check that can never *pass*. It is the
+worse kind, because a permanently red check gets deleted, and the discipline goes
+with it.
+
+**Verify every marker against a known-good 200 page before trusting it.** A 404
+belongs to the status assertion anyway.
+
+**3. A 200 does not mean you are where you asked to be.**
+
+If the session silently fails, every route redirects to `/login`, which returns
+200. The run goes green having tested nothing. Assert the landed pathname, not
+just the status.
+
+**4. Unauthenticated checks miss authenticated bugs.**
+
+Unauthenticated `/dashboard` returns 307; the 500 only appeared once signed in. A
+smoke test asserting "200 or 3xx" would have stayed green for that bug's entire
+life.
+
+### Constraints on the QA account
+
+It has a second driver — a local Playwright session someone else may be running
+at the same time.
+
+- **Read-only.** Navigate and assert; never create, edit or delete. Two agents
+  writing to one account is a race. Navigation is safe: insight generation is the
+  destructive path and is reachable only from `/api/insights/generate` and from
+  `checkAndTriggerForTransactionCount`, called inside **POST** at
+  `src/app/api/transactions/route.ts`.
+- **Structural invariants only.** Assertions must hold on an empty account and a
+  full one. "Renders 200 with no error boundary" survives someone deleting
+  everything; "shows the transactions list" does not.
+- **No sign-out or session revocation on teardown** — it would kick a concurrent
+  local session out mid-run. Closing the browser is the whole teardown.
+- **429 is not a failure.** Only `/api/insights/generate` is rate limited here,
+  and Supabase rate-limits its own auth endpoints. "Too many requests right now"
+  is not "the app is broken", and failing on it manufactures the false red that
+  gets the check disabled.
+- **Credentials come from `${{ secrets.* }}`**, never inline, and never printed.
+  Truncate Playwright errors before logging them: a `fill()` failure can carry
+  its argument, which is the password.
 
 ## Writing Good Tests
 

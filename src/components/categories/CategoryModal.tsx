@@ -225,9 +225,40 @@ export function CategoryModal({
       motionPreset="slideInBottom"
     >
       <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>{editMode ? t('editCategory') : t('addCategory')}</ModalHeader>
-        <ModalCloseButton />
+      {/* hp-11. `viewportFit: 'cover'` (layout.tsx) puts the content box at the
+          PHYSICAL top of the display, so at `base: 'full'` this drew its title
+          under the Dynamic Island and put a bare ModalCloseButton — default
+          `top: 2`, i.e. 8px — inside the band where a downward swipe opens
+          Control Centre. Same defect hp-9 fixed on InsightDetailModal; pattern
+          copied from there, not reinvented.
+
+          Both height tiers live inside `sx` deliberately: `maxH={{ md: … }}`
+          emits a `@media` rule and an unscoped `@supports` in `sx` emits another
+          at equal specificity, and Emotion places `sx` last — so an unscoped
+          block wins at every width and the desktop dialog loses its cap. */}
+      <ModalContent
+        sx={{
+          maxHeight: '100vh',
+          '@supports (height: 100dvh)': { maxHeight: '100dvh' },
+          '@media screen and (min-width: 48em)': {
+            maxHeight: '90vh',
+            '@supports (height: 100dvh)': { maxHeight: '90dvh' },
+          },
+        }}
+        m={{ base: 0, md: 4 }}
+        pt={{ base: 'env(safe-area-inset-top)', md: 0 }}
+        pb={{ base: 'env(safe-area-inset-bottom)', md: 0 }}
+      >
+        {/* Reserve the absolutely-positioned close button's column so a long
+            category name cannot run underneath it. */}
+        <ModalHeader pr={{ base: '4rem', md: 6 }}>
+          {editMode ? t('editCategory') : t('addCategory')}
+        </ModalHeader>
+        <ModalCloseButton
+          minW="44px"
+          minH="44px"
+          top={{ base: 'calc(env(safe-area-inset-top) + 0.5rem)', md: 2 }}
+        />
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <ModalBody>
