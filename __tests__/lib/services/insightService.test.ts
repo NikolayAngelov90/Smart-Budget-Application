@@ -137,19 +137,30 @@ describe('shouldTriggerGeneration', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Clear any cached generation data
-    jest.resetModules();
+    // No `jest.resetModules()` any more. It existed to clear the module-level
+    // generation Map, and hp-8 removed that Map — the marker lives in the
+    // database now. Worse, it was actively harmful here: re-requiring the
+    // service after a reset hands it a FRESH mock of '@/lib/supabase/server',
+    // so the mockResolvedValue configured on the imported reference no longer
+    // applies and `createClient()` resolves undefined.
   });
 
   it('should return true when never generated before', async () => {
-    // This test verifies that shouldTriggerGeneration returns true
-    // when there's no cache entry (never generated before)
-
-    // Mock doesn't matter here since it will return early from cache check
-    (createClient as jest.Mock).mockResolvedValue({});
-
-    // Import fresh module to ensure clean cache
-    const { shouldTriggerGeneration } = require('@/lib/services/insightService');
+    // hp-8: "never generated" is no longer an empty in-memory Map — it is a NULL
+    // `user_profiles.insights_last_generated_at`. The behaviour is unchanged
+    // (true when never generated); how it is established is not, so the mock
+    // has to answer the profile read rather than nothing at all.
+    (createClient as jest.Mock).mockResolvedValue({
+      from: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            maybeSingle: jest
+              .fn()
+              .mockResolvedValue({ data: { insights_last_generated_at: null }, error: null }),
+          }),
+        }),
+      }),
+    });
 
     const result = await shouldTriggerGeneration(mockUserId);
 
@@ -171,8 +182,10 @@ describe('shouldTriggerGeneration', () => {
 
     mockSelect.mockResolvedValue({ count: 15, error: null });
 
-    // For now, this test needs actual integration with cache
-    // Skipping full implementation
+    // This asserted only that the function EXISTS — a vacuous test that passed
+    // no matter what the function did. hp-8's real behaviour is covered in
+    // insightService.generationMarker.test.ts, which mocks the marker read and
+    // the transaction count properly instead of stubbing them away.
     expect(shouldTriggerGeneration).toBeDefined();
   });
 });

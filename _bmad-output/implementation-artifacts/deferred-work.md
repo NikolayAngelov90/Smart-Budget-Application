@@ -266,3 +266,11 @@ pass — mirroring what `rls.yml` already does in CI.
 
 **Priority: behind hp-8 and hp-10.** Filed explicitly so it does not jump the
 queue ahead of the insights work, which is what was asked for first.
+
+### Also in this batch — duplicated sub-page heading
+
+`/household/goals` renders an h1 "Споделени цели" directly above a card headed
+"Споделени цели". Any sub-page whose single card carries its own heading shows
+its title twice, and Settings has the same shape, so this is a pattern-level
+tidy-up rather than a 17-1 defect. Appended here rather than opened as its own
+story, to keep one small cleanup batch instead of a backlog of one-line items.
