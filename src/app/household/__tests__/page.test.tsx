@@ -18,13 +18,14 @@ import { screen } from '@testing-library/react';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { useHouseholdCategoryTotals } from '@/lib/hooks/useHouseholdCategoryTotals';
 import { useContributions } from '@/lib/hooks/useContributions';
-import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import HouseholdDashboardPage from '../page';
 
 jest.mock('@/lib/hooks/useHousehold', () => ({ useHousehold: jest.fn() }));
 jest.mock('@/lib/hooks/useHouseholdCategoryTotals', () => ({ useHouseholdCategoryTotals: jest.fn() }));
 jest.mock('@/lib/hooks/useContributions', () => ({ useContributions: jest.fn() }));
 jest.mock('@/lib/hooks/useUserPreferences', () => ({ useUserPreferences: () => ({ preferences: { currency_format: 'EUR' } }) }));
+// Kept mocked even though the index no longer subscribes (that moved to the
+// layout's provider): it stops any child from opening a real channel here.
 jest.mock('@/lib/hooks/useRealtimeSubscription', () => ({ useRealtimeSubscription: jest.fn() }));
 jest.mock('@/lib/hooks/useHouseholdGoals', () => ({ useHouseholdGoals: () => ({ goals: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
 jest.mock('@/lib/hooks/useHouseholdInsights', () => ({ useHouseholdInsights: () => ({ insights: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
@@ -45,7 +46,6 @@ jest.mock('swr', () => ({
 const mockHousehold = useHousehold as jest.MockedFunction<typeof useHousehold>;
 const mockTotals = useHouseholdCategoryTotals as jest.MockedFunction<typeof useHouseholdCategoryTotals>;
 const mockContrib = useContributions as jest.MockedFunction<typeof useContributions>;
-const mockRealtime = useRealtimeSubscription as jest.MockedFunction<typeof useRealtimeSubscription>;
 
 function asMember() {
   mockHousehold.mockReturnValue({ household: { id: 'h', name: 'Home', role: 'admin' } as never, isLoading: false, error: undefined, mutate: jest.fn() });
