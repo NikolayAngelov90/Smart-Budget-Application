@@ -32,12 +32,30 @@ import path from 'path';
 const DIR = path.resolve(__dirname, '..');
 
 const FORM_COMPONENTS = [
-  'HouseholdSection.tsx',
+  // Story 17.1 split HouseholdSection: its create <Input> is now in
+  // HouseholdCreateCard and its preset <Select> in TransparencyPresetCard, so
+  // the guard follows both rather than losing them with the file.
+  'HouseholdCreateCard.tsx',
+  'TransparencyPresetCard.tsx',
   'HouseholdInvites.tsx',
   'AllowanceCard.tsx',
   'ContributionSplitCard.tsx',
   'SharedGoalsCard.tsx',
 ];
+
+/**
+ * Components from the list above that actually contain a `<Button>`.
+ *
+ * The button check asserts `buttons.length > 0` so it can never pass on an
+ * empty extraction — which means a component with no buttons cannot be in it.
+ * `TransparencyPresetCard` is a `<Select>` and a hint, nothing more.
+ *
+ * The exclusion is verified below rather than trusted: an excluded file that
+ * grew a `<Button>` would silently escape the 44px rule, so a test asserts the
+ * excluded ones genuinely have none.
+ */
+const BUTTON_COMPONENTS = FORM_COMPONENTS.filter((f) => f !== 'TransparencyPresetCard.tsx');
+const NO_BUTTON_COMPONENTS = FORM_COMPONENTS.filter((f) => !BUTTON_COMPONENTS.includes(f));
 
 const read = (file: string) => fs.readFileSync(path.join(DIR, file), 'utf8');
 
@@ -170,7 +188,7 @@ describe('mobile tap targets', () => {
     expect(missing.map((c) => c.replace(/\s+/g, ' ').slice(0, 70))).toEqual([]);
   });
 
-  it.each(FORM_COMPONENTS)('%s sizes its buttons too', (file) => {
+  it.each(BUTTON_COMPONENTS)('%s sizes its buttons too', (file) => {
     // HP-4's docblock claimed "all 8 controls were below 44px", then checked
     // Input/Select only — so `<Button size="sm">` (Chakra sm = 32px) survived on
     // Save / Cancel / Contribute / Send in every form it touched. On mobile
@@ -190,6 +208,12 @@ describe('mobile tap targets', () => {
     const missing = buttons.filter((b) => !/minH=\{\{\s*base:\s*'44px'/.test(b));
 
     expect(missing.map((b) => b.replace(/\s+/g, ' ').slice(0, 70))).toEqual([]);
+  });
+
+  it.each(NO_BUTTON_COMPONENTS)('%s is excluded from the button check for a real reason', (file) => {
+    // If this file grows a <Button>, it must join BUTTON_COMPONENTS — otherwise
+    // the exclusion becomes a hole the 44px rule quietly falls through.
+    expect(openingTags(read(file), 'Button')).toEqual([]);
   });
 
   it('is not a vacuous check — the pattern it looks for is real', () => {

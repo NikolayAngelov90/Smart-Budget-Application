@@ -37,7 +37,7 @@
 # Phase 2 epics (11-15) are numbered per the Phase 2 PRD and epics.md
 
 generated: 2026-06-02
-last_updated: 2026-08-12
+last_updated: 2026-08-26
 project: Smart-Budget-Application
 project_key: NOKEY
 tracking_system: file-system
@@ -127,6 +127,11 @@ development_status:
   16-7-goals-household-screen-polish: done
   16-8-settings-information-architecture: done
   epic-16-retrospective: done
+
+  # Epic 17 — Information Architecture. Started 2026-08-26 by 17-1, which does
+  # for Household what 16.8 did for Settings.
+  epic-17: in-progress
+  17-1-household-information-architecture: review
 
 # Closed non-story work. Deliberately NOT under development_status: these are
 # neither epics, stories, nor retrospectives, so the sprint-status schema

@@ -245,7 +245,9 @@ describe('Story 16.7 badges stay visible as pills against their card', () => {
 describe('role badges keep pointing at the verified treatment', () => {
   const roleBadgeFiles = [
     'src/components/household/HouseholdMembers.tsx',
-    'src/components/household/HouseholdSection.tsx',
+    // Story 17.1: the role badge moved out of HouseholdSection to the index's
+    // summary card. Same recipe, new home.
+    'src/components/household/HouseholdSummaryCard.tsx',
   ];
 
   it.each(roleBadgeFiles)('%s uses the income/paper subtle recipe', (rel) => {
