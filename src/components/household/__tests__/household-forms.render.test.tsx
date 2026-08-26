@@ -20,7 +20,8 @@ import { HouseholdInvites } from '../HouseholdInvites';
 import { AllowanceCard } from '../AllowanceCard';
 import { ContributionSplitCard } from '../ContributionSplitCard';
 import { SharedGoalsCard } from '../SharedGoalsCard';
-import { HouseholdSection } from '../HouseholdSection';
+import { HouseholdCreateCard } from '../HouseholdCreateCard';
+import { TransparencyPresetCard } from '../TransparencyPresetCard';
 
 const mockHousehold = jest.fn();
 const mockInvitations = jest.fn();
@@ -34,7 +35,7 @@ jest.mock('@/lib/hooks/useHousehold', () => ({
 jest.mock('@/lib/hooks/useInvitations', () => ({
   useInvitations: () => mockInvitations(),
 }));
-// HouseholdSection composes the page. Stub only the children this file does not
+// These cards were carved out of HouseholdSection. Stub only the children this file does not
 // also test directly — mocking SharedGoalsCard here would silently gut its own
 // tests below, which import the real component.
 jest.mock('../PendingInviteBanner', () => ({ PendingInviteBanner: () => null }));
@@ -158,19 +159,23 @@ describe('ContributionSplitCard', () => {
   });
 });
 
-describe('HouseholdSection', () => {
+// Story 17.1 split HouseholdSection apart: the create form is now
+// HouseholdCreateCard (rendered by the /household index when you are not in a
+// household) and the preset is TransparencyPresetCard (on /household/sharing).
+// These assertions follow the markup rather than being deleted with the file.
+describe('HouseholdCreateCard', () => {
   it('shows the create form with a labelled name field when in no household', () => {
     // The worst case measured: at 390px this field had 52px for a 165px
     // placeholder, so it read "Име на" and the user could not tell what it
     // wanted. The label is the only thing naming it.
-    renderIt(<HouseholdSection />);
+    renderIt(<HouseholdCreateCard />);
 
     expect(screen.getByLabelText('namePlaceholder')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'create' })).toBeInTheDocument();
   });
 
   it('keeps create disabled until a name is entered', () => {
-    renderIt(<HouseholdSection />);
+    renderIt(<HouseholdCreateCard />);
 
     const create = screen.getByRole('button', { name: 'create' });
     expect(create).toBeDisabled();
@@ -181,6 +186,9 @@ describe('HouseholdSection', () => {
     expect(create).toBeEnabled();
   });
 
+});
+
+describe('TransparencyPresetCard', () => {
   it('offers the transparency preset once a household exists', () => {
     mockHousehold.mockReturnValue({
       household: { id: 'h-1', name: 'Our place', isAdmin: true, preset: null },
@@ -189,7 +197,7 @@ describe('HouseholdSection', () => {
       mutate: jest.fn(),
     });
 
-    renderIt(<HouseholdSection />);
+    renderIt(<TransparencyPresetCard />);
 
     expect(screen.getByLabelText('presetHeading')).toBeInTheDocument();
   });

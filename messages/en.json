@@ -103,7 +103,18 @@
     "noContributions": "No contributions yet.",
     "noSharedGoals": "No shared goals yet.",
     "noHousehold": "You're not in a household yet. Create or join one to see the shared dashboard.",
-    "noHouseholdCta": "Go to household settings"
+    "noHouseholdCta": "Go to household settings",
+    "backToHousehold": "Back to Household",
+    "membersTitle": "Members & invitations",
+    "membersSummary": "Who is in this household, and who has been invited",
+    "sharingTitle": "Sharing & transparency",
+    "sharingSummary": "What other members can see of your spending",
+    "moneyTitle": "Allowance & contributions",
+    "moneySummary": "Your private allowance and how costs are split",
+    "goalsTitle": "Shared goals",
+    "goalsSummary": "Save toward something together",
+    "perCategoryHint": "To change visibility for one category, edit that category.",
+    "perCategoryLink": "Go to categories"
   },
   "householdGoals": {
     "heading": "Shared goals",
