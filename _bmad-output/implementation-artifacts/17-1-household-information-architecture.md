@@ -180,3 +180,45 @@ CI" step, so the real signal is CI's RLS job, not this.
 
 lint clean · tsc clean · jest **2568 passed** (2546 → 2568) · production build
 clean, all five household routes emitted.
+
+---
+
+## Member-side walk — done 2026-08-26, after sign-off to seed the QA account
+
+Created `QA Household` on the QA account via the app's own create form on
+production (no direct DB writes), then walked the IA at 1440×900 and 393×852.
+Screenshots in `_bmad-output/screenshots/17-1-*.png`.
+
+- **Index** — summary card (`QA Household`, ADMIN badge), household insights,
+  combined spending, then the four group rows. Shared goals appears ONCE, as a
+  row. The hierarchy the story set out to create is visible: read-only above,
+  actions below.
+- **`/household/members`** — back link, invite form (admin), roster with the
+  admin badge.
+- **`/household/sharing`** — the preset, plus the pointer to `/categories`. D2
+  reads well in practice: the page is not thin, and per-category visibility is
+  answered rather than duplicated.
+- **`/household/money`** — private allowance (with its "only you see this"
+  note) and the contribution split.
+- **`/household/goals`** — the shared-goals card, with its create affordance.
+- **Mobile** — cards stack, group rows keep their 64px targets, descriptions
+  truncate to one line as on Settings.
+
+**Smoke, both states, proved rather than asserted.** The brief for the smoke
+script requires it to pass on an empty account AND a full one. Main's post-merge
+run passed while the QA account had no household; the re-run after seeding
+passed with the member view rendering. Same script, seven routes, green both
+times.
+
+### Cosmetic, not fixed
+
+A sub-page whose single card carries its own heading shows that title twice —
+`/household/goals` has h1 "Споделени цели" over a card headed "Споделени цели".
+Settings has the same shape, so this is a pattern-level tidy-up rather than a
+17-1 defect. Left alone deliberately.
+
+### `test:rls` filed, not fixed
+
+The local green-skip is now **hp-14** in `deferred-work.md`, explicitly queued
+BEHIND hp-8 and hp-10. Until then CI's RLS job is the signal, which is a sound
+interim position rather than an oversight.

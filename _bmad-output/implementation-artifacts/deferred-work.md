@@ -235,3 +235,34 @@ the next change to that form, as the original entry says.
 - **12. Four `maybeSingle()` / TOCTOU items.** All guarded by
   one-household-per-user. Implementing them means BUILDING multi-household, which
   is feature scope, not a bug fix. Unchanged from the 2026-07-30 review.
+
+---
+
+## hp-14 — `npm run test:rls` green-skips instead of failing loud (filed 2026-08-26)
+
+**Found during 17-1.** `npm run test:rls` exited 0 having run **0 of 11 suites**.
+Every RLS suite skipped, because the local Supabase stack was not running, and
+the command reported success anyway.
+
+**Why this one matters more than most.** The README names that suite as *"the
+one worth running before touching a policy or a migration"* — so its green is
+trusted precisely when the stakes are highest. RLS is what enforces household
+transparency levels and the privacy of personal allowances. A developer who runs
+it without Docker up gets a confident pass that tested nothing.
+
+This is the same defect as every other green-that-tested-nothing this session,
+and the workflow already knows it: `rls.yml` has a step called *"Verify RLS
+credentials are set (fail loud — never green-skip in CI)"*. CI is protected; the
+local command is not.
+
+**Interim position, deliberate rather than accidental:** CI's RLS Integration
+Tests job runs the suite properly with the stack up and fails loud, so RLS is
+genuinely covered on every PR. Local `test:rls` output should not be quoted as
+evidence until this is fixed.
+
+**Likely fix:** make the local script detect an unreachable stack and exit
+non-zero with "start Supabase first", rather than letting jest skip its way to a
+pass — mirroring what `rls.yml` already does in CI.
+
+**Priority: behind hp-8 and hp-10.** Filed explicitly so it does not jump the
+queue ahead of the insights work, which is what was asked for first.
