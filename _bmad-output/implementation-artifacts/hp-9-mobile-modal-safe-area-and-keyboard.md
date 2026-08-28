@@ -5,7 +5,20 @@
 **Status:** in review
 **Device:** iPhone 15 Pro Max, PWA standalone — **430×932 CSS px**, DPR 3
 
-> ## ⚠ THE INSETS ARE INJECTED. NOTHING HERE IS VERIFIED ON HARDWARE.
+> ## ✅ CLOSED ON HARDWARE — 2026-08-28
+>
+> Nikit inspected the insight detail modal and the transaction composer on an
+> **actual iPhone 15 Pro Max** and found no problem. For a layout defect,
+> inspection on the device IS the test, so this closes the caveat below.
+>
+> Stated at the standard everything else here is held to: **verified by the user
+> on an iPhone 15 Pro Max by inspection; no instrumented measurement was taken on
+> hardware.** That is a complete verification for this defect — neither stronger
+> nor weaker than what was done.
+>
+> ---
+>
+> ### The caveat as it stood, kept because it was CORRECT while it stood
 >
 > Desktop Chromium has no physical notch, so `env(safe-area-inset-*)` resolves
 > to **0**, and Chromium exposes no API to set it. Every "after" measurement and
@@ -17,7 +30,7 @@
 > device would. That means these results prove the layout is correct *given*
 > those insets — they do **not** prove the device reports them, nor that iOS
 > composites as expected. Confirm on real hardware before treating this as
-> closed.
+> closed. — *Done, 2026-08-28. See the closure above.*
 >
 > The "before" capture needed no injection: content at y=0 is inside any
 > non-zero inset.
