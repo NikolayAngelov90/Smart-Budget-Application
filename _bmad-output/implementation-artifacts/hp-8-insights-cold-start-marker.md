@@ -138,3 +138,36 @@ write path is pinned by `is written with the SERVICE ROLE` above.
 
 lint clean (`npm run lint`, `--max-warnings=0`) · type-check clean · jest
 **2569 → 2577** · production build clean.
+
+---
+
+## The reported bug, closed on evidence — 2026-08-28
+
+hp-8 and hp-10 together fix what Nikit originally reported: a dismissed insight
+returning. He reports it now behaving correctly, and that impression was
+converted into row state rather than accepted as the close, because "looks right"
+is not the same claim as "the dismissal survived a regeneration".
+
+Read-only on his account, the €700 Shopping insight for the 16 July transaction
+`a0f9c251`:
+
+```
+rows for this transaction   1
+id                          a282abfa-2fef-4a87-a909-9692f118fe54
+is_dismissed                true
+created_at                  2026-08-28 12:07:31.948
+dismissed_at                2026-08-28 12:07:39.593
+updated_at                  2026-08-28 12:10:08.250
+upserted_after_dismissal    true
+```
+
+The timeline is the proof. The row was created by the post-migration
+regeneration, dismissed 8 seconds later, and then a generation ran 2.5 minutes
+AFTER the dismissal — `updated_at` advanced on the SAME id while `is_dismissed`
+stayed true, and no second row was minted beside it.
+
+Before hp-10 that same sequence produced a new id with `is_dismissed` reset to
+false, observed both on his account (12 rows, one timestamp, zero dismissed) and
+reproduced on QA.
+
+No writes were made to his account at any point.
