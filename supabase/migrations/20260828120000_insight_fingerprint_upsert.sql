@@ -93,6 +93,27 @@
 
 DELETE FROM public.insights;
 
+-- AND RESET hp-8's MARKER IN THE SAME BREATH.
+--
+-- An interaction neither story causes alone. The delete above empties
+-- `insights`; hp-8's `insights_last_generated_at` lives on `user_profiles` and
+-- is untouched by it. So after this deploy shouldTriggerGeneration would read a
+-- RECENT marker, count the few transactions since it, see fewer than ten, and
+-- correctly decline to generate — leaving the insights page empty and KEEPING it
+-- empty until a manual refresh, ten new transactions, or the 1st of the month.
+--
+-- hp-8 working exactly as designed, and the feature looking dead. The user whose
+-- bug this deploy fixes would open the app and find nothing there.
+--
+-- NULL means "never generated", which after wiping the table is the literal
+-- truth. It also keeps the two facts consistent: there are no insight rows, and
+-- we have not generated insights. The next trigger then regenerates properly.
+--
+-- Not solved by asking anyone to press refresh: that works for one person, not
+-- for everyone, and it leaves the marker asserting something false about the
+-- database.
+UPDATE public.user_profiles SET insights_last_generated_at = NULL;
+
 ALTER TABLE public.insights
   ADD COLUMN IF NOT EXISTS fingerprint TEXT,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
