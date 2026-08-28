@@ -14,6 +14,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { toLocalISODate } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
+import { fingerprintFor, toUpsertRow } from '@/lib/ai/insightFingerprint';
 import { DEFAULT_CURRENCY } from '@/lib/utils/constants';
 import {
   detectSpendingIncrease,
@@ -290,7 +291,8 @@ export async function generateInsights(
     // Collect non-null insights
     if (spendingIncrease) allInsights.push(spendingIncrease);
     if (budgetRecommendation) allInsights.push(budgetRecommendation);
-    if (unusualExpense) allInsights.push(unusualExpense);
+    // hp-10: one per outlier — dismissing the largest must not hide the rest.
+    allInsights.push(...unusualExpense);
     if (positiveReinforcement) allInsights.push(positiveReinforcement);
   }
 
@@ -317,43 +319,132 @@ export async function generateInsights(
   logger.info('Insight Service', `Generated ${allInsights.length} insights for user ${userId}`);
 
   // Use service role client for database mutations (bypasses RLS)
-  const adminClient = createServiceRoleClient();
+  const adminClient = createServiceRoleClient() as unknown as SupabaseClient;
 
-  // Delete old insights for this user (to avoid accumulation)
-  const { error: deleteError } = await adminClient
+  // THE SWEEP CUTOFF, TAKEN FROM THE DATABASE CLOCK — read BEFORE writing.
+  //
+  // The sweep must remove rows this run did not produce without touching rows it
+  // just wrote, or rows a CONCURRENT run is writing (the cron at 00:00 on the
+  // 1st and a transaction trigger seconds earlier compute different month
+  // buckets). Every row written from here on gets `updated_at` from the same
+  // Postgres clock, so anything at or before this high-water mark predates the
+  // run and anything after it belongs to this run or a newer one.
+  //
+  // DELIBERATELY NOT `new Date()`. `updated_at` carries the DATABASE clock; if
+  // the cutoff carried the app server's and that clock ran even milliseconds
+  // ahead, rows this run just wrote would satisfy the predicate and the sweep
+  // would delete the insights it had just created. The dashboard would empty,
+  // the next run would refill it, and the symptom would be intermittent
+  // disappearance reproducible on nobody's machine. Reading the high-water mark
+  // from the rows themselves removes the skew rather than tolerating it.
+  const { data: watermarkRow, error: watermarkError } = await adminClient
     .from('insights')
-    .delete()
-    .eq('user_id', userId);
+    .select('updated_at')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (deleteError) {
-    logger.error('Insight Service', 'Error deleting old insights:', deleteError);
-    throw new Error(`Failed to delete old insights: ${deleteError.message}`);
+  if (watermarkError) {
+    logger.error('Insight Service', 'Error reading sweep watermark:', watermarkError);
+    throw new Error(`Failed to read sweep watermark: ${watermarkError.message}`);
+  }
+  const sweepCutoff =
+    (watermarkRow as { updated_at?: string } | null)?.updated_at ?? null;
+
+  // UPSERT on (user_id, fingerprint). Rows keep their identity, so a dismissal
+  // survives; only the presentation fields are refreshed.
+  const keptFingerprints: string[] = [];
+  if (allInsights.length > 0) {
+    const rows = allInsights
+      .map((insight) => {
+        const fingerprint = fingerprintFor(insight, currentMonth);
+        if (!fingerprint) {
+          // Should be unreachable: every type carries either a transaction_id or
+          // a category_id. Logged at ERROR rather than dropped quietly, because
+          // a silently discarded insight is the same "collapse an unknown into a
+          // confident answer" failure this story exists to remove — and the
+          // column is NOT NULL, so it cannot be written without one.
+          logger.error(
+            'Insight Service',
+            `No fingerprint for a ${insight.type} insight; not written`,
+            { userId, type: insight.type }
+          );
+          return null;
+        }
+        keptFingerprints.push(fingerprint);
+        return toUpsertRow(insight, fingerprint);
+      })
+      .filter((row): row is Record<string, unknown> => row !== null);
+
+    if (rows.length > 0) {
+      const { error: upsertError } = await adminClient
+        .from('insights')
+        .upsert(rows, { onConflict: 'user_id,fingerprint' });
+
+      if (upsertError) {
+        logger.error('Insight Service', 'Error upserting insights:', upsertError);
+        throw new Error(`Failed to upsert insights: ${upsertError.message}`);
+      }
+    }
   }
 
-  // Insert new insights into database
-  if (allInsights.length > 0) {
-    const { data: insertedInsights, error: insertError } = await adminClient
+  // THE SWEEP. Delete-and-reinsert had exactly one virtue — it garbage-collected
+  // — and UPSERT alone would leave a stale "groceries up 40%" card on the
+  // dashboard in November. This restores expiry without restoring the bug.
+  //
+  // It runs only HERE, on the success path after every rule has completed.
+  // "Successful" means the INPUTS LOADED, not that output was produced: both the
+  // transaction and category fetches throw on error above, and the engines are
+  // pure functions over that one array — so if the array loaded, every engine
+  // ran. A run that produced ZERO insights is therefore a legitimate "nothing to
+  // say", and emptying the dashboard is the correct result rather than a bug.
+  if (sweepCutoff) {
+    let sweep = adminClient
       .from('insights')
-      .insert(allInsights)
-      .select();
+      .delete()
+      .eq('user_id', userId)
+      // WITHOUT THIS LINE hp-10 SHIPS THE ORIGINAL BUG ON A LONGER CYCLE. A
+      // dismissed row the rule no longer produces would be deleted here, and the
+      // run after that would recreate it undismissed. This single predicate is
+      // what makes a dismissal permanent.
+      .eq('is_dismissed', false)
+      .lte('updated_at', sweepCutoff);
 
-    if (insertError) {
-      logger.error('Insight Service', 'Error inserting insights:', insertError);
-      throw new Error(`Failed to insert insights: ${insertError.message}`);
+    if (keptFingerprints.length > 0) {
+      sweep = sweep.not(
+        'fingerprint',
+        'in',
+        `(${keptFingerprints.map((f) => `"${f}"`).join(',')})`
+      );
     }
 
-    // Update cache
-    await markGenerated(userId);
-
-    logger.info('Insight Service', `Successfully inserted ${insertedInsights?.length || 0} insights`);
-
-    return insertedInsights || [];
+    const { error: sweepError } = await sweep;
+    if (sweepError) {
+      logger.error('Insight Service', 'Error sweeping stale insights:', sweepError);
+      throw new Error(`Failed to sweep stale insights: ${sweepError.message}`);
+    }
   }
 
-  // Update cache even if no insights generated
   await markGenerated(userId);
 
-  return [];
+  const { data: currentInsights } = await adminClient
+    .from('insights')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_dismissed', false)
+    .order('priority', { ascending: false });
+
+  logger.info(
+    'Insight Service',
+    `Upserted ${keptFingerprints.length} insights for user ${userId}`
+  );
+
+  // Re-read rather than returning the upsert payload: the caller wants the
+  // stored rows (ids, created_at, and crucially is_dismissed as it now stands),
+  // not the values this run proposed. The generic client loses the row type, so
+  // narrow back to the declared return type here.
+  return (currentInsights ?? []) as unknown as Insight[];
 }
 
 /**
