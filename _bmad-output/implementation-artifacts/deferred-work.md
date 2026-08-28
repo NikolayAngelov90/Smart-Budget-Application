@@ -294,3 +294,36 @@ production, and let 42703 throw like every other error.
 rather than waiting, because CI's RLS job runs properly even though the local
 command green-skips. When hp-14 fixes the local skip, that suite becomes
 runnable locally too — no new test needed, just a working runner.
+
+### Also in this batch — the column-grant audit (filed, NOT scheduled ahead of hp-10)
+
+hp-8 found that `user_profiles` granted table-wide UPDATE/INSERT to
+`authenticated` AND `anon`, which made `analytics_viewer` — an access-control
+flag the analytics dashboard enforces server-side — settable by any user on
+their own row. Closed in #50, and confirmed never exploited: 0 of 3 profiles had
+it set.
+
+**The root cause is a three-part coincidence, not a table.** A wide table-level
+GRANT, plus an RLS UPDATE policy permissive enough to match the user's own row,
+plus a privilege-bearing column. All three had to line up.
+
+Known latent case, blocked today by an absence rather than a control:
+`household_members.household_role` ('admin' | 'member', `020_households.sql:15`)
+has SELECT and INSERT policies but **no UPDATE policy**, so RLS default-denies
+self-promotion to admin. The grants are still wide. The day someone adds a
+legitimate UPDATE policy for an unrelated reason, `role` comes with it — on the
+most consequential column in the app.
+
+Done correctly already, with explicit REVOKEs: `036_user_achievements.sql:39-43`
+and `037_comeback_challenges.sql:34-36`. **036's comment states the exact lesson
+hp-8 walked into.** The knowledge was in the repo; what was missing was a test
+that would fail without it. That is the finding worth carrying, more than the
+SQL.
+
+**Deliverable:** a per-table matrix of (table-level grants x RLS UPDATE policy
+breadth x privilege-bearing columns), flagging every table where two of the three
+line up as latent. It belongs here with the RLS-suite fix because both are about
+privileges being untestable locally.
+
+**Deliberately not scheduled ahead of hp-10.** The live issue is closed; what
+remains requires a future policy change to become real.

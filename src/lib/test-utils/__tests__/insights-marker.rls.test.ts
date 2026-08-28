@@ -138,26 +138,78 @@ rlsDescribe('insights_last_generated_at is server-only (hp-8)', () => {
     expect((data as { analytics_viewer: boolean | null } | null)?.analytics_viewer).not.toBe(true);
   });
 
-  it('the columns a user SHOULD be able to write still work', async () => {
-    // The mirror of every REVOKE above. Narrowing the grant too far would break
-    // the profile screen silently in production while every negative assertion
-    // above still passed.
-    const user = await signInAsTestUser(email, PWD);
+  // THREE GRANTED COLUMNS, THREE POSITIVE ASSERTIONS.
+  //
+  // The negative assertions above are only half the control. Narrowing the grant
+  // too far breaks the profile screen in production while every "cannot write"
+  // test still passes — a green suite over a broken settings page. One positive
+  // assertion out of three columns would have left that risk unproven, so each
+  // granted column is exercised.
+  describe('the columns a user SHOULD be able to write still work', () => {
+    it('display_name', async () => {
+      const user = await signInAsTestUser(email, PWD);
+      const { error } = await user
+        .from('user_profiles')
+        .update({ display_name: 'Renamed By Owner' })
+        .eq('id', userId);
 
-    const { error } = await user
-      .from('user_profiles')
-      .update({ display_name: 'Renamed By Owner' })
-      .eq('id', userId);
+      expect(error).toBeNull();
 
-    expect(error).toBeNull();
+      const { data } = await user
+        .from('user_profiles')
+        .select('display_name')
+        .eq('id', userId)
+        .maybeSingle();
+      expect((data as { display_name: string }).display_name).toBe('Renamed By Owner');
+    });
 
-    const { data } = await user
-      .from('user_profiles')
-      .select('display_name')
-      .eq('id', userId)
-      .maybeSingle();
+    it('profile_picture_url', async () => {
+      const user = await signInAsTestUser(email, PWD);
+      const url = 'https://example.test/avatar.png';
+      const { error } = await user
+        .from('user_profiles')
+        .update({ profile_picture_url: url })
+        .eq('id', userId);
 
-    expect((data as { display_name: string }).display_name).toBe('Renamed By Owner');
+      expect(error).toBeNull();
+
+      const { data } = await user
+        .from('user_profiles')
+        .select('profile_picture_url')
+        .eq('id', userId)
+        .maybeSingle();
+      expect((data as { profile_picture_url: string }).profile_picture_url).toBe(url);
+    });
+
+    it('preferences, both directly and through the atomic patch RPC', async () => {
+      const user = await signInAsTestUser(email, PWD);
+
+      const { error: directError } = await user
+        .from('user_profiles')
+        .update({ preferences: { currency_format: 'EUR' } })
+        .eq('id', userId);
+      expect(directError).toBeNull();
+
+      // `patch_user_preferences` is SECURITY INVOKER (verified: prosecdef =
+      // false), so it runs with the CALLER's privileges and these column grants
+      // apply to it. That is the desirable arrangement — it is the real
+      // preferences write path (DW-2's atomic merge), not a way around the
+      // control — but it does mean revoking UPDATE (preferences) would silently
+      // break it, so it is exercised here rather than assumed.
+      const { error: rpcError } = await user.rpc('patch_user_preferences', {
+        p_patch: { date_format: 'DD/MM/YYYY' },
+      });
+      expect(rpcError).toBeNull();
+
+      const { data } = await user
+        .from('user_profiles')
+        .select('preferences')
+        .eq('id', userId)
+        .maybeSingle();
+      const prefs = (data as { preferences: Record<string, unknown> }).preferences;
+      expect(prefs.currency_format).toBe('EUR');
+      expect(prefs.date_format).toBe('DD/MM/YYYY');
+    });
   });
 
   it('the SERVICE ROLE can write it — the app path still works', async () => {
