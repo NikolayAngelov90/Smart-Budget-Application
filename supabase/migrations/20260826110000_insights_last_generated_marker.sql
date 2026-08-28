@@ -45,16 +45,47 @@ COMMENT ON COLUMN public.user_profiles.insights_last_generated_at IS
   'written). NULL means never. Server-derived: written by the service role only; '
   'UPDATE is revoked from authenticated so it cannot be forged via PostgREST.';
 
--- SELECT stays available: the value is not secret, and a client may want to show
--- "last refreshed". Only writing is restricted.
-REVOKE UPDATE (insights_last_generated_at) ON public.user_profiles FROM authenticated;
-REVOKE UPDATE (insights_last_generated_at) ON public.user_profiles FROM anon;
+-- HOW THIS IS ENFORCED, AND WHY THE OBVIOUS VERSION DOES NOT WORK
+--
+-- The first attempt was:
+--
+--   REVOKE UPDATE (insights_last_generated_at) ON public.user_profiles FROM authenticated;
+--
+-- It does nothing, and CI proved it: the RLS test wrote 1970-01-01 to the column
+-- as the row's owner and the value LANDED. In Postgres a TABLE-level
+-- `GRANT UPDATE` covers every column, including ones added later, and revoking a
+-- COLUMN-level privilege does not cancel it. Supabase grants table-level UPDATE
+-- to `authenticated` by default, so the column was writable the moment it
+-- existed.
+--
+-- The working shape is to revoke the table-wide grant and re-grant per column.
+--
+-- THIS ALSO CLOSES A PRE-EXISTING PRIVILEGE ESCALATION, unrelated to hp-8.
+-- `user_profiles.analytics_viewer` is an ACCESS-CONTROL FLAG — the analytics
+-- dashboard checks it server-side and 403s without it. Under the table-wide
+-- grant, any user could PATCH `analytics_viewer: true` onto their own row
+-- through PostgREST and let themselves in. The same escalation applied to a
+-- DELETE-then-INSERT of their own profile row, which is why INSERT is narrowed
+-- too.
+--
+-- The re-granted set is exactly what the app writes with the USER client:
+--   settingsService  -> display_name, profile_picture_url, preferences
+--   auth/callback    -> display_name
+--   settingsService  -> INSERT (id, preferences) when a profile is missing
+-- Everything else — analytics_viewer, insights_last_generated_at, created_at,
+-- updated_at (set by the user_profiles_updated_at trigger) — is server-owned.
 
--- INSERT is how the signup trigger creates the row; it does not set this column,
--- and a user inserting their own profile has no reason to. Revoked for the same
--- forgery reason as UPDATE.
-REVOKE INSERT (insights_last_generated_at) ON public.user_profiles FROM authenticated;
-REVOKE INSERT (insights_last_generated_at) ON public.user_profiles FROM anon;
+REVOKE UPDATE ON public.user_profiles FROM authenticated;
+REVOKE UPDATE ON public.user_profiles FROM anon;
+REVOKE INSERT ON public.user_profiles FROM authenticated;
+REVOKE INSERT ON public.user_profiles FROM anon;
 
--- Partial index: shouldTriggerGeneration reads this per user by primary key, so
--- no index is needed for the lookup itself. Deliberately not adding one.
+GRANT UPDATE (display_name, profile_picture_url, preferences)
+  ON public.user_profiles TO authenticated;
+GRANT INSERT (id, preferences)
+  ON public.user_profiles TO authenticated;
+
+-- SELECT is untouched: the marker is not secret, a client may want to show
+-- "last refreshed", and narrowing reads here would break the profile screen.
+-- Only writes are restricted. RLS still applies on top of all of this — policies
+-- and column privileges are checked independently and both must pass.

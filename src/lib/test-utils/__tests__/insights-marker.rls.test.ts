@@ -110,6 +110,56 @@ rlsDescribe('insights_last_generated_at is server-only (hp-8)', () => {
     expect((data as { insights_last_generated_at: string | null } | null)?.insights_last_generated_at).toBeNull();
   });
 
+  it('a user CANNOT grant themselves analytics_viewer', async () => {
+    // PRE-EXISTING PRIVILEGE ESCALATION, found by this suite rather than
+    // reasoned about. `analytics_viewer` is an access-control flag — the
+    // analytics dashboard reads it server-side and 403s without it — and it sits
+    // on a table that granted table-wide UPDATE to `authenticated`. Any user
+    // could PATCH it onto their own row and let themselves in.
+    //
+    // It is fixed by the same statement as the hp-8 marker, because it is the
+    // same root cause: a table-level grant covering every column.
+    const svc = createServiceClient();
+    const user = await signInAsTestUser(email, PWD);
+
+    const { error } = await user
+      .from('user_profiles')
+      .update({ analytics_viewer: true })
+      .eq('id', userId);
+
+    expect(error?.code).toBe('42501');
+
+    const { data } = await svc
+      .from('user_profiles')
+      .select('analytics_viewer')
+      .eq('id', userId)
+      .maybeSingle();
+
+    expect((data as { analytics_viewer: boolean | null } | null)?.analytics_viewer).not.toBe(true);
+  });
+
+  it('the columns a user SHOULD be able to write still work', async () => {
+    // The mirror of every REVOKE above. Narrowing the grant too far would break
+    // the profile screen silently in production while every negative assertion
+    // above still passed.
+    const user = await signInAsTestUser(email, PWD);
+
+    const { error } = await user
+      .from('user_profiles')
+      .update({ display_name: 'Renamed By Owner' })
+      .eq('id', userId);
+
+    expect(error).toBeNull();
+
+    const { data } = await user
+      .from('user_profiles')
+      .select('display_name')
+      .eq('id', userId)
+      .maybeSingle();
+
+    expect((data as { display_name: string }).display_name).toBe('Renamed By Owner');
+  });
+
   it('the SERVICE ROLE can write it — the app path still works', async () => {
     // The mirror of the above. If the REVOKE were written too broadly (e.g.
     // FROM PUBLIC), generation itself would stop recording, and hp-8 would fail
