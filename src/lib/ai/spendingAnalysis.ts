@@ -222,38 +222,62 @@ export function compareMonthlySpending(
  *   (1) several unrelated real accounts have a category with >= 10 expense
  *       transactions in the fetch window; or
  *   (2) roughly 50+ `unusual_expense` rows have accumulated across accounts,
- *       counting ONLY rows that survive the exclusion filter below -
- *       enough to compute a per-type DISMISSAL RATE, which is the only measure of
- *       flag quality that is not one person's judgement. A rule whose cards are
- *       dismissed at 90% is over-flagging whatever its statistics say.
+ *       counting ONLY rows that survive the exclusion filter below - enough to
+ *       compute the quality measure described next.
  *
- * THE SECOND INSTRUMENT DID NOT EXIST BEFORE hp-10, WHICH IS WHY THIS QUESTION
- * WAS UNANSWERABLE RATHER THAN MERELY UNANSWERED. Until the fingerprint upsert,
- * every regeneration DELETED the user's rows and reinserted fresh ones, so
- * `is_dismissed` and `dismissed_at` were destroyed on each run: dismissal rate was
- * unmeasurable in principle, not just unmeasured.
+ * THE QUALITY MEASURE IS "DISMISSED WITHOUT ENGAGEMENT", NOT DISMISSAL RATE.
+ * The raw dismissal rate is the obvious instrument and the wrong one. This card
+ * asks the user to go and look at a charge, so the CORRECT response to a
+ * perfectly accurate alert is to open it, confirm the charge is fine, and dismiss
+ * it. Dismissal is the SUCCESS path here, not the rejection path: a well-tuned
+ * rule also shows a high dismissal rate, and "90% dismissed means over-flagging"
+ * would condemn a rule doing exactly what it was designed to do. The rate
+ * conflates "this was noise" with "this was read and handled" - opposite outcomes
+ * it cannot tell apart. Use the engagement columns from
+ * `003_insights_engagement_analytics.sql` instead:
+ *
+ *   dismissed, metadata_expanded_count = 0  -> swiped away unread     = NOISE
+ *   dismissed, metadata_expanded_count > 0  -> opened, checked, closed = WORKING
+ *
+ * A high NOISE share is the over-flagging signal that would justify revisiting
+ * the estimator. A high WORKING share means leave the rule alone.
+ *
+ * hp-10 CREATED THIS INSTRUMENT, WHICH IS WHY THE QUESTION WAS UNANSWERABLE
+ * RATHER THAN MERELY UNANSWERED. Until the fingerprint upsert, every regeneration
+ * DELETED the user's rows and reinserted fresh ones - and `is_dismissed` was not
+ * the only casualty. All six engagement columns rode the same rows, so
+ * `view_count` and `metadata_expanded_count` were resetting on every run too.
+ * None of this was unmeasured; it was unmeasurable in principle. The same applies
+ * to the Epic 12-8 analytics dashboard, whose engagement numbers are only
+ * meaningful from the migration date (2026-08-28) forward and were untrustworthy
+ * before it.
  *
  * THE FIRST READING IS CONTAMINATED - DO NOT USE IT AS A BASELINE. The clock
  * starts at the hp-10 migration (2026-08-28), which cleared the table, so every
- * row created on that date is OUR OWN verification activity: the EUR 700
- * dismissal was hp-10's acceptance step, and the rest came from working through
- * the app while checking it. The raw counter for 2026-08-28 reads 7
- * `unusual_expense` rows, 7 of them dismissed. A 100% dismissal rate is the
- * strongest over-flagging signal this metric can produce, and here it means the
- * opposite of what it appears to: it records us proving that dismissal works, not
- * a user finding the cards useless. Anyone reading the unfiltered number later
- * would reach exactly the wrong conclusion, so the query below EXCLUDES rows
- * created before 2026-08-29:
+ * row created on that date is verification activity - confirmed by the user:
+ * he dismissed all seven to check whether they would come back, and their content
+ * was not a factor. The raw counter for that date reads 7 `unusual_expense` rows,
+ * 7 dismissed. A 100% dismissal rate is the strongest over-flagging signal the
+ * naive metric can produce, and here it means the opposite of what it appears to.
+ * So the query below starts the clock the day after:
  *
- *   SELECT type, count(*) AS total, count(*) FILTER (WHERE is_dismissed) AS
- *   dismissed FROM public.insights
+ *   SELECT type,
+ *          count(*) AS total,
+ *          count(*) FILTER (WHERE is_dismissed
+ *                             AND coalesce(metadata_expanded_count, 0) = 0) AS noise,
+ *          count(*) FILTER (WHERE is_dismissed
+ *                             AND coalesce(metadata_expanded_count, 0) > 0) AS handled
+ *   FROM public.insights
  *   WHERE created_at >= DATE '2026-08-29'  -- exclude hp-10 verification rows
  *   GROUP BY type;
  *
- * The filter is on `created_at`, which the upsert preserves, so those seven rows
- * stay excluded permanently even after a later run refreshes their content. That
- * is deliberate - their dismissal state was set during testing and can never
- * become clean evidence.
+ * `coalesce` is defensive rather than currently required - no NULLs exist today -
+ * but the column is INTEGER DEFAULT 0 with no NOT NULL constraint, and a NULL
+ * would fail `= 0` and drop the row out of the NOISE bucket, understating the
+ * exact signal the query exists to find. The date filter is on `created_at`,
+ * which the upsert preserves, so those seven rows stay excluded permanently even
+ * after a later run refreshes their content. That is deliberate: their dismissal
+ * state was set during testing and can never become clean evidence.
  *
  * ALSO OBSERVED: MAD = 0 is not a hypothetical edge case. It occurred in 1 of the
  * 8 categories measured (Entertainment, n=27, over half the rows at EUR 20).
