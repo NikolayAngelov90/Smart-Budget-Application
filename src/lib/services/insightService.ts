@@ -9,6 +9,7 @@
  * 5. Managing cache to avoid redundant generation
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { toLocalISODate } from '@/lib/utils/date';
@@ -27,38 +28,108 @@ import {
 import type { Insight, InsightInsert } from '@/types/database.types';
 
 /**
- * Cache entry structure for tracking last generation timestamp
+ * When insight generation last RAN for this user, or null if it never has.
+ *
+ * hp-8. This was a module-level `Map`. On a serverless cold start the Map is
+ * empty, so every user looked "never generated", the 10-transaction gate was
+ * skipped, and insights regenerated on essentially every transaction POST. The
+ * defect was three states — not loaded / never / generated-at-T — squeezed into
+ * two, with the missing one collapsing into the expensive answer.
+ *
+ * It is read from `user_profiles.insights_last_generated_at` rather than derived
+ * from the insight rows. See the migration for the full reasoning; briefly:
+ * MAX(created_at) is correct only while generation deletes and reinserts every
+ * row, which hp-10 is about to stop doing, and no row-derived value can
+ * represent a run that produced ZERO insights — a case this service explicitly
+ * supports.
+ *
+ * Errors are NOT swallowed into a boolean. Per the degradation policy a failed
+ * core input is a 500, because answering "never generated" on a read failure
+ * would regenerate for every user on every write.
  */
-interface CacheEntry {
-  userId: string;
-  lastGenerated: Date;
+async function readLastGeneratedAt(userId: string): Promise<Date | null> {
+  // Cast for the same reason as achievementService/comebackService: the typed
+  // `Database` is GENERATED from the live schema, and this column arrives with
+  // the hp-8 migration, so it is absent from the checked-in types until they are
+  // regenerated. The cast is scoped to this one access, not the whole module.
+  const supabase = (await createClient()) as unknown as SupabaseClient;
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('insights_last_generated_at')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    // DEPLOY-WINDOW ESCAPE HATCH, and deliberately the only one.
+    //
+    // The migration adding this column applies when main merges; Vercel deploys
+    // on the same merge. The order is not guaranteed, so there is a window where
+    // this code runs against a schema without the column. Postgres reports that
+    // as 42703 (undefined_column).
+    //
+    // Throwing there would 500 `/api/insights/generate` and the cron for the
+    // length of that window. Degrading to "never generated" is exactly the
+    // PRE-hp-8 behaviour — an extra generation, no worse than yesterday — and it
+    // self-heals the moment the column exists.
+    //
+    // Scoped to that ONE error code on purpose. Every other failure still
+    // throws, per the degradation policy: answering "never generated" on a
+    // connection error would regenerate for every user on every write, which is
+    // the bug this story exists to remove.
+    if ((error as { code?: string }).code === '42703') {
+      logger.error(
+        'Insight Service',
+        'insights_last_generated_at is missing — migration not applied yet. ' +
+          'Falling back to pre-hp-8 behaviour until it lands.',
+        error
+      );
+      return null;
+    }
+    throw error;
+  }
+
+  const raw = (data as { insights_last_generated_at?: string | null } | null)
+    ?.insights_last_generated_at;
+  return raw ? new Date(raw) : null;
 }
 
-// Simple in-memory cache (in production, use Redis)
-const generationCache = new Map<string, CacheEntry>();
-
 /**
- * Check if insights were recently generated for a user
- * @param userId - User ID to check
- * @param cacheTTL - Cache time-to-live in milliseconds (default: 1 hour)
+ * Record that generation RAN, whatever it produced.
+ *
+ * Service-role, because the column is not writable by the user — it would
+ * otherwise be forgeable through PostgREST, letting anyone suppress their own
+ * insights indefinitely or force constant regeneration.
+ *
+ * Best-effort by design: a failure here must not fail a generation that already
+ * succeeded. The cost of a missed marker is one extra generation; throwing would
+ * surface a 500 for work that actually completed.
  */
-function isCacheValid(userId: string, cacheTTL: number = 3600000): boolean {
-  const entry = generationCache.get(userId);
-  if (!entry) return false;
-
-  const now = new Date();
-  const elapsed = now.getTime() - entry.lastGenerated.getTime();
-  return elapsed < cacheTTL;
+export async function markGenerated(userId: string): Promise<void> {
+  try {
+    const adminClient = createServiceRoleClient() as unknown as SupabaseClient;
+    const { error } = await adminClient
+      .from('user_profiles')
+      .update({ insights_last_generated_at: new Date().toISOString() })
+      .eq('id', userId);
+    if (error) throw error;
+  } catch (markError) {
+    logger.error(
+      'Insight Service',
+      `Failed to record generation marker for user ${userId}:`,
+      markError
+    );
+  }
 }
 
 /**
- * Update cache with new generation timestamp
+ * Whether insights were generated within the TTL window.
+ * @param cacheTTL - window in milliseconds (default: 1 hour)
  */
-function updateCache(userId: string): void {
-  generationCache.set(userId, {
-    userId,
-    lastGenerated: new Date(),
-  });
+async function isCacheValid(userId: string, cacheTTL: number = 3600000): Promise<boolean> {
+  const lastGenerated = await readLastGeneratedAt(userId);
+  if (!lastGenerated) return false;
+
+  return Date.now() - lastGenerated.getTime() < cacheTTL;
 }
 
 /**
@@ -77,7 +148,7 @@ export async function generateInsights(
   forceRegenerate: boolean = false
 ): Promise<Insight[]> {
   // Check cache unless forcing regeneration
-  if (!forceRegenerate && isCacheValid(userId)) {
+  if (!forceRegenerate && (await isCacheValid(userId))) {
     logger.info('Insight Service', `Using cached insights for user ${userId}`);
 
     // Return existing insights from database
@@ -147,7 +218,7 @@ export async function generateInsights(
     logger.info('Insight Service', `No data to generate insights - Transactions: ${transactions?.length || 0}, Categories: ${categories?.length || 0}`);
 
     // Update cache even if no data
-    updateCache(userId);
+    await markGenerated(userId);
 
     return [];
   }
@@ -272,7 +343,7 @@ export async function generateInsights(
     }
 
     // Update cache
-    updateCache(userId);
+    await markGenerated(userId);
 
     logger.info('Insight Service', `Successfully inserted ${insertedInsights?.length || 0} insights`);
 
@@ -280,7 +351,7 @@ export async function generateInsights(
   }
 
   // Update cache even if no insights generated
-  updateCache(userId);
+  await markGenerated(userId);
 
   return [];
 }
@@ -295,8 +366,12 @@ export async function generateInsights(
  * @returns True if generation should be triggered
  */
 export async function shouldTriggerGeneration(userId: string): Promise<boolean> {
-  const entry = generationCache.get(userId);
-  if (!entry) return true; // Never generated before
+  const lastGenerated = await readLastGeneratedAt(userId);
+
+  // NULL now genuinely means "never generated", because the marker is durable.
+  // Generating once for such a user is the right answer — the bug was that a
+  // cold start made EVERY user look like this one.
+  if (!lastGenerated) return true;
 
   const supabase = await createClient();
 
@@ -305,7 +380,7 @@ export async function shouldTriggerGeneration(userId: string): Promise<boolean> 
     .from('transactions')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
-    .gte('created_at', entry.lastGenerated.toISOString());
+    .gte('created_at', lastGenerated.toISOString());
 
   if (error) throw error;
 
@@ -329,7 +404,7 @@ export async function shouldTriggerGeneration(userId: string): Promise<boolean> 
 export async function checkAndTriggerForTransactionCount(userId: string): Promise<void> {
   try {
     // Check if cache is still valid (1-hour TTL)
-    if (isCacheValid(userId)) {
+    if (await isCacheValid(userId)) {
       // Don't trigger if insights were generated less than 1 hour ago
       return;
     }
@@ -350,3 +425,12 @@ export async function checkAndTriggerForTransactionCount(userId: string): Promis
     logger.error('Insight Service', `Error checking transaction count for user ${userId}:`, error);
   }
 }
+
+/**
+ * Test seam for `markGenerated`.
+ *
+ * Exported under an explicit name so the hp-8 suite can pin the marker behaviour
+ * under UPSERT semantics without reaching into module internals or standing up a
+ * whole generation run. Production code calls `markGenerated`.
+ */
+export const markGeneratedForTest = markGenerated;

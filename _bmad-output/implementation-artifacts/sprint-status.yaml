@@ -131,7 +131,7 @@ development_status:
   # Epic 17 — Information Architecture. Started 2026-08-26 by 17-1, which does
   # for Household what 16.8 did for Settings.
   epic-17: in-progress
-  17-1-household-information-architecture: review
+  17-1-household-information-architecture: done
 
 # Closed non-story work. Deliberately NOT under development_status: these are
 # neither epics, stories, nor retrospectives, so the sprint-status schema
