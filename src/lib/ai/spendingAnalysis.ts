@@ -182,6 +182,85 @@ export function compareMonthlySpending(
  * this wrong shipped a critical-priority insight that told users a below-average
  * expense was alarmingly high; see flagUnusualExpense in insightRules.ts.
  *
+ * KNOWN LIMITATION - MASKING. `mean` and `stdDev` are both computed over a set
+ * that CONTAINS the outliers, so a large value inflates the bar it is then
+ * measured against. Two equal large values in a set of ten are mathematically
+ * unreportable: with a fraction p of the sample at value b, `mean + 2s` equals b
+ * exactly when p = 0.2, and the comparison is strict `>`. Measured, not
+ * theorised - eight EUR 30 charges plus two EUR 700 charges emit nothing, at
+ * every magnitude tested up to EUR 5000. The asymmetric case is commoner:
+ * 8x EUR 30 plus EUR 700 and EUR 400 reports only the EUR 700, because the
+ * EUR 700 alone puts the bar at EUR 571.
+ *
+ * REAL OCCURRENCE (measured in production 2026-08-28). A EUR 213.00 Shopping
+ * charge dated 2026-06-01, against a category median of EUR 30 - seven times the
+ * median - was not reported, because a EUR 700 charge in the same window had
+ * raised the bar to EUR 461.94. After hp-10 this compounds: dismiss the visible
+ * EUR 700 and the category goes silent, masked EUR 213 included.
+ *
+ * WHY THE RULE IS STILL THIS ONE. Three alternatives were measured over the same
+ * eight categories (every category with >= 10 expense transactions in the fetch
+ * window, across all production accounts):
+ *   - modified Z-score at 3.5: caught the EUR 213, dropped two legitimate flags.
+ *   - modified Z-score at 2.0: caught six more, dropped one.
+ *   - iterative trimmed sigma at the SAME 2s, minimum remainder 8: caught the
+ *     EUR 213, but cascaded. Each pass removes the largest values, which are
+ *     sigma's largest contributors, so the bar walks down until it reaches the
+ *     dense core rather than converging on the outliers. Healthcare (n=11) went
+ *     from 1 flag to 3, the third being EUR 48 against a EUR 29 median; one
+ *     account went from 6 flags to 13, on a rule that emits at priority 5.
+ * The first two move threshold AND estimator at once, and the spread across
+ * thresholds (6 -> 12 flags) shows the THRESHOLD dominates the outcome - which
+ * cannot be chosen from this data. The third holds the threshold fixed and fails
+ * on its own terms.
+ *
+ * WHEN TO REVISIT - A TRIGGER, NOT AN INTENTION. Nothing measured here can
+ * settle this: the sample is effectively one real account (the other is QA
+ * fixtures), so one masking instance is not a frequency. "Revisit someday" decays
+ * into never, so revisit when EITHER of these becomes true:
+ *
+ *   (1) several unrelated real accounts have a category with >= 10 expense
+ *       transactions in the fetch window; or
+ *   (2) roughly 50+ `unusual_expense` rows have accumulated across accounts,
+ *       counting ONLY rows that survive the exclusion filter below -
+ *       enough to compute a per-type DISMISSAL RATE, which is the only measure of
+ *       flag quality that is not one person's judgement. A rule whose cards are
+ *       dismissed at 90% is over-flagging whatever its statistics say.
+ *
+ * THE SECOND INSTRUMENT DID NOT EXIST BEFORE hp-10, WHICH IS WHY THIS QUESTION
+ * WAS UNANSWERABLE RATHER THAN MERELY UNANSWERED. Until the fingerprint upsert,
+ * every regeneration DELETED the user's rows and reinserted fresh ones, so
+ * `is_dismissed` and `dismissed_at` were destroyed on each run: dismissal rate was
+ * unmeasurable in principle, not just unmeasured.
+ *
+ * THE FIRST READING IS CONTAMINATED - DO NOT USE IT AS A BASELINE. The clock
+ * starts at the hp-10 migration (2026-08-28), which cleared the table, so every
+ * row created on that date is OUR OWN verification activity: the EUR 700
+ * dismissal was hp-10's acceptance step, and the rest came from working through
+ * the app while checking it. The raw counter for 2026-08-28 reads 7
+ * `unusual_expense` rows, 7 of them dismissed. A 100% dismissal rate is the
+ * strongest over-flagging signal this metric can produce, and here it means the
+ * opposite of what it appears to: it records us proving that dismissal works, not
+ * a user finding the cards useless. Anyone reading the unfiltered number later
+ * would reach exactly the wrong conclusion, so the query below EXCLUDES rows
+ * created before 2026-08-29:
+ *
+ *   SELECT type, count(*) AS total, count(*) FILTER (WHERE is_dismissed) AS
+ *   dismissed FROM public.insights
+ *   WHERE created_at >= DATE '2026-08-29'  -- exclude hp-10 verification rows
+ *   GROUP BY type;
+ *
+ * The filter is on `created_at`, which the upsert preserves, so those seven rows
+ * stay excluded permanently even after a later run refreshes their content. That
+ * is deliberate - their dismissal state was set during testing and can never
+ * become clean evidence.
+ *
+ * ALSO OBSERVED: MAD = 0 is not a hypothetical edge case. It occurred in 1 of the
+ * 8 categories measured (Entertainment, n=27, over half the rows at EUR 20).
+ * Subscription-shaped categories make a zero scale estimate the normal case, so
+ * any future median-based variant must decide its zero-scale fallback up front
+ * rather than discovering an Infinity in production.
+ *
  * @param value - Value to check
  * @param mean - Mean of the dataset
  * @param stdDev - Standard deviation of the dataset
