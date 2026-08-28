@@ -192,8 +192,20 @@ closed_work_log:
   #     device clock cannot shift any window. Closes the class, not just bounds it.
   hp-7-audit-deferred-items: done
   # hp-9: mobile modal safe-area + keyboard (P2 of the 2026-08-12 prompt set).
-  # hp-8 (insights cold-start) and hp-10 (fingerprint+UPSERT) are specified in
-  # insights-lifecycle-audit-2026-08-12.md and not yet started.
-  hp-9-mobile-modal-safe-area-and-keyboard: in-review
+  # Deployed; the injected-insets caveat closes only on Nikit's own device.
+  hp-9-mobile-modal-safe-area-and-keyboard: done
+  # The four items Nikit raised at the start are now closed. hp-8 and hp-10 were
+  # the insights pair; both verified in PRODUCTION, not just in CI — same row id
+  # across a forced regeneration with the dismissal intact.
+  hp-8-insights-cold-start-marker: done
+  hp-10-insight-fingerprint-upsert: done
+  hp-11-modal-safe-area-sweep: done
+  hp-12-unusual-expense-sign: done
+  hp-13-dashboard-ssr-and-gate-env: done
+  # Open: hp-14, a cleanup BATCH (local test:rls green-skip, duplicate sub-page
+  # heading, hp-8's 42703 branch removal, the grant/policy matrix, and the
+  # mean/sigma masking item). One PR per coherent group, not one PR of five
+  # unrelated fixes.
+  hp-14-privileges-and-cleanup-batch: backlog
   # Epic 16 retro action #4 (re-triage of remaining LOW items) recorded in
   # deferred-work.md. Engineering backlog now empty.
