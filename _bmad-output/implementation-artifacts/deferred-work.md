@@ -335,3 +335,25 @@ privileges being untestable locally.
 
 **Deliberately not scheduled ahead of hp-10.** The live issue is closed; what
 remains requires a future policy change to become real.
+
+### Also in this batch — mean/sigma outlier detection MASKS multiple outliers
+
+The other edge of the mechanism that bounds the outlier count. `isOutlier` uses
+mean and population sigma, both computed over a set that INCLUDES the outliers,
+so each large value raises its own threshold. That is what keeps the count small
+(measured: max 2 per category, 6 per account) — and it is also what makes the
+rule go QUIET in the case that matters most.
+
+Two EUR 700 charges in Shopping instead of one: both lift the mean, both inflate
+sigma considerably more, and the 2-sigma bar can end up above BOTH. Nothing is
+reported, precisely when several large unusual charges are a worse situation than
+a single one. Shopping already shows the mechanism at one outlier — mean 98.46,
+sigma 181.74, bar at ~462, put there by the EUR 700 itself.
+
+This is the classic weakness of mean/sigma outlier detection. Robust methods use
+the MEDIAN and MAD, or a modified Z-score, precisely because those are not
+dragged by the points they are meant to detect.
+
+PRE-EXISTING, not caused by hp-10, and it was not a reason to widen that story.
+It follows directly from the argument that justified leaving the emission
+uncapped, which is why it is filed rather than left as a footnote to good news.
