@@ -242,6 +242,19 @@ export function compareMonthlySpending(
  * A high NOISE share is the over-flagging signal that would justify revisiting
  * the estimator. A high WORKING share means leave the rule alone.
  *
+ * THE METRIC IS ITSELF UNVALIDATED, AND ITS BLIND SPOT IS KNOWN. It infers intent
+ * from behaviour: dismissal-without-expansion is read as "this was noise". But a
+ * dismissal made for a reason having nothing to do with the card's content reads
+ * identically. The seven verification rows described below are precisely that
+ * case - all seven classify as NOISE, and all seven were dismissed to check
+ * whether they would reappear, with the content not a factor. They therefore
+ * demonstrate the blind spot rather than the metric's accuracy: treating them as
+ * confirmation would presuppose the very inference the metric has to earn, using
+ * a case whose true cause is already known. No known-good data exists to test it
+ * against. The first genuinely uninstrumented dismissals - a user reacting to a
+ * card rather than to us - arrive after 2026-08-28, and the metric stays
+ * unvalidated until some of them do.
+ *
  * hp-10 CREATED THIS INSTRUMENT, WHICH IS WHY THE QUESTION WAS UNANSWERABLE
  * RATHER THAN MERELY UNANSWERED. Until the fingerprint upsert, every regeneration
  * DELETED the user's rows and reinserted fresh ones - and `is_dismissed` was not
