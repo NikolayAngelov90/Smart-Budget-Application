@@ -68,22 +68,36 @@ const profileChain = {
   }),
 };
 
-const deleteChain = {
+// hp-10 replaced delete+insert with: read the sweep watermark, upsert on
+// (user_id, fingerprint), sweep, then re-read. The chain has to answer all four
+// or the service throws on a missing method — which is how this suite failed
+// when the write path changed, rather than silently passing against a stub.
+const insightsChain = {
+  // watermark read + final re-read
+  select: jest.fn().mockReturnThis(),
+  eq: jest.fn().mockReturnThis(),
+  order: jest.fn().mockReturnThis(),
+  limit: jest.fn().mockReturnThis(),
+  maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+  // writes
+  upsert: jest.fn().mockResolvedValue({ error: null }),
   delete: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockResolvedValue({ error: null }),
-};
-
-const insertChain = {
-  insert: jest.fn().mockReturnThis(),
-  select: jest.fn().mockResolvedValue({ data: [], error: null }),
+  lte: jest.fn().mockReturnThis(),
+  not: jest.fn().mockResolvedValue({ error: null }),
+  // The chain is also THENABLE, because two of the four calls end on different
+  // methods: the watermark read terminates at `.maybeSingle()`, the final
+  // re-read at `.order()`, and the sweep at `.lte()` when no fingerprints were
+  // produced. Making every method chainable and the object awaitable answers all
+  // of them without one terminator having to guess which call it is serving.
+  then: (resolve: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(resolve),
 };
 
 const mockFrom = jest.fn().mockImplementation((table: string) => {
   if (table === 'transactions') return txChain;
   if (table === 'categories') return catChain;
   if (table === 'user_profiles') return profileChain;
-  // For delete (service role client)
-  return { ...deleteChain, ...insertChain };
+  // insights (service role client): watermark, upsert, sweep, re-read
+  return insightsChain;
 });
 
 jest.mock('@/lib/supabase/server', () => ({

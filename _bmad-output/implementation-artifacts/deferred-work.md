@@ -307,7 +307,15 @@ it set.
 GRANT, plus an RLS UPDATE policy permissive enough to match the user's own row,
 plus a privilege-bearing column. All three had to line up.
 
-Known latent case, blocked today by an absence rather than a control:
+**Worked example 1 — `anon` on `user_profiles`, found by the same query.**
+Before #50, `anon` (UNAUTHENTICATED) held table-wide UPDATE and INSERT on
+`user_profiles`. It was harmless only because the RLS policies match on
+`auth.uid()`, which is NULL for anon — so the table was protected by exactly one
+mechanism, and the missing one was the grant. That is the pattern in its clearest
+form: safe by a single layer, with the second absent.
+
+**Worked example 2 — the latent case,** blocked today by an absence rather than a
+control:
 `household_members.household_role` ('admin' | 'member', `020_households.sql:15`)
 has SELECT and INSERT policies but **no UPDATE policy**, so RLS default-denies
 self-promotion to admin. The grants are still wide. The day someone adds a
