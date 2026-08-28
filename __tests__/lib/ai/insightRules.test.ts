@@ -298,7 +298,7 @@ describe('flagUnusualExpense', () => {
       createMockTransaction(500, new Date(), categoryId), // Huge outlier
     ];
 
-    const result = flagUnusualExpense({
+    const [result] = flagUnusualExpense({
       userId,
       categoryId,
       categoryName,
@@ -318,7 +318,7 @@ describe('flagUnusualExpense', () => {
       createMockTransaction(50 + (i % 3) * 5, subDays(new Date(), i * 7), categoryId)
     );
 
-    const result = flagUnusualExpense({
+    const [result] = flagUnusualExpense({
       userId,
       categoryId,
       categoryName,
@@ -326,7 +326,9 @@ describe('flagUnusualExpense', () => {
       transactions,
     });
 
-    expect(result).toBeNull();
+    // hp-10: the rule returns an ARRAY, so destructuring an empty result gives
+    // undefined. Same meaning — nothing was emitted.
+    expect(result).toBeUndefined();
   });
 
   it('should return null with insufficient data (< 10 transactions)', () => {
@@ -335,7 +337,7 @@ describe('flagUnusualExpense', () => {
       createMockTransaction(500, new Date(), categoryId),
     ];
 
-    const result = flagUnusualExpense({
+    const [result] = flagUnusualExpense({
       userId,
       categoryId,
       categoryName,
@@ -343,7 +345,9 @@ describe('flagUnusualExpense', () => {
       transactions,
     });
 
-    expect(result).toBeNull();
+    // hp-10: the rule returns an ARRAY, so destructuring an empty result gives
+    // undefined. Same meaning — nothing was emitted.
+    expect(result).toBeUndefined();
   });
 
   it('should use concerned but supportive tone', () => {
@@ -352,7 +356,7 @@ describe('flagUnusualExpense', () => {
       createMockTransaction(500, new Date(), categoryId),
     ];
 
-    const result = flagUnusualExpense({
+    const [result] = flagUnusualExpense({
       userId,
       categoryId,
       categoryName,

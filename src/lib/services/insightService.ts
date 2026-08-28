@@ -291,7 +291,8 @@ export async function generateInsights(
     // Collect non-null insights
     if (spendingIncrease) allInsights.push(spendingIncrease);
     if (budgetRecommendation) allInsights.push(budgetRecommendation);
-    if (unusualExpense) allInsights.push(unusualExpense);
+    // hp-10: one per outlier — dismissing the largest must not hide the rest.
+    allInsights.push(...unusualExpense);
     if (positiveReinforcement) allInsights.push(positiveReinforcement);
   }
 

@@ -84,11 +84,20 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact' })
       .eq('user_id', user.id);
 
-    // Filter by dismissed status
-    if (dismissedParam !== null) {
-      const isDismissed = dismissedParam === 'true';
-      query = query.eq('is_dismissed', isDismissed);
-    }
+    // Filter by dismissed status — DEFAULTS TO UNDISMISSED (hp-10).
+    //
+    // This used to filter only when the param was present, so omitting it
+    // returned dismissed rows too. That was harmless for exactly one reason:
+    // every regeneration deleted and recreated every row, so a dismissed row
+    // rarely existed to be returned. hp-10 makes dismissals persist, which turns
+    // a latent default into a live one — a caller that forgets the param would
+    // start showing insights the user has explicitly dismissed.
+    //
+    // Both current callers pass it (AIBudgetCoach hardcodes `dismissed=false`;
+    // InsightsPageContent appends it unconditionally), so this changes no
+    // existing behaviour. It closes the door before the room fills up.
+    const isDismissed = dismissedParam === 'true';
+    query = query.eq('is_dismissed', isDismissed);
 
     // Filter by type
     if (typeParam && isValidInsightType(typeParam)) {

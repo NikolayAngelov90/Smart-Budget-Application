@@ -258,12 +258,14 @@ export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | nu
  * "We noticed an unusual Shopping expense of $500 - much higher than your typical $50.
  *  You might want to review this transaction to make sure everything looks right."
  */
-export function flagUnusualExpense(input: RuleInput): InsightInsert | null {
-  const { userId, categoryId, categoryName, transactions, currency } = input;
+export function flagUnusualExpense(input: RuleInput): InsightInsert[] {
+  // hp-10: the presentation fields moved to buildUnusualExpenseInsight, which
+  // takes `input` whole, so this only needs the transactions to do statistics.
+  const { transactions } = input;
 
   // Need at least 10 transactions for meaningful statistics
   if (transactions.length < 10) {
-    return null;
+    return [];
   }
 
   // Calculate mean and standard deviation for all transactions
@@ -289,13 +291,45 @@ export function flagUnusualExpense(input: RuleInput): InsightInsert | null {
   );
 
   if (outliers.length === 0) {
-    return null;
+    return [];
   }
 
-  // Get the most recent/largest outlier
-  const mostSignificantOutlier = outliers.reduce((max, t) =>
-    t.amount > max.amount ? t : max
+  // ONE INSIGHT PER OUTLIER — hp-10.
+  //
+  // This used to reduce to the single largest. That was harmless while every
+  // regeneration deleted and recreated the row: dismiss the biggest and it came
+  // back. Once hp-10 makes the dismissal STICK, the rule would keep selecting
+  // the same largest transaction, upsert onto a dismissed row, render nothing —
+  // and any SECOND genuine outlier in the category would be permanently
+  // invisible. Dismissing one purchase would silently mute the category.
+  //
+  // Emitting one per outlier keys each on its own transaction_id, which is what
+  // the fingerprint already assumed, and keeps the engine pure — it never needs
+  // to know what has been dismissed.
+  //
+  // UNCAPPED, on measured data: across both real accounts the maximum in any one
+  // category was 2 and the per-account total 6, against 5 under the old rule.
+  // The bound is also structural — sigma is computed over a set INCLUDING the
+  // outliers, so each large value raises its own threshold and a category cannot
+  // accumulate many.
+  //
+  // Ordered by DEVIATION, not amount: "most unusual" is the claim being made.
+  // The old code ordered by amount because it only ever emitted one.
+  const ordered = [...outliers].sort(
+    (a, b) => Math.abs(b.amount - mean) - Math.abs(a.amount - mean)
   );
+
+  return ordered.map((outlier) => buildUnusualExpenseInsight(outlier, input, mean, stdDev));
+}
+
+/** One `unusual_expense` insight for one outlying transaction. */
+function buildUnusualExpenseInsight(
+  mostSignificantOutlier: Transaction,
+  input: RuleInput,
+  mean: number,
+  stdDev: number
+): InsightInsert {
+  const { userId, categoryId, categoryName, currency } = input;
 
   const metadata: InsightMetadata = {
     category_id: categoryId,
@@ -415,10 +449,8 @@ export function executeRulesForCategory(input: BudgetRuleInput): InsightInsert[]
     insights.push(budgetRecommendation);
   }
 
-  const unusualExpense = flagUnusualExpense(input);
-  if (unusualExpense) {
-    insights.push(unusualExpense);
-  }
+  // hp-10: one insight PER outlier, so this spreads rather than pushes.
+  insights.push(...flagUnusualExpense(input));
 
   const positiveReinforcement = generatePositiveReinforcement(input);
   if (positiveReinforcement) {

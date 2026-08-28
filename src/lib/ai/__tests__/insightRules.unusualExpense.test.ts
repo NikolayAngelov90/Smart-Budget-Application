@@ -61,7 +61,17 @@ function txs(amounts: number[]): Transaction[] {
   }));
 }
 
+/**
+ * hp-10 changed `flagUnusualExpense` to return an ARRAY — one insight per
+ * outlier, so dismissing the largest cannot hide the rest. These hp-12
+ * assertions are about WHICH outlier gets selected and are preserved verbatim by
+ * reading the first element, which is the most-deviant one. `null` for "nothing
+ * fired" still means the same thing.
+ */
 const run = (amounts: number[]) =>
+  flagUnusualExpenseAll(amounts)[0] ?? null;
+
+const flagUnusualExpenseAll = (amounts: number[]) =>
   flagUnusualExpense({
     userId: USER,
     categoryId: CATEGORY,

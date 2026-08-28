@@ -21,7 +21,8 @@ jest.mock('@/lib/ai/patternDetection', () => ({
 jest.mock('@/lib/ai/insightRules', () => ({
   detectSpendingIncrease: jest.fn().mockReturnValue(null),
   recommendBudgetLimit: jest.fn().mockReturnValue(null),
-  flagUnusualExpense: jest.fn().mockReturnValue(null),
+  // hp-10: returns an ARRAY (one insight per outlier); the service spreads it.
+  flagUnusualExpense: jest.fn().mockReturnValue([]),
   generatePositiveReinforcement: jest.fn().mockReturnValue(null),
   executeRulesForCategory: jest.fn().mockReturnValue([]),
 }));

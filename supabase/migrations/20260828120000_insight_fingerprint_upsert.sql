@@ -44,6 +44,53 @@
 -- €700 acceptance case restarts from a clean slate, which makes the post-deploy
 -- verification measure the new mechanism rather than a mixture.
 
+-- THE DEPLOY WINDOW, DECIDED RATHER THAN DISCOVERED.
+--
+-- hp-8 guarded NEW code meeting an OLD schema. This migration has the same race
+-- running the OTHER way: if it lands before the Vercel deploy, the still-running
+-- OLD code does `delete` + `insert` against a schema that now requires a
+-- fingerprint it cannot compute, and every insert fails with 23502 — the same
+-- not_null_violation the RLS suite asserts for a fingerprint-less row.
+--
+-- Blast radius, each point checked in the code rather than assumed:
+--
+--   transaction POST   SURVIVES. checkAndTriggerForTransactionCount is fired
+--                      with .catch() (transactions/route.ts:403) and catches
+--                      internally, so the user's transaction saves normally.
+--   manual refresh     500s. POST /api/insights/generate propagates the throw to
+--                      its catch and returns 500 for the length of the window.
+--   the cron           INVOKED daily ("0 0 * * *"), but it NO-OPS except on the
+--                      1st: route.ts:64-74 returns { skipped: true } before the
+--                      user query and before any generateInsights call, so on
+--                      any other day it touches no insight row and cannot reach
+--                      an insert. In play ONLY if a deploy window spans 00:00
+--                      UTC on the 1st — and if it does, the per-user try/catch
+--                      at lines 119-131 contains it: each user logs and the run
+--                      completes, no cascade.
+--
+--                      (Both halves of that matter. "Daily schedule" is true and
+--                      "the cron is in play" does not follow from it — the same
+--                      shape as a column-level REVOKE being valid SQL that a
+--                      table-level grant makes a no-op.)
+--   the READ path      DOES NOT THROW. GET /api/insights is a plain SELECT: it
+--                      returns 200 with an empty list, and the dashboard renders
+--                      its empty state (AIBudgetCoach.tsx:134). This is the point
+--                      that decides the whole question — nothing user-facing
+--                      errors on a page load.
+--
+-- So the window is a few minutes of "insights are empty and a manual refresh
+-- errors", self-healing on the first generation after the deploy lands. The rows
+-- are being deleted here anyway, so empty IS the intended transient state, not
+-- corruption.
+--
+-- ACCEPTED EXPLICITLY, with no defensive branch. A second 42703-style escape
+-- hatch would outlive its reason exactly as hp-8's does — that one is already
+-- filed for removal, and adding another would be inconsistent with the argument
+-- that filed it.
+--
+-- IF YOU SEE 23502 ON insights IN THE LOGS DURING A DEPLOY: do nothing. Wait for
+-- the deploy to finish. It resolves itself on the next generation.
+
 DELETE FROM public.insights;
 
 ALTER TABLE public.insights
