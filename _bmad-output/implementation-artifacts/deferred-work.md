@@ -274,3 +274,23 @@ queue ahead of the insights work, which is what was asked for first.
 its title twice, and Settings has the same shape, so this is a pattern-level
 tidy-up rather than a 17-1 defect. Appended here rather than opened as its own
 story, to keep one small cleanup batch instead of a backlog of one-line items.
+
+### Also in this batch — remove the hp-8 42703 escape hatch
+
+`readLastGeneratedAt` degrades to "never generated" for Postgres error 42703
+(undefined_column), so the insights routes do not 500 during the window between
+the hp-8 migration applying and Vercel deploying. That window is minutes; the
+branch as written lives forever and would happily mask the column being dropped
+in 2027.
+
+It logs at ERROR level with an explicit "migration not applied yet" message, so
+its firing is visible rather than silent — but visible is not the same as
+removed. Delete the branch once the hp-8 migration is confirmed applied in
+production, and let 42703 throw like every other error.
+
+### Also in this batch — the hp-8 RLS marker test is already written
+
+`src/lib/test-utils/__tests__/insights-marker.rls.test.ts` landed with hp-8
+rather than waiting, because CI's RLS job runs properly even though the local
+command green-skips. When hp-14 fixes the local skip, that suite becomes
+runnable locally too — no new test needed, just a working runner.

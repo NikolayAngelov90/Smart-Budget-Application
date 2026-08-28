@@ -143,9 +143,19 @@ describe('the marker survives hp-10 (UPSERT semantics)', () => {
     // generation RAN.
     //
     // It is written against the marker, not against insight rows, so it holds
-    // before and after hp-10 without modification. If this ever needs changing
-    // to accommodate hp-10, the marker has been re-coupled to row lifetime and
-    // the cold-start bug is back.
+    // before and after hp-10 WITHOUT MODIFICATION.
+    //
+    // READ THIS BEFORE "UPDATING THE TEST FOR THE NEW BEHAVIOUR".
+    // If you have arrived here because this test went red while working on
+    // insight generation, the correct response is almost certainly NOT to adjust
+    // the assertion. This test needing to change IS the alarm: it means the
+    // marker has been re-coupled to the lifetime of insight ROWS, and the moment
+    // that happens the cold-start bug returns — silently, because a stale marker
+    // produces no error, just an ever-growing "transactions since" count that
+    // clears the gate on every write.
+    //
+    // The marker records that generation RAN. Rows record what it produced.
+    // Those are different facts and this test is where that distinction lives.
     const update = jest.fn().mockReturnValue({
       eq: jest.fn().mockResolvedValue({ error: null }),
     });
