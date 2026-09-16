@@ -3,8 +3,17 @@
  *
  * GET /api/cron/generate-insights
  *
- * Scheduled to run daily at midnight UTC (configured in vercel.json)
- * Checks if it's the start of a new month and generates insights for all users
+ * NO LONGER SCHEDULED (2026-09-16). This route has no entry in vercel.json.
+ * The Hobby plan registers only TWO cron jobs and four were declared, so this
+ * one never fired — proven by hp-8's `insights_last_generated_at` marker, which
+ * still read 2026-08-28 on two of three profiles. It was dropped rather than
+ * fixed because it is COVERED: user-triggered regeneration fires in practice
+ * (observed 2026-09-03, 09-08, 09-10) and this route no-ops on 29 days in 30
+ * anyway. See docs/cron-schedule.md before re-adding an entry — you must remove
+ * another one in the same edit.
+ *
+ * Still live and still callable with CRON_SECRET. Checks if it's the start of a
+ * new month and generates insights for all users.
  *
  * Authentication: Requires CRON_SECRET environment variable via Authorization header
  *

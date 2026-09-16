@@ -1,7 +1,14 @@
 /**
  * Re-engagement Push Cron — Story 15.5 (FR32, ADR-018/019)
  *
- * GET /api/cron/reengagement-push — daily. Finds users whose last logging
+ * NO LONGER SCHEDULED (2026-09-16). This route has no entry in vercel.json —
+ * the Hobby plan registers only TWO cron jobs. It lost the slot to
+ * subscription-detect, which is cron-only with no fallback, while this job's
+ * cohort is drawn from a single push subscription in the entire system, so it
+ * has nobody to re-engage. Still live and still callable with CRON_SECRET.
+ * See docs/cron-schedule.md before re-adding an entry.
+ *
+ * GET /api/cron/reengagement-push — when invoked. Finds users whose last logging
  * activity was EXACTLY 7 days ago (the streaks row's last_log_date) and sends
  * one warm, no-guilt re-engagement push. Stateless dedup: each absence
  * crosses day-7 exactly once, so no tracking table is needed — scanning for
