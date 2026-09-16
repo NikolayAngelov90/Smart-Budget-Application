@@ -1,0 +1,44 @@
+# Line-ending policy. Without this file the repository has none, and the answer
+# depends on whichever git touches it.
+#
+# WHY THIS EXISTS. Git for Windows ships `core.autocrlf=true` in its SYSTEM
+# config (C:/Program Files/Git/etc/gitconfig) — nobody sets it, nobody sees it in
+# `git config --list` without `--show-origin`. It checks text files out as CRLF
+# and converts back to LF on commit, so Windows git reports a clean tree while a
+# second git over the same files (WSL, a container mount, a Linux CI runner) sees
+# every one of them as modified, with `git diff -w` showing nothing at all.
+#
+# `eol=lf` OVERRIDES core.autocrlf, so the working tree is LF everywhere and the
+# repo is immune to any individual machine's git configuration. This also matches
+# .prettierrc, which sets "endOfLine": "lf".
+* text=auto eol=lf
+
+# BINARY — never apply line-ending conversion. Corruption here is silent: git
+# stays happy and the file fails at the browser or the PDF renderer.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.mp4  binary
+*.zip  binary
+# Self-hosted fonts (#43) and the PDF-export faces.
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+
+# Shell scripts must keep LF or they do not execute; Windows scripts need CRLF.
+# No .bat/.cmd is tracked today — this is here so adding one is not a trap.
+*.sh  text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# EXCLUDED FROM NORMALISATION. This vendored BMAD config carries 6 CR bytes and
+# NONE of them is a line ending — they sit inside quoted CSV fields. Normalising
+# it would edit data, not line endings, and would also collide with the next
+# BMAD upgrade. Verified: `git show HEAD:<path> | grep -c $'\r$'` returns 0.
+_bmad/_config/bmad-help.csv -text
