@@ -114,6 +114,8 @@ lerna-debug.log*
 
 # Node
 .npm
+# Used by `npm run lint:fast` (local inner loop). `npm run lint` stays
+# uncached and is the authoritative gate.
 .eslintcache
 .node_repl_history
 

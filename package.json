@@ -12,6 +12,7 @@
     "start": "next start",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx --max-warnings=0",
+    "lint:fast": "eslint src/ --ext .js,.jsx,.ts,.tsx --max-warnings=0 --cache --cache-location .eslintcache && echo \"note: cached run. A green lint:fast is NOT a green gate - a stale cache can pass a file that npm run lint rejects.\"",
     "format:once": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format": "npm run format:once && npm run format:once",
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
