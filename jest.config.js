@@ -34,8 +34,23 @@ const customJestConfig = {
   transformIgnorePatterns: [
     'node_modules/(?!(@upstash|uncrypto|next-intl|use-intl)/)',
   ],
-  // Coverage thresholds removed - allowing gradual improvement
-  // The GitHub Actions workflow enforces a 5% minimum threshold
+  // Coverage thresholds removed here - allowing gradual improvement.
+  //
+  // TWO INSTRUMENTS, DIFFERENT JOBS, AND ONLY ONE CAN FIRE ON ORDINARY WORK:
+  //
+  //   test.yml "Check coverage threshold" - a CATASTROPHE CANARY, not a drift
+  //     gate. It fails below 30% on Math.min across the four metrics; the real
+  //     figure is 57.29% (branches, the lowest), so no incremental change moves
+  //     it. It fires if someone deletes the test suite. That is worth having and
+  //     it is NOT coverage protection.
+  //
+  //   codecov.yml patch/project - the actual drift gate. `target: auto` with a
+  //     1% threshold compares against the BASE COMMIT, so it can and does fail on
+  //     ordinary work: it caught EmptyInsightsState at 0% patch on PR #59.
+  //
+  // A gate labelled as protecting coverage that cannot fail is decorative. This
+  // one is harmless only because the real gate sits beside it - so say which is
+  // which, here and in test.yml.
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
