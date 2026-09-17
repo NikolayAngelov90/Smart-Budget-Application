@@ -140,13 +140,19 @@ const STALENESS_TRIGGER_DAYS = 3;
 
 /**
  * Whether insights were generated within the TTL window.
+ *
  * @param cacheTTL - window in milliseconds (default: 1 hour)
+ * @param now - the clock, INJECTED. See shouldTriggerGeneration below for why.
  */
-async function isCacheValid(userId: string, cacheTTL: number = 3600000): Promise<boolean> {
+async function isCacheValid(
+  userId: string,
+  cacheTTL: number = 3600000,
+  now: Date = new Date()
+): Promise<boolean> {
   const lastGenerated = await readLastGeneratedAt(userId);
   if (!lastGenerated) return false;
 
-  return Date.now() - lastGenerated.getTime() < cacheTTL;
+  return now.getTime() - lastGenerated.getTime() < cacheTTL;
 }
 
 /**
@@ -469,10 +475,28 @@ export async function generateInsights(
  * According to AC #5, insights should be regenerated when user adds 10+ transactions
  * since last generation.
  *
+ * THE CLOCK IS A PARAMETER, matching the rest of this codebase. streakEngine,
+ * pushService, recoveryPlanService, reengagementService and others all take
+ * `now`/`today` as a defaulted argument rather than reading the clock inside, and
+ * a sweep of 971 date literals across 123 test files found that this convention
+ * is the ONLY reason ~30 hardcoded dates in time-sensitive fixtures are inert:
+ * a literal is only ever compared with another literal.
+ *
+ * This function was the exception, and it is the one that bit. Its hp-8 fixture
+ * hardcoded 2026-08-20 to mean "recent"; that was harmless while only the
+ * transaction COUNT mattered, and the moment the staleness condition made the
+ * date load-bearing the fixture contradicted the test name it sat under — a
+ * four-week-old marker IS stale. A fixture that encodes "recent" as an absolute
+ * date decays into its opposite, and an injected clock is what lets a test say
+ * "recent" and still mean it next month.
+ *
  * @param userId - User ID to check
  * @returns True if generation should be triggered
  */
-export async function shouldTriggerGeneration(userId: string): Promise<boolean> {
+export async function shouldTriggerGeneration(
+  userId: string,
+  now: Date = new Date()
+): Promise<boolean> {
   const lastGenerated = await readLastGeneratedAt(userId);
 
   // NULL now genuinely means "never generated", because the marker is durable.
@@ -509,7 +533,7 @@ export async function shouldTriggerGeneration(userId: string): Promise<boolean> 
   // It still requires at least one new transaction, so a dormant account is not
   // regenerated forever over data that has not changed.
   if (newTransactions === 0) return false;
-  const ageMs = Date.now() - lastGenerated.getTime();
+  const ageMs = now.getTime() - lastGenerated.getTime();
   return ageMs >= STALENESS_TRIGGER_DAYS * 24 * 60 * 60 * 1000;
 }
 
