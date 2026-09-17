@@ -117,12 +117,7 @@ export function ContributionSplitCard() {
                     {t('fairShare')}: {formatAmount(s.fairShare, currency)}
                   </Text>
                 </HStack>
-                <Progress
-                  value={pctDisplay}
-                  size="sm"
-                  borderRadius="full"
-                  colorScheme="brand"
-                />
+                <Progress value={pctDisplay} size="sm" borderRadius="full" colorScheme="brand" />
                 <Text fontSize="xs" color="fg.subtle" mt={1}>
                   {/* The badge above is the member's TARGET share, not their
                       progress. With one flat bar colour this percentage is the
@@ -154,15 +149,34 @@ export function ContributionSplitCard() {
                 maxW={{ base: 'full', sm: '120px' }}
                 minH={{ base: '44px', sm: '40px' }}
               />
-              <Button size="sm" colorScheme="brand" onClick={handleSave} isLoading={isSaving} loadingText={t('save')} minH={{ base: '44px', sm: '32px' }}>
+              <Button
+                size="sm"
+                colorScheme="brand"
+                onClick={handleSave}
+                isLoading={isSaving}
+                loadingText={t('save')}
+                minH={{ base: '44px', sm: '32px' }}
+              >
                 {t('save')}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(false)} isDisabled={isSaving} minH={{ base: '44px', sm: '32px' }}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditing(false)}
+                isDisabled={isSaving}
+                minH={{ base: '44px', sm: '32px' }}
+              >
                 {t('cancel')}
               </Button>
             </Stack>
           ) : (
-            <Button size="sm" variant="outline" alignSelf="flex-start" onClick={beginEdit} minH={{ base: '44px', sm: '32px' }}>
+            <Button
+              size="sm"
+              variant="outline"
+              alignSelf="flex-start"
+              onClick={beginEdit}
+              minH={{ base: '44px', sm: '32px' }}
+            >
               {t('yourPercentage')}
             </Button>
           )}

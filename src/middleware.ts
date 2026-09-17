@@ -54,28 +54,22 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  const supabase = createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
       },
-    }
-  );
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        supabaseResponse = NextResponse.next({
+          request,
+        });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
 
   // Validate the JWT by calling getUser() - this makes a server call to Supabase
   // Unlike getSession(), getUser() guarantees the token is valid and not tampered with
@@ -84,8 +78,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const url = request.nextUrl.clone();
-  const isProtectedRoute =
-    url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/api');
+  const isProtectedRoute = url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/api');
   const isAuthRoute = url.pathname === '/login' || url.pathname === '/signup';
 
   // Rule 1: Redirect unauthenticated users from protected routes to login

@@ -5,7 +5,13 @@
 
 import { computeDisclosure } from '@/lib/ai/disclosureEngine';
 
-const state = (over: Partial<{ transactions_count: number; days_active: number; features_unlocked: string[] }> = {}) => ({
+const state = (
+  over: Partial<{
+    transactions_count: number;
+    days_active: number;
+    features_unlocked: string[];
+  }> = {}
+) => ({
   transactions_count: 0,
   days_active: 0,
   features_unlocked: [],
@@ -61,7 +67,10 @@ describe('computeDisclosure', () => {
 
   it('treats non-finite/absent metrics as 0 (never over-unlocks)', () => {
     const r = computeDisclosure(
-      state({ transactions_count: NaN as unknown as number, days_active: undefined as unknown as number }),
+      state({
+        transactions_count: NaN as unknown as number,
+        days_active: undefined as unknown as number,
+      }),
       false
     );
     expect(r.unlocked).toEqual([]);

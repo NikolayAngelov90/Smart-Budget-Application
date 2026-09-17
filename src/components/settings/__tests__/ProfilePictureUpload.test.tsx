@@ -215,7 +215,9 @@ describe('ProfilePictureUpload', () => {
 
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
-        json: async () => ({ data: { profile_picture_url: 'https://example.com/storage/user-123/profile.jpg' } }),
+        json: async () => ({
+          data: { profile_picture_url: 'https://example.com/storage/user-123/profile.jpg' },
+        }),
       });
 
       customRender(
@@ -254,14 +256,16 @@ describe('ProfilePictureUpload', () => {
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       let _progressCallback: ((progress: number) => void) | undefined;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockUploadProfilePicture.mockImplementation(async (file: any, userId: string, onProgress?: any) => {
-        _progressCallback = onProgress;
-        return {
-          publicUrl: 'https://example.com/storage/profile.jpg',
-          path: 'user-123/profile.jpg',
-        };
-      });
+      mockUploadProfilePicture.mockImplementation(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async (file: any, userId: string, onProgress?: any) => {
+          _progressCallback = onProgress;
+          return {
+            publicUrl: 'https://example.com/storage/profile.jpg',
+            path: 'user-123/profile.jpg',
+          };
+        }
+      );
 
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
@@ -330,7 +334,9 @@ describe('ProfilePictureUpload', () => {
       fireEvent.click(uploadButton);
 
       await waitFor(() => {
-        expect(onUploadSuccess).toHaveBeenCalledWith('https://example.com/storage/user-123/profile.jpg');
+        expect(onUploadSuccess).toHaveBeenCalledWith(
+          'https://example.com/storage/user-123/profile.jpg'
+        );
       });
     });
 

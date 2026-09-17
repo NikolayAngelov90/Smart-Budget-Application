@@ -59,7 +59,9 @@ jest.mock('next-intl', () => ({
 
 const mockUseBudgetScore = useBudgetScore as jest.MockedFunction<typeof useBudgetScore>;
 const mockUseGamification = useGamification as jest.MockedFunction<typeof useGamification>;
-const mockReducedMotion = usePrefersReducedMotion as jest.MockedFunction<typeof usePrefersReducedMotion>;
+const mockReducedMotion = usePrefersReducedMotion as jest.MockedFunction<
+  typeof usePrefersReducedMotion
+>;
 
 const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
@@ -137,9 +139,7 @@ describe('BudgetScoreRing', () => {
   });
 
   it('renders nothing when hasData is false', () => {
-    mockUseBudgetScore.mockReturnValue(
-      hookResult({ data: { hasData: false, budgetScore: null } })
-    );
+    mockUseBudgetScore.mockReturnValue(hookResult({ data: { hasData: false, budgetScore: null } }));
     renderWithChakra(<BudgetScoreRing />);
     expect(screen.queryByText(/Budget Score/)).not.toBeInTheDocument();
   });
@@ -152,9 +152,7 @@ describe('BudgetScoreRing', () => {
 
     expect(screen.getByText('72')).toBeInTheDocument();
     expect(screen.getAllByText('Steady').length).toBeGreaterThan(0);
-    expect(
-      screen.getByLabelText('Budget Score: 72 out of 100, level Steady')
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Budget Score: 72 out of 100, level Steady')).toBeInTheDocument();
   });
 
   it('opens the factor breakdown with statuses on click', () => {

@@ -21,10 +21,7 @@ export interface AnalyticsEvent {
 }
 
 // Insight event types (Story 9-4)
-export type InsightEventName =
-  | 'insights_page_viewed'
-  | 'insight_viewed'
-  | 'insight_dismissed';
+export type InsightEventName = 'insights_page_viewed' | 'insight_viewed' | 'insight_dismissed';
 
 // Insight event properties by event type
 export interface InsightsPageViewedProperties {
@@ -49,14 +46,10 @@ export type InsightEvent =
   | { event_name: 'insight_dismissed'; properties: InsightDismissedProperties };
 
 // Export event types (Story 9-5)
-export type ExportEventName =
-  | 'csv_exported'
-  | 'pdf_exported';
+export type ExportEventName = 'csv_exported' | 'pdf_exported';
 
 // PWA event types (Story 9-5)
-export type PWAEventName =
-  | 'pwa_installed'
-  | 'offline_mode_active';
+export type PWAEventName = 'pwa_installed' | 'offline_mode_active';
 
 // Export event properties
 export interface CSVExportedProperties {

@@ -11,26 +11,61 @@ import { useTranslations } from 'next-intl';
 import type { PwaInstallsByPlatform } from '@/types/database.types';
 import { useChartColors } from '@/lib/hooks/useChartColors';
 
-export function PwaInstallsChart({ data, total }: { data: PwaInstallsByPlatform[]; total: number }) {
+export function PwaInstallsChart({
+  data,
+  total,
+}: {
+  data: PwaInstallsByPlatform[];
+  total: number;
+}) {
   const chart = useChartColors();
   const t = useTranslations('analytics');
 
   return (
-    <Box as="section" aria-label={t('pwaInstalls')} borderWidth="1px" borderColor="border" borderRadius="md" p={4}>
+    <Box
+      as="section"
+      aria-label={t('pwaInstalls')}
+      borderWidth="1px"
+      borderColor="border"
+      borderRadius="md"
+      p={4}
+    >
       <Flex justify="space-between" align="baseline" mb={3}>
-        <Heading as="h3" size="sm" color="fg">{t('pwaInstalls')}</Heading>
-        <Text fontSize="sm" color="fg.muted">{t('total')}: <strong>{total}</strong></Text>
+        <Heading as="h3" size="sm" color="fg">
+          {t('pwaInstalls')}
+        </Heading>
+        <Text fontSize="sm" color="fg.muted">
+          {t('total')}: <strong>{total}</strong>
+        </Text>
       </Flex>
       {data.length === 0 ? (
-        <Text fontSize="sm" color="fg.subtle">{t('noData')}</Text>
+        <Text fontSize="sm" color="fg.subtle">
+          {t('noData')}
+        </Text>
       ) : (
         <Box h="220px">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-              <XAxis dataKey="platform" stroke={chart.axis} tick={{ fill: chart.tick, fontSize: 12 }} />
-              <YAxis allowDecimals={false} stroke={chart.axis} tick={{ fill: chart.tick, fontSize: 11 }} />
-              <Tooltip contentStyle={{ background: chart.tooltipBg, border: `1px solid ${chart.tooltipBorder}`, borderRadius: 8, color: chart.tick }} cursor={{ fill: chart.cursor, fillOpacity: 0.25 }} />
+              <XAxis
+                dataKey="platform"
+                stroke={chart.axis}
+                tick={{ fill: chart.tick, fontSize: 12 }}
+              />
+              <YAxis
+                allowDecimals={false}
+                stroke={chart.axis}
+                tick={{ fill: chart.tick, fontSize: 11 }}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: chart.tooltipBg,
+                  border: `1px solid ${chart.tooltipBorder}`,
+                  borderRadius: 8,
+                  color: chart.tick,
+                }}
+                cursor={{ fill: chart.cursor, fillOpacity: 0.25 }}
+              />
               <Bar dataKey="count" name={t('installs')} fill={chart.income} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

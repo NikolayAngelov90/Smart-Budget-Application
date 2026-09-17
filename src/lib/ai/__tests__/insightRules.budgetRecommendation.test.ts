@@ -162,20 +162,19 @@ describe('the two baselines agree', () => {
   // for the same category, which it computes as
   // `fixedWindowMonthlyAverage(completed monthly totals)`.
 
-  it.each([
-    [[300, 300, 300]],
-    [[900, 100, 200]],
-    [[50, 700, 250]],
-  ])('matches the forecast baseline for completed months %j', (priorMonths) => {
-    // Current-month spend deliberately non-zero and unlike the others: if the
-    // rule ever readmits it, these stop matching.
-    const insight = run([777, ...priorMonths]);
+  it.each([[[300, 300, 300]], [[900, 100, 200]], [[50, 700, 250]]])(
+    'matches the forecast baseline for completed months %j',
+    (priorMonths) => {
+      // Current-month spend deliberately non-zero and unlike the others: if the
+      // rule ever readmits it, these stop matching.
+      const insight = run([777, ...priorMonths]);
 
-    const forecastBaseline = fixedWindowMonthlyAverage(priorMonths);
+      const forecastBaseline = fixedWindowMonthlyAverage(priorMonths);
 
-    expect(metaOf(insight).three_month_average).toBe(Math.round(forecastBaseline));
-    expect(forecastBaseline).toBeCloseTo(calculateMean(priorMonths), 10);
-  });
+      expect(metaOf(insight).three_month_average).toBe(Math.round(forecastBaseline));
+      expect(forecastBaseline).toBeCloseTo(calculateMean(priorMonths), 10);
+    }
+  );
 
   it('is not vacuous — readmitting the current month would break it', () => {
     // Proves the assertion above has teeth: the number the rule reports differs

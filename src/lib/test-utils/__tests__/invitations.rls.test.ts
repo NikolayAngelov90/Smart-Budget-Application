@@ -52,7 +52,9 @@ rlsDescribe('Household invitations isolation (Story 13.2)', () => {
       .insert({ name: 'Invite Household B', created_by: b1Id })
       .select('id')
       .single();
-    await svc.from('household_members').insert({ household_id: hB!.id, user_id: b1Id, role: 'admin' });
+    await svc
+      .from('household_members')
+      .insert({ household_id: hB!.id, user_id: b1Id, role: 'admin' });
 
     const { data: inv } = await svc
       .from('household_invitations')
@@ -81,13 +83,19 @@ rlsDescribe('Household invitations isolation (Story 13.2)', () => {
 
   it('non-admin member (a2) CANNOT read invitations', async () => {
     const a2 = await signInAsTestUser(a2Email, PWD);
-    const { data } = await a2.from('household_invitations').select('id').eq('household_id', householdAId);
+    const { data } = await a2
+      .from('household_invitations')
+      .select('id')
+      .eq('household_id', householdAId);
     expect(data).toEqual([]);
   });
 
   it('outsider (b1) CANNOT read household A invitations', async () => {
     const b1 = await signInAsTestUser(b1Email, PWD);
-    const { data } = await b1.from('household_invitations').select('id').eq('household_id', householdAId);
+    const { data } = await b1
+      .from('household_invitations')
+      .select('id')
+      .eq('household_id', householdAId);
     expect(data).toEqual([]);
   });
 
@@ -116,7 +124,10 @@ rlsDescribe('Household invitations isolation (Story 13.2)', () => {
     const a2 = await signInAsTestUser(a2Email, PWD);
     const householdView = await a2.from('households').select('id').eq('id', householdAId);
     expect(householdView.data).toHaveLength(1);
-    const inviteView = await a2.from('household_invitations').select('id').eq('household_id', householdAId);
+    const inviteView = await a2
+      .from('household_invitations')
+      .select('id')
+      .eq('household_id', householdAId);
     expect(inviteView.data).toEqual([]);
   });
 });

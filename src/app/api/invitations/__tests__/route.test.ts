@@ -49,15 +49,27 @@ const mockRevoke = revokeInvitation as jest.MockedFunction<typeof revokeInvitati
 
 function authClient(user: object | null) {
   return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }) },
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }),
+    },
   };
 }
 function req(body: unknown) {
   return { json: async () => body, nextUrl: { origin: 'http://test' } } as never;
 }
 const INVITE = {
-  id: 'inv-1', household_id: 'h-1', email: 'a@x.com', token: 'tok-1', status: 'pending',
-  invited_by: 'user-1', expires_at: 'x', accepted_by: null, accepted_at: null, created_at: 'x',
+  id: 'inv-1',
+  household_id: 'h-1',
+  email: 'a@x.com',
+  token: 'tok-1',
+  status: 'pending',
+  invited_by: 'user-1',
+  expires_at: 'x',
+  accepted_by: null,
+  accepted_at: null,
+  created_at: 'x',
 };
 
 beforeEach(() => jest.clearAllMocks());

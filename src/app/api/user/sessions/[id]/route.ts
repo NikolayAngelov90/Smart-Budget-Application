@@ -28,10 +28,7 @@ interface RouteParams {
  * PUT handler - Update device name
  * AC-9.6.3: User can edit device name inline
  */
-export async function PUT(
-  request: NextRequest,
-  context: RouteParams
-): Promise<NextResponse> {
+export async function PUT(request: NextRequest, context: RouteParams): Promise<NextResponse> {
   try {
     const { id: sessionId } = await context.params;
     const supabase = await createClient();
@@ -43,10 +40,7 @@ export async function PUT(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse request body
@@ -54,10 +48,7 @@ export async function PUT(
     try {
       payload = await request.json();
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
     // Validate device_name
@@ -87,17 +78,11 @@ export async function PUT(
 
     if (updateError) {
       logger.error('Sessions', 'Error updating session:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update device name' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to update device name' }, { status: 500 });
     }
 
     if (!session) {
-      return NextResponse.json(
-        { error: 'Session not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -105,10 +90,7 @@ export async function PUT(
     });
   } catch (error) {
     logger.error('Sessions', 'Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -117,10 +99,7 @@ export async function PUT(
  * AC-9.6.5: User can revoke device session
  * AC-9.6.7: Cannot revoke current session (checked on client, but also validated here)
  */
-export async function DELETE(
-  request: NextRequest,
-  context: RouteParams
-): Promise<NextResponse> {
+export async function DELETE(request: NextRequest, context: RouteParams): Promise<NextResponse> {
   try {
     const { id: sessionId } = await context.params;
     const supabase = await createClient();
@@ -132,14 +111,13 @@ export async function DELETE(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get current session for comparison
-    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const {
+      data: { session: authSession },
+    } = await supabase.auth.getSession();
 
     // First, get the session to check if it exists and belongs to user
     const { data: sessionToDelete, error: fetchError } = await supabase
@@ -150,19 +128,13 @@ export async function DELETE(
       .single();
 
     if (fetchError || !sessionToDelete) {
-      return NextResponse.json(
-        { error: 'Session not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
     // AC-9.6.7: Check if trying to revoke current session
     // Compare hashed tokens to prevent self-lockout (tokens are stored hashed in DB)
     if (authSession && sessionToDelete.session_token === hashToken(authSession.access_token)) {
-      return NextResponse.json(
-        { error: 'Cannot revoke your current session' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Cannot revoke your current session' }, { status: 400 });
     }
 
     // Delete the session
@@ -174,10 +146,7 @@ export async function DELETE(
 
     if (deleteError) {
       logger.error('Sessions', 'Error deleting session:', deleteError);
-      return NextResponse.json(
-        { error: 'Failed to revoke session' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to revoke session' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -186,9 +155,6 @@ export async function DELETE(
     });
   } catch (error) {
     logger.error('Sessions', 'Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

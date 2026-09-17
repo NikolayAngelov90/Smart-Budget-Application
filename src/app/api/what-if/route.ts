@@ -22,10 +22,7 @@ import { fixedWindowMonthlyAverage, AVERAGE_WINDOW_MONTHS } from '@/lib/ai/spend
 import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 import type { WhatIfContextResponse, WhatIfSubscription } from '@/types/database.types';
-import {
-  buildLiveRateMap,
-  convertToPreferred,
-} from '@/lib/services/currencyConversion';
+import { buildLiveRateMap, convertToPreferred } from '@/lib/services/currencyConversion';
 import { resolvePreferredCurrency } from '@/lib/services/preferredCurrency';
 
 export const dynamic = 'force-dynamic';
@@ -91,10 +88,7 @@ export async function GET(request: NextRequest) {
       // RLS-visible (dual-path) — NOT own-only: household members legitimately
       // spend into co-members' shared categories, and that history must keep
       // its slider instead of silently vanishing (14-4 review).
-      supabase
-        .from('categories')
-        .select('id, name, color')
-        .eq('type', 'expense'),
+      supabase.from('categories').select('id, name, color').eq('type', 'expense'),
       supabase
         .from('detected_subscriptions')
         .select('id, merchant_pattern, estimated_amount, frequency')
@@ -164,9 +158,8 @@ export async function GET(request: NextRequest) {
       logger.warn('WhatIf', 'goals unavailable:', goalsResult.error);
     } else {
       const nearest =
-        ((goalsResult.data ?? []) as GoalRow[]).find(
-          (g) => g.target_amount > g.current_amount
-        ) ?? null;
+        ((goalsResult.data ?? []) as GoalRow[]).find((g) => g.target_amount > g.current_amount) ??
+        null;
       if (nearest) {
         goal = {
           name: nearest.name,

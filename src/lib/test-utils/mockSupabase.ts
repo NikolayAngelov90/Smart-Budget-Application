@@ -111,10 +111,7 @@ export function mockCreateBrowserClient() {
  * });
  * ```
  */
-export function setupSupabaseMocks(
-  user?: User | null,
-  session?: Session | null
-) {
+export function setupSupabaseMocks(user?: User | null, session?: Session | null) {
   const mockClient = createMockSupabaseClient();
   const mockAuth = createMockSupabaseAuth(user, session);
 

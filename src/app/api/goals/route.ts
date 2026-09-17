@@ -31,20 +31,14 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: { message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
     const goals = await getGoals(supabase, user.id);
     return NextResponse.json({ goals });
   } catch (error) {
     logger.error('GoalsAPI', 'Error fetching goals:', error);
-    return NextResponse.json(
-      { error: { message: 'Failed to manage goals' } },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: { message: 'Failed to manage goals' } }, { status: 500 });
   }
 }
 
@@ -62,23 +56,17 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: { message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
-    const body = await request.json() as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     const target_amount = Number(body.target_amount);
     const deadline = body.deadline != null ? String(body.deadline) : null;
 
     // Validate
     if (!name) {
-      return NextResponse.json(
-        { error: { message: 'Goal name is required' } },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: { message: 'Goal name is required' } }, { status: 400 });
     }
     if (name.length > 200) {
       return NextResponse.json(
@@ -109,9 +97,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(goal, { status: 201 });
   } catch (error) {
     logger.error('GoalsAPI', 'Error creating goal:', error);
-    return NextResponse.json(
-      { error: { message: 'Failed to manage goals' } },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: { message: 'Failed to manage goals' } }, { status: 500 });
   }
 }

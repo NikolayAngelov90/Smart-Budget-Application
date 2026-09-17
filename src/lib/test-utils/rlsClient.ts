@@ -35,9 +35,7 @@ export function isRlsHarnessConfigured(): boolean {
  * @example
  *   rlsDescribe('Household isolation', () => { ... });
  */
-export const rlsDescribe: jest.Describe = isRlsHarnessConfigured()
-  ? describe
-  : describe.skip;
+export const rlsDescribe: jest.Describe = isRlsHarnessConfigured() ? describe : describe.skip;
 
 function requireConfig(): { url: string; anonKey: string; serviceKey: string } {
   if (!URL || !ANON_KEY || !SERVICE_KEY) {
@@ -65,10 +63,7 @@ export function createServiceClient(): SupabaseClient {
  * All RLS assertions must go through clients created here, so the request
  * carries the user's JWT and the database evaluates policies for `auth.uid()`.
  */
-export async function signInAsTestUser(
-  email: string,
-  password: string
-): Promise<SupabaseClient> {
+export async function signInAsTestUser(email: string, password: string): Promise<SupabaseClient> {
   const { url, anonKey } = requireConfig();
   const client = createSupabaseClient(url, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },

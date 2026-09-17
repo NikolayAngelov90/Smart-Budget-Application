@@ -12,11 +12,7 @@ jest.mock('@/lib/utils/date', () => ({
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
 }));
 
-import {
-  getActivePlanWithProgress,
-  generatePlan,
-  updatePlanStatus,
-} from '../recoveryPlanService';
+import { getActivePlanWithProgress, generatePlan, updatePlanStatus } from '../recoveryPlanService';
 import type { RecoveryTarget } from '@/types/database.types';
 
 const TODAY = new Date('2026-06-15T12:00:00');
@@ -57,12 +53,8 @@ function makeSupabase(opts: {
       return builder;
     });
     builder.insert = jest.fn(() => builder);
-    builder.maybeSingle = jest.fn(() =>
-      Promise.resolve({ data: activePlanRow, error: null })
-    );
-    builder.single = jest.fn(() =>
-      Promise.resolve({ data: insertedRow, error: null })
-    );
+    builder.maybeSingle = jest.fn(() => Promise.resolve({ data: activePlanRow, error: null }));
+    builder.single = jest.fn(() => Promise.resolve({ data: insertedRow, error: null }));
     // Thenable: awaited query chains (transactions/categories reads + update writes)
     (builder as { then: unknown }).then = (resolve: (v: unknown) => unknown) => {
       let data: unknown = [];
@@ -120,7 +112,9 @@ describe('recoveryPlanService', () => {
       expect(result.plan).toBeNull();
       expect(
         supabase._updateCalls.some(
-          (c) => c.table === 'recovery_plans' && (c.payload as { status?: string }).status === 'completed'
+          (c) =>
+            c.table === 'recovery_plans' &&
+            (c.payload as { status?: string }).status === 'completed'
         )
       ).toBe(true);
     });
@@ -180,7 +174,13 @@ describe('recoveryPlanService', () => {
       const result = await generatePlan(supabase as never, 'u1', TODAY);
       expect(result.id).toBe('plan-2');
       // abandon update issued on recovery_plans
-      expect(supabase._updateCalls.some((c) => c.table === 'recovery_plans' && (c.payload as { status?: string }).status === 'abandoned')).toBe(true);
+      expect(
+        supabase._updateCalls.some(
+          (c) =>
+            c.table === 'recovery_plans' &&
+            (c.payload as { status?: string }).status === 'abandoned'
+        )
+      ).toBe(true);
     });
   });
 
@@ -188,7 +188,13 @@ describe('recoveryPlanService', () => {
     it('issues a status update scoped to the plan', async () => {
       const supabase = makeSupabase({});
       await updatePlanStatus(supabase as never, 'u1', 'plan-1', 'abandoned');
-      expect(supabase._updateCalls.some((c) => c.table === 'recovery_plans' && (c.payload as { status?: string }).status === 'abandoned')).toBe(true);
+      expect(
+        supabase._updateCalls.some(
+          (c) =>
+            c.table === 'recovery_plans' &&
+            (c.payload as { status?: string }).status === 'abandoned'
+        )
+      ).toBe(true);
     });
   });
 });

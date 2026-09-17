@@ -40,7 +40,9 @@ import { createClient } from '@/lib/supabase/server';
 import { markMilestoneCelebrated } from '@/lib/services/goalService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockMarkMilestoneCelebrated = markMilestoneCelebrated as jest.MockedFunction<typeof markMilestoneCelebrated>;
+const mockMarkMilestoneCelebrated = markMilestoneCelebrated as jest.MockedFunction<
+  typeof markMilestoneCelebrated
+>;
 const mockJsonResponse = NextResponse.json as jest.MockedFunction<typeof NextResponse.json>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -141,20 +143,23 @@ describe('POST /api/goals/[id]/celebrate', () => {
     );
   });
 
-  it.each([25, 50, 75, 100])('returns { success: true } for valid threshold %i', async (threshold) => {
-    mockAuthUser();
-    mockMarkMilestoneCelebrated.mockResolvedValue(undefined);
+  it.each([25, 50, 75, 100])(
+    'returns { success: true } for valid threshold %i',
+    async (threshold) => {
+      mockAuthUser();
+      mockMarkMilestoneCelebrated.mockResolvedValue(undefined);
 
-    await POST(buildRequest({ threshold }), buildContext('goal-1'));
+      await POST(buildRequest({ threshold }), buildContext('goal-1'));
 
-    expect(mockMarkMilestoneCelebrated).toHaveBeenCalledWith(
-      expect.anything(),
-      'user-1',
-      'goal-1',
-      threshold
-    );
-    expect(mockJsonResponse).toHaveBeenCalledWith({ success: true });
-  });
+      expect(mockMarkMilestoneCelebrated).toHaveBeenCalledWith(
+        expect.anything(),
+        'user-1',
+        'goal-1',
+        threshold
+      );
+      expect(mockJsonResponse).toHaveBeenCalledWith({ success: true });
+    }
+  );
 
   it('returns 500 on service error', async () => {
     mockAuthUser();

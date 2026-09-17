@@ -29,8 +29,7 @@ const mockUseSWR = jest.fn<
 
 jest.mock('swr', () => ({
   __esModule: true,
-  default: (key: unknown, fetcher?: unknown, config?: unknown) =>
-    mockUseSWR(key, fetcher, config),
+  default: (key: unknown, fetcher?: unknown, config?: unknown) => mockUseSWR(key, fetcher, config),
 }));
 
 import { renderHook } from '@testing-library/react';

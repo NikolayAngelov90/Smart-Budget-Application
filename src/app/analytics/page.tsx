@@ -43,8 +43,12 @@ export default function AnalyticsPage() {
       <Container maxW="1200px" py={{ base: 4, md: 6 }}>
         <VStack align="stretch" spacing={6}>
           <Box>
-            <Heading as="h1" size="lg" mb={1}>{t('title')}</Heading>
-            <Text color="fg.muted" fontSize="sm">{t('subtitle')}</Text>
+            <Heading as="h1" size="lg" mb={1}>
+              {t('title')}
+            </Heading>
+            <Text color="fg.muted" fontSize="sm">
+              {t('subtitle')}
+            </Text>
           </Box>
 
           {isForbidden ? (
@@ -83,7 +87,10 @@ export default function AnalyticsPage() {
 
                   <InsightEngagementChart data={data.insight_engagement} />
                   <ExportUsageChart data={data.export_usage} />
-                  <PwaInstallsChart data={data.pwa_installs_by_platform} total={data.pwa_installs_total} />
+                  <PwaInstallsChart
+                    data={data.pwa_installs_by_platform}
+                    total={data.pwa_installs_total}
+                  />
                   <WauTrendChart data={data.wau_trend} />
 
                   <Text fontSize="xs" color="fg.subtle" fontStyle="italic">

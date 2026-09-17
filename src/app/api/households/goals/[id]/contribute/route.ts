@@ -34,7 +34,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = await request.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'A valid amount is required' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'A valid amount is required' } },
+        { status: 400 }
+      );
     }
 
     const goal = await contributeToHouseholdGoal(user.id, id, parsed.data);

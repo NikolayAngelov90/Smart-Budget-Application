@@ -56,9 +56,7 @@ export function OfflineBanner() {
       <Alert status="success" variant="solid" position="sticky" top={0} zIndex={1000}>
         <AlertIcon />
         <AlertDescription flex="1">
-          {syncStatus === 'syncing'
-            ? t('backOnlineSyncing')
-            : t('backOnlineSynced')}
+          {syncStatus === 'syncing' ? t('backOnlineSyncing') : t('backOnlineSynced')}
         </AlertDescription>
         <CloseButton
           alignSelf="flex-start"
@@ -80,9 +78,7 @@ export function OfflineBanner() {
     return (
       <Alert status="warning" variant="solid" position="sticky" top={0} zIndex={1000}>
         <AlertIcon />
-        <AlertDescription flex="1">
-          {t('youAreOffline', { time: cacheTimeText })}
-        </AlertDescription>
+        <AlertDescription flex="1">{t('youAreOffline', { time: cacheTimeText })}</AlertDescription>
       </Alert>
     );
   }

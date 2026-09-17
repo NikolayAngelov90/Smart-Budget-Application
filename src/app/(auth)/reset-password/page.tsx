@@ -60,7 +60,10 @@ function ResetPasswordForm() {
   // Verify session on mount
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
 
       // If no session or error, the reset link may be invalid or expired
       if (error || !session) {
@@ -177,12 +180,7 @@ function ResetPasswordForm() {
         <VStack spacing={8} align="stretch">
           {/* Header */}
           <VStack spacing={2} textAlign="center">
-            <Heading
-              as="h1"
-              size={{ base: 'xl', md: '2xl' }}
-              color="fg"
-              fontWeight="bold"
-            >
+            <Heading as="h1" size={{ base: 'xl', md: '2xl' }} color="fg" fontWeight="bold">
               Reset link expired
             </Heading>
             <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
@@ -203,8 +201,8 @@ function ResetPasswordForm() {
           >
             <AlertIcon boxSize="40px" mr={0} />
             <AlertDescription mt={4} maxWidth="sm">
-              Password reset links expire after 1 hour for security reasons. Please request
-              a new reset link.
+              Password reset links expire after 1 hour for security reasons. Please request a new
+              reset link.
             </AlertDescription>
           </Alert>
 
@@ -248,12 +246,7 @@ function ResetPasswordForm() {
       <VStack spacing={8} align="stretch">
         {/* Header */}
         <VStack spacing={2} textAlign="center">
-          <Heading
-            as="h1"
-            size={{ base: 'xl', md: '2xl' }}
-            color="fg"
-            fontWeight="bold"
-          >
+          <Heading as="h1" size={{ base: 'xl', md: '2xl' }} color="fg" fontWeight="bold">
             Reset your password
           </Heading>
           <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
@@ -288,9 +281,7 @@ function ResetPasswordForm() {
                   aria-label="New password"
                   aria-required="true"
                   aria-invalid={!!errors.password}
-                  aria-describedby={
-                    errors.password ? 'password-error' : 'password-helper'
-                  }
+                  aria-describedby={errors.password ? 'password-error' : 'password-helper'}
                   autoComplete="new-password"
                   _focus={{
                     borderColor: 'accent',
@@ -334,9 +325,7 @@ function ResetPasswordForm() {
                   aria-label="Confirm password"
                   aria-required="true"
                   aria-invalid={!!errors.confirmPassword}
-                  aria-describedby={
-                    errors.confirmPassword ? 'confirm-password-error' : undefined
-                  }
+                  aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
                   autoComplete="new-password"
                   _focus={{
                     borderColor: 'accent',
@@ -345,9 +334,7 @@ function ResetPasswordForm() {
                 />
                 <InputRightElement>
                   <IconButton
-                    aria-label={
-                      showConfirmPassword ? 'Hide password' : 'Show password'
-                    }
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                     icon={showConfirmPassword ? <ViewOffIcon /> : <ViewIcon />}
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     variant="ghost"
@@ -357,11 +344,7 @@ function ResetPasswordForm() {
                 </InputRightElement>
               </InputGroup>
               {errors.confirmPassword && (
-                <FormErrorMessage
-                  id="confirm-password-error"
-                  color="danger.fg"
-                  fontSize="sm"
-                >
+                <FormErrorMessage id="confirm-password-error" color="danger.fg" fontSize="sm">
                   {errors.confirmPassword}
                 </FormErrorMessage>
               )}
@@ -408,12 +391,7 @@ export default function ResetPasswordPage() {
         <Container maxW="md" py={{ base: '12', md: '24' }} px={{ base: '4', md: '8' }}>
           <VStack spacing={8} align="stretch">
             <VStack spacing={2} textAlign="center">
-              <Heading
-                as="h1"
-                size={{ base: 'xl', md: '2xl' }}
-                color="fg"
-                fontWeight="bold"
-              >
+              <Heading as="h1" size={{ base: 'xl', md: '2xl' }} color="fg" fontWeight="bold">
                 Loading...
               </Heading>
             </VStack>

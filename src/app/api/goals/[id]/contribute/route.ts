@@ -33,13 +33,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: { message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
-    const body = await request.json() as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
     const amount = Number(body.amount);
     const note = body.note != null ? String(body.note) : null;
 
@@ -55,15 +52,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
   } catch (error) {
     const msg = error instanceof Error ? error.message : '';
     if (msg === 'Goal not found' || msg.includes('Goal not found')) {
-      return NextResponse.json(
-        { error: { message: 'Not found' } },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: { message: 'Not found' } }, { status: 404 });
     }
     logger.error('GoalsAPI', 'Error adding contribution:', error);
-    return NextResponse.json(
-      { error: { message: 'Failed to manage goals' } },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: { message: 'Failed to manage goals' } }, { status: 500 });
   }
 }

@@ -41,12 +41,9 @@ jest.mock('next-intl', () => ({
   },
 }));
 
-const mockUseDashboardStats = useDashboardStats as jest.MockedFunction<
-  typeof useDashboardStats
->;
+const mockUseDashboardStats = useDashboardStats as jest.MockedFunction<typeof useDashboardStats>;
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 const statsData = {
   balance: 500,

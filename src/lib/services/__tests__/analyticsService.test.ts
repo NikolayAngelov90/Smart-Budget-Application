@@ -73,8 +73,7 @@ describe('analyticsService', () => {
     it('returns "mobile" for iPhone user agent', () => {
       Object.defineProperty(global, 'navigator', {
         value: {
-          userAgent:
-            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
         },
         writable: true,
       });
@@ -84,8 +83,7 @@ describe('analyticsService', () => {
     it('returns "mobile" for Android mobile user agent', () => {
       Object.defineProperty(global, 'navigator', {
         value: {
-          userAgent:
-            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
+          userAgent: 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
         },
         writable: true,
       });
@@ -95,8 +93,7 @@ describe('analyticsService', () => {
     it('returns "tablet" for iPad user agent', () => {
       Object.defineProperty(global, 'navigator', {
         value: {
-          userAgent:
-            'Mozilla/5.0 (iPad; CPU OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
+          userAgent: 'Mozilla/5.0 (iPad; CPU OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
         },
         writable: true,
       });
@@ -116,8 +113,7 @@ describe('analyticsService', () => {
     it('returns "desktop" for desktop user agent', () => {
       Object.defineProperty(global, 'navigator', {
         value: {
-          userAgent:
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
         writable: true,
       });
@@ -154,9 +150,7 @@ describe('analyticsService', () => {
   describe('clearSessionId', () => {
     it('removes session ID from localStorage', () => {
       clearSessionId();
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        'analytics_session_id'
-      );
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('analytics_session_id');
     });
   });
 
@@ -397,13 +391,15 @@ describe('analyticsService', () => {
         writable: true,
       });
 
-      const events = [{
-        event_name: 'test_event',
-        event_properties: {},
-        timestamp: '2026-02-04T12:00:00.000Z',
-        session_id: 'session-123',
-        device_type: 'desktop',
-      }];
+      const events = [
+        {
+          event_name: 'test_event',
+          event_properties: {},
+          timestamp: '2026-02-04T12:00:00.000Z',
+          session_id: 'session-123',
+          device_type: 'desktop',
+        },
+      ];
       localStorageStore['analytics_event_buffer'] = JSON.stringify(events);
       mockFetch.mockResolvedValueOnce({ ok: true });
 
@@ -432,10 +428,7 @@ describe('analyticsService', () => {
 
     it('markPWAInstallTracked sets flag in localStorage', () => {
       markPWAInstallTracked();
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'analytics_pwa_installed',
-        'true'
-      );
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('analytics_pwa_installed', 'true');
       expect(localStorageStore['analytics_pwa_installed']).toBe('true');
     });
 
@@ -458,10 +451,7 @@ describe('analyticsService', () => {
 
       await trackPWAInstalled('iOS');
 
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'analytics_pwa_installed',
-        'true'
-      );
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('analytics_pwa_installed', 'true');
       expect(localStorageStore['analytics_pwa_installed']).toBe('true');
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(callBody.event_name).toBe('pwa_installed');

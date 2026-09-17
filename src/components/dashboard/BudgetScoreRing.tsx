@@ -149,76 +149,83 @@ export function BudgetScoreRing() {
     // Carries its own bottom margin so no-data users get no phantom gap
     <Box as="section" mb={{ base: 6, md: 8 }}>
       <Popover placement="bottom-start">
-      <PopoverTrigger>
-        <Box
-          as="button"
-          type="button"
-          aria-label={ariaLabel}
-          borderRadius="full"
-          _focusVisible={{ boxShadow: 'outline' }}
-          animation={
-            justLeveledUp && !prefersReducedMotion ? `${pulse} 0.6s ease-in-out 2` : undefined
-          }
-        >
-          <VStack spacing={1}>
-            <CircularProgress
-              value={budgetScore.score}
-              size="120px"
-              thickness="8px"
-              color={LEVEL_COLOR[budgetScore.level]}
-              trackColor="surface.sunken"
-              capIsRound
-            >
-              <CircularProgressLabel
-                fontSize="2rem"
-                fontWeight={700}
-                fontFamily="mono"
-                color="fg"
+        <PopoverTrigger>
+          <Box
+            as="button"
+            type="button"
+            aria-label={ariaLabel}
+            borderRadius="full"
+            _focusVisible={{ boxShadow: 'outline' }}
+            animation={
+              justLeveledUp && !prefersReducedMotion ? `${pulse} 0.6s ease-in-out 2` : undefined
+            }
+          >
+            <VStack spacing={1}>
+              <CircularProgress
+                value={budgetScore.score}
+                size="120px"
+                thickness="8px"
+                color={LEVEL_COLOR[budgetScore.level]}
+                trackColor="surface.sunken"
+                capIsRound
               >
-                {budgetScore.score}
-              </CircularProgressLabel>
-            </CircularProgress>
-            <Badge colorScheme={LEVEL_BADGE[budgetScore.level]} borderRadius="full" px={2}>
-              {t(`levels.${budgetScore.level}`)}
-            </Badge>
-          </VStack>
+                <CircularProgressLabel
+                  fontSize="2rem"
+                  fontWeight={700}
+                  fontFamily="mono"
+                  color="fg"
+                >
+                  {budgetScore.score}
+                </CircularProgressLabel>
+              </CircularProgress>
+              <Badge colorScheme={LEVEL_BADGE[budgetScore.level]} borderRadius="full" px={2}>
+                {t(`levels.${budgetScore.level}`)}
+              </Badge>
+            </VStack>
+          </Box>
+        </PopoverTrigger>
+        {/* Screen readers hear score changes without opening the breakdown */}
+        <Box
+          aria-live="polite"
+          position="absolute"
+          w="1px"
+          h="1px"
+          overflow="hidden"
+          clipPath="inset(50%)"
+        >
+          {ariaLabel}
         </Box>
-      </PopoverTrigger>
-      {/* Screen readers hear score changes without opening the breakdown */}
-      <Box aria-live="polite" position="absolute" w="1px" h="1px" overflow="hidden" clipPath="inset(50%)">
-        {ariaLabel}
-      </Box>
-      <PopoverContent w="18rem">
-        <PopoverArrow />
-        <PopoverHeader fontWeight={600}>{t('breakdownTitle')}</PopoverHeader>
-        <PopoverBody>
-          <VStack align="stretch" spacing={3}>
-            {budgetScore.factors.map((factor) => (
-              <Box key={factor.key}>
-                <HStack justify="space-between">
-                  <Text fontSize="sm" fontWeight={500}>
-                    {t(`factors.${factor.key}`)}
-                  </Text>
-                  <HStack spacing={2}>
-                    {factor.status !== 'unscored' && (
-                      <Text fontSize="sm" color="fg.muted" fontFamily="mono">
-                        {factor.earned}/{factor.max}
-                      </Text>
-                    )}
-                    <Tag size="sm" {...STATUS_TAG[factor.status]}>
-                      {t(`status.${factor.status}`)}
-                    </Tag>
+        <PopoverContent w="18rem">
+          <PopoverArrow />
+          <PopoverHeader fontWeight={600}>{t('breakdownTitle')}</PopoverHeader>
+          <PopoverBody>
+            <VStack align="stretch" spacing={3}>
+              {budgetScore.factors.map((factor) => (
+                <Box key={factor.key}>
+                  <HStack justify="space-between">
+                    <Text fontSize="sm" fontWeight={500}>
+                      {t(`factors.${factor.key}`)}
+                    </Text>
+                    <HStack spacing={2}>
+                      {factor.status !== 'unscored' && (
+                        <Text fontSize="sm" color="fg.muted" fontFamily="mono">
+                          {factor.earned}/{factor.max}
+                        </Text>
+                      )}
+                      <Tag size="sm" {...STATUS_TAG[factor.status]}>
+                        {t(`status.${factor.status}`)}
+                      </Tag>
+                    </HStack>
                   </HStack>
-                </HStack>
-                {factor.status === 'unscored' && (
-                  <Text fontSize="xs" color="fg.subtle" mt={1}>
-                    {t(`hint.${factor.key}`)}
-                  </Text>
-                )}
-              </Box>
-            ))}
-          </VStack>
-        </PopoverBody>
+                  {factor.status === 'unscored' && (
+                    <Text fontSize="xs" color="fg.subtle" mt={1}>
+                      {t(`hint.${factor.key}`)}
+                    </Text>
+                  )}
+                </Box>
+              ))}
+            </VStack>
+          </PopoverBody>
         </PopoverContent>
       </Popover>
     </Box>

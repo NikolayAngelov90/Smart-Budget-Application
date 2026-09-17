@@ -129,26 +129,23 @@ describe('ExampleComponent', () => {
    * Shows how to customize multiple mocks at once
    */
   test('uses multiple custom mocks', async () => {
-    const { mockSupabase, mockRouter, mockToast } = render(
-      <ExampleComponent />,
-      {
-        mockSupabase: {
-          select: jest.fn().mockResolvedValue({ data: [], error: null }),
-        },
-        mockRouter: {
-          push: jest.fn((path) => {
-            console.log('Navigating to:', path);
-            return Promise.resolve(true);
-          }),
-        },
-        mockToast: {
-          success: jest.fn((message) => {
-            console.log('Toast:', message);
-            return 'toast-id';
-          }),
-        },
-      }
-    );
+    const { mockSupabase, mockRouter, mockToast } = render(<ExampleComponent />, {
+      mockSupabase: {
+        select: jest.fn().mockResolvedValue({ data: [], error: null }),
+      },
+      mockRouter: {
+        push: jest.fn((path) => {
+          console.log('Navigating to:', path);
+          return Promise.resolve(true);
+        }),
+      },
+      mockToast: {
+        success: jest.fn((message) => {
+          console.log('Toast:', message);
+          return 'toast-id';
+        }),
+      },
+    });
 
     // Use all mocks
     await mockSupabase.select();

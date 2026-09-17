@@ -62,10 +62,11 @@ export function ActiveDevicesSection() {
   const t = useTranslations('devices');
 
   // Fetch sessions with SWR
-  const { data: response, error, isLoading } = useSWR<SessionsResponse>(
-    '/api/user/sessions',
-    fetcher
-  );
+  const {
+    data: response,
+    error,
+    isLoading,
+  } = useSWR<SessionsResponse>('/api/user/sessions', fetcher);
 
   const sessions = response?.data;
   const currentSessionToken = response?.current_session_token || null;
@@ -318,11 +319,15 @@ export function ActiveDevicesSection() {
           <VStack align="stretch" spacing={4}>
             <Heading size="md">{t('title')}</Heading>
             <Text color="fg.muted" fontSize="sm">
-              Manage devices logged into your account. You can rename devices or revoke access
-              to log them out remotely.
+              Manage devices logged into your account. You can rename devices or revoke access to
+              log them out remotely.
             </Text>
 
-            <VStack align="stretch" spacing={3} divider={<Box borderBottom="1px" borderColor="border" />}>
+            <VStack
+              align="stretch"
+              spacing={3}
+              divider={<Box borderBottom="1px" borderColor="border" />}
+            >
               {sessions.map((session) => {
                 const isCurrent = isCurrentSession(session);
                 const DeviceIcon = getDeviceIcon(session.device_type);
@@ -396,7 +401,11 @@ export function ActiveDevicesSection() {
                         <Text>•</Text>
                         {/* AC-9.6.4: Last active timestamp */}
                         <Text>
-                          {t('lastActive', { time: formatDistanceToNow(new Date(session.last_active), { addSuffix: true }) })}
+                          {t('lastActive', {
+                            time: formatDistanceToNow(new Date(session.last_active), {
+                              addSuffix: true,
+                            }),
+                          })}
                         </Text>
                       </HStack>
                     </VStack>

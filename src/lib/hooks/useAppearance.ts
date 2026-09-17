@@ -116,12 +116,10 @@ function syncThemeColorMeta(mode: 'light' | 'dark') {
   // the STORED preference — so OS-light + "Dark" left a bright address bar
   // around a dark app. Rewriting the tag keeps them in step.
   const color = mode === 'dark' ? '#111008' : '#F6F5F2';
-  document
-    .querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
-    .forEach((tag) => {
-      tag.removeAttribute('media');
-      tag.setAttribute('content', color);
-    });
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((tag) => {
+    tag.removeAttribute('media');
+    tag.setAttribute('content', color);
+  });
 }
 
 export function useAppearance() {

@@ -53,9 +53,7 @@ import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 const mockUseAnnualizedProjections = useAnnualizedProjections as jest.MockedFunction<
   typeof useAnnualizedProjections
 >;
-const mockUseUserPreferences = useUserPreferences as jest.MockedFunction<
-  typeof useUserPreferences
->;
+const mockUseUserPreferences = useUserPreferences as jest.MockedFunction<typeof useUserPreferences>;
 const mockUseFeatureDisclosure = useFeatureDisclosure as jest.MockedFunction<
   typeof useFeatureDisclosure
 >;
@@ -105,17 +103,21 @@ const recurringProjection: CategoryProjection = {
 describe('AnnualizedProjections', () => {
   beforeEach(() => {
     mockUseUserPreferences.mockReturnValue({
-      preferences: { currency_format: 'EUR' } as unknown as ReturnType<typeof useUserPreferences>['preferences'],
+      preferences: { currency_format: 'EUR' } as unknown as ReturnType<
+        typeof useUserPreferences
+      >['preferences'],
       isLoading: false,
       error: undefined,
     });
   });
 
   it('returns null when hasEnoughData is false and not loading', () => {
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: false,
-      isLoading: false,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: false,
+        isLoading: false,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     // Component returns null — no section with our aria-label, no heading, no skeleton
@@ -126,38 +128,46 @@ describe('AnnualizedProjections', () => {
 
   it('Story 15.7: returns null when the disclosure gate is LOCKED, even with data', () => {
     mockUseFeatureDisclosure.mockReturnValueOnce({ isUnlocked: () => false } as never);
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({ hasEnoughData: true, isLoading: false }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({ hasEnoughData: true, isLoading: false })
+    );
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
 
   it('shows skeleton when isLoading is true', () => {
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: false,
-      isLoading: true,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: false,
+        isLoading: true,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByTestId('projections-skeleton')).toBeInTheDocument();
   });
 
   it('renders heading "Spending Forecast" when data is available', () => {
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [sampleProjection],
-      months_analyzed: 2,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [sampleProjection],
+        months_analyzed: 2,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByRole('heading', { name: /spending forecast/i })).toBeInTheDocument();
   });
 
   it('renders category row with name, monthly avg, and annual projection', () => {
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [sampleProjection],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [sampleProjection],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByText('Food')).toBeInTheDocument();
@@ -167,33 +177,39 @@ describe('AnnualizedProjections', () => {
 
   it('renders transaction_count for each category row (AC #2)', () => {
     const proj = { ...sampleProjection, transaction_count: 7 };
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [proj],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [proj],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByText('7')).toBeInTheDocument();
   });
 
   it('shows "Recurring" badge for is_recurring: true category', () => {
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [recurringProjection],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [recurringProjection],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByText('Recurring')).toBeInTheDocument();
   });
 
   it('does not show "Recurring" badge for is_recurring: false category', () => {
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [sampleProjection],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [sampleProjection],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.queryByText('Recurring')).not.toBeInTheDocument();
@@ -201,11 +217,13 @@ describe('AnnualizedProjections', () => {
 
   it('does not show trend badge for trend: new (AC #4: trend only shown with 4+ months of history)', () => {
     const proj = { ...sampleProjection, trend: 'new' as const, trend_percentage: null };
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [proj],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [proj],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     // No trend badge rendered when trend is 'new' (no prior period to compare against)
@@ -216,11 +234,13 @@ describe('AnnualizedProjections', () => {
 
   it('shows "Stable" trend badge for trend: stable', () => {
     const proj = { ...sampleProjection, trend: 'stable' as const, trend_percentage: 2 };
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [proj],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [proj],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByText('Stable')).toBeInTheDocument();
@@ -228,11 +248,13 @@ describe('AnnualizedProjections', () => {
 
   it('shows upward trend badge for trend: up', () => {
     const proj = { ...sampleProjection, trend: 'up' as const, trend_percentage: 15 };
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [proj],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [proj],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByText('+15%')).toBeInTheDocument();
@@ -240,11 +262,13 @@ describe('AnnualizedProjections', () => {
 
   it('shows downward trend badge for trend: down', () => {
     const proj = { ...sampleProjection, trend: 'down' as const, trend_percentage: -12 };
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [proj],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [proj],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByText('-12%')).toBeInTheDocument();
@@ -252,34 +276,45 @@ describe('AnnualizedProjections', () => {
 
   it('renders total row with sum of annual projections', () => {
     const proj1 = { ...sampleProjection, annual_projection: 1200 };
-    const proj2 = { ...sampleProjection, category_id: 'cat-2', category_name: 'Transport', annual_projection: 600 };
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [proj1, proj2],
-      months_analyzed: 2,
-    }));
+    const proj2 = {
+      ...sampleProjection,
+      category_id: 'cat-2',
+      category_name: 'Transport',
+      annual_projection: 600,
+    };
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [proj1, proj2],
+        months_analyzed: 2,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByText('Total annual forecast')).toBeInTheDocument();
   });
 
   it('renders section with aria-label', () => {
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [sampleProjection],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [sampleProjection],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     expect(screen.getByRole('region', { name: /spending forecast/i })).toBeInTheDocument();
   });
 
   it('renders heading as h2', () => {
-    mockUseAnnualizedProjections.mockReturnValue(buildHookResult({
-      hasEnoughData: true,
-      projections: [sampleProjection],
-      months_analyzed: 1,
-    }));
+    mockUseAnnualizedProjections.mockReturnValue(
+      buildHookResult({
+        hasEnoughData: true,
+        projections: [sampleProjection],
+        months_analyzed: 1,
+      })
+    );
 
     renderWithChakra(<AnnualizedProjections />);
     const heading = screen.getByRole('heading', { level: 2 });

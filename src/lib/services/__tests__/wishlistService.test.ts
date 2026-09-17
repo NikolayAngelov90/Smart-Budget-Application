@@ -49,7 +49,10 @@ function chain(result: { data: unknown; error: unknown }): ChainStub {
 type Plan = Record<string, { data: unknown; error: unknown } | { data: unknown; error: unknown }[]>;
 
 function makeClient(plan: Plan) {
-  const queues: Record<string, { data: unknown; error: unknown }[] | { data: unknown; error: unknown }> = {};
+  const queues: Record<
+    string,
+    { data: unknown; error: unknown }[] | { data: unknown; error: unknown }
+  > = {};
   for (const [k, v] of Object.entries(plan)) queues[k] = Array.isArray(v) ? [...v] : v;
   const from = jest.fn((table: string) => {
     const q = queues[table];
@@ -138,7 +141,9 @@ describe('createItem', () => {
 describe('updateStatus', () => {
   it('updates the caller own row', async () => {
     mockCreateClient.mockResolvedValue(
-      makeClient({ wishlist_items: { data: [{ ...ITEM_ROW, status: 'purchased' }], error: null } }) as never
+      makeClient({
+        wishlist_items: { data: [{ ...ITEM_ROW, status: 'purchased' }], error: null },
+      }) as never
     );
     const result = await updateStatus('u-1', 'w-1', 'purchased');
     expect(result.status).toBe('purchased');

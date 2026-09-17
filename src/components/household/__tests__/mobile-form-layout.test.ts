@@ -210,11 +210,14 @@ describe('mobile tap targets', () => {
     expect(missing.map((b) => b.replace(/\s+/g, ' ').slice(0, 70))).toEqual([]);
   });
 
-  it.each(NO_BUTTON_COMPONENTS)('%s is excluded from the button check for a real reason', (file) => {
-    // If this file grows a <Button>, it must join BUTTON_COMPONENTS — otherwise
-    // the exclusion becomes a hole the 44px rule quietly falls through.
-    expect(openingTags(read(file), 'Button')).toEqual([]);
-  });
+  it.each(NO_BUTTON_COMPONENTS)(
+    '%s is excluded from the button check for a real reason',
+    (file) => {
+      // If this file grows a <Button>, it must join BUTTON_COMPONENTS — otherwise
+      // the exclusion becomes a hole the 44px rule quietly falls through.
+      expect(openingTags(read(file), 'Button')).toEqual([]);
+    }
+  );
 
   it('is not a vacuous check — the pattern it looks for is real', () => {
     // Guards the guard: if the extractor found nothing, every assertion above

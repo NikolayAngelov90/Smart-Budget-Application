@@ -60,8 +60,8 @@ export function InactivityWarningModal({
         <ModalBody>
           <VStack spacing={4} textAlign="center">
             <Text color="fg">
-              You&apos;ll be logged out in <strong>{formatTime(timeRemaining)}</strong> due
-              to inactivity.
+              You&apos;ll be logged out in <strong>{formatTime(timeRemaining)}</strong> due to
+              inactivity.
             </Text>
             <Text fontSize="sm" color="fg.muted">
               Your session will expire to protect your financial data on shared devices.

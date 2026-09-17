@@ -32,7 +32,10 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'A valid percentage (0–100) is required' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'A valid percentage (0–100) is required' } },
+        { status: 400 }
+      );
     }
 
     const percentage = await setContribution(user.id, parsed.data.percentage);
@@ -42,6 +45,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: { message: error.message } }, { status: 403 });
     }
     logger.error('Contribution', 'PATCH failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to save contribution' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to save contribution' } },
+      { status: 500 }
+    );
   }
 }

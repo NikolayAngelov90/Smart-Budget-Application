@@ -55,7 +55,11 @@ async function resolveCurrency(userId: string): Promise<string> {
   // goals / goal_contributions aren't in the typed Database schema (like goalService) —
   // use the generic client so .from('goals') type-checks.
   const supabase = (await createClient()) as unknown as SupabaseClient;
-  const { data } = await supabase.from('user_profiles').select('preferences').eq('id', userId).maybeSingle();
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('preferences')
+    .eq('id', userId)
+    .maybeSingle();
   const prefs = (data?.preferences ?? {}) as { currency_format?: unknown };
   return typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
 }
@@ -87,7 +91,10 @@ export async function getHouseholdGoals(userId: string): Promise<HouseholdGoalWi
       p_goal_id: goal.id,
     });
     if (rpcError) {
-      logger.error('HouseholdGoalService', `breakdown RPC failed for ${goal.id}: ${rpcError.message}`);
+      logger.error(
+        'HouseholdGoalService',
+        `breakdown RPC failed for ${goal.id}: ${rpcError.message}`
+      );
       throw new Error('Failed to load goal breakdown');
     }
     result.push({ goal, breakdown: (breakdown ?? []) as GoalMemberBreakdown[] });
@@ -99,11 +106,15 @@ export async function getHouseholdGoals(userId: string): Promise<HouseholdGoalWi
  * Creates a shared goal in the caller's household (service-role; membership-gated).
  * @throws NotHouseholdMemberError if the caller has no household.
  */
-export async function createHouseholdGoal(userId: string, input: CreateHouseholdGoalInput): Promise<HouseholdGoal> {
+export async function createHouseholdGoal(
+  userId: string,
+  input: CreateHouseholdGoalInput
+): Promise<HouseholdGoal> {
   const name = (input.name ?? '').trim();
   if (!name) throw new Error('Goal name is required');
   const target = Number(input.target_amount);
-  if (!Number.isFinite(target) || target <= 0) throw new Error('Target amount must be greater than 0');
+  if (!Number.isFinite(target) || target <= 0)
+    throw new Error('Target amount must be greater than 0');
 
   const householdId = await resolveHouseholdId(userId);
   if (!householdId) throw new NotHouseholdMemberError();
@@ -111,7 +122,13 @@ export async function createHouseholdGoal(userId: string, input: CreateHousehold
   const admin = createServiceRoleClient() as unknown as SupabaseClient;
   const { data, error } = await admin
     .from('goals')
-    .insert({ user_id: userId, household_id: householdId, name, target_amount: target, deadline: input.deadline ?? null })
+    .insert({
+      user_id: userId,
+      household_id: householdId,
+      name,
+      target_amount: target,
+      deadline: input.deadline ?? null,
+    })
     .select()
     .single();
   if (error || !data) {
@@ -132,7 +149,8 @@ export async function contributeToHouseholdGoal(
   input: AddContributionInput
 ): Promise<Goal> {
   const amount = Number(input.amount);
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Contribution amount must be greater than 0');
+  if (!Number.isFinite(amount) || amount <= 0)
+    throw new Error('Contribution amount must be greater than 0');
 
   const admin = createServiceRoleClient() as unknown as SupabaseClient;
 
@@ -178,7 +196,11 @@ export async function contributeToHouseholdGoal(
       currency,
     });
   } catch (savingsError) {
-    logger.error('HouseholdGoalService', 'Savings expense logging failed (non-fatal):', savingsError);
+    logger.error(
+      'HouseholdGoalService',
+      'Savings expense logging failed (non-fatal):',
+      savingsError
+    );
   }
 
   // Recompute current_amount = SUM(contributions) — authoritative across concurrent members.
@@ -229,7 +251,10 @@ export async function contributeToHouseholdGoal(
         if (rosterError) {
           // Supabase returns errors as values — without this log a failed
           // roster read would silently push no one
-          logger.warn('HouseholdGoalService', `milestone roster read failed: ${rosterError.message}`);
+          logger.warn(
+            'HouseholdGoalService',
+            `milestone roster read failed: ${rosterError.message}`
+          );
         }
         await Promise.allSettled(
           (members ?? []).map((m: { user_id: string }) =>

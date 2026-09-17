@@ -291,13 +291,7 @@ export function PaginationControls({
       </Flex>
 
       {/* Item count summary */}
-      <Text
-        fontSize="sm"
-        color="fg.subtle"
-        textAlign="center"
-        mt={2}
-        aria-live="polite"
-      >
+      <Text fontSize="sm" color="fg.subtle" textAlign="center" mt={2} aria-live="polite">
         {t('showingItems', { start: startItem, end: endItem, total: totalItems })}
       </Text>
     </Box>

@@ -103,12 +103,10 @@ export function useOnlineStatus(): OnlineStatusState {
   });
 
   // Story 8.5: Cached data timestamp
-  const [cachedDataTimestamp, setCachedDataTimestamp] = useState<Date | null>(
-    () => {
-      const timestamp = getCachedDataTimestamp();
-      return timestamp ? new Date(timestamp) : null;
-    }
-  );
+  const [cachedDataTimestamp, setCachedDataTimestamp] = useState<Date | null>(() => {
+    const timestamp = getCachedDataTimestamp();
+    return timestamp ? new Date(timestamp) : null;
+  });
 
   // Listen to online/offline events
   useEffect(() => {

@@ -3,7 +3,9 @@
  * Logs a "Savings" expense for a goal contribution (creating the category if needed).
  */
 
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { logSavingsContribution } from '@/lib/services/savingsTransactionService';
 
@@ -33,7 +35,11 @@ function makeClient({ existingCategory = null, createdCategory = { id: 'cat-new'
           })),
           insert: jest.fn(() => {
             categoryInsertCalled = true;
-            return { select: jest.fn(() => ({ single: jest.fn().mockResolvedValue({ data: createdCategory, error: null }) })) };
+            return {
+              select: jest.fn(() => ({
+                single: jest.fn().mockResolvedValue({ data: createdCategory, error: null }),
+              })),
+            };
           }),
         };
       }
@@ -48,7 +54,13 @@ function makeClient({ existingCategory = null, createdCategory = { id: 'cat-new'
   };
 }
 
-const base = { userId: 'u1', amount: 50, goalName: 'Vacation', goalContributionId: 'gc1', currency: 'EUR' };
+const base = {
+  userId: 'u1',
+  amount: 50,
+  goalName: 'Vacation',
+  goalContributionId: 'gc1',
+  currency: 'EUR',
+};
 
 beforeEach(() => jest.clearAllMocks());
 

@@ -88,7 +88,12 @@ describe('evaluateNudge', () => {
     });
 
     it('does NOT include goal text when affectedGoalName is null', () => {
-      const result = evaluateNudge({ ...BASE, currentMonthTotal: 90, historicalAvg: 100, affectedGoalName: null });
+      const result = evaluateNudge({
+        ...BASE,
+        currentMonthTotal: 90,
+        historicalAvg: 100,
+        affectedGoalName: null,
+      });
       expect(result!.body).not.toContain('goal');
     });
   });

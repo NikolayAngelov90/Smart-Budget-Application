@@ -97,7 +97,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     // Mock 150 transactions (more than default limit of 100)
     const mockTransactions = Array.from({ length: 150 }, (_, i) => ({
       id: `tx-${i}`,
-      amount: 10.00 + i,
+      amount: 10.0 + i,
       type: i % 2 === 0 ? 'income' : 'expense',
       date: '2025-12-14',
       notes: `Transaction ${i}`,
@@ -135,7 +135,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
   test('applies pagination when all=true is not provided', async () => {
     const mockTransactions = Array.from({ length: 100 }, (_, i) => ({
       id: `tx-${i}`,
-      amount: 10.00 + i,
+      amount: 10.0 + i,
       type: 'expense',
       date: '2025-12-14',
       notes: null,
@@ -167,7 +167,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
   test('applies pagination when all=false', async () => {
     const mockTransactions = Array.from({ length: 100 }, (_, i) => ({
       id: `tx-${i}`,
-      amount: 10.00,
+      amount: 10.0,
       type: 'expense',
       date: '2025-12-14',
       notes: null,
@@ -234,7 +234,9 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
       count: 0,
     });
 
-    const request = createMockRequest('http://localhost:3001/api/transactions?all=true&startDate=2025-01-01&endDate=2025-12-31');
+    const request = createMockRequest(
+      'http://localhost:3001/api/transactions?all=true&startDate=2025-01-01&endDate=2025-12-31'
+    );
     await GET(request);
 
     // Verify filters were applied
@@ -253,7 +255,9 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
       count: 0,
     });
 
-    const request = createMockRequest('http://localhost:3001/api/transactions?all=true&category=cat-123');
+    const request = createMockRequest(
+      'http://localhost:3001/api/transactions?all=true&category=cat-123'
+    );
     await GET(request);
 
     // Verify category filter was applied
@@ -271,7 +275,9 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
       count: 0,
     });
 
-    const request = createMockRequest('http://localhost:3001/api/transactions?all=true&type=expense');
+    const request = createMockRequest(
+      'http://localhost:3001/api/transactions?all=true&type=expense'
+    );
     await GET(request);
 
     // Verify type filter was applied

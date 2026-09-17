@@ -240,9 +240,7 @@ describe('exportMonthlyReportToPDF', () => {
     expect(mockAutoTable).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        body: expect.arrayContaining([
-          ['Храна', expect.stringContaining('50.00'), '100.0%'],
-        ]),
+        body: expect.arrayContaining([['Храна', expect.stringContaining('50.00'), '100.0%']]),
         styles: expect.objectContaining({ font: 'NotoSans' }),
       })
     );
@@ -313,9 +311,7 @@ describe('exportMonthlyReportToPDF', () => {
       month: '2025-01',
       summary: { totalIncome: 100.0, totalExpenses: 50.0, netBalance: 50.0 },
       categories: [{ name: 'Food', amount: 50.0, percentage: 100.0, color: '#FF0000' }],
-      topTransactions: [
-        { date: '2025-01-15', category: 'Food', amount: 50.0, notes: '' },
-      ],
+      topTransactions: [{ date: '2025-01-15', category: 'Food', amount: 50.0, notes: '' }],
     };
 
     await exportMonthlyReportToPDF(reportData);
@@ -363,12 +359,8 @@ describe('exportMonthlyReportToPDF', () => {
     const reportData: PDFReportData = {
       month: '2025-01',
       summary: { totalIncome: 1234.567, totalExpenses: 987.654, netBalance: 246.913 },
-      categories: [
-        { name: 'Food', amount: 123.456, percentage: 50.5, color: '#FF0000' },
-      ],
-      topTransactions: [
-        { date: '2025-01-15', category: 'Food', amount: 67.89, notes: 'Test' },
-      ],
+      categories: [{ name: 'Food', amount: 123.456, percentage: 50.5, color: '#FF0000' }],
+      topTransactions: [{ date: '2025-01-15', category: 'Food', amount: 67.89, notes: 'Test' }],
     };
 
     await exportMonthlyReportToPDF(reportData);
@@ -389,9 +381,7 @@ describe('exportMonthlyReportToPDF', () => {
     expect(mockAutoTable).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        body: expect.arrayContaining([
-          ['Food', expect.stringContaining('123.46'), '50.5%'],
-        ]),
+        body: expect.arrayContaining([['Food', expect.stringContaining('123.46'), '50.5%']]),
       })
     );
 

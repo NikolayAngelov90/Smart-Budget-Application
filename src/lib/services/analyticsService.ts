@@ -161,7 +161,10 @@ export async function flushBufferedEvents(): Promise<void> {
 
     // Drop events that have exceeded max retries
     if (retryCount >= MAX_RETRY_COUNT) {
-      logger.warn('Analytics', `Dropping event '${event.event_name}' after ${retryCount} failed retries`);
+      logger.warn(
+        'Analytics',
+        `Dropping event '${event.event_name}' after ${retryCount} failed retries`
+      );
       continue;
     }
 
@@ -283,7 +286,10 @@ export async function trackEvent(
 /**
  * Track insights page view
  */
-export function trackInsightsPageViewed(filter?: string, page?: number): Promise<TrackEventResponse> {
+export function trackInsightsPageViewed(
+  filter?: string,
+  page?: number
+): Promise<TrackEventResponse> {
   const properties: Record<string, unknown> = {};
   if (filter && filter !== 'all') {
     properties.filter = filter;
@@ -325,9 +331,7 @@ export function trackInsightDismissed(
 /**
  * Track CSV export (AC-9.5.1)
  */
-export function trackCSVExported(
-  transactionCount: number
-): Promise<TrackEventResponse> {
+export function trackCSVExported(transactionCount: number): Promise<TrackEventResponse> {
   return trackEvent('csv_exported', {
     transaction_count: transactionCount,
   });
@@ -336,10 +340,7 @@ export function trackCSVExported(
 /**
  * Track PDF export (AC-9.5.2)
  */
-export function trackPDFExported(
-  month: string,
-  pageCount: number
-): Promise<TrackEventResponse> {
+export function trackPDFExported(month: string, pageCount: number): Promise<TrackEventResponse> {
   return trackEvent('pdf_exported', {
     month,
     page_count: pageCount,
@@ -373,9 +374,7 @@ export function detectPWAPlatform(): PWAPlatform {
  * Track PWA installation (AC-9.5.3, AC-9.5.8)
  * Only tracks once per device to prevent duplicates.
  */
-export function trackPWAInstalled(
-  platform?: PWAPlatform
-): Promise<TrackEventResponse> {
+export function trackPWAInstalled(platform?: PWAPlatform): Promise<TrackEventResponse> {
   // AC-9.5.8: Prevent duplicate PWA install events
   if (hasPWAInstallBeenTracked()) {
     return Promise.resolve({ success: true, error: 'Already tracked' });
@@ -390,9 +389,7 @@ export function trackPWAInstalled(
 /**
  * Track offline mode activation (AC-9.5.4)
  */
-export function trackOfflineModeActive(
-  cachedDataSize: number
-): Promise<TrackEventResponse> {
+export function trackOfflineModeActive(cachedDataSize: number): Promise<TrackEventResponse> {
   return trackEvent('offline_mode_active', {
     cached_data_size: cachedDataSize,
   });

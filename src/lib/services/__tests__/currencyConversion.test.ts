@@ -23,11 +23,7 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { getExchangeRates } from '@/lib/services/exchangeRateService';
 import { logger } from '@/lib/utils/logger';
-import {
-  buildLiveRateMap,
-  convertToPreferred,
-  type ConvertibleRow,
-} from '../currencyConversion';
+import { buildLiveRateMap, convertToPreferred, type ConvertibleRow } from '../currencyConversion';
 
 const mockRates = getExchangeRates as jest.MockedFunction<typeof getExchangeRates>;
 

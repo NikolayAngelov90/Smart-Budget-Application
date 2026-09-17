@@ -107,7 +107,9 @@ export function isRedisConfigured(): boolean {
  */
 export function markRedisConnectionFailed(): void {
   if (!redisConnectionFailed) {
-    console.warn('[Redis] Connection failed — falling back to in-memory for this process lifecycle');
+    console.warn(
+      '[Redis] Connection failed — falling back to in-memory for this process lifecycle'
+    );
     redisConnectionFailed = true;
   }
 }

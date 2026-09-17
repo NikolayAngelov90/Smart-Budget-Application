@@ -58,11 +58,7 @@ export function LanguageSwitcher({ currentLocale, onLanguageChange }: LanguageSw
   return (
     <FormControl>
       <FormLabel>{t('language')}</FormLabel>
-      <Select
-        value={currentLocale}
-        onChange={handleChange}
-        isDisabled={isChanging}
-      >
+      <Select value={currentLocale} onChange={handleChange} isDisabled={isChanging}>
         {SUPPORTED_LOCALES.map((locale) => (
           <option key={locale} value={locale}>
             {LOCALE_LABELS[locale]}

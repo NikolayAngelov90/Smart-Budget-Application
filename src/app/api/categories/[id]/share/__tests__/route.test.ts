@@ -8,7 +8,10 @@
 
 jest.mock('next/server', () => ({
   NextResponse: {
-    json: jest.fn((body: unknown, init?: { status?: number }) => ({ status: init?.status ?? 200, json: async () => body })),
+    json: jest.fn((body: unknown, init?: { status?: number }) => ({
+      status: init?.status ?? 200,
+      json: async () => body,
+    })),
   },
 }));
 jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn() }));
@@ -19,7 +22,9 @@ jest.mock('@/lib/services/categoryShareService', () => ({
 jest.mock('@/lib/services/householdService', () => ({
   NotHouseholdMemberError: class NotHouseholdMemberError extends Error {},
 }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
 import { setCategoryShared, CategoryNotFoundError } from '@/lib/services/categoryShareService';
@@ -30,7 +35,13 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
 const mockSet = setCategoryShared as jest.MockedFunction<typeof setCategoryShared>;
 
 function authClient(user: object | null) {
-  return { auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }) } };
+  return {
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+    },
+  };
 }
 function req(body: unknown) {
   return { json: async () => body } as never;

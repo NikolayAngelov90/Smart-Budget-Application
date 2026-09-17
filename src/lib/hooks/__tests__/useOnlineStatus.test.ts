@@ -194,12 +194,14 @@ describe('useOnlineStatus', () => {
       Object.defineProperty(navigator, 'onLine', { value: true });
 
       let transactionCallback: (() => void) | undefined;
-      mockChannel.on.mockImplementation((event: string, config: Record<string, unknown>, callback: () => void) => {
-        if (event === 'postgres_changes') {
-          transactionCallback = callback;
+      mockChannel.on.mockImplementation(
+        (event: string, config: Record<string, unknown>, callback: () => void) => {
+          if (event === 'postgres_changes') {
+            transactionCallback = callback;
+          }
+          return mockChannel;
         }
-        return mockChannel;
-      });
+      );
 
       const { result } = renderHook(() => useOnlineStatus());
 

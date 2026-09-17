@@ -57,7 +57,12 @@ export function HouseholdMembers({ isAdmin }: { isAdmin: boolean }) {
       onClose();
       setTarget(null);
     } catch (e) {
-      toast({ title: e instanceof Error ? e.message : t('removeFailed'), status: 'error', duration: 4000, isClosable: true });
+      toast({
+        title: e instanceof Error ? e.message : t('removeFailed'),
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
     } finally {
       setIsRemoving(false);
     }
@@ -78,9 +83,7 @@ export function HouseholdMembers({ isAdmin }: { isAdmin: boolean }) {
                 {m.isSelf ? t('you') : m.email}
               </Text>
               <Badge
-                {...(m.role === 'admin'
-                  ? { colorScheme: 'income' }
-                  : { colorScheme: 'paper' })}
+                {...(m.role === 'admin' ? { colorScheme: 'income' } : { colorScheme: 'paper' })}
                 borderRadius="full"
                 px={2}
                 fontSize="10px"
@@ -89,7 +92,13 @@ export function HouseholdMembers({ isAdmin }: { isAdmin: boolean }) {
               </Badge>
             </HStack>
             {isAdmin && !m.isSelf && (
-              <Button size="sm" variant="ghost" colorScheme="red" flexShrink={0} onClick={() => askRemove(m)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                colorScheme="red"
+                flexShrink={0}
+                onClick={() => askRemove(m)}
+              >
                 {t('remove')}
               </Button>
             )}
@@ -103,12 +112,20 @@ export function HouseholdMembers({ isAdmin }: { isAdmin: boolean }) {
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
               {t('removeConfirmTitle')}
             </AlertDialogHeader>
-            <AlertDialogBody>{t('removeConfirmBody', { email: target?.email ?? '' })}</AlertDialogBody>
+            <AlertDialogBody>
+              {t('removeConfirmBody', { email: target?.email ?? '' })}
+            </AlertDialogBody>
             <AlertDialogFooter>
               <Button ref={cancelRef} onClick={onClose} isDisabled={isRemoving}>
                 {t('cancel')}
               </Button>
-              <Button colorScheme="red" onClick={confirmRemove} ml={3} isLoading={isRemoving} loadingText={t('removeCta')}>
+              <Button
+                colorScheme="red"
+                onClick={confirmRemove}
+                ml={3}
+                isLoading={isRemoving}
+                loadingText={t('removeCta')}
+              >
                 {t('removeCta')}
               </Button>
             </AlertDialogFooter>

@@ -172,7 +172,12 @@ export function advanceStreak(state: StreakState | null, logDayKey: string): Str
   if (diff === 1) {
     currentStreak = prev.current_streak + 1;
     event = 'extended';
-  } else if (diff === 2 && missedDayKey && missedWeekKey && isFreezeAvailable(prev, missedWeekKey)) {
+  } else if (
+    diff === 2 &&
+    missedDayKey &&
+    missedWeekKey &&
+    isFreezeAvailable(prev, missedWeekKey)
+  ) {
     // Exactly one missed day, that week's freeze available → auto-bridge (no-guilt UX)
     currentStreak = prev.current_streak + 1;
     freezeUsedOn = missedDayKey;

@@ -13,13 +13,16 @@ import { logger } from '@/lib/utils/logger';
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
-    const body = await request.json() as {
+    const body = (await request.json()) as {
       endpoint?: string;
       keys?: { p256dh?: string; auth?: string };
     };
@@ -31,21 +34,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert(
-        {
-          user_id: user.id,
-          endpoint: body.endpoint,
-          p256dh: body.keys.p256dh,
-          auth: body.keys.auth,
-        },
-        { onConflict: 'user_id,endpoint' }
-      );
+    const { error } = await supabase.from('push_subscriptions').upsert(
+      {
+        user_id: user.id,
+        endpoint: body.endpoint,
+        p256dh: body.keys.p256dh,
+        auth: body.keys.auth,
+      },
+      { onConflict: 'user_id,endpoint' }
+    );
 
     if (error) {
       logger.error('PushSubscribe', 'Failed to upsert subscription:', error);
-      return NextResponse.json({ error: { message: 'Failed to save subscription' } }, { status: 500 });
+      return NextResponse.json(
+        { error: { message: 'Failed to save subscription' } },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true }, { status: 200 });

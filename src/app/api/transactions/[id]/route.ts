@@ -47,10 +47,7 @@ interface UpdateTransactionRequest {
  * - 404: Not found (transaction doesn't exist or doesn't belong to user)
  * - 500: Server error
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient();
     const { id } = await params;
@@ -69,13 +66,7 @@ export async function PUT(
     const body: UpdateTransactionRequest = await request.json();
 
     // Validate at least one field is being updated
-    if (
-      !body.amount &&
-      !body.type &&
-      !body.category_id &&
-      !body.date &&
-      body.notes === undefined
-    ) {
+    if (!body.amount && !body.type && !body.category_id && !body.date && body.notes === undefined) {
       return NextResponse.json(
         { error: 'At least one field must be provided for update' },
         { status: 400 }
@@ -87,10 +78,7 @@ export async function PUT(
 
     if (body.amount !== undefined) {
       if (body.amount <= 0) {
-        return NextResponse.json(
-          { error: 'Amount must be a positive number' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 });
       }
       updateData.amount = body.amount;
     }
@@ -142,10 +130,7 @@ export async function PUT(
       today.setHours(23, 59, 59, 999);
 
       if (transactionDate > today) {
-        return NextResponse.json(
-          { error: 'Date cannot be in the future' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Date cannot be in the future' }, { status: 400 });
       }
 
       updateData.date = body.date;
@@ -165,10 +150,7 @@ export async function PUT(
     if (body.currency !== undefined) {
       const validCurrencies = ['EUR', 'USD', 'GBP'];
       if (!validCurrencies.includes(body.currency)) {
-        return NextResponse.json(
-          { error: 'Invalid currency code' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Invalid currency code' }, { status: 400 });
       }
       updateData.currency = body.currency;
     }
@@ -213,25 +195,16 @@ export async function PUT(
         .single();
 
       if (!checkExists) {
-        return NextResponse.json(
-          { error: 'Transaction not found' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
       }
 
-      return NextResponse.json(
-        { error: 'Failed to update transaction' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to update transaction' }, { status: 500 });
     }
 
     return NextResponse.json({ data: transaction }, { status: 200 });
   } catch (error) {
     logger.error('Transactions', 'Unexpected error in PUT /api/transactions/[id]:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -288,10 +261,7 @@ export async function DELETE(
       .single();
 
     if (fetchError || !transaction) {
-      return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
     // Delete transaction (RLS will enforce user_id match)
@@ -303,24 +273,18 @@ export async function DELETE(
 
     if (deleteError) {
       logger.error('Transactions', 'Error deleting transaction:', deleteError);
-      return NextResponse.json(
-        { error: 'Failed to delete transaction' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to delete transaction' }, { status: 500 });
     }
 
     return NextResponse.json(
       {
         data: transaction,
-        message: 'Transaction deleted successfully'
+        message: 'Transaction deleted successfully',
       },
       { status: 200 }
     );
   } catch (error) {
     logger.error('Transactions', 'Unexpected error in DELETE /api/transactions/[id]:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

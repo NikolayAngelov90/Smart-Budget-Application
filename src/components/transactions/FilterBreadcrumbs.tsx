@@ -76,9 +76,7 @@ export function FilterBreadcrumbs() {
   }
 
   // Find category by ID
-  const category = categoryId
-    ? data?.data?.find((c) => c.id === categoryId)
-    : null;
+  const category = categoryId ? data?.data?.find((c) => c.id === categoryId) : null;
 
   // Format month display
   let monthFormatted: string | null = null;
@@ -99,27 +97,14 @@ export function FilterBreadcrumbs() {
   };
 
   return (
-    <Box
-      bg="surface.sunken"
-      borderRadius="md"
-      p={4}
-      mb={4}
-      borderWidth="1px"
-      borderColor="border"
-    >
+    <Box bg="surface.sunken" borderRadius="md" p={4} mb={4} borderWidth="1px" borderColor="border">
       <HStack spacing={3} align="center" flexWrap="wrap">
         <Text fontSize="sm" fontWeight="semibold" color="fg">
           {t('filtering')}
         </Text>
 
         {/* Category filter */}
-        {category && (
-          <CategoryBadge
-            category={category}
-            variant="badge"
-            size="sm"
-          />
-        )}
+        {category && <CategoryBadge category={category} variant="badge" size="sm" />}
 
         {/* Month filter */}
         {monthFormatted && (

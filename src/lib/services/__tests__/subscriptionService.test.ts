@@ -179,9 +179,45 @@ describe('detectSubscriptions', () => {
 
   it('detects monthly subscription pattern', async () => {
     const transactions = [
-      { id: '1', user_id: 'user-1', category_id: 'cat-1', amount: 9.99, type: 'expense', date: '2026-01-15', notes: 'Netflix', currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
-      { id: '2', user_id: 'user-1', category_id: 'cat-1', amount: 9.99, type: 'expense', date: '2026-02-15', notes: 'Netflix', currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
-      { id: '3', user_id: 'user-1', category_id: 'cat-1', amount: 9.99, type: 'expense', date: '2026-03-15', notes: 'Netflix', currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
+      {
+        id: '1',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 9.99,
+        type: 'expense',
+        date: '2026-01-15',
+        notes: 'Netflix',
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
+      {
+        id: '2',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 9.99,
+        type: 'expense',
+        date: '2026-02-15',
+        notes: 'Netflix',
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
+      {
+        id: '3',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 9.99,
+        type: 'expense',
+        date: '2026-03-15',
+        notes: 'Netflix',
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
     ];
 
     // First call: transactions query
@@ -207,9 +243,45 @@ describe('detectSubscriptions', () => {
 
   it('ignores income transactions', async () => {
     const transactions = [
-      { id: '1', user_id: 'user-1', category_id: 'cat-1', amount: 1000, type: 'income', date: '2026-01-01', notes: 'Salary', currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
-      { id: '2', user_id: 'user-1', category_id: 'cat-1', amount: 1000, type: 'income', date: '2026-02-01', notes: 'Salary', currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
-      { id: '3', user_id: 'user-1', category_id: 'cat-1', amount: 1000, type: 'income', date: '2026-03-01', notes: 'Salary', currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
+      {
+        id: '1',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 1000,
+        type: 'income',
+        date: '2026-01-01',
+        notes: 'Salary',
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
+      {
+        id: '2',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 1000,
+        type: 'income',
+        date: '2026-02-01',
+        notes: 'Salary',
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
+      {
+        id: '3',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 1000,
+        type: 'income',
+        date: '2026-03-01',
+        notes: 'Salary',
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
     ];
 
     const chain = createChainMock({ data: transactions, error: null });
@@ -221,8 +293,32 @@ describe('detectSubscriptions', () => {
 
   it('requires minimum 3 transactions for detection', async () => {
     const transactions = [
-      { id: '1', user_id: 'user-1', category_id: 'cat-1', amount: 9.99, type: 'expense', date: '2026-01-15', notes: 'Netflix', currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
-      { id: '2', user_id: 'user-1', category_id: 'cat-1', amount: 9.99, type: 'expense', date: '2026-02-15', notes: 'Netflix', currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
+      {
+        id: '1',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 9.99,
+        type: 'expense',
+        date: '2026-01-15',
+        notes: 'Netflix',
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
+      {
+        id: '2',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 9.99,
+        type: 'expense',
+        date: '2026-02-15',
+        notes: 'Netflix',
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
     ];
 
     const chain = createChainMock({ data: transactions, error: null });
@@ -234,9 +330,45 @@ describe('detectSubscriptions', () => {
 
   it('ignores transactions without notes', async () => {
     const transactions = [
-      { id: '1', user_id: 'user-1', category_id: 'cat-1', amount: 9.99, type: 'expense', date: '2026-01-15', notes: null, currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
-      { id: '2', user_id: 'user-1', category_id: 'cat-1', amount: 9.99, type: 'expense', date: '2026-02-15', notes: null, currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
-      { id: '3', user_id: 'user-1', category_id: 'cat-1', amount: 9.99, type: 'expense', date: '2026-03-15', notes: null, currency: 'EUR', exchange_rate: null, created_at: '', updated_at: '' },
+      {
+        id: '1',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 9.99,
+        type: 'expense',
+        date: '2026-01-15',
+        notes: null,
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
+      {
+        id: '2',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 9.99,
+        type: 'expense',
+        date: '2026-02-15',
+        notes: null,
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
+      {
+        id: '3',
+        user_id: 'user-1',
+        category_id: 'cat-1',
+        amount: 9.99,
+        type: 'expense',
+        date: '2026-03-15',
+        notes: null,
+        currency: 'EUR',
+        exchange_rate: null,
+        created_at: '',
+        updated_at: '',
+      },
     ];
 
     const chain = createChainMock({ data: transactions, error: null });
@@ -377,7 +509,12 @@ describe('updateSubscriptionStatus', () => {
     chain.maybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
     mockSupabase.from = jest.fn().mockReturnValue(chain);
 
-    const result = await updateSubscriptionStatus(mockSupabase, 'user-1', 'nonexistent', 'dismissed');
+    const result = await updateSubscriptionStatus(
+      mockSupabase,
+      'user-1',
+      'nonexistent',
+      'dismissed'
+    );
     expect(result).toBeNull();
   });
 

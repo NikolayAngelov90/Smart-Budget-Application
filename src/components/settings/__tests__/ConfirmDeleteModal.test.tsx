@@ -66,7 +66,11 @@ describe('ConfirmDeleteModal', () => {
       );
 
       expect(screen.getByText(/this action cannot be undone/i)).toBeInTheDocument();
-      expect(screen.getByText(/all your data including transactions, categories, goals, detected subscriptions, weekly digests, insights, and preferences will be permanently deleted/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /all your data including transactions, categories, goals, detected subscriptions, weekly digests, insights, and preferences will be permanently deleted/i
+        )
+      ).toBeInTheDocument();
     });
 
     test('displays data export notification', () => {
@@ -253,7 +257,7 @@ describe('ConfirmDeleteModal', () => {
       expect(cancelButton).toBeDisabled();
       // Confirm button should also be disabled when isDeleting is true
       expect(buttons.length).toBeGreaterThanOrEqual(2);
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         if (button === cancelButton || button.hasAttribute('data-loading')) {
           expect(button).toBeDisabled();
         }
@@ -274,7 +278,7 @@ describe('ConfirmDeleteModal', () => {
 
       // Button should have data-loading attribute when isDeleting is true
       const buttons = screen.getAllByRole('button');
-      const loadingButton = buttons.find(button => button.hasAttribute('data-loading'));
+      const loadingButton = buttons.find((button) => button.hasAttribute('data-loading'));
       expect(loadingButton).toBeInTheDocument();
       expect(loadingButton).toBeDisabled();
     });

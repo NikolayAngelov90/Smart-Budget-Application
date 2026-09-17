@@ -11,13 +11,7 @@
  * 3. Generate types: supabase gen types typescript --linked > src/types/database.types.ts
  */
 
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 // ============================================================================
 // ENUMS
@@ -91,7 +85,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       transactions: {
@@ -155,7 +149,7 @@ export interface Database {
             columns: ['category_id'];
             referencedRelation: 'categories';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       insights: {
@@ -216,7 +210,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       user_profiles: {
@@ -253,7 +247,7 @@ export interface Database {
             columns: ['id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       analytics_events: {
@@ -290,7 +284,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       user_feature_state: {
@@ -327,7 +321,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       detected_subscriptions: {
@@ -373,7 +367,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       weekly_digests: {
@@ -422,7 +416,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       user_sessions: {
@@ -465,7 +459,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       push_subscriptions: {
@@ -499,7 +493,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       recovery_plans: {
@@ -539,7 +533,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       // Story 13.1: Household Collaboration foundation
@@ -571,7 +565,7 @@ export interface Database {
             columns: ['created_by'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       household_members: {
@@ -614,7 +608,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       // Story 13.2: Household invitations
@@ -661,7 +655,7 @@ export interface Database {
             columns: ['household_id'];
             referencedRelation: 'households';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       // Story 13.6: Personal allowances (private budget within a household — owner-only RLS)
@@ -705,7 +699,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       // Story 14.1: Values-based spending plan (owner-only). Table is `user_values`.
@@ -740,7 +734,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       category_budgets: {
@@ -792,7 +786,7 @@ export interface Database {
             columns: ['household_id'];
             referencedRelation: 'households';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       streaks: {
@@ -838,7 +832,7 @@ export interface Database {
             columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       wishlist_items: {
@@ -884,7 +878,7 @@ export interface Database {
             columns: ['category_id'];
             referencedRelation: 'categories';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
       value_categories: {
@@ -921,7 +915,7 @@ export interface Database {
             columns: ['category_id'];
             referencedRelation: 'categories';
             referencedColumns: ['id'];
-          }
+          },
         ];
       };
     };
@@ -1052,8 +1046,10 @@ export type UserSessionInsert = Database['public']['Tables']['user_sessions']['I
 export type UserSessionUpdate = Database['public']['Tables']['user_sessions']['Update'];
 
 export type DetectedSubscription = Database['public']['Tables']['detected_subscriptions']['Row'];
-export type DetectedSubscriptionInsert = Database['public']['Tables']['detected_subscriptions']['Insert'];
-export type DetectedSubscriptionUpdate = Database['public']['Tables']['detected_subscriptions']['Update'];
+export type DetectedSubscriptionInsert =
+  Database['public']['Tables']['detected_subscriptions']['Insert'];
+export type DetectedSubscriptionUpdate =
+  Database['public']['Tables']['detected_subscriptions']['Update'];
 
 // Story 13.1: Household Collaboration
 export type Household = Database['public']['Tables']['households']['Row'];
@@ -1065,12 +1061,17 @@ export type HouseholdMemberInsert = Database['public']['Tables']['household_memb
 export type HouseholdMemberUpdate = Database['public']['Tables']['household_members']['Update'];
 
 /** A household plus the requesting user's role + their chosen transparency preset. */
-export type HouseholdWithRole = Household & { role: HouseholdRole; preset?: HouseholdPreset | null };
+export type HouseholdWithRole = Household & {
+  role: HouseholdRole;
+  preset?: HouseholdPreset | null;
+};
 
 // Story 13.2: Household invitations
 export type HouseholdInvitation = Database['public']['Tables']['household_invitations']['Row'];
-export type HouseholdInvitationInsert = Database['public']['Tables']['household_invitations']['Insert'];
-export type HouseholdInvitationUpdate = Database['public']['Tables']['household_invitations']['Update'];
+export type HouseholdInvitationInsert =
+  Database['public']['Tables']['household_invitations']['Insert'];
+export type HouseholdInvitationUpdate =
+  Database['public']['Tables']['household_invitations']['Update'];
 
 /** An invitation enriched for display: expiry computed, optional shareable accept link. */
 export type HouseholdInvitationWithState = HouseholdInvitation & {
@@ -1936,11 +1937,11 @@ export interface DigestTopCategory {
 export interface WeeklyDigest {
   id: string;
   user_id: string;
-  week_start: string;             // ISO date 'YYYY-MM-DD' (Monday)
-  week_end: string;               // ISO date 'YYYY-MM-DD' (Sunday)
+  week_start: string; // ISO date 'YYYY-MM-DD' (Monday)
+  week_end: string; // ISO date 'YYYY-MM-DD' (Sunday)
   total_spending: number;
   previous_week_spending: number;
-  spending_change_pct: number;    // negative = decrease, positive = increase
+  spending_change_pct: number; // negative = decrease, positive = increase
   top_categories: DigestTopCategory[];
   actionable_highlight: string;
   currency: string;

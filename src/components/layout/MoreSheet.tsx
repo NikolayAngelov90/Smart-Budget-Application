@@ -89,8 +89,7 @@ export function MoreSheet({ isOpen, onClose }: MoreSheetProps) {
           </Text>
           <VStack align="stretch" spacing={0}>
             {destinations.map((dest) => {
-              const isActive =
-                pathname === dest.href || pathname.startsWith(dest.href + '/');
+              const isActive = pathname === dest.href || pathname.startsWith(dest.href + '/');
               return (
                 <Flex
                   key={dest.href}
@@ -112,11 +111,7 @@ export function MoreSheet({ isOpen, onClose }: MoreSheetProps) {
                     minH="52px"
                     aria-current={isActive ? 'page' : undefined}
                   >
-                    <Icon
-                      as={dest.icon}
-                      color={isActive ? 'accent' : 'fg.muted'}
-                      boxSize={5}
-                    />
+                    <Icon as={dest.icon} color={isActive ? 'accent' : 'fg.muted'} boxSize={5} />
                     <Text
                       noOfLines={1}
                       color={isActive ? 'accent' : 'fg'}

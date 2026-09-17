@@ -67,7 +67,15 @@ const round2 = (n: number) => {
 };
 
 export function computeWishlistImpact(input: WishlistImpactInput): WishlistItemImpact {
-  const { price, monthIncome, monthExpenses, categoryBudget, nearestGoal, alignedValueName, today } = input;
+  const {
+    price,
+    monthIncome,
+    monthExpenses,
+    categoryBudget,
+    nearestGoal,
+    alignedValueName,
+    today,
+  } = input;
 
   // Month balance impact — always present
   const monthBalanceAfter = round2(monthIncome - monthExpenses - price);

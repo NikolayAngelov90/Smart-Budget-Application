@@ -146,7 +146,11 @@ export function WhatIfSimulator() {
                             {category.name}
                           </Text>
                         </Flex>
-                        <Text fontSize="sm" color={pct > 0 ? 'income' : 'fg.subtle'} whiteSpace="nowrap">
+                        <Text
+                          fontSize="sm"
+                          color={pct > 0 ? 'income' : 'fg.subtle'}
+                          whiteSpace="nowrap"
+                        >
                           {pct > 0
                             ? t('reducedTo', { pct, amount: fmt(reducedTo) })
                             : t('avgPerMonth', { amount: fmt(category.avg_monthly) })}

@@ -83,11 +83,7 @@ export default function CategoriesPage() {
   const t = useTranslations('categories');
   const tToast = useTranslations('toast');
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const {
-    isOpen: isDeleteOpen,
-    onOpen: onDeleteOpen,
-    onClose: onDeleteClose,
-  } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const toast = useToast();
   const [selectedType, setSelectedType] = useState<'all' | 'income' | 'expense'>('all');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -102,7 +98,10 @@ export default function CategoriesPage() {
   // opens the create modal on arrival, then strips the param so a refresh won't
   // reopen it. Read from window (not useSearchParams) to avoid a Suspense boundary.
   useEffect(() => {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === '1') {
+    if (
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('new') === '1'
+    ) {
       onOpen();
       window.history.replaceState(null, '', '/categories');
     }
@@ -124,7 +123,10 @@ export default function CategoriesPage() {
   // Story 16.3: current-month spend per category (expenses) for the card caption.
   // HP-7: live local day, so this key rolls over at midnight in an idle tab.
   const dated = useDatedParams();
-  const { data: spendingData, mutate: mutateSpending } = useSWR(`/api/dashboard/spending-by-category?${dated}`, fetcher);
+  const { data: spendingData, mutate: mutateSpending } = useSWR(
+    `/api/dashboard/spending-by-category?${dated}`,
+    fetcher
+  );
   const spentByCategory = new Map<string, number>(
     (Array.isArray(spendingData?.categories)
       ? (spendingData.categories as Array<{ category_id: string; amount: number }>)
@@ -162,7 +164,9 @@ export default function CategoriesPage() {
       if (!response.ok) throw new Error('share failed');
       await mutate();
       toast({
-        title: next ? t('sharedToHousehold', { name: category.name }) : t('unsharedFromHousehold', { name: category.name }),
+        title: next
+          ? t('sharedToHousehold', { name: category.name })
+          : t('unsharedFromHousehold', { name: category.name }),
         status: 'success',
         duration: 2500,
         isClosable: true,
@@ -174,9 +178,7 @@ export default function CategoriesPage() {
 
   // Filter categories by type
   const filteredCategories =
-    selectedType === 'all'
-      ? categories
-      : categories.filter((cat) => cat.type === selectedType);
+    selectedType === 'all' ? categories : categories.filter((cat) => cat.type === selectedType);
 
   const handleCategoryCreated = (newCategory: Category) => {
     // Optimistic UI update
@@ -202,9 +204,7 @@ export default function CategoriesPage() {
     // Optimistic UI update
     mutate(
       {
-        data: categories.map((cat) =>
-          cat.id === updatedCategory.id ? updatedCategory : cat
-        ),
+        data: categories.map((cat) => (cat.id === updatedCategory.id ? updatedCategory : cat)),
         count: categories.length,
       },
       false
@@ -307,8 +307,7 @@ export default function CategoriesPage() {
       console.error('Delete category error:', error);
       toast({
         title: tToast('error'),
-        description:
-          error instanceof Error ? error.message : t('failedToDelete'),
+        description: error instanceof Error ? error.message : t('failedToDelete'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -332,11 +331,7 @@ export default function CategoriesPage() {
             <Heading size="lg" color="fg" fontFamily="heading" letterSpacing="tight">
               {t('manageCategories')}
             </Heading>
-            <Button
-              leftIcon={<AddIcon />}
-              onClick={onOpen}
-              aria-label={t('addCategory')}
-            >
+            <Button leftIcon={<AddIcon />} onClick={onOpen} aria-label={t('addCategory')}>
               {t('addCategory')}
             </Button>
           </HStack>
@@ -485,7 +480,9 @@ function CategoryList({
   if (error) {
     return (
       <Box textAlign="center" py={10}>
-        <Text color="expense" fontWeight="medium">{t('failedToLoad')}</Text>
+        <Text color="expense" fontWeight="medium">
+          {t('failedToLoad')}
+        </Text>
       </Box>
     );
   }
@@ -733,12 +730,7 @@ function DeleteConfirmationModal({
   const confirmDisabled = inUse && (noTarget || !reassignTarget);
 
   return (
-    <AlertDialog
-      isOpen={isOpen}
-      leastDestructiveRef={cancelRef}
-      onClose={onClose}
-      isCentered
-    >
+    <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose} isCentered>
       <AlertDialogOverlay>
         <AlertDialogContent>
           <AlertDialogHeader fontSize="lg" fontWeight="bold">
@@ -755,9 +747,7 @@ function DeleteConfirmationModal({
               </>
             )}
 
-            {inUse && noTarget && (
-              <Text>{t('reassignNoTarget', { count: reassignCount })}</Text>
-            )}
+            {inUse && noTarget && <Text>{t('reassignNoTarget', { count: reassignCount })}</Text>}
 
             {inUse && !noTarget && (
               <>

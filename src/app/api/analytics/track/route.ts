@@ -48,7 +48,10 @@ function validatePayload(payload: unknown): { valid: boolean; error?: string } {
   }
 
   if (!VALID_EVENT_NAMES.includes(data.event_name as (typeof VALID_EVENT_NAMES)[number])) {
-    return { valid: false, error: `Invalid event_name. Valid values: ${VALID_EVENT_NAMES.join(', ')}` };
+    return {
+      valid: false,
+      error: `Invalid event_name. Valid values: ${VALID_EVENT_NAMES.join(', ')}`,
+    };
   }
 
   // Validate event_properties (optional, must be object if provided)
@@ -58,7 +61,10 @@ function validatePayload(payload: unknown): { valid: boolean; error?: string } {
 
   // Validate device_type (optional, must be valid value if provided)
   if (data.device_type !== undefined && !VALID_DEVICE_TYPES.includes(data.device_type)) {
-    return { valid: false, error: `Invalid device_type. Valid values: ${VALID_DEVICE_TYPES.join(', ')}` };
+    return {
+      valid: false,
+      error: `Invalid device_type. Valid values: ${VALID_DEVICE_TYPES.join(', ')}`,
+    };
   }
 
   // Validate session_id format (optional, must be string if provided)
@@ -82,10 +88,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TrackEven
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse request body
@@ -93,19 +96,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<TrackEven
     try {
       payload = await request.json();
     } catch {
-      return NextResponse.json(
-        { success: false, error: 'Invalid JSON body' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
     }
 
     // Validate payload
     const validation = validatePayload(payload);
     if (!validation.valid) {
-      return NextResponse.json(
-        { success: false, error: validation.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
     }
 
     // Insert event into database
@@ -123,16 +120,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<TrackEven
 
     if (insertError) {
       logger.error('Analytics', 'Error inserting event:', insertError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to store event' },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, error: 'Failed to store event' }, { status: 500 });
     }
 
-    return NextResponse.json(
-      { success: true, event_id: data.id },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true, event_id: data.id }, { status: 201 });
   } catch (error) {
     logger.error('Analytics', 'Error tracking event:', error);
     return NextResponse.json(

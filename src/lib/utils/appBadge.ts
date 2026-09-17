@@ -12,9 +12,7 @@
  */
 export function isBadgeSupported(): boolean {
   return (
-    typeof navigator !== 'undefined' &&
-    'setAppBadge' in navigator &&
-    'clearAppBadge' in navigator
+    typeof navigator !== 'undefined' && 'setAppBadge' in navigator && 'clearAppBadge' in navigator
   );
 }
 

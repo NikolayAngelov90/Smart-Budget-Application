@@ -38,11 +38,15 @@ export function useComeback(): UseComebackResult {
   // — so challenges may still be created; that is AC3-preserved accrual, not a
   // leak (the card is gated).
   const { enabled } = useGamification();
-  const { data, error, isLoading, mutate } = useSWR<ComebackResponse>(enabled ? COMEBACK_KEY : null, fetcher, {
-    dedupingInterval: 5000,
-    revalidateOnFocus: true,
-    keepPreviousData: true,
-  });
+  const { data, error, isLoading, mutate } = useSWR<ComebackResponse>(
+    enabled ? COMEBACK_KEY : null,
+    fetcher,
+    {
+      dedupingInterval: 5000,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+    }
+  );
 
   return { data, error, isLoading, mutate };
 }

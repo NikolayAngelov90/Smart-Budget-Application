@@ -87,8 +87,7 @@ function makeClient(captured: Captured) {
   };
 }
 
-const request = (query = '') =>
-  ({ url: `http://localhost:3000/api/dashboard${query}` }) as never;
+const request = (query = '') => ({ url: `http://localhost:3000/api/dashboard${query}` }) as never;
 
 async function run(handler: (req: never) => Promise<unknown>, query = '') {
   const captured: Captured = { gte: [], lte: [], lt: [], cols: [] };

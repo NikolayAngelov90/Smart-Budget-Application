@@ -1,7 +1,26 @@
 'use client';
 
-import { Box, Flex, VStack, Link as ChakraLink, Icon, HStack, Text, IconButton, Tooltip } from '@chakra-ui/react';
-import { ViewIcon, EditIcon, AtSignIcon, InfoIcon, SettingsIcon, StarIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import {
+  Box,
+  Flex,
+  VStack,
+  Link as ChakraLink,
+  Icon,
+  HStack,
+  Text,
+  IconButton,
+  Tooltip,
+} from '@chakra-ui/react';
+import {
+  ViewIcon,
+  EditIcon,
+  AtSignIcon,
+  InfoIcon,
+  SettingsIcon,
+  StarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from '@chakra-ui/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -88,7 +107,11 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
       {/* Collapse toggle */}
       {onToggleCollapse && (
         <Box position="absolute" top={4} right="-13px" zIndex={1}>
-          <Tooltip label={isCollapsed ? t('expandSidebar') : t('collapseSidebar')} placement="right" hasArrow>
+          <Tooltip
+            label={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
+            placement="right"
+            hasArrow
+          >
             <IconButton
               aria-label={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
               icon={isCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}

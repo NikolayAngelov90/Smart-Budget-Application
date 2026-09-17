@@ -12,26 +12,54 @@ let seq = 0;
 function tx(amount: number, date: string, type: 'expense' | 'income' = 'expense'): Transaction {
   seq += 1;
   return {
-    id: `t${seq}`, user_id: 'u1', category_id: 'c1', amount, date, type,
-    notes: null, currency: 'USD', exchange_rate: null, household_id: null, allowance_id: null, goal_contribution_id: null,
-    created_at: `${date}T00:00:00Z`, updated_at: `${date}T00:00:00Z`,
+    id: `t${seq}`,
+    user_id: 'u1',
+    category_id: 'c1',
+    amount,
+    date,
+    type,
+    notes: null,
+    currency: 'USD',
+    exchange_rate: null,
+    household_id: null,
+    allowance_id: null,
+    goal_contribution_id: null,
+    created_at: `${date}T00:00:00Z`,
+    updated_at: `${date}T00:00:00Z`,
   };
 }
 
-function sub(estimated_amount: number, frequency: DetectedSubscription['frequency']): DetectedSubscription {
+function sub(
+  estimated_amount: number,
+  frequency: DetectedSubscription['frequency']
+): DetectedSubscription {
   seq += 1;
   return {
-    id: `s${seq}`, user_id: 'u1', merchant_pattern: 'Acme', estimated_amount,
-    currency: 'USD', frequency, last_seen_at: '2026-05-01', status: 'active',
-    created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+    id: `s${seq}`,
+    user_id: 'u1',
+    merchant_pattern: 'Acme',
+    estimated_amount,
+    currency: 'USD',
+    frequency,
+    last_seen_at: '2026-05-01',
+    status: 'active',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
   };
 }
 
 function goal(name: string, current: number, target: number): Goal {
   seq += 1;
   return {
-    id: `g${seq}`, user_id: 'u1', name, target_amount: target, current_amount: current,
-    deadline: null, milestones_celebrated: [], created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+    id: `g${seq}`,
+    user_id: 'u1',
+    name,
+    target_amount: target,
+    current_amount: current,
+    deadline: null,
+    milestones_celebrated: [],
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
   };
 }
 
@@ -69,8 +97,8 @@ describe('buildReengagementSummary', () => {
       today: TODAY,
       historicalTransactions: [],
       subscriptions: [
-        sub(10, 'monthly'),   // 10
-        sub(12, 'annual'),    // 1
+        sub(10, 'monthly'), // 10
+        sub(12, 'annual'), // 1
         sub(30, 'quarterly'), // 10
       ],
       goals: [],
@@ -86,11 +114,11 @@ describe('buildReengagementSummary', () => {
       historicalTransactions: [],
       subscriptions: [],
       goals: [
-        goal('A', 50, 100),   // 50%
-        goal('B', 90, 100),   // 90%
-        goal('C', 10, 100),   // 10%
-        goal('D', 80, 100),   // 80%
-        goal('Z', 5, 0),      // guarded → 0%
+        goal('A', 50, 100), // 50%
+        goal('B', 90, 100), // 90%
+        goal('C', 10, 100), // 10%
+        goal('D', 80, 100), // 80%
+        goal('Z', 5, 0), // guarded → 0%
       ],
     });
     expect(result.goals).toHaveLength(3);
@@ -101,24 +129,33 @@ describe('buildReengagementSummary', () => {
   describe('recommended_action precedence', () => {
     it('prioritizes subscriptions when present', () => {
       const result = buildReengagementSummary({
-        lastActivityDate: new Date('2026-05-01T00:00:00'), today: TODAY,
-        historicalTransactions: [], subscriptions: [sub(10, 'monthly')], goals: [goal('A', 50, 100)],
+        lastActivityDate: new Date('2026-05-01T00:00:00'),
+        today: TODAY,
+        historicalTransactions: [],
+        subscriptions: [sub(10, 'monthly')],
+        goals: [goal('A', 50, 100)],
       });
       expect(result.recommended_action).toMatch(/subscription/i);
     });
 
     it('falls back to goals when no subscriptions', () => {
       const result = buildReengagementSummary({
-        lastActivityDate: new Date('2026-05-01T00:00:00'), today: TODAY,
-        historicalTransactions: [], subscriptions: [], goals: [goal('Vacation', 50, 100)],
+        lastActivityDate: new Date('2026-05-01T00:00:00'),
+        today: TODAY,
+        historicalTransactions: [],
+        subscriptions: [],
+        goals: [goal('Vacation', 50, 100)],
       });
       expect(result.recommended_action).toMatch(/Vacation/);
     });
 
     it('defaults to logging prompt when nothing else', () => {
       const result = buildReengagementSummary({
-        lastActivityDate: new Date('2026-05-01T00:00:00'), today: TODAY,
-        historicalTransactions: [], subscriptions: [], goals: [],
+        lastActivityDate: new Date('2026-05-01T00:00:00'),
+        today: TODAY,
+        historicalTransactions: [],
+        subscriptions: [],
+        goals: [],
       });
       expect(result.recommended_action).toMatch(/log your latest expenses/i);
     });

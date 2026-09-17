@@ -21,19 +21,55 @@ import { useContributions } from '@/lib/hooks/useContributions';
 import HouseholdDashboardPage from '../page';
 
 jest.mock('@/lib/hooks/useHousehold', () => ({ useHousehold: jest.fn() }));
-jest.mock('@/lib/hooks/useHouseholdCategoryTotals', () => ({ useHouseholdCategoryTotals: jest.fn() }));
+jest.mock('@/lib/hooks/useHouseholdCategoryTotals', () => ({
+  useHouseholdCategoryTotals: jest.fn(),
+}));
 jest.mock('@/lib/hooks/useContributions', () => ({ useContributions: jest.fn() }));
-jest.mock('@/lib/hooks/useUserPreferences', () => ({ useUserPreferences: () => ({ preferences: { currency_format: 'EUR' } }) }));
+jest.mock('@/lib/hooks/useUserPreferences', () => ({
+  useUserPreferences: () => ({ preferences: { currency_format: 'EUR' } }),
+}));
 // Kept mocked even though the index no longer subscribes (that moved to the
 // layout's provider): it stops any child from opening a real channel here.
 jest.mock('@/lib/hooks/useRealtimeSubscription', () => ({ useRealtimeSubscription: jest.fn() }));
-jest.mock('@/lib/hooks/useHouseholdGoals', () => ({ useHouseholdGoals: () => ({ goals: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
-jest.mock('@/lib/hooks/useHouseholdInsights', () => ({ useHouseholdInsights: () => ({ insights: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
+jest.mock('@/lib/hooks/useHouseholdGoals', () => ({
+  useHouseholdGoals: () => ({ goals: [], isLoading: false, error: undefined, mutate: jest.fn() }),
+}));
+jest.mock('@/lib/hooks/useHouseholdInsights', () => ({
+  useHouseholdInsights: () => ({
+    insights: [],
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  }),
+}));
 // The index and its cards pull in these — keep them deterministic.
-jest.mock('@/lib/hooks/useInvitations', () => ({ useInvitations: () => ({ invitations: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
-jest.mock('@/lib/hooks/useAllowance', () => ({ useAllowance: () => ({ status: null, isLoading: false, error: undefined, mutate: jest.fn() }) }));
-jest.mock('@/lib/hooks/useHouseholdMembers', () => ({ useHouseholdMembers: () => ({ members: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
-jest.mock('@/lib/hooks/useMyInvitations', () => ({ useMyInvitations: () => ({ invitations: [], isLoading: false, error: undefined, mutate: jest.fn() }) }));
+jest.mock('@/lib/hooks/useInvitations', () => ({
+  useInvitations: () => ({
+    invitations: [],
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  }),
+}));
+jest.mock('@/lib/hooks/useAllowance', () => ({
+  useAllowance: () => ({ status: null, isLoading: false, error: undefined, mutate: jest.fn() }),
+}));
+jest.mock('@/lib/hooks/useHouseholdMembers', () => ({
+  useHouseholdMembers: () => ({
+    members: [],
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  }),
+}));
+jest.mock('@/lib/hooks/useMyInvitations', () => ({
+  useMyInvitations: () => ({
+    invitations: [],
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  }),
+}));
 const mockScopedMutate = jest.fn();
 jest.mock('swr', () => ({
   ...jest.requireActual('swr'),
@@ -44,11 +80,18 @@ jest.mock('swr', () => ({
 }));
 
 const mockHousehold = useHousehold as jest.MockedFunction<typeof useHousehold>;
-const mockTotals = useHouseholdCategoryTotals as jest.MockedFunction<typeof useHouseholdCategoryTotals>;
+const mockTotals = useHouseholdCategoryTotals as jest.MockedFunction<
+  typeof useHouseholdCategoryTotals
+>;
 const mockContrib = useContributions as jest.MockedFunction<typeof useContributions>;
 
 function asMember() {
-  mockHousehold.mockReturnValue({ household: { id: 'h', name: 'Home', role: 'admin' } as never, isLoading: false, error: undefined, mutate: jest.fn() });
+  mockHousehold.mockReturnValue({
+    household: { id: 'h', name: 'Home', role: 'admin' } as never,
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  });
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -65,7 +108,20 @@ it('renders the three sections with combined spending + category_only tag for a 
     mutate: jest.fn(),
   });
   mockContrib.mockReturnValue({
-    summary: { total: 150, splits: [{ user_id: 'u1', email: 'a@x.test', percentage: 60, contributed: 100, fairShare: 90, progress: 1.1, isSelf: true }] },
+    summary: {
+      total: 150,
+      splits: [
+        {
+          user_id: 'u1',
+          email: 'a@x.test',
+          percentage: 60,
+          contributed: 100,
+          fairShare: 90,
+          progress: 1.1,
+          isSelf: true,
+        },
+      ],
+    },
     isLoading: false,
     error: undefined,
     mutate: jest.fn(),
@@ -102,7 +158,12 @@ it('does NOT render the shared-goals card itself — it lives at /household/goal
   // as a card and once as a row linking to a duplicate of it.
   asMember();
   mockTotals.mockReturnValue({ totals: [], isLoading: false, error: undefined, mutate: jest.fn() });
-  mockContrib.mockReturnValue({ summary: null, isLoading: false, error: undefined, mutate: jest.fn() });
+  mockContrib.mockReturnValue({
+    summary: null,
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  });
 
   render(<HouseholdDashboardPage />);
 
@@ -111,9 +172,19 @@ it('does NOT render the shared-goals card itself — it lives at /household/goal
 });
 
 it('shows the no-household empty state and no dashboard cards', () => {
-  mockHousehold.mockReturnValue({ household: null, isLoading: false, error: undefined, mutate: jest.fn() });
+  mockHousehold.mockReturnValue({
+    household: null,
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  });
   mockTotals.mockReturnValue({ totals: [], isLoading: false, error: undefined, mutate: jest.fn() });
-  mockContrib.mockReturnValue({ summary: null, isLoading: false, error: undefined, mutate: jest.fn() });
+  mockContrib.mockReturnValue({
+    summary: null,
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  });
 
   render(<HouseholdDashboardPage />);
 
@@ -121,7 +192,9 @@ it('shows the no-household empty state and no dashboard cards', () => {
   expect(screen.queryByText('Combined spending')).not.toBeInTheDocument();
   // …and no rows into groups that could not do anything yet.
   expect(screen.queryByRole('link', { name: /Members & invitations/i })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: /Allowance & contributions/i })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('link', { name: /Allowance & contributions/i })
+  ).not.toBeInTheDocument();
 });
 
 it('shows a skeleton while membership loads — NOT the create form', () => {
@@ -137,7 +210,12 @@ it('shows a skeleton while membership loads — NOT the create form', () => {
     mutate: jest.fn(),
   });
   mockTotals.mockReturnValue({ totals: [], isLoading: true, error: undefined, mutate: jest.fn() });
-  mockContrib.mockReturnValue({ summary: null, isLoading: true, error: undefined, mutate: jest.fn() });
+  mockContrib.mockReturnValue({
+    summary: null,
+    isLoading: true,
+    error: undefined,
+    mutate: jest.fn(),
+  });
 
   render(<HouseholdDashboardPage />);
 

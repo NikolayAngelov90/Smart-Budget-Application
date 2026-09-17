@@ -168,7 +168,7 @@ describe('exchangeRateService', () => {
         json: async () => ({
           base: 'EUR',
           date: '2025-01-15',
-          rates: { USD: 1.10 },
+          rates: { USD: 1.1 },
         }),
       });
 
@@ -179,7 +179,7 @@ describe('exchangeRateService', () => {
 
       // Second call should use cached data
       const result = await getExchangeRates('EUR');
-      expect(result.rates.USD).toBe(1.10);
+      expect(result.rates.USD).toBe(1.1);
       expect(result.cached).toBe(true);
     });
 

@@ -16,7 +16,12 @@ const BASE = {
 };
 
 // 30 days out from TODAY; remaining 300 → dailyRequired 10
-const GOAL_30D = { name: 'Vacation', targetAmount: 1300, currentAmount: 1000, deadline: '2026-08-01' };
+const GOAL_30D = {
+  name: 'Vacation',
+  targetAmount: 1300,
+  currentAmount: 1000,
+  deadline: '2026-08-01',
+};
 // 365 days out; remaining 1200
 const GOAL_1Y = { name: 'Car', targetAmount: 2200, currentAmount: 1000, deadline: '2027-07-02' };
 
@@ -85,7 +90,11 @@ describe('computeWhatIfProjection', () => {
         adjustments: [{ avgMonthly: 400, reductionPct: 25 }],
         goal: GOAL_30D,
       });
-      expect(p.goal_impact).toEqual({ goal_name: 'Vacation', days_earlier: 7, months_earlier: 0.2 });
+      expect(p.goal_impact).toEqual({
+        goal_name: 'Vacation',
+        days_earlier: 7,
+        months_earlier: 0.2,
+      });
     });
 
     it('reports the epic\'s "months earlier" case for a long-horizon goal', () => {

@@ -6,16 +6,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  Avatar,
-  Box,
-  Button,
-  VStack,
-  HStack,
-  Text,
-  Progress,
-  useToast,
-} from '@chakra-ui/react';
+import { Avatar, Box, Button, VStack, HStack, Text, Progress, useToast } from '@chakra-ui/react';
 import { createClient } from '@/lib/supabase/client';
 import {
   validateProfilePicture,
@@ -125,13 +116,9 @@ export function ProfilePictureUpload({
       }
 
       // Upload to Supabase Storage
-      const uploadResult = await uploadProfilePicture(
-        selectedFile,
-        user.id,
-        (progress) => {
-          setUploadProgress(progress.percentage);
-        }
-      );
+      const uploadResult = await uploadProfilePicture(selectedFile, user.id, (progress) => {
+        setUploadProgress(progress.percentage);
+      });
 
       // Update profile via API
       const response = await fetch('/api/user/profile-picture', {
@@ -292,12 +279,7 @@ export function ProfilePictureUpload({
       {/* Upload Progress */}
       {isUploading && (
         <Box width="100%">
-          <Progress
-            value={uploadProgress}
-            size="sm"
-            colorScheme="brand"
-            borderRadius="md"
-          />
+          <Progress value={uploadProgress} size="sm" colorScheme="brand" borderRadius="md" />
           <Text fontSize="sm" color="fg.muted" mt={2} textAlign="center">
             Uploading... {uploadProgress}%
           </Text>
@@ -307,11 +289,7 @@ export function ProfilePictureUpload({
       {/* Action Buttons */}
       {!showUploadActions && !isUploading && (
         <HStack spacing={3}>
-          <Button
-            size="sm"
-            colorScheme="brand"
-            onClick={triggerFileInput}
-          >
+          <Button size="sm" colorScheme="brand" onClick={triggerFileInput}>
             {currentPictureUrl ? t('changePicture') : t('uploadPicture')}
           </Button>
 
@@ -332,18 +310,10 @@ export function ProfilePictureUpload({
       {/* Upload/Cancel Actions (shown after file selection) */}
       {showUploadActions && !isUploading && (
         <HStack spacing={3}>
-          <Button
-            size="sm"
-            colorScheme="brand"
-            onClick={handleUpload}
-          >
+          <Button size="sm" colorScheme="brand" onClick={handleUpload}>
             Upload
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleCancel}
-          >
+          <Button size="sm" variant="outline" onClick={handleCancel}>
             {tCommon('cancel')}
           </Button>
         </HStack>

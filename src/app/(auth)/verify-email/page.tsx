@@ -21,20 +21,15 @@ export default function VerifyEmailPage() {
             Check your email
           </Heading>
           <Text color="fg.muted" fontSize="md" mb={2}>
-            We've sent you a verification email. Click the link in the email to activate your account.
+            We've sent you a verification email. Click the link in the email to activate your
+            account.
           </Text>
           <Text color="fg.subtle" fontSize="sm">
             The email should arrive within 15 minutes. Don't forget to check your spam folder!
           </Text>
         </Box>
 
-        <Box
-          bg="accent.subtle"
-          p={6}
-          borderRadius="md"
-          border="1px"
-          borderColor="accent"
-        >
+        <Box bg="accent.subtle" p={6} borderRadius="md" border="1px" borderColor="accent">
           <Text fontSize="sm" color="fg">
             <strong>What's next?</strong>
             <br />

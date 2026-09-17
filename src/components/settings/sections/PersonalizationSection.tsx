@@ -29,14 +29,8 @@ import { SettingsSectionGate } from '@/components/settings/SettingsSectionGate';
 
 export function PersonalizationSection() {
   const t = useTranslations('settings');
-  const {
-    status,
-    error,
-    reload,
-    gamificationEnabled,
-    showAllFeatures,
-    updatePreference,
-  } = useSettingsProfile();
+  const { status, error, reload, gamificationEnabled, showAllFeatures, updatePreference } =
+    useSettingsProfile();
 
   return (
     <SettingsSectionGate status={status} error={error} onRetry={reload}>

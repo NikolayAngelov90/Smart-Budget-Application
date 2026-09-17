@@ -41,9 +41,7 @@ export function DashboardStats() {
       <Alert status="error" borderRadius="md">
         <AlertIcon />
         <AlertTitle>{t('failedToLoad')}</AlertTitle>
-        <AlertDescription>
-          {t('failedToLoadDescription')}
-        </AlertDescription>
+        <AlertDescription>{t('failedToLoadDescription')}</AlertDescription>
       </Alert>
     );
   }

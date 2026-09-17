@@ -85,12 +85,14 @@ describe('getLocalizedInsightText', () => {
 });
 
 describe('hasInsightMetadata', () => {
-  it.each(['spending_increase', 'budget_recommendation', 'unusual_expense', 'positive_reinforcement'])(
-    'is true for %s, which has a renderer',
-    (type) => {
-      expect(hasInsightMetadata({ type } as Pick<Insight, 'type'>)).toBe(true);
-    }
-  );
+  it.each([
+    'spending_increase',
+    'budget_recommendation',
+    'unusual_expense',
+    'positive_reinforcement',
+  ])('is true for %s, which has a renderer', (type) => {
+    expect(hasInsightMetadata({ type } as Pick<Insight, 'type'>)).toBe(true);
+  });
 
   it.each(['spending_anomaly', 'new_high_spend_category'])(
     'is false for the Epic-12 type %s, which has none',

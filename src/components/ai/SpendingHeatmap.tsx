@@ -14,16 +14,7 @@
  */
 
 import { useState } from 'react';
-import {
-  Box,
-  Button,
-  Heading,
-  HStack,
-  IconButton,
-  Skeleton,
-  Text,
-  VStack,
-} from '@chakra-ui/react';
+import { Box, Button, Heading, HStack, IconButton, Skeleton, Text, VStack } from '@chakra-ui/react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -54,8 +45,7 @@ export function SpendingHeatmap() {
   // Progressive disclosure: hide entirely until user has enough data
   if (!hasEnoughData && !isLoading) return null;
 
-  const isCurrentMonth =
-    selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
 
   const goToPreviousMonth = () => {
     if (selectedMonth === 1) {

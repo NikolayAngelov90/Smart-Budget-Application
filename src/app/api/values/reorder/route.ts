@@ -29,7 +29,10 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'orderedIds must be an array of ids' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'orderedIds must be an array of ids' } },
+        { status: 400 }
+      );
     }
 
     await reorderValues(user.id, parsed.data.orderedIds);

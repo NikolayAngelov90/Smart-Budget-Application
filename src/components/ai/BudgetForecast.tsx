@@ -11,15 +11,7 @@
  * Progressive disclosure: renders null when user has no current-month data.
  */
 
-import {
-  Badge,
-  Box,
-  Flex,
-  Heading,
-  Skeleton,
-  Text,
-  VStack,
-} from '@chakra-ui/react';
+import { Badge, Box, Flex, Heading, Skeleton, Text, VStack } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { useBudgetForecast } from '@/lib/hooks/useBudgetForecast';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -100,9 +92,7 @@ function ForecastRow({ forecast, currency }: ForecastRowProps) {
           <Text fontSize="xs" color="fg.subtle">
             {t('spentSoFar')}
           </Text>
-          <Text fontWeight="medium">
-            {formatAmount(spent_so_far, currency)}
-          </Text>
+          <Text fontWeight="medium">{formatAmount(spent_so_far, currency)}</Text>
         </Box>
         <Box textAlign="right" minW="90px">
           <Text fontSize="xs" color="fg.subtle">

@@ -87,8 +87,7 @@ export function RefreshInsightsButton({
         const minutes = Math.floor(remainingSeconds / 60);
         const seconds = remainingSeconds % 60;
 
-        const timeString =
-          minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+        const timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 
         toast({
           title: 'Please wait',

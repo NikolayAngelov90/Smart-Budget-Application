@@ -106,12 +106,7 @@ export default function ForgotPasswordPage() {
         <VStack spacing={8} align="stretch">
           {/* Header */}
           <VStack spacing={2} textAlign="center">
-            <Heading
-              as="h1"
-              size={{ base: 'xl', md: '2xl' }}
-              color="fg"
-              fontWeight="bold"
-            >
+            <Heading as="h1" size={{ base: 'xl', md: '2xl' }} color="fg" fontWeight="bold">
               Check your email
             </Heading>
             <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
@@ -130,8 +125,8 @@ export default function ForgotPasswordPage() {
           >
             <VStack spacing={4} align="stretch">
               <Text color="fg" fontSize="sm">
-                Click the link in the email to reset your password. The link will expire in
-                1 hour for security reasons.
+                Click the link in the email to reset your password. The link will expire in 1 hour
+                for security reasons.
               </Text>
               <Text color="fg.muted" fontSize="sm">
                 Didn&apos;t receive the email? Check your spam folder or{' '}
@@ -167,12 +162,7 @@ export default function ForgotPasswordPage() {
       <VStack spacing={8} align="stretch">
         {/* Header */}
         <VStack spacing={2} textAlign="center">
-          <Heading
-            as="h1"
-            size={{ base: 'xl', md: '2xl' }}
-            color="fg"
-            fontWeight="bold"
-          >
+          <Heading as="h1" size={{ base: 'xl', md: '2xl' }} color="fg" fontWeight="bold">
             Forgot password?
           </Heading>
           <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>

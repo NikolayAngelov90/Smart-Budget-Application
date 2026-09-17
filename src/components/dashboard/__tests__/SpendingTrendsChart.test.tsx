@@ -28,8 +28,13 @@ jest.mock('@/lib/hooks/useUserPreferences', () => ({
 }));
 jest.mock('@/lib/hooks/useChartColors', () => ({
   useChartColors: () => ({
-    accent: '#000', tick: '#000', grid: '#000', axis: '#000',
-    income: '#0B5E4A', expense: '#C4593A', cursor: '#000',
+    accent: '#000',
+    tick: '#000',
+    grid: '#000',
+    axis: '#000',
+    income: '#0B5E4A',
+    expense: '#C4593A',
+    cursor: '#000',
   }),
 }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
@@ -107,9 +112,7 @@ describe('month names follow the locale (HP-7)', () => {
     // `YYYY-MM` key. The locale mock above is 'bg'.
     mockUseTrends.mockReturnValue({
       data: {
-        months: [
-          { month: '2026-01', monthLabel: 'Jan', income: 100, expenses: 50, net: 50 },
-        ],
+        months: [{ month: '2026-01', monthLabel: 'Jan', income: 100, expenses: 50, net: 50 }],
       },
       error: undefined,
       isLoading: false,
@@ -127,9 +130,7 @@ describe('month names follow the locale (HP-7)', () => {
     // A wrong-language month beats a blank axis.
     mockUseTrends.mockReturnValue({
       data: {
-        months: [
-          { month: 'not-a-month', monthLabel: 'Feb', income: 100, expenses: 50, net: 50 },
-        ],
+        months: [{ month: 'not-a-month', monthLabel: 'Feb', income: 100, expenses: 50, net: 50 }],
       },
       error: undefined,
       isLoading: false,

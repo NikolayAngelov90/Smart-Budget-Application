@@ -95,9 +95,7 @@ export function renderWithProviders(
   const swrConfig = createMockSWRConfig();
 
   // Create wrapper component with all providers
-  const AllProviders: React.FC<{ children: React.ReactNode }> = ({
-    children,
-  }) => {
+  const AllProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
       <ChakraTestProvider>
         <SWRConfig value={swrConfig}>{children}</SWRConfig>

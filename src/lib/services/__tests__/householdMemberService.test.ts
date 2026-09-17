@@ -3,9 +3,14 @@
  * Mocked Supabase. Real revocation behavior is covered by member-removal.rls.test.ts.
  */
 
-jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn(), createServiceRoleClient: jest.fn() }));
+jest.mock('@/lib/supabase/server', () => ({
+  createClient: jest.fn(),
+  createServiceRoleClient: jest.fn(),
+}));
 jest.mock('@/lib/services/pushService', () => ({ dispatchCategorizedPush: jest.fn() }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
@@ -18,7 +23,9 @@ import {
 import { NotHouseholdAdminError } from '@/lib/services/invitationService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
+const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
 const mockPush = dispatchCategorizedPush as jest.MockedFunction<typeof dispatchCategorizedPush>;
 
 interface AdminOpts {
@@ -27,20 +34,34 @@ interface AdminOpts {
   deleteError?: object | null;
 }
 
-function adminClient({ adminRow = { household_id: 'h', role: 'admin' }, targetRow = { id: 'm' }, deleteError = null }: AdminOpts) {
+function adminClient({
+  adminRow = { household_id: 'h', role: 'admin' },
+  targetRow = { id: 'm' },
+  deleteError = null,
+}: AdminOpts) {
   const maybeSingle = jest
     .fn()
     .mockResolvedValueOnce({ data: adminRow, error: null }) // admin lookup
     .mockResolvedValueOnce({ data: targetRow, error: null }); // target lookup
   const inner = { eq: jest.fn().mockReturnThis(), maybeSingle };
-  const deleteEq = { eq: jest.fn().mockReturnThis(), then: (r: (v: unknown) => unknown) => r({ error: deleteError }) };
+  const deleteEq = {
+    eq: jest.fn().mockReturnThis(),
+    then: (r: (v: unknown) => unknown) => r({ error: deleteError }),
+  };
   const hm = { select: jest.fn(() => inner), delete: jest.fn(() => deleteEq) };
   const households = {
-    select: jest.fn(() => ({ eq: jest.fn(() => ({ maybeSingle: jest.fn().mockResolvedValue({ data: { name: 'Home' }, error: null }) })) })),
+    select: jest.fn(() => ({
+      eq: jest.fn(() => ({
+        maybeSingle: jest.fn().mockResolvedValue({ data: { name: 'Home' }, error: null }),
+      })),
+    })),
   };
   // categories/goals reassignment: .update(...).eq().eq() → resolves { error: null }
   const reassign = () => {
-    const update = jest.fn(() => ({ eq: jest.fn().mockReturnThis(), then: (r: (v: unknown) => unknown) => r({ error: null }) }));
+    const update = jest.fn(() => ({
+      eq: jest.fn().mockReturnThis(),
+      then: (r: (v: unknown) => unknown) => r({ error: null }),
+    }));
     return { update };
   };
   const categories = reassign();
@@ -63,7 +84,9 @@ describe('removeMember', () => {
   });
 
   it('throws NotHouseholdAdminError when the caller is not an admin', async () => {
-    mockServiceClient.mockReturnValue(adminClient({ adminRow: { household_id: 'h', role: 'member' } }) as never);
+    mockServiceClient.mockReturnValue(
+      adminClient({ adminRow: { household_id: 'h', role: 'member' } }) as never
+    );
     await expect(removeMember('admin', 'target')).rejects.toBeInstanceOf(NotHouseholdAdminError);
   });
 
@@ -89,7 +112,11 @@ describe('removeMember', () => {
 describe('listHouseholdMembers', () => {
   it('returns [] when the caller has no household', async () => {
     mockCreateClient.mockResolvedValue({
-      from: jest.fn(() => ({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) })),
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+      })),
       rpc: jest.fn(),
     } as never);
     expect(await listHouseholdMembers('u')).toEqual([]);
@@ -97,7 +124,11 @@ describe('listHouseholdMembers', () => {
 
   it('returns members with isSelf computed', async () => {
     mockCreateClient.mockResolvedValue({
-      from: jest.fn(() => ({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: { household_id: 'h' }, error: null }) })),
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: { household_id: 'h' }, error: null }),
+      })),
       rpc: jest.fn().mockResolvedValue({
         data: [
           { user_id: 'u', email: 'me@x.test', role: 'admin', joined_at: 't' },

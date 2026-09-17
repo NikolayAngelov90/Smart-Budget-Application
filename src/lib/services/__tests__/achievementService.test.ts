@@ -37,8 +37,7 @@ function chain(result: { data: unknown; error: unknown }): ChainStub {
   for (const m of ['select', 'eq', 'order', 'upsert']) {
     bag[m] = jest.fn(() => q);
   }
-  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) =>
-    resolve(result);
+  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) => resolve(result);
   return q;
 }
 
@@ -61,7 +60,9 @@ describe('getUnlocked', () => {
   });
 
   it('throws a friendly error on db failure', async () => {
-    mockCreateClient.mockResolvedValue(makeClient({ data: null, error: { message: 'boom' } }) as never);
+    mockCreateClient.mockResolvedValue(
+      makeClient({ data: null, error: { message: 'boom' } }) as never
+    );
     await expect(getUnlocked('u-1')).rejects.toThrow('Failed to load achievements');
   });
 });
@@ -73,9 +74,9 @@ describe('unlockAchievements', () => {
   });
 
   it('rejects garbage keys before touching the db', async () => {
-    await expect(
-      unlockAchievements('u-1', ['not_a_real_key' as never])
-    ).rejects.toThrow('Invalid achievement key');
+    await expect(unlockAchievements('u-1', ['not_a_real_key' as never])).rejects.toThrow(
+      'Invalid achievement key'
+    );
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
@@ -100,7 +101,9 @@ describe('unlockAchievements', () => {
   });
 
   it('throws a friendly error on db failure (never fabricates unlocks)', async () => {
-    mockCreateClient.mockResolvedValue(makeClient({ data: null, error: { message: 'boom' } }) as never);
+    mockCreateClient.mockResolvedValue(
+      makeClient({ data: null, error: { message: 'boom' } }) as never
+    );
     await expect(unlockAchievements('u-1', ['first_transaction'])).rejects.toThrow(
       'Failed to unlock achievements'
     );

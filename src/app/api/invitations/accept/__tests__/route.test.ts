@@ -27,7 +27,9 @@ jest.mock('@/lib/services/invitationService', () => ({
   AlreadyInHouseholdError: class AlreadyInHouseholdError extends Error {},
 }));
 
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
 import {
@@ -50,7 +52,11 @@ const HOUSEHOLD = { id: 'h-1', name: 'Home', created_by: 'a', created_at: 'x', u
 
 function authClient(user: object | null) {
   return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }) },
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }),
+    },
   };
 }
 function postReq(body: unknown) {
@@ -118,7 +124,12 @@ describe('GET /api/invitations/accept', () => {
 
   it('returns the validation result', async () => {
     mockCreateClient.mockResolvedValue(authClient({ id: 'u', email: 'a@x.com' }) as never);
-    mockValidate.mockResolvedValue({ valid: true, householdName: 'Home', invitedEmail: 'a@x.com', emailMatches: true } as never);
+    mockValidate.mockResolvedValue({
+      valid: true,
+      householdName: 'Home',
+      invitedEmail: 'a@x.com',
+      emailMatches: true,
+    } as never);
     const res = await GET(getReq(TOKEN));
     expect(res.status).toBe(200);
     expect((await res.json()).data.valid).toBe(true);

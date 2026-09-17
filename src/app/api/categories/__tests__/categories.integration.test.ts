@@ -160,9 +160,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
           Promise.resolve({ data: [], error: null }).then(resolve)
         );
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/categories?type=expense'
-      );
+      const request = createMockRequest('http://localhost:3000/api/categories?type=expense');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -208,11 +206,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/categories',
-        'POST',
-        validBody
-      );
+      const request = createMockRequest('http://localhost:3000/api/categories', 'POST', validBody);
       const response = await POST(request);
       const data = await response.json();
 
@@ -228,11 +222,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/categories',
-        'POST',
-        validBody
-      );
+      const request = createMockRequest('http://localhost:3000/api/categories', 'POST', validBody);
       const response = await POST(request);
       const data = await response.json();
 
@@ -241,33 +231,30 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     });
 
     test('returns 400 for invalid color format', async () => {
-      const request = createMockRequest(
-        'http://localhost:3000/api/categories',
-        'POST',
-        { ...validBody, color: 'not-a-color' }
-      );
+      const request = createMockRequest('http://localhost:3000/api/categories', 'POST', {
+        ...validBody,
+        color: 'not-a-color',
+      });
       const response = await POST(request);
 
       expect(response.status).toBe(400);
     });
 
     test('returns 400 for missing name', async () => {
-      const request = createMockRequest(
-        'http://localhost:3000/api/categories',
-        'POST',
-        { color: '#FF0000', type: 'expense' }
-      );
+      const request = createMockRequest('http://localhost:3000/api/categories', 'POST', {
+        color: '#FF0000',
+        type: 'expense',
+      });
       const response = await POST(request);
 
       expect(response.status).toBe(400);
     });
 
     test('returns 400 for invalid type', async () => {
-      const request = createMockRequest(
-        'http://localhost:3000/api/categories',
-        'POST',
-        { ...validBody, type: 'invalid' }
-      );
+      const request = createMockRequest('http://localhost:3000/api/categories', 'POST', {
+        ...validBody,
+        type: 'invalid',
+      });
       const response = await POST(request);
 
       expect(response.status).toBe(400);
@@ -279,11 +266,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/categories',
-        'POST',
-        validBody
-      );
+      const request = createMockRequest('http://localhost:3000/api/categories', 'POST', validBody);
       const response = await POST(request);
 
       expect(response.status).toBe(401);
@@ -310,11 +293,10 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
           error: null,
         });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/categories/${catId}`,
-        'PUT',
-        { name: 'New Name', color: '#AABBCC' }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'PUT', {
+        name: 'New Name',
+        color: '#AABBCC',
+      });
       const response = await PUT(request, { params });
       const data = await response.json();
 
@@ -329,11 +311,9 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/categories/cat-001',
-        'PUT',
-        { name: 'New Name' }
-      );
+      const request = createMockRequest('http://localhost:3000/api/categories/cat-001', 'PUT', {
+        name: 'New Name',
+      });
       const response = await PUT(request, { params: Promise.resolve({ id: 'cat-001' }) });
       const data = await response.json();
 
@@ -347,11 +327,9 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: { code: 'PGRST116', message: 'No rows found' },
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/categories/${catId}`,
-        'PUT',
-        { name: 'Updated' }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'PUT', {
+        name: 'Updated',
+      });
       const response = await PUT(request, { params });
 
       expect(response.status).toBe(404);
@@ -363,11 +341,9 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/categories/${catId}`,
-        'PUT',
-        { name: 'Updated' }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'PUT', {
+        name: 'Updated',
+      });
       const response = await PUT(request, { params });
 
       expect(response.status).toBe(401);
@@ -394,10 +370,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         Promise.resolve({ data: null, error: null }).then(resolve)
       );
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/categories/${catId}`,
-        'DELETE'
-      );
+      const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE');
       const response = await DELETE(request, { params });
       const data = await response.json();
 
@@ -417,10 +390,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         Promise.resolve({ count: 3, error: null }).then(resolve)
       );
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/categories/${catId}`,
-        'DELETE'
-      );
+      const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE');
       const response = await DELETE(request, { params });
       const data = await response.json();
 
@@ -453,11 +423,9 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         Promise.resolve({ data: null, error: null }).then(resolve)
       );
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/categories/${catId}`,
-        'DELETE',
-        { reassignTo: 'target-cat' }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE', {
+        reassignTo: 'target-cat',
+      });
       const response = await DELETE(request, { params });
       const data = await response.json();
 
@@ -481,11 +449,9 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/categories/${catId}`,
-        'DELETE',
-        { reassignTo: 'income-cat' }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE', {
+        reassignTo: 'income-cat',
+      });
       const response = await DELETE(request, { params });
 
       expect(response.status).toBe(400);
@@ -499,10 +465,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/categories/cat-001',
-        'DELETE'
-      );
+      const request = createMockRequest('http://localhost:3000/api/categories/cat-001', 'DELETE');
       const response = await DELETE(request, {
         params: Promise.resolve({ id: 'cat-001' }),
       });
@@ -518,10 +481,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: { code: 'PGRST116', message: 'No rows found' },
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/categories/${catId}`,
-        'DELETE'
-      );
+      const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE');
       const response = await DELETE(request, { params });
 
       expect(response.status).toBe(404);
@@ -533,10 +493,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/categories/${catId}`,
-        'DELETE'
-      );
+      const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE');
       const response = await DELETE(request, { params });
 
       expect(response.status).toBe(401);

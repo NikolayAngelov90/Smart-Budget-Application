@@ -45,10 +45,7 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse query parameters
@@ -79,10 +76,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query
-    let query = supabase
-      .from('insights')
-      .select('*', { count: 'exact' })
-      .eq('user_id', user.id);
+    let query = supabase.from('insights').select('*', { count: 'exact' }).eq('user_id', user.id);
 
     // Filter by dismissed status — DEFAULTS TO UNDISMISSED (hp-10).
     //
@@ -119,9 +113,12 @@ export async function GET(request: NextRequest) {
       const column = orderParts[0] ?? 'created_at';
 
       // Validate column against whitelist to prevent arbitrary column access
-      if (!ALLOWED_ORDER_COLUMNS.includes(column as typeof ALLOWED_ORDER_COLUMNS[number])) {
+      if (!ALLOWED_ORDER_COLUMNS.includes(column as (typeof ALLOWED_ORDER_COLUMNS)[number])) {
         return NextResponse.json(
-          { success: false, error: `Invalid orderBy column. Allowed: ${ALLOWED_ORDER_COLUMNS.join(', ')}` },
+          {
+            success: false,
+            error: `Invalid orderBy column. Allowed: ${ALLOWED_ORDER_COLUMNS.join(', ')}`,
+          },
           { status: 400 }
         );
       }

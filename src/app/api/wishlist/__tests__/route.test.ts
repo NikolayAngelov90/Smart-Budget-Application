@@ -74,7 +74,6 @@ import { PATCH } from '../[id]/route';
 const getRequest = (query = '') =>
   ({ url: `http://localhost:3000/api/wishlist${query}` }) as Parameters<typeof GET>[0];
 
-
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockListWishlist = listWishlist as jest.MockedFunction<typeof listWishlist>;
 const mockCreateItem = createItem as jest.MockedFunction<typeof createItem>;
@@ -94,7 +93,10 @@ function chain(result: { data: unknown; error: unknown }) {
 type Plan = Record<string, { data: unknown; error: unknown } | { data: unknown; error: unknown }[]>;
 
 function makeSupabase(plan: Plan = {}, user: object | null = { id: 'user-1' }) {
-  const queues: Record<string, { data: unknown; error: unknown }[] | { data: unknown; error: unknown }> = {};
+  const queues: Record<
+    string,
+    { data: unknown; error: unknown }[] | { data: unknown; error: unknown }
+  > = {};
   for (const [k, v] of Object.entries(plan)) queues[k] = Array.isArray(v) ? [...v] : v;
   return {
     auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: null }) },
@@ -329,7 +331,9 @@ describe('POST /api/wishlist', () => {
     mockCreateClient.mockResolvedValue(makeSupabase() as never);
     mockCreateItem.mockResolvedValue(ITEM);
 
-    const res = await POST(makeRequest({ name: 'Headphones', price: 100, category_id: VALID_UUID }));
+    const res = await POST(
+      makeRequest({ name: 'Headphones', price: 100, category_id: VALID_UUID })
+    );
     const body = await res.json();
     expect(res.status).toBe(201);
     expect(body.data).toEqual(ITEM);

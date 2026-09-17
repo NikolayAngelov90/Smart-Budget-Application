@@ -49,16 +49,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null);
     const parsed = acceptSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'A valid invitation token is required' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'A valid invitation token is required' } },
+        { status: 400 }
+      );
     }
 
     const household = await acceptInvitation(user.id, user.email ?? '', parsed.data.token);
     return NextResponse.json({ data: household });
   } catch (error) {
     const mapped = mapError(error);
-    if (mapped) return NextResponse.json({ error: { message: mapped.message } }, { status: mapped.status });
+    if (mapped)
+      return NextResponse.json({ error: { message: mapped.message } }, { status: mapped.status });
     logger.error('InvitationsAccept', 'POST failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to accept invitation' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to accept invitation' } },
+      { status: 500 }
+    );
   }
 }
 
@@ -82,6 +89,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: validation });
   } catch (error) {
     logger.error('InvitationsAccept', 'GET failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to validate invitation' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to validate invitation' } },
+      { status: 500 }
+    );
   }
 }

@@ -30,7 +30,13 @@ export function HouseholdInsightsCard() {
             </Text>
           ) : (
             insights.map((insight, i) => (
-              <Box key={`${insight.type}-${insight.metadata.category_id ?? i}`} borderLeftWidth="3px" borderColor="accent" pl={3} py={1}>
+              <Box
+                key={`${insight.type}-${insight.metadata.category_id ?? i}`}
+                borderLeftWidth="3px"
+                borderColor="accent"
+                pl={3}
+                py={1}
+              >
                 <Text fontSize="sm" fontWeight="semibold" color="fg">
                   {insight.title}
                 </Text>

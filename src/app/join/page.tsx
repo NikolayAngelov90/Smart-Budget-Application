@@ -64,7 +64,9 @@ function JoinContent() {
     }
     fetch(`/api/invitations/accept?token=${encodeURIComponent(token)}`)
       .then((r) => r.json())
-      .then((json) => setValidation((json?.data as InvitationValidation) ?? { valid: false, reason: 'invalid' }))
+      .then((json) =>
+        setValidation((json?.data as InvitationValidation) ?? { valid: false, reason: 'invalid' })
+      )
       .catch(() => setValidation({ valid: false, reason: 'invalid' }));
   }, [checkingAuth, token]);
 
@@ -137,7 +139,13 @@ function JoinContent() {
               </>
             ) : (
               <>
-                <Box bg="danger.subtle" border="1px" borderColor="danger.fg" borderRadius="md" p={4}>
+                <Box
+                  bg="danger.subtle"
+                  border="1px"
+                  borderColor="danger.fg"
+                  borderRadius="md"
+                  p={4}
+                >
                   <Text color="danger.fg">{reasonMessage(validation.reason)}</Text>
                 </Box>
                 <Button as="a" href="/dashboard" variant="outline">

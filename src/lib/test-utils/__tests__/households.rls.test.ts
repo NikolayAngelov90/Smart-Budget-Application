@@ -48,7 +48,11 @@ rlsDescribe('Household isolation (Story 13.1)', () => {
     // seedSingle throws a labelled error if the insert returns no row (e.g. a stack that
     // stopped exposing tables to the Data API) instead of a cryptic null-deref below.
     const hA = await seedSingle<{ id: string }>(
-      svc.from('households').insert({ name: 'Household A', created_by: a1Id }).select('id').single(),
+      svc
+        .from('households')
+        .insert({ name: 'Household A', created_by: a1Id })
+        .select('id')
+        .single(),
       'household A'
     );
     householdAId = hA.id;
@@ -58,7 +62,11 @@ rlsDescribe('Household isolation (Story 13.1)', () => {
     ]);
 
     const hB = await seedSingle<{ id: string }>(
-      svc.from('households').insert({ name: 'Household B', created_by: b1Id }).select('id').single(),
+      svc
+        .from('households')
+        .insert({ name: 'Household B', created_by: b1Id })
+        .select('id')
+        .single(),
       'household B'
     );
     householdBId = hB.id;
@@ -88,11 +96,17 @@ rlsDescribe('Household isolation (Story 13.1)', () => {
 
   it('member (a2) CAN read household A members; outsider (b1) CANNOT', async () => {
     const a2 = await signInAsTestUser(a2Email, PWD);
-    const a2View = await a2.from('household_members').select('user_id').eq('household_id', householdAId);
+    const a2View = await a2
+      .from('household_members')
+      .select('user_id')
+      .eq('household_id', householdAId);
     expect((a2View.data ?? []).length).toBeGreaterThanOrEqual(2);
 
     const b1 = await signInAsTestUser(b1Email, PWD);
-    const b1View = await b1.from('household_members').select('user_id').eq('household_id', householdAId);
+    const b1View = await b1
+      .from('household_members')
+      .select('user_id')
+      .eq('household_id', householdAId);
     expect(b1View.data).toEqual([]);
   });
 

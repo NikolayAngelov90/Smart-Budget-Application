@@ -23,14 +23,7 @@ import {
   AlertDescription,
   Skeleton,
 } from '@chakra-ui/react';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { useSpendingByCategory } from '@/lib/hooks/useSpendingByCategory';
 import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -130,7 +123,14 @@ export function CategorySpendingChart({
   // Error state
   if (error) {
     return (
-      <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
+      <Box
+        p={6}
+        bg="surface"
+        borderRadius="lg"
+        boxShadow="sm"
+        borderWidth="1px"
+        borderColor="border"
+      >
         <Alert status="error" borderRadius="md">
           <AlertIcon />
           <AlertTitle>{t('categoryChartError')}</AlertTitle>
@@ -143,7 +143,14 @@ export function CategorySpendingChart({
   // Loading state
   if (isLoading) {
     return (
-      <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
+      <Box
+        p={6}
+        bg="surface"
+        borderRadius="lg"
+        boxShadow="sm"
+        borderWidth="1px"
+        borderColor="border"
+      >
         <Skeleton height="32px" width="250px" mb={4} />
         <Skeleton height={`${height}px`} borderRadius="md" />
       </Box>
@@ -156,7 +163,14 @@ export function CategorySpendingChart({
       // The card title lives on the page (one heading per card — the two used
       // to render on top of each other, the page's localized and this one's
       // hardcoded English).
-      <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
+      <Box
+        p={6}
+        bg="surface"
+        borderRadius="lg"
+        boxShadow="sm"
+        borderWidth="1px"
+        borderColor="border"
+      >
         <VStack py={8} spacing={3}>
           <Text fontSize="4xl" color="fg.subtle" aria-hidden="true">
             📊
@@ -187,7 +201,13 @@ export function CategorySpendingChart({
   };
 
   // Custom tooltip
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: ChartDataPoint }> }) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: Array<{ payload: ChartDataPoint }>;
+  }) => {
     if (active && payload && payload.length) {
       const firstPayload = payload[0];
       if (!firstPayload) return null;
@@ -217,14 +237,7 @@ export function CategorySpendingChart({
   };
 
   return (
-    <Box
-      p={6}
-      bg="surface"
-      borderRadius="lg"
-      boxShadow="sm"
-      borderWidth="1px"
-      borderColor="border"
-    >
+    <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
       <VStack align="stretch" spacing={4}>
         {/* No heading here: the page titles this card. Rendering one in both
             places printed it twice, and only the page's was localized. */}

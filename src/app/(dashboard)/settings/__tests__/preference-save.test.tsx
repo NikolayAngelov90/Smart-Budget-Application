@@ -68,9 +68,19 @@ const mockFetch = ({ putOk }: { putOk: boolean }) => {
           json: async () => (putOk ? { data: profile } : {}),
         });
       }
-      return Promise.resolve({ ok: true, status: 200, headers: jsonHeaders, json: async () => ({ data: profile }) });
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: jsonHeaders,
+        json: async () => ({ data: profile }),
+      });
     }
-    return Promise.resolve({ ok: true, status: 200, headers: jsonHeaders, json: async () => ({ data: null }) });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: jsonHeaders,
+      json: async () => ({ data: null }),
+    });
   });
 };
 

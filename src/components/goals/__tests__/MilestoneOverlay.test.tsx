@@ -21,7 +21,9 @@ jest.mock('@chakra-ui/react', () => ({
   ModalOverlay: () => null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ModalContent: ({ children, ...rest }: React.PropsWithChildren<any>) => (
-    <div data-testid="milestone-overlay" {...rest}>{children}</div>
+    <div data-testid="milestone-overlay" {...rest}>
+      {children}
+    </div>
   ),
   ModalBody: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   ModalFooter: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
@@ -44,8 +46,10 @@ const mockUseReducedMotion = jest.fn();
 
 jest.mock('framer-motion', () => ({
   useReducedMotion: () => mockUseReducedMotion(),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  motion: { div: ({ children, ...props }: React.PropsWithChildren<any>) => <div {...props}>{children}</div> },
+  motion: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    div: ({ children, ...props }: React.PropsWithChildren<any>) => <div {...props}>{children}</div>,
+  },
   AnimatePresence: ({ children }: React.PropsWithChildren) => <>{children}</>,
 }));
 
@@ -142,7 +146,9 @@ describe('MilestoneOverlay', () => {
     render(<MilestoneOverlay {...defaultProps} onClose={onClose} />);
 
     expect(onClose).not.toHaveBeenCalled();
-    act(() => { jest.advanceTimersByTime(4000); });
+    act(() => {
+      jest.advanceTimersByTime(4000);
+    });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

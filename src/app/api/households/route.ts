@@ -11,13 +11,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { createHousehold, getCurrentHousehold, HouseholdExistsError } from '@/lib/services/householdService';
+import {
+  createHousehold,
+  getCurrentHousehold,
+  HouseholdExistsError,
+} from '@/lib/services/householdService';
 import { logger } from '@/lib/utils/logger';
 
 export const dynamic = 'force-dynamic';
 
 const createHouseholdSchema = z.object({
-  name: z.string().trim().min(1, 'Household name is required').max(100, 'Household name is too long'),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Household name is required')
+    .max(100, 'Household name is too long'),
 });
 
 export async function POST(request: NextRequest) {

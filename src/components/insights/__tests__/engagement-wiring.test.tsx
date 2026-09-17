@@ -80,11 +80,10 @@ beforeEach(() => {
   trackInsightEngagement.mockClear();
   // jsdom has no IntersectionObserver. The view path is exercised in the
   // service suite; this file is about the call site for metadata_expand.
-  (global as unknown as { IntersectionObserver: unknown }).IntersectionObserver =
-    class {
-      observe() {}
-      disconnect() {}
-    };
+  (global as unknown as { IntersectionObserver: unknown }).IntersectionObserver = class {
+    observe() {}
+    disconnect() {}
+  };
 });
 
 describe('insight engagement wiring', () => {

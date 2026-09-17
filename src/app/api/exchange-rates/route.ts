@@ -30,10 +30,7 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get base currency from query params
@@ -44,7 +41,9 @@ export async function GET(request: NextRequest) {
     const validCurrencies = ['EUR', 'USD', 'GBP'];
     if (!validCurrencies.includes(baseCurrency)) {
       return NextResponse.json(
-        { error: `Invalid base currency: ${baseCurrency}. Supported: ${validCurrencies.join(', ')}` },
+        {
+          error: `Invalid base currency: ${baseCurrency}. Supported: ${validCurrencies.join(', ')}`,
+        },
         { status: 400 }
       );
     }
@@ -55,9 +54,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(rateData, { status: 200 });
   } catch (error) {
     logger.error('ExchangeRates', 'Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch exchange rates' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch exchange rates' }, { status: 500 });
   }
 }

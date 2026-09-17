@@ -18,7 +18,11 @@ export const dynamic = 'force-dynamic';
 const createSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(100),
   target_amount: z.number().positive('Target must be greater than 0'),
-  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  deadline: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
 });
 
 async function requireUser() {
@@ -50,7 +54,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null);
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'A valid name and target amount are required' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'A valid name and target amount are required' } },
+        { status: 400 }
+      );
     }
 
     const goal = await createHouseholdGoal(user.id, parsed.data);

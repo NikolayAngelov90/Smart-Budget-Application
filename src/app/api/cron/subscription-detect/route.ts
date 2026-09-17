@@ -42,10 +42,7 @@ export async function GET(request: NextRequest) {
 
     if (!isAuthorized) {
       logger.error('SubscriptionCron', 'Unauthorized access attempt');
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     logger.info('SubscriptionCron', 'Starting weekly subscription detection scan');

@@ -42,7 +42,10 @@ export default function GoalsPage() {
   // Mobile "More" sheet deep-link: `/goals?new=1` (the sheet's inline "+") opens
   // the create form on arrival, then strips the param so a refresh won't reopen it.
   useEffect(() => {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === '1') {
+    if (
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('new') === '1'
+    ) {
       onOpen();
       window.history.replaceState(null, '', '/goals');
     }
@@ -97,12 +100,7 @@ export default function GoalsPage() {
         {!isLoading && goals.length > 0 && (
           <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
             {goals.map((goal) => (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                currency={currency}
-                onMutate={handleMutate}
-              />
+              <GoalCard key={goal.id} goal={goal} currency={currency} onMutate={handleMutate} />
             ))}
           </SimpleGrid>
         )}
@@ -115,11 +113,7 @@ export default function GoalsPage() {
       </Container>
 
       {/* Create goal modal */}
-      <GoalForm
-        isOpen={isOpen}
-        onClose={onClose}
-        onSuccess={handleCreateSuccess}
-      />
+      <GoalForm isOpen={isOpen} onClose={onClose} onSuccess={handleCreateSuccess} />
     </AppLayout>
   );
 }

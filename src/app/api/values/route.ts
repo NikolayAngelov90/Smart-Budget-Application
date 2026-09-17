@@ -52,7 +52,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null);
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'A value name (1–50 chars) is required' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'A value name (1–50 chars) is required' } },
+        { status: 400 }
+      );
     }
 
     const value = await createValue(user.id, parsed.data);

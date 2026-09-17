@@ -42,6 +42,25 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      # Its OWN step, deliberately not folded into lint. Prettier and ESLint
+      # fail for different reasons and a reader needs to see which one spoke.
+      # Nothing enforced this until 2026-09-17, and 404 of ~530 files had drifted
+      # while CI stayed green the whole time.
+      #
+      # DETERMINISTIC because `npm ci` above installs from the lockfile, which
+      # pins prettier to an exact version (3.6.2) despite the "^3.1.0" range in
+      # package.json. An unpinned formatter gate fails for reasons nobody can
+      # reproduce locally, and then gets disabled — so if the install step is
+      # ever changed to `npm install`, this step stops being trustworthy.
+      #
+      # IF THIS FAILS RIGHT AFTER YOU RAN THE FORMATTER: run `npm run format`
+      # again. Prettier is not idempotent on this repo — a single pass leaves
+      # two files (categoryShareService.test.ts, household-insights.rls.test.ts)
+      # in a state it will reformat once more. `npm run format` therefore runs
+      # TWO passes; `npm run format:once` is the single pass if you need it.
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Run tests
         run: npm run test:coverage
 

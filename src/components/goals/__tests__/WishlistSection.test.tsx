@@ -63,9 +63,11 @@ jest.mock('next-intl', () => ({
     if (key === 'alignsWith') return `Aligns with ${params?.value}`;
     if (key === 'leavesBudget')
       return `Leaves ${params?.amount} of your ${params?.limit} ${params?.category} budget`;
-    if (key === 'exceedsBudget') return `Exceeds your ${params?.category} budget by ${params?.amount}`;
+    if (key === 'exceedsBudget')
+      return `Exceeds your ${params?.category} budget by ${params?.amount}`;
     if (key === 'monthBalanceAfter') return `Month balance after purchase: ${params?.amount}`;
-    if (key === 'goalDelay') return `${params?.goal} would be delayed by about ${params?.days} days`;
+    if (key === 'goalDelay')
+      return `${params?.goal} would be delayed by about ${params?.days} days`;
     if (key === 'showHistory') return `Show history (${params?.count})`;
     return map[key] ?? key;
   },
@@ -73,8 +75,7 @@ jest.mock('next-intl', () => ({
 
 const mockUseWishlist = useWishlist as jest.MockedFunction<typeof useWishlist>;
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 function makeItem(overrides: Partial<WishlistItemWithImpact> = {}): WishlistItemWithImpact {
   return {
@@ -268,7 +269,9 @@ describe('WishlistSection', () => {
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '10abc' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add to wishlist' }));
 
-    expect(await screen.findByText('Enter a valid positive price (max 2 decimals)')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Enter a valid positive price (max 2 decimals)')
+    ).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 

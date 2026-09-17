@@ -95,9 +95,9 @@ describe('resolvePeriodRanges', () => {
   });
 
   it('treats an unknown period as month', () => {
-    expect(resolvePeriodRanges('nonsense' as DashboardPeriod, new Date('2026-07-15T12:00:00'))).toEqual(
-      resolvePeriodRanges('month', new Date('2026-07-15T12:00:00'))
-    );
+    expect(
+      resolvePeriodRanges('nonsense' as DashboardPeriod, new Date('2026-07-15T12:00:00'))
+    ).toEqual(resolvePeriodRanges('month', new Date('2026-07-15T12:00:00')));
   });
 });
 
@@ -123,33 +123,21 @@ describe('resolvePeriodRanges — comparePartial', () => {
 
   it('is at its harshest on day one, which is exactly when it matters', () => {
     // Monday: one day this week vs one day last week, not vs seven.
-    expect(partial('week', '2026-07-27T09:00:00').previous).toEqual([
-      '2026-07-20',
-      '2026-07-20',
-    ]);
+    expect(partial('week', '2026-07-27T09:00:00').previous).toEqual(['2026-07-20', '2026-07-20']);
   });
 
   it('truncates the previous year to the same day of year', () => {
-    expect(partial('year', '2026-07-29T12:00:00').previous).toEqual([
-      '2025-01-01',
-      '2025-07-29',
-    ]);
+    expect(partial('year', '2026-07-29T12:00:00').previous).toEqual(['2025-01-01', '2025-07-29']);
   });
 
   it('truncates the previous month to the same day of month', () => {
-    expect(partial('month', '2026-07-15T12:00:00').previous).toEqual([
-      '2026-06-01',
-      '2026-06-15',
-    ]);
+    expect(partial('month', '2026-07-15T12:00:00').previous).toEqual(['2026-06-01', '2026-06-15']);
   });
 
   it('clamps rather than spilling past the end of a shorter previous window', () => {
     // 31 days into March; February has only 28. Without the clamp the previous
     // window would reach into March and double-count it.
-    expect(partial('month', '2026-03-31T12:00:00').previous).toEqual([
-      '2026-02-01',
-      '2026-02-28',
-    ]);
+    expect(partial('month', '2026-03-31T12:00:00').previous).toEqual(['2026-02-01', '2026-02-28']);
   });
 
   it('never lets the previous window overlap the current one', () => {

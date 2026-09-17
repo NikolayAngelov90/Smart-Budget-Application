@@ -46,8 +46,7 @@ jest.mock('next/link', () => {
 
 const mockUseSWR = useSWR as jest.MockedFunction<typeof useSWR>;
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 const swrResult = (overrides: Partial<ReturnType<typeof useSWR>>) =>
   ({
@@ -86,9 +85,7 @@ describe('RecentTransactions', () => {
   });
 
   it('renders the section heading and view-all link', () => {
-    mockUseSWR.mockReturnValue(
-      swrResult({ data: { data: sampleTransactions, count: 2 } })
-    );
+    mockUseSWR.mockReturnValue(swrResult({ data: { data: sampleTransactions, count: 2 } }));
 
     renderWithChakra(<RecentTransactions />);
 
@@ -98,9 +95,7 @@ describe('RecentTransactions', () => {
   });
 
   it('renders transaction rows with category, notes and signed amounts', () => {
-    mockUseSWR.mockReturnValue(
-      swrResult({ data: { data: sampleTransactions, count: 2 } })
-    );
+    mockUseSWR.mockReturnValue(swrResult({ data: { data: sampleTransactions, count: 2 } }));
 
     renderWithChakra(<RecentTransactions />);
 
@@ -116,9 +111,7 @@ describe('RecentTransactions', () => {
 
     renderWithChakra(<RecentTransactions />);
 
-    expect(
-      screen.getByText('Your latest transactions will appear here.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Your latest transactions will appear here.')).toBeInTheDocument();
   });
 
   it('renders an error alert when the request fails', () => {

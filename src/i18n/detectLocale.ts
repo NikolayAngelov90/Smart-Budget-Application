@@ -17,9 +17,7 @@ import { SUPPORTED_LOCALES, DEFAULT_LOCALE, type SupportedLocale } from './confi
  */
 export function detectAndSetLocale(): SupportedLocale {
   // Check if cookie is already set
-  const existingCookie = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('NEXT_LOCALE='));
+  const existingCookie = document.cookie.split('; ').find((row) => row.startsWith('NEXT_LOCALE='));
 
   if (existingCookie) {
     const value = existingCookie.split('=')[1];
@@ -29,7 +27,8 @@ export function detectAndSetLocale(): SupportedLocale {
   }
 
   // Detect from browser
-  const browserLang = navigator.language || (navigator as { userLanguage?: string }).userLanguage || '';
+  const browserLang =
+    navigator.language || (navigator as { userLanguage?: string }).userLanguage || '';
   const langPrefix = browserLang.split('-')[0]?.toLowerCase() || '';
 
   const detectedLocale: SupportedLocale = SUPPORTED_LOCALES.includes(langPrefix as SupportedLocale)

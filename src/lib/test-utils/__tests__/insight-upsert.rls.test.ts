@@ -86,10 +86,12 @@ rlsDescribe('insight upsert preserves dismissal (hp-10)', () => {
     await new Promise((r) => setTimeout(r, 1100));
 
     // 3. The next generation produces the same claim.
-    const { error: upsertError } = await svc.from('insights').upsert(
-      { ...baseRow(userId), description: 'second write, refreshed content' },
-      { onConflict: 'user_id,fingerprint' }
-    );
+    const { error: upsertError } = await svc
+      .from('insights')
+      .upsert(
+        { ...baseRow(userId), description: 'second write, refreshed content' },
+        { onConflict: 'user_id,fingerprint' }
+      );
     // A 42P10 here means the unique index is partial and was not inferred.
     expect(upsertError).toBeNull();
 

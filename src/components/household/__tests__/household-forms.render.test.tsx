@@ -65,9 +65,24 @@ const renderIt = (ui: React.ReactElement) => render(ui, { wrapper: ChakraProvide
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockHousehold.mockReturnValue({ household: null, isLoading: false, error: undefined, mutate: jest.fn() });
-  mockInvitations.mockReturnValue({ invitations: [], isLoading: false, error: undefined, mutate: jest.fn() });
-  mockAllowance.mockReturnValue({ status: null, isLoading: false, error: undefined, mutate: jest.fn() });
+  mockHousehold.mockReturnValue({
+    household: null,
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  });
+  mockInvitations.mockReturnValue({
+    invitations: [],
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  });
+  mockAllowance.mockReturnValue({
+    status: null,
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  });
   mockContributions.mockReturnValue({
     summary: {
       splits: [
@@ -185,7 +200,6 @@ describe('HouseholdCreateCard', () => {
     });
     expect(create).toBeEnabled();
   });
-
 });
 
 describe('TransparencyPresetCard', () => {

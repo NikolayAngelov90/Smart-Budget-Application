@@ -41,7 +41,9 @@ describe('isAnalyticsViewer', () => {
   });
 
   it('throws on DB error', async () => {
-    await expect(isAnalyticsViewer(client(null, { message: 'boom' }) as never, 'u1')).rejects.toBeDefined();
+    await expect(
+      isAnalyticsViewer(client(null, { message: 'boom' }) as never, 'u1')
+    ).rejects.toBeDefined();
   });
 });
 
@@ -62,10 +64,24 @@ describe('getAnalyticsDashboard', () => {
 
   it('fetches events and delegates to aggregateAnalytics', async () => {
     const rows = [
-      { user_id: 'u1', event_name: 'insight_viewed', event_properties: {}, timestamp: '2026-06-01T00:00:00Z' },
-      { user_id: 'u2', event_name: 'csv_exported', event_properties: {}, timestamp: '2026-06-02T00:00:00Z' },
+      {
+        user_id: 'u1',
+        event_name: 'insight_viewed',
+        event_properties: {},
+        timestamp: '2026-06-01T00:00:00Z',
+      },
+      {
+        user_id: 'u2',
+        event_name: 'csv_exported',
+        event_properties: {},
+        timestamp: '2026-06-02T00:00:00Z',
+      },
     ];
-    const result = await getAnalyticsDashboard(serviceClient(rows) as never, 30, new Date('2026-06-15'));
+    const result = await getAnalyticsDashboard(
+      serviceClient(rows) as never,
+      30,
+      new Date('2026-06-15')
+    );
     expect(mockAggregate).toHaveBeenCalledWith(rows, 30);
     expect(result.total_events).toBe(2);
   });

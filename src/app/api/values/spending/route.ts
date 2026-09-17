@@ -71,7 +71,8 @@ export async function GET() {
     for (const tx of transactions ?? []) {
       if (!tx.category_id) continue;
       const key = String(tx.date).slice(0, 7);
-      const bucket = key === currentKey ? currentByCategory : key === prevKey ? previousByCategory : null;
+      const bucket =
+        key === currentKey ? currentByCategory : key === prevKey ? previousByCategory : null;
       if (!bucket) continue;
       bucket[tx.category_id] = (bucket[tx.category_id] ?? 0) + Number(tx.amount);
     }

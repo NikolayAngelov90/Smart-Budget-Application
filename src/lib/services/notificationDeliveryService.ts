@@ -132,10 +132,7 @@ export async function getAlreadyDeliveredByPeriod(
   if (error) {
     // Fail CLOSED, as above: without this we cannot tell who was already
     // served, and sending would risk duplicating the cohort.
-    logger.error(
-      'NotificationDelivery',
-      `delivery lookup failed for ${kind}: ${error.message}`
-    );
+    logger.error('NotificationDelivery', `delivery lookup failed for ${kind}: ${error.message}`);
     throw new Error('delivery lookup failed');
   }
 

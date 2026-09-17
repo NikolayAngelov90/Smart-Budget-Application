@@ -74,9 +74,7 @@ describe('OnboardingModal', () => {
     });
 
     it('pre-fills display name from OAuth metadata', () => {
-      renderWithChakra(
-        <OnboardingModal {...defaultProps} defaultDisplayName="John Doe" />
-      );
+      renderWithChakra(<OnboardingModal {...defaultProps} defaultDisplayName="John Doe" />);
 
       const input = screen.getByLabelText('Display Name') as HTMLInputElement;
       expect(input.value).toBe('John Doe');

@@ -14,7 +14,16 @@
  */
 
 import { useEffect, useCallback, useState } from 'react';
-import { Box, Heading, Grid, Flex, Spinner, Button, Divider, VisuallyHidden } from '@chakra-ui/react';
+import {
+  Box,
+  Heading,
+  Grid,
+  Flex,
+  Spinner,
+  Button,
+  Divider,
+  VisuallyHidden,
+} from '@chakra-ui/react';
 import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
 // useSWRConfig().mutate is scoped to the app's localStorage cache provider —
@@ -37,7 +46,10 @@ import { SeasonalAwareness } from '@/components/ai/SeasonalAwareness';
 import { ReengagementSummary } from '@/components/ai/ReengagementSummary';
 import { WeeklyDigestCard } from '@/components/ai/WeeklyDigestCard';
 import { ValuesSpendingCard } from '@/components/values/ValuesSpendingCard';
-import { RecentTransactions, RECENT_TRANSACTIONS_KEY } from '@/components/dashboard/RecentTransactions';
+import {
+  RecentTransactions,
+  RECENT_TRANSACTIONS_KEY,
+} from '@/components/dashboard/RecentTransactions';
 import { BudgetHealthCard } from '@/components/dashboard/BudgetHealthCard';
 import { BUDGETS_KEY } from '@/lib/hooks/useBudgets';
 import { StreakBadge } from '@/components/dashboard/StreakBadge';
@@ -94,7 +106,8 @@ export default function DashboardPage() {
   const [showAhead, setShowAhead] = useState(false);
 
   // Story 11.1: Show FirstTransactionPrompt when user has no transactions
-  const hasNoTransactions = stats && stats.income.current === 0 && stats.expenses.current === 0 && stats.balance === 0;
+  const hasNoTransactions =
+    stats && stats.income.current === 0 && stats.expenses.current === 0 && stats.balance === 0;
 
   // AC-10.8.4: Pull-to-refresh — revalidate all dashboard SWR keys
   const { containerRef: dashboardRef, isRefreshing } = usePullToRefresh(
@@ -105,11 +118,9 @@ export default function DashboardPage() {
         // Story 16.6: the hero's key now carries ?period=…&currency=…, so an
         // EXACT-key mutate no longer matches it — the hero would go stale
         // after a refresh with no error. Match by prefix instead.
-        mutate(
-          (key) => typeof key === 'string' && key.startsWith(DASHBOARD_STATS_KEY),
-          undefined,
-          { revalidate: true }
-        ),
+        mutate((key) => typeof key === 'string' && key.startsWith(DASHBOARD_STATS_KEY), undefined, {
+          revalidate: true,
+        }),
         // PREFIX match: these keys now carry the client's local `?today=`,
         // so an exact-key mutate no longer matches and would go stale.
         mutate(
@@ -135,25 +146,21 @@ export default function DashboardPage() {
         mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
         // PREFIX match: these keys now carry the client's local `?today=`,
         // so an exact-key mutate no longer matches and would go stale.
-        mutate(
-          (key) => typeof key === 'string' && key.startsWith(BUDGETS_KEY),
-          undefined,
-          { revalidate: true }
-        ),
+        mutate((key) => typeof key === 'string' && key.startsWith(BUDGETS_KEY), undefined, {
+          revalidate: true,
+        }),
         // Story 15.6: skip the gamification revalidations when opted out — the
         // null-key hooks don't subscribe, and firing these would trigger the
         // score/comeback GETs (server achievement eval / create-on-read) from
         // an opted-out browser. `?? true` matches the gate's opt-out default.
-        ...(preferences?.gamification_enabled ?? true
+        ...((preferences?.gamification_enabled ?? true)
           ? [
               mutate(STREAK_KEY, undefined, { revalidate: true }),
               // PREFIX match: these keys now carry the client's local `?today=`,
               // so an exact-key mutate no longer matches and would go stale.
-              mutate(
-                (key) => typeof key === 'string' && key.startsWith(SCORE_KEY),
-                undefined,
-                { revalidate: true }
-              ),
+              mutate((key) => typeof key === 'string' && key.startsWith(SCORE_KEY), undefined, {
+                revalidate: true,
+              }),
               mutate(COMEBACK_KEY, undefined, { revalidate: true }),
             ]
           : []),
@@ -177,11 +184,7 @@ export default function DashboardPage() {
 
         // Measure the time between start and end
         try {
-          performance.measure(
-            'dashboard-render',
-            'dashboard-render-start',
-            'dashboard-render-end'
-          );
+          performance.measure('dashboard-render', 'dashboard-render-start', 'dashboard-render-end');
 
           // Get the measurement
           const measurements = performance.getEntriesByName('dashboard-render');
@@ -193,7 +196,9 @@ export default function DashboardPage() {
             // Vercel Analytics automatically captures these performance marks
             // Check if it exceeds 2s threshold
             if (renderTime > 2000) {
-              console.warn(`⚠️ Dashboard render time exceeds 2s threshold: ${Math.round(renderTime)}ms`);
+              console.warn(
+                `⚠️ Dashboard render time exceeds 2s threshold: ${Math.round(renderTime)}ms`
+              );
             }
           }
         } catch (error) {
@@ -272,14 +277,8 @@ export default function DashboardPage() {
             It used to be hardcoded "This month", so selecting Year in the hero
             left the page reading "This year" over a section captioned "This
             month" over a month-scoped chart. */}
-        <SectionHeader
-          eyebrow={t(PERIOD_EYEBROW[shownPeriod])}
-          title={t('sectionWhereGoing')}
-        />
-        <Grid
-          templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }}
-          gap={{ base: 5, md: 6 }}
-        >
+        <SectionHeader eyebrow={t(PERIOD_EYEBROW[shownPeriod])} title={t('sectionWhereGoing')} />
+        <Grid templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }} gap={{ base: 5, md: 6 }}>
           {/* Category Spending Chart - Story 5.3 (follows the period; the
               eyebrow above states the window, so the card doesn't repeat it) */}
           <Box>
@@ -405,7 +404,8 @@ export default function DashboardPage() {
             // PREFIX match: these keys now carry the client's local `?today=`,
             // so an exact-key mutate no longer matches and would go stale.
             mutate(
-              (key) => typeof key === 'string' && key.startsWith('/api/dashboard/spending-by-category'),
+              (key) =>
+                typeof key === 'string' && key.startsWith('/api/dashboard/spending-by-category'),
               undefined,
               { revalidate: true }
             ),
@@ -414,19 +414,15 @@ export default function DashboardPage() {
             mutate(RECENT_TRANSACTIONS_KEY, undefined, { revalidate: true }),
             // PREFIX match: these keys now carry the client's local `?today=`,
             // so an exact-key mutate no longer matches and would go stale.
-            mutate(
-              (key) => typeof key === 'string' && key.startsWith(BUDGETS_KEY),
-              undefined,
-              { revalidate: true }
-            ),
+            mutate((key) => typeof key === 'string' && key.startsWith(BUDGETS_KEY), undefined, {
+              revalidate: true,
+            }),
             // Story 15.2 AC #4: the score updates after each transaction
             // PREFIX match: these keys now carry the client's local `?today=`,
             // so an exact-key mutate no longer matches and would go stale.
-            mutate(
-              (key) => typeof key === 'string' && key.startsWith(SCORE_KEY),
-              undefined,
-              { revalidate: true }
-            ),
+            mutate((key) => typeof key === 'string' && key.startsWith(SCORE_KEY), undefined, {
+              revalidate: true,
+            }),
             // Story 15.4: challenge progress advances with each log
             mutate(COMEBACK_KEY, undefined, { revalidate: true }),
           ]);

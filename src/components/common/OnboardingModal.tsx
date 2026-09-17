@@ -32,12 +32,20 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
-import { getEnabledCurrencies, DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '@/lib/config/currencies';
+import {
+  getEnabledCurrencies,
+  DEFAULT_CURRENCY,
+  SUPPORTED_CURRENCIES,
+} from '@/lib/config/currencies';
 
 const supportedCodes = SUPPORTED_CURRENCIES.map((c) => c.code) as [string, ...string[]];
 
 const onboardingSchema = z.object({
-  displayName: z.string().max(100, 'Name must be 100 characters or less').optional().or(z.literal('')),
+  displayName: z
+    .string()
+    .max(100, 'Name must be 100 characters or less')
+    .optional()
+    .or(z.literal('')),
   currencyFormat: z.enum(supportedCodes),
 });
 
@@ -118,10 +126,7 @@ export function OnboardingModal({
         mx={{ base: 0, md: 4 }}
         my={{ base: 0, md: 4 }}
       >
-        <ModalHeader
-          pt={{ base: 'calc(env(safe-area-inset-top) + 2rem)', md: 8 }}
-          pb={2}
-        >
+        <ModalHeader pt={{ base: 'calc(env(safe-area-inset-top) + 2rem)', md: 8 }} pb={2}>
           <VStack spacing={2} align="stretch">
             <Heading as="h2" size="lg" textAlign="center" color="fg">
               {t('welcome')}

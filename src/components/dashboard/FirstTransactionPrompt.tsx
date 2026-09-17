@@ -8,14 +8,7 @@
 
 'use client';
 
-import {
-  Box,
-  Button,
-  Heading,
-  Text,
-  VStack,
-  Icon,
-} from '@chakra-ui/react';
+import { Box, Button, Heading, Text, VStack, Icon } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
 

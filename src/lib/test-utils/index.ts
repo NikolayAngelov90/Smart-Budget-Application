@@ -55,12 +55,7 @@ export {
   setupSupabaseMocks,
 } from './mockSupabase';
 
-export {
-  createMockSWRConfig,
-  createMockUseSWR,
-  MockSWRData,
-  setupSWRMocks,
-} from './mockSWR';
+export { createMockSWRConfig, createMockUseSWR, MockSWRData, setupSWRMocks } from './mockSWR';
 
 export {
   createMockRouter,
@@ -77,8 +72,4 @@ export {
   createMockColorMode,
 } from './mockChakra';
 
-export {
-  createMockToast,
-  setupToastMocks,
-  defaultMockToast,
-} from './mockToast';
+export { createMockToast, setupToastMocks, defaultMockToast } from './mockToast';

@@ -33,10 +33,7 @@ const PGRST116 = 'PGRST116';
  * Returns all goals for a user, ordered by created_at descending.
  * @throws on DB error
  */
-export async function getGoals(
-  supabase: SupabaseClient,
-  userId: string
-): Promise<Goal[]> {
+export async function getGoals(supabase: SupabaseClient, userId: string): Promise<Goal[]> {
   const { data, error } = await supabase
     .from('goals')
     .select('*')
@@ -130,11 +127,7 @@ export async function deleteGoal(
   userId: string,
   goalId: string
 ): Promise<void> {
-  const { error } = await supabase
-    .from('goals')
-    .delete()
-    .eq('id', goalId)
-    .eq('user_id', userId);
+  const { error } = await supabase.from('goals').delete().eq('id', goalId).eq('user_id', userId);
 
   if (error) throw error;
 }
@@ -208,7 +201,8 @@ export async function addContribution(
         .eq('id', userId)
         .maybeSingle();
       const prefs = (profile?.preferences ?? {}) as { currency_format?: unknown };
-      const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
+      const currency =
+        typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
       await logSavingsContribution(supabase, {
         userId,
         amount: Number(input.amount),

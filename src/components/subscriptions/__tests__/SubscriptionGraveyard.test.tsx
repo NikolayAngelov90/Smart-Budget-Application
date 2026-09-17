@@ -47,7 +47,9 @@ jest.mock('@/lib/hooks/useFeatureDisclosure', () => ({
 import { useSubscriptions } from '@/lib/hooks/useSubscriptions';
 import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 const mockUseSubscriptions = useSubscriptions as jest.MockedFunction<typeof useSubscriptions>;
-const mockUseFeatureDisclosure = useFeatureDisclosure as jest.MockedFunction<typeof useFeatureDisclosure>;
+const mockUseFeatureDisclosure = useFeatureDisclosure as jest.MockedFunction<
+  typeof useFeatureDisclosure
+>;
 
 // Mock fetch for status update calls
 global.fetch = jest.fn();
@@ -148,7 +150,9 @@ describe('SubscriptionGraveyard', () => {
 
       renderWithChakra(<SubscriptionGraveyard />);
       expect(screen.getByText('Subscription Graveyard')).toBeInTheDocument();
-      expect(screen.getByText('Recurring charges detected from your transaction history')).toBeInTheDocument();
+      expect(
+        screen.getByText('Recurring charges detected from your transaction history')
+      ).toBeInTheDocument();
     });
 
     it('renders subscription items', () => {

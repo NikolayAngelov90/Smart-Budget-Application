@@ -152,22 +152,21 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     });
 
     test('returns 400 for missing required amount field', async () => {
-      const request = createMockRequest(
-        'http://localhost:3000/api/transactions',
-        'POST',
-        { type: 'expense', category_id: categoryId, date: '2026-01-15' }
-      );
+      const request = createMockRequest('http://localhost:3000/api/transactions', 'POST', {
+        type: 'expense',
+        category_id: categoryId,
+        date: '2026-01-15',
+      });
       const response = await POST(request);
 
       expect(response.status).toBe(400);
     });
 
     test('returns 400 for negative amount', async () => {
-      const request = createMockRequest(
-        'http://localhost:3000/api/transactions',
-        'POST',
-        { ...validBody, amount: -10 }
-      );
+      const request = createMockRequest('http://localhost:3000/api/transactions', 'POST', {
+        ...validBody,
+        amount: -10,
+      });
       const response = await POST(request);
 
       expect(response.status).toBe(400);
@@ -179,11 +178,11 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/transactions',
-        'POST',
-        { ...validBody, currency: 'USD', exchange_rate: 1.08 }
-      );
+      const request = createMockRequest('http://localhost:3000/api/transactions', 'POST', {
+        ...validBody,
+        currency: 'USD',
+        exchange_rate: 1.08,
+      });
       const response = await POST(request);
 
       expect(response.status).toBe(201);
@@ -215,11 +214,9 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/transactions/${txId}`,
-        'PUT',
-        { amount: 75.0 }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'PUT', {
+        amount: 75.0,
+      });
       const response = await PUT(request, { params });
       const data = await response.json();
 
@@ -234,11 +231,9 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
         error: new Error('Unauthorized'),
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/transactions/${txId}`,
-        'PUT',
-        { amount: 75.0 }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'PUT', {
+        amount: 75.0,
+      });
       const response = await PUT(request, { params });
 
       expect(response.status).toBe(401);
@@ -256,11 +251,9 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     });
 
     test('returns 400 for negative amount update', async () => {
-      const request = createMockRequest(
-        `http://localhost:3000/api/transactions/${txId}`,
-        'PUT',
-        { amount: -5 }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'PUT', {
+        amount: -5,
+      });
       const response = await PUT(request, { params });
 
       expect(response.status).toBe(400);
@@ -272,11 +265,9 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
         error: null,
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/transactions/${txId}`,
-        'PUT',
-        { notes: 'Updated' }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'PUT', {
+        notes: 'Updated',
+      });
       await PUT(request, { params });
 
       // Should call eq with user_id to enforce ownership
@@ -298,10 +289,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
       // The delete then() call
       mockQuery.mockResolvedValue({ data: null, error: null });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/transactions/${txId}`,
-        'DELETE'
-      );
+      const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'DELETE');
       const response = await DELETE(request, { params });
       const data = await response.json();
 
@@ -317,10 +305,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
         error: new Error('Unauthorized'),
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/transactions/${txId}`,
-        'DELETE'
-      );
+      const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'DELETE');
       const response = await DELETE(request, { params });
 
       expect(response.status).toBe(401);
@@ -332,10 +317,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
         error: { code: 'PGRST116', message: 'No rows found' },
       });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/transactions/${txId}`,
-        'DELETE'
-      );
+      const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'DELETE');
       const response = await DELETE(request, { params });
 
       expect(response.status).toBe(404);
@@ -345,10 +327,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
       mockQuery.single.mockResolvedValue({ data: mockTransaction, error: null });
       mockQuery.mockResolvedValue({ data: null, error: null });
 
-      const request = createMockRequest(
-        `http://localhost:3000/api/transactions/${txId}`,
-        'DELETE'
-      );
+      const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'DELETE');
       await DELETE(request, { params });
 
       expect(mockQuery.eq).toHaveBeenCalledWith('user_id', userId);

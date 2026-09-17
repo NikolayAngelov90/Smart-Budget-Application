@@ -97,17 +97,13 @@ export async function GET(request: NextRequest) {
       query.eq('type', typeFilter);
     }
 
-    const { data: categories, error: categoriesError } = await query.order(
-      'name',
-      { ascending: true }
-    );
+    const { data: categories, error: categoriesError } = await query.order('name', {
+      ascending: true,
+    });
 
     if (categoriesError) {
       logger.error('Categories', 'Error fetching categories:', categoriesError);
-      return NextResponse.json(
-        { error: 'Failed to fetch categories' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
     }
 
     // Fetch transaction usage stats for each category
@@ -120,10 +116,7 @@ export async function GET(request: NextRequest) {
       .limit(100); // Limit to recent 100 transactions for performance
 
     // Build usage map: category_id -> { last_used_at, usage_count }
-    const usageMap = new Map<
-      string,
-      { last_used_at: string; usage_count: number }
-    >();
+    const usageMap = new Map<string, { last_used_at: string; usage_count: number }>();
 
     if (usageStats) {
       usageStats.forEach((transaction) => {
@@ -158,10 +151,7 @@ export async function GET(request: NextRequest) {
       .filter((cat) => cat.last_used_at !== null)
       .sort((a, b) => {
         // Sort by most recent usage
-        return (
-          new Date(b.last_used_at ?? '').getTime() -
-          new Date(a.last_used_at ?? '').getTime()
-        );
+        return new Date(b.last_used_at ?? '').getTime() - new Date(a.last_used_at ?? '').getTime();
       })
       .slice(0, 5); // Limit to 5 most recent
 
@@ -177,10 +167,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logger.error('Categories', 'Unexpected error in GET /api/categories:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -274,10 +261,7 @@ export async function POST(request: NextRequest) {
 
     if (checkError) {
       logger.error('Categories', 'Error checking duplicate category:', checkError);
-      return NextResponse.json(
-        { error: 'Failed to validate category' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to validate category' }, { status: 500 });
     }
 
     if (existing) {
@@ -312,21 +296,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      return NextResponse.json(
-        { error: 'Failed to create category' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
     }
 
-    return NextResponse.json(
-      { data: newCategory },
-      { status: 201 }
-    );
+    return NextResponse.json({ data: newCategory }, { status: 201 });
   } catch (error) {
     logger.error('Categories', 'Unexpected error in POST /api/categories:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

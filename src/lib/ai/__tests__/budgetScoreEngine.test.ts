@@ -82,9 +82,7 @@ describe('computeBudgetScore — no data', () => {
 describe('adherence factor', () => {
   it('is unscored (and non-punishing) when no category has a resolvable budget', () => {
     // Activity exists (streak) but zero budgets/history → adherence unscored
-    const result = computeBudgetScore(
-      makeInput({ categories: [cat('c1')], streak: streak() })!
-    )!;
+    const result = computeBudgetScore(makeInput({ categories: [cat('c1')], streak: streak() })!)!;
     const adherence = result.factors.find((f) => f.key === 'adherence')!;
     expect(adherence.status).toBe('unscored');
     expect(adherence.earned).toBe(0);
@@ -310,9 +308,7 @@ describe('renormalization', () => {
 
   it('renormalizes over consistency + goals (50) when adherence is unscored', () => {
     // daily 15 → 10 pts + weekly 4 → 5 pts = 15/30; goal 50% → 10/20
-    const result = computeBudgetScore(
-      makeInput({ streak: streak(), goals: [goal(50, 100)] })
-    )!;
+    const result = computeBudgetScore(makeInput({ streak: streak(), goals: [goal(50, 100)] }))!;
     expect(result.factors.find((f) => f.key === 'adherence')!.status).toBe('unscored');
     expect(result.score).toBe(50); // round((15+10)/50×100)
     expect(result.level).toBe('steady');
@@ -363,9 +359,7 @@ describe('factor status thresholds', () => {
 
   it('neutral at exactly 40%', () => {
     // 12/30 = 40%: current 12 → 8pts, weekly 3.2? — use goals instead: 8/20=40%
-    const result = computeBudgetScore(
-      makeInput({ streak: streak(), goals: [goal(40, 100)] })
-    )!;
+    const result = computeBudgetScore(makeInput({ streak: streak(), goals: [goal(40, 100)] }))!;
     const goals = result.factors.find((f) => f.key === 'goals')!;
     expect(goals.earned).toBe(8);
     expect(goals.status).toBe('neutral');

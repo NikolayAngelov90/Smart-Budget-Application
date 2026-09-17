@@ -18,10 +18,7 @@ import { budgetStatusFor } from '@/lib/ai/budgetResolver';
 import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
 import { logger } from '@/lib/utils/logger';
 import type { BudgetsResponse, BudgetSummary } from '@/types/database.types';
-import {
-  buildLiveRateMap,
-  convertToPreferred,
-} from '@/lib/services/currencyConversion';
+import { buildLiveRateMap, convertToPreferred } from '@/lib/services/currencyConversion';
 import { resolvePreferredCurrency } from '@/lib/services/preferredCurrency';
 
 export const dynamic = 'force-dynamic';
@@ -77,10 +74,7 @@ export async function GET(request: NextRequest) {
 
     // One query for names/colors, one for current-month spend — no N+1.
     const [categoriesResult, spendResult] = await Promise.all([
-      supabase
-        .from('categories')
-        .select('id, name, color')
-        .in('id', categoryIds),
+      supabase.from('categories').select('id, name, color').in('id', categoryIds),
       supabase
         .from('transactions')
         // `currency` is required to tell a foreign row from a domestic one —
@@ -169,7 +163,12 @@ export async function PUT(request: NextRequest) {
     const parsed = upsertSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: { message: 'A valid category_id and a positive limit_amount (max 2 decimals) are required' } },
+        {
+          error: {
+            message:
+              'A valid category_id and a positive limit_amount (max 2 decimals) are required',
+          },
+        },
         { status: 400 }
       );
     }

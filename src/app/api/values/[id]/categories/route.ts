@@ -30,7 +30,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'categoryIds must be an array of ids' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'categoryIds must be an array of ids' } },
+        { status: 400 }
+      );
     }
 
     await setValueCategories(user.id, id, parsed.data.categoryIds);
@@ -40,6 +43,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: { message: error.message } }, { status: 404 });
     }
     logger.error('Values', 'PUT categories failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to update value categories' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to update value categories' } },
+      { status: 500 }
+    );
   }
 }

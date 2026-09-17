@@ -22,10 +22,7 @@ import {
   flagUnusualExpense,
   generatePositiveReinforcement,
 } from '@/lib/ai/insightRules';
-import {
-  detectSpendingAnomalies,
-  detectNewHighSpendCategories,
-} from '@/lib/ai/patternDetection';
+import { detectSpendingAnomalies, detectNewHighSpendCategories } from '@/lib/ai/patternDetection';
 import type { Insight, InsightInsert } from '@/types/database.types';
 
 /**
@@ -216,7 +213,10 @@ export async function generateInsights(
 
   // If no transactions or categories, return empty array
   if (!transactions || transactions.length === 0 || !categories || categories.length === 0) {
-    logger.info('Insight Service', `No data to generate insights - Transactions: ${transactions?.length || 0}, Categories: ${categories?.length || 0}`);
+    logger.info(
+      'Insight Service',
+      `No data to generate insights - Transactions: ${transactions?.length || 0}, Categories: ${categories?.length || 0}`
+    );
 
     // Update cache even if no data
     await markGenerated(userId);
@@ -232,7 +232,8 @@ export async function generateInsights(
     .eq('id', userId)
     .maybeSingle();
   const prefs = (profile?.preferences as Record<string, unknown> | null) ?? {};
-  const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
+  const currency =
+    typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
 
   // Budget table is not part of the current MVP scope.
   // Rules handle the absence of budgets gracefully by skipping budget-based insights.
@@ -349,8 +350,7 @@ export async function generateInsights(
     logger.error('Insight Service', 'Error reading sweep watermark:', watermarkError);
     throw new Error(`Failed to read sweep watermark: ${watermarkError.message}`);
   }
-  const sweepCutoff =
-    (watermarkRow as { updated_at?: string } | null)?.updated_at ?? null;
+  const sweepCutoff = (watermarkRow as { updated_at?: string } | null)?.updated_at ?? null;
 
   // UPSERT on (user_id, fingerprint). Rows keep their identity, so a dismissal
   // survives; only the presentation fields are refreshed.
@@ -435,10 +435,7 @@ export async function generateInsights(
     .eq('is_dismissed', false)
     .order('priority', { ascending: false });
 
-  logger.info(
-    'Insight Service',
-    `Upserted ${keptFingerprints.length} insights for user ${userId}`
-  );
+  logger.info('Insight Service', `Upserted ${keptFingerprints.length} insights for user ${userId}`);
 
   // Re-read rather than returning the upsert payload: the caller wants the
   // stored rows (ids, created_at, and crucially is_dismissed as it now stands),
@@ -504,7 +501,10 @@ export async function checkAndTriggerForTransactionCount(userId: string): Promis
     const shouldTrigger = await shouldTriggerGeneration(userId);
 
     if (shouldTrigger) {
-      logger.info('Insight Service', `User ${userId}: 10+ transactions detected, generating insights`);
+      logger.info(
+        'Insight Service',
+        `User ${userId}: 10+ transactions detected, generating insights`
+      );
 
       // Trigger insight generation (non-blocking)
       generateInsights(userId, false).catch((error) => {

@@ -49,8 +49,12 @@ import {
 const mockCreateServiceRoleClient = createServiceRoleClient as jest.MockedFunction<
   typeof createServiceRoleClient
 >;
-const mockDetectSubscriptions = detectSubscriptions as jest.MockedFunction<typeof detectSubscriptions>;
-const mockFlagUnused = flagUnusedSubscriptions as jest.MockedFunction<typeof flagUnusedSubscriptions>;
+const mockDetectSubscriptions = detectSubscriptions as jest.MockedFunction<
+  typeof detectSubscriptions
+>;
+const mockFlagUnused = flagUnusedSubscriptions as jest.MockedFunction<
+  typeof flagUnusedSubscriptions
+>;
 const mockHasEnoughHistory = hasEnoughHistory as jest.MockedFunction<typeof hasEnoughHistory>;
 const mockJsonResponse = NextResponse.json as jest.MockedFunction<typeof NextResponse.json>;
 
@@ -119,7 +123,9 @@ describe('GET /api/cron/subscription-detect', () => {
         }),
       }),
     };
-    mockCreateServiceRoleClient.mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>);
+    mockCreateServiceRoleClient.mockReturnValue(
+      mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>
+    );
     mockHasEnoughHistory.mockResolvedValue(true);
     mockDetectSubscriptions.mockResolvedValue([]);
     mockFlagUnused.mockResolvedValue(0);
@@ -151,7 +157,9 @@ describe('GET /api/cron/subscription-detect', () => {
         }),
       }),
     };
-    mockCreateServiceRoleClient.mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>);
+    mockCreateServiceRoleClient.mockReturnValue(
+      mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>
+    );
     mockHasEnoughHistory.mockResolvedValue(false);
 
     const request = createRequest(CRON_SECRET);
@@ -178,10 +186,19 @@ describe('GET /api/cron/subscription-detect', () => {
         }),
       }),
     };
-    mockCreateServiceRoleClient.mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>);
+    mockCreateServiceRoleClient.mockReturnValue(
+      mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>
+    );
     mockHasEnoughHistory.mockResolvedValue(true);
     mockDetectSubscriptions.mockResolvedValue([
-      { user_id: 'user-1', merchant_pattern: 'netflix', estimated_amount: 9.99, frequency: 'monthly', last_seen_at: '', status: 'active' },
+      {
+        user_id: 'user-1',
+        merchant_pattern: 'netflix',
+        estimated_amount: 9.99,
+        frequency: 'monthly',
+        last_seen_at: '',
+        status: 'active',
+      },
     ]);
     mockFlagUnused.mockResolvedValue(1);
 
@@ -210,7 +227,9 @@ describe('GET /api/cron/subscription-detect', () => {
         }),
       }),
     };
-    mockCreateServiceRoleClient.mockReturnValue(mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>);
+    mockCreateServiceRoleClient.mockReturnValue(
+      mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>
+    );
     mockHasEnoughHistory.mockResolvedValue(true);
     mockDetectSubscriptions
       .mockRejectedValueOnce(new Error('Database error'))

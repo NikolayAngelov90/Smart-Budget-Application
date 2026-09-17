@@ -4,7 +4,7 @@ These files exist so that **`next build` never touches the network**.
 
 Before this, `src/app/layout.tsx` imported `Space_Grotesk` and `Onest` from
 `next/font/google`, which fetches ~14 woff2 files from `fonts.gstatic.com`
-*during the build*. That made every deploy dependent on Google Fonts being
+_during the build_. That made every deploy dependent on Google Fonts being
 reachable from a CI runner, and it failed:
 
 ```
@@ -19,9 +19,9 @@ reaches the network exclusively at request time.
 
 ## What is here
 
-| File | Family | Axis range | Size |
-| --- | --- | --- | --- |
-| `Onest-Variable.woff2` | Onest | `wght` 100–900 | 84 KB |
+| File                          | Family        | Axis range     | Size  |
+| ----------------------------- | ------------- | -------------- | ----- |
+| `Onest-Variable.woff2`        | Onest         | `wght` 100–900 | 84 KB |
 | `SpaceGrotesk-Variable.woff2` | Space Grotesk | `wght` 300–700 | 49 KB |
 
 **Variable, not static.** Two files replace fourteen: smaller in total, and the

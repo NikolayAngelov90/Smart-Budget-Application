@@ -9,14 +9,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  Box,
-  Button,
-  CloseButton,
-  Flex,
-  Text,
-  Slide,
-} from '@chakra-ui/react';
+import { Box, Button, CloseButton, Flex, Text, Slide } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 
 /** localStorage keys for install prompt tracking */
@@ -52,7 +45,8 @@ export function PWAInstallPrompt() {
   const isStandalone =
     typeof window !== 'undefined' &&
     (window.matchMedia('(display-mode: standalone)').matches ||
-      ('standalone' in window.navigator && (window.navigator as Record<string, unknown>).standalone === true));
+      ('standalone' in window.navigator &&
+        (window.navigator as Record<string, unknown>).standalone === true));
 
   const shouldShowPrompt = useCallback((): boolean => {
     if (isStandalone) return false;

@@ -43,13 +43,7 @@ export function FinancialDisclaimer({ variant = 'compact' }: FinancialDisclaimer
 
   // Compact inline note — muted, non-obstructive
   return (
-    <Text
-      fontSize="xs"
-      color="fg.subtle"
-      fontStyle="italic"
-      role="note"
-      aria-label={t('compact')}
-    >
+    <Text fontSize="xs" color="fg.subtle" fontStyle="italic" role="note" aria-label={t('compact')}>
       {t('compact')}
     </Text>
   );

@@ -9,16 +9,7 @@
  * until the user has >= 6 months of history.
  */
 
-import {
-  Badge,
-  Box,
-  Flex,
-  Heading,
-  HStack,
-  Skeleton,
-  Text,
-  VStack,
-} from '@chakra-ui/react';
+import { Badge, Box, Flex, Heading, HStack, Skeleton, Text, VStack } from '@chakra-ui/react';
 import { format, parseISO } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import { useSeasonalAwareness } from '@/lib/hooks/useSeasonalAwareness';

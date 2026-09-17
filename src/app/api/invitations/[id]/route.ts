@@ -41,6 +41,9 @@ export async function DELETE(
       return NextResponse.json({ error: { message: error.message } }, { status: 404 });
     }
     logger.error('Invitations', 'DELETE failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to revoke invitation' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to revoke invitation' } },
+      { status: 500 }
+    );
   }
 }

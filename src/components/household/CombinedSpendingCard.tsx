@@ -8,7 +8,17 @@
  * categories already excluded server-side. category_only rows are tagged "total only".
  */
 
-import { Box, Card, CardBody, VStack, HStack, Heading, Text, Progress, Badge } from '@chakra-ui/react';
+import {
+  Box,
+  Card,
+  CardBody,
+  VStack,
+  HStack,
+  Heading,
+  Text,
+  Progress,
+  Badge,
+} from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { useHouseholdCategoryTotals } from '@/lib/hooks/useHouseholdCategoryTotals';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';

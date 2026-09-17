@@ -67,7 +67,14 @@ rlsDescribe('Personal allowance privacy (Story 13.6)', () => {
     // A shared household category (visible to members) — for the totals exclusion check.
     const { data: scat } = await svc
       .from('categories')
-      .insert({ user_id: aId, name: 'Allw Shared', color: '#123abc', type: 'expense', household_id: householdId, visibility_level: 'shared' })
+      .insert({
+        user_id: aId,
+        name: 'Allw Shared',
+        color: '#123abc',
+        type: 'expense',
+        household_id: householdId,
+        visibility_level: 'shared',
+      })
       .select('id')
       .single();
     sharedCatId = scat!.id;
@@ -103,7 +110,10 @@ rlsDescribe('Personal allowance privacy (Story 13.6)', () => {
 
   it('a co-member CANNOT see the owner’s allowance row', async () => {
     const b = await signInAsTestUser(bEmail, PWD);
-    const { data } = await b.from('personal_allowances').select('id, monthly_amount').eq('id', allowanceId);
+    const { data } = await b
+      .from('personal_allowances')
+      .select('id, monthly_amount')
+      .eq('id', allowanceId);
     expect(data ?? []).toEqual([]);
   });
 
@@ -123,13 +133,24 @@ rlsDescribe('Personal allowance privacy (Story 13.6)', () => {
 
   it('the owner can read and update their own allowance', async () => {
     const a = await signInAsTestUser(aEmail, PWD);
-    const read = await a.from('personal_allowances').select('id, monthly_amount').eq('id', allowanceId).single();
+    const read = await a
+      .from('personal_allowances')
+      .select('id, monthly_amount')
+      .eq('id', allowanceId)
+      .single();
     expect(read.data?.id).toBe(allowanceId);
 
-    const upd = await a.from('personal_allowances').update({ monthly_amount: 250 }).eq('id', allowanceId);
+    const upd = await a
+      .from('personal_allowances')
+      .update({ monthly_amount: 250 })
+      .eq('id', allowanceId);
     expect(upd.error).toBeNull();
     const svc = createServiceClient();
-    const { data } = await svc.from('personal_allowances').select('monthly_amount').eq('id', allowanceId).single();
+    const { data } = await svc
+      .from('personal_allowances')
+      .select('monthly_amount')
+      .eq('id', allowanceId)
+      .single();
     expect(Number(data?.monthly_amount)).toBe(250);
   });
 
@@ -138,7 +159,11 @@ rlsDescribe('Personal allowance privacy (Story 13.6)', () => {
     await b.from('personal_allowances').update({ monthly_amount: 9999 }).eq('id', allowanceId);
     // RLS makes the row invisible to B, so the update matches nothing — value stays put.
     const svc = createServiceClient();
-    const { data } = await svc.from('personal_allowances').select('monthly_amount').eq('id', allowanceId).single();
+    const { data } = await svc
+      .from('personal_allowances')
+      .select('monthly_amount')
+      .eq('id', allowanceId)
+      .single();
     expect(Number(data?.monthly_amount)).not.toBe(9999);
   });
 });

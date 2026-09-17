@@ -49,7 +49,11 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
       align={{ base: 'stretch', md: 'flex-end' }}
     >
       {/* Type Filter */}
-      <FormControl flex="1" minW={{ base: 'auto', md: '200px' }} maxW={{ base: 'full', md: '300px' }}>
+      <FormControl
+        flex="1"
+        minW={{ base: 'auto', md: '200px' }}
+        maxW={{ base: 'full', md: '300px' }}
+      >
         <FormLabel htmlFor="insight-type-filter" fontSize="sm" fontWeight="medium" mb={2}>
           {t('insightType')}
         </FormLabel>
@@ -72,7 +76,11 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
       </FormControl>
 
       {/* Search Input */}
-      <FormControl flex="1" minW={{ base: 'auto', md: '200px' }} maxW={{ base: 'full', md: '300px' }}>
+      <FormControl
+        flex="1"
+        minW={{ base: 'auto', md: '200px' }}
+        maxW={{ base: 'full', md: '300px' }}
+      >
         <FormLabel htmlFor="search-insights" fontSize="sm" fontWeight="medium" mb={2}>
           {tCommon('search')}
         </FormLabel>
@@ -102,7 +110,13 @@ export function InsightsFilters({ filters, onFilterChange }: InsightsFiltersProp
         mt={{ base: 2, md: 0 }}
         gap={2}
       >
-        <FormLabel htmlFor="show-dismissed" mb="0" fontSize="sm" fontWeight="medium" whiteSpace="nowrap">
+        <FormLabel
+          htmlFor="show-dismissed"
+          mb="0"
+          fontSize="sm"
+          fontWeight="medium"
+          whiteSpace="nowrap"
+        >
           {t('showDismissed')}
         </FormLabel>
         <Switch

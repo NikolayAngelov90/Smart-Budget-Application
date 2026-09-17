@@ -54,10 +54,7 @@ const signupSchema = z
       .min(8, 'Password must be at least 8 characters')
       .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter')
       .regex(/[0-9]/, 'Password must contain at least 1 number')
-      .regex(
-        /[^A-Za-z0-9]/,
-        'Password must contain at least 1 special character'
-      ),
+      .regex(/[^A-Za-z0-9]/, 'Password must contain at least 1 special character'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -81,10 +78,8 @@ function calculatePasswordStrength(password: string): {
   if (/[0-9]/.test(password)) score += 1;
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
-  if (score <= 2)
-    return { score: 33, label: 'Weak', color: 'danger.fg' };
-  if (score === 3 || score === 4)
-    return { score: 66, label: 'Medium', color: 'warning.fg' };
+  if (score <= 2) return { score: 33, label: 'Weak', color: 'danger.fg' };
+  if (score === 3 || score === 4) return { score: 66, label: 'Medium', color: 'warning.fg' };
   return { score: 100, label: 'Strong', color: 'income' };
 }
 
@@ -231,12 +226,7 @@ export default function SignupPage() {
       <VStack spacing={8} align="stretch">
         {/* Header */}
         <VStack spacing={2} textAlign="center">
-          <Heading
-            as="h1"
-            size={{ base: 'xl', md: '2xl' }}
-            color="fg"
-            fontWeight="bold"
-          >
+          <Heading as="h1" size={{ base: 'xl', md: '2xl' }} color="fg" fontWeight="bold">
             Create your account
           </Heading>
           <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
@@ -367,8 +357,8 @@ export default function SignupPage() {
                       passwordStrength.label === 'Weak'
                         ? 'red'
                         : passwordStrength.label === 'Medium'
-                        ? 'orange'
-                        : 'green'
+                          ? 'orange'
+                          : 'green'
                     }
                     borderRadius="full"
                     aria-label={`Password strength: ${passwordStrength.label}`}
@@ -404,9 +394,7 @@ export default function SignupPage() {
                   aria-label="Confirm password"
                   aria-required="true"
                   aria-invalid={!!errors.confirmPassword}
-                  aria-describedby={
-                    errors.confirmPassword ? 'confirm-password-error' : undefined
-                  }
+                  aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
                   autoComplete="new-password"
                   _focus={{
                     borderColor: 'accent',
@@ -415,9 +403,7 @@ export default function SignupPage() {
                 />
                 <InputRightElement>
                   <IconButton
-                    aria-label={
-                      showConfirmPassword ? 'Hide password' : 'Show password'
-                    }
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                     icon={showConfirmPassword ? <ViewOffIcon /> : <ViewIcon />}
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     variant="ghost"

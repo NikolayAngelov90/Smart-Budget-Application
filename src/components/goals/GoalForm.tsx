@@ -38,9 +38,7 @@ import type { Goal } from '@/types/database.types';
 const goalSchema = z
   .object({
     name: z.string().min(1, 'Goal name is required').max(200).trim(),
-    target_amount: z
-      .number({ error: 'Amount is required' })
-      .positive('Must be greater than 0'),
+    target_amount: z.number({ error: 'Amount is required' }).positive('Must be greater than 0'),
     deadline: z.string().optional().nullable(),
   })
   .refine(
@@ -121,11 +119,11 @@ export function GoalForm({ isOpen, onClose, onSuccess, existingGoal }: GoalFormP
       });
 
       if (!response.ok) {
-        const data = await response.json() as { error?: { message?: string } };
+        const data = (await response.json()) as { error?: { message?: string } };
         throw new Error(data.error?.message ?? 'Request failed');
       }
 
-      const goal = await response.json() as Goal;
+      const goal = (await response.json()) as Goal;
       toast({
         title: isEditMode ? t('updateSuccess') : t('createSuccess'),
         status: 'success',
@@ -154,10 +152,7 @@ export function GoalForm({ isOpen, onClose, onSuccess, existingGoal }: GoalFormP
             <VStack spacing={4}>
               <FormControl isInvalid={!!errors.name}>
                 <FormLabel>{t('name')}</FormLabel>
-                <Input
-                  placeholder={t('namePlaceholder')}
-                  {...register('name')}
-                />
+                <Input placeholder={t('namePlaceholder')} {...register('name')} />
                 <FormErrorMessage>{errors.name?.message}</FormErrorMessage>
               </FormControl>
 
@@ -174,10 +169,7 @@ export function GoalForm({ isOpen, onClose, onSuccess, existingGoal }: GoalFormP
 
               <FormControl isInvalid={!!errors.deadline}>
                 <FormLabel>{t('deadlineOptional')}</FormLabel>
-                <Input
-                  type="date"
-                  {...register('deadline')}
-                />
+                <Input type="date" {...register('deadline')} />
                 <FormErrorMessage>{errors.deadline?.message}</FormErrorMessage>
               </FormControl>
             </VStack>
@@ -186,11 +178,7 @@ export function GoalForm({ isOpen, onClose, onSuccess, existingGoal }: GoalFormP
             <Button variant="ghost" onClick={onClose} isDisabled={isSubmitting}>
               {t('cancel')}
             </Button>
-            <Button
-              type="submit"
-              colorScheme="brand"
-              isLoading={isSubmitting}
-            >
+            <Button type="submit" colorScheme="brand" isLoading={isSubmitting}>
               {t('save')}
             </Button>
           </ModalFooter>

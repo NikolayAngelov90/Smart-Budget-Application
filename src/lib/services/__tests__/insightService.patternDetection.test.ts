@@ -36,14 +36,27 @@ jest.mock('@/lib/utils/logger', () => ({
 // ============================================================================
 
 const fakeTx = {
-  id: 'tx-1', user_id: 'user-abc', category_id: 'cat-1',
-  amount: 100, type: 'expense', date: '2026-06-01', notes: null,
-  currency: 'USD', exchange_rate: null, created_at: '2026-06-01T00:00:00Z', updated_at: '2026-06-01T00:00:00Z',
+  id: 'tx-1',
+  user_id: 'user-abc',
+  category_id: 'cat-1',
+  amount: 100,
+  type: 'expense',
+  date: '2026-06-01',
+  notes: null,
+  currency: 'USD',
+  exchange_rate: null,
+  created_at: '2026-06-01T00:00:00Z',
+  updated_at: '2026-06-01T00:00:00Z',
 };
 
 const fakeCat = {
-  id: 'cat-1', user_id: 'user-abc', name: 'Dining',
-  color: '#000', type: 'expense', is_predefined: false, created_at: '2026-01-01T00:00:00Z',
+  id: 'cat-1',
+  user_id: 'user-abc',
+  name: 'Dining',
+  color: '#000',
+  type: 'expense',
+  is_predefined: false,
+  created_at: '2026-01-01T00:00:00Z',
 };
 
 const txChain = {
@@ -90,7 +103,8 @@ const insightsChain = {
   // re-read at `.order()`, and the sweep at `.lte()` when no fingerprints were
   // produced. Making every method chainable and the object awaitable answers all
   // of them without one terminator having to guess which call it is serving.
-  then: (resolve: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(resolve),
+  then: (resolve: (v: unknown) => unknown) =>
+    Promise.resolve({ data: [], error: null }).then(resolve),
 };
 
 const mockFrom = jest.fn().mockImplementation((table: string) => {
@@ -103,7 +117,9 @@ const mockFrom = jest.fn().mockImplementation((table: string) => {
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn().mockResolvedValue({ from: (...args: unknown[]) => mockFrom(...args) }),
-  createServiceRoleClient: jest.fn().mockReturnValue({ from: (...args: unknown[]) => mockFrom(...args) }),
+  createServiceRoleClient: jest
+    .fn()
+    .mockReturnValue({ from: (...args: unknown[]) => mockFrom(...args) }),
 }));
 
 // ============================================================================
@@ -130,8 +146,6 @@ describe('generateInsights — pattern detection wiring (Story 12.1)', () => {
   it('calls detectNewHighSpendCategories when generateInsights runs with data', async () => {
     const { generateInsights } = await import('@/lib/services/insightService');
     await generateInsights('user-abc', true);
-    expect(mockDetectNewHigh).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'user-abc' })
-    );
+    expect(mockDetectNewHigh).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-abc' }));
   });
 });

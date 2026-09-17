@@ -164,10 +164,7 @@ export type BalanceFlowHeroProps =
   | { period: DashboardPeriod; onPeriodChange: (period: DashboardPeriod) => void }
   | { period?: undefined; onPeriodChange?: undefined };
 
-export function BalanceFlowHero({
-  period: periodProp,
-  onPeriodChange,
-}: BalanceFlowHeroProps = {}) {
+export function BalanceFlowHero({ period: periodProp, onPeriodChange }: BalanceFlowHeroProps = {}) {
   const t = useTranslations('dashboard');
   const [internalPeriod, setInternalPeriod] = useState<DashboardPeriod>('month');
   const period = periodProp ?? internalPeriod;

@@ -40,11 +40,7 @@ const TYPE_LABEL_KEYS: Record<string, string> = {
   new_high_spend_category: 'type_new_high_spend_category',
 };
 
-export function InsightDetailModal({
-  insight,
-  isOpen,
-  onClose,
-}: InsightDetailModalProps) {
+export function InsightDetailModal({ insight, isOpen, onClose }: InsightDetailModalProps) {
   // Responsive modal size: full screen on mobile, xl on desktop
   const modalSize = useBreakpointValue({ base: 'full', md: 'xl' });
   const t = useTranslations('insights');
@@ -57,20 +53,17 @@ export function InsightDetailModal({
   // raw stored columns, which hold English written at generation time — so the
   // Bulgarian UI switched languages the moment an insight was opened. Placed
   // below the guard because it is a plain function, not a hook.
-  const { title: localizedTitle, description: localizedDescription } =
-    getLocalizedInsightText(insight, t, preferences?.currency_format);
+  const { title: localizedTitle, description: localizedDescription } = getLocalizedInsightText(
+    insight,
+    t,
+    preferences?.currency_format
+  );
 
   const tone = getInsightToneTokens(insight.type);
   const labelKey = TYPE_LABEL_KEYS[insight.type];
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size={modalSize}
-      scrollBehavior="inside"
-      isCentered
-    >
+    <Modal isOpen={isOpen} onClose={onClose} size={modalSize} scrollBehavior="inside" isCentered>
       <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(4px)" />
       <ModalContent
         // `viewportFit: 'cover'` (layout.tsx) puts the content box at the
@@ -111,24 +104,11 @@ export function InsightDetailModal({
             <Text fontSize={{ base: 'lg', md: 'xl' }} fontWeight="bold" flex="1">
               {localizedTitle}
             </Text>
-            <Badge
-              bg={tone.subtle}
-              color={tone.fg}
-              fontSize="sm"
-              px={3}
-              py={1}
-              borderRadius="md"
-            >
+            <Badge bg={tone.subtle} color={tone.fg} fontSize="sm" px={3} py={1} borderRadius="md">
               {labelKey ? t(labelKey) : insight.type}
             </Badge>
           </HStack>
-          <Text
-            fontSize="sm"
-            color="fg.muted"
-            fontWeight="normal"
-            mt={2}
-            lineHeight="base"
-          >
+          <Text fontSize="sm" color="fg.muted" fontWeight="normal" mt={2} lineHeight="base">
             {localizedDescription}
           </Text>
         </ModalHeader>

@@ -162,9 +162,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const pending = users.filter(
-      (u) => !alreadyDelivered.has(`${u.user_id}:${u.last_log_date}`)
-    );
+    const pending = users.filter((u) => !alreadyDelivered.has(`${u.user_id}:${u.last_log_date}`));
 
     // 4. Dispatch through the gate (opt-in toggle + quiet hours enforced
     //    there). The gate never throws — outcomes are the honest telemetry.
@@ -173,7 +171,7 @@ export async function GET(request: NextRequest) {
         const outcome = await dispatchCategorizedPush(row.user_id, 'reengagement', {
           type: 'comeback',
           title: 'Your streak is waiting',
-          body: "We saved your progress — log a transaction to pick up where you left off.",
+          body: 'We saved your progress — log a transaction to pick up where you left off.',
           data: { url: '/dashboard' },
         });
 

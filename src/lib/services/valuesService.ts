@@ -9,7 +9,11 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
-import type { ValueWithCategories, CreateValueInput, UpdateValueInput } from '@/types/database.types';
+import type {
+  ValueWithCategories,
+  CreateValueInput,
+  UpdateValueInput,
+} from '@/types/database.types';
 
 const NAME_MAX = 50;
 
@@ -63,7 +67,10 @@ export async function getValuesPlan(userId: string): Promise<ValueWithCategories
 }
 
 /** Creates a value (appended at the end of the priority order) + optional category mappings. */
-export async function createValue(userId: string, input: CreateValueInput): Promise<ValueWithCategories> {
+export async function createValue(
+  userId: string,
+  input: CreateValueInput
+): Promise<ValueWithCategories> {
   const name = validName(input.name);
   const supabase = await createClient();
 
@@ -89,20 +96,29 @@ export async function createValue(userId: string, input: CreateValueInput): Prom
   }
 
   const categoryIds = input.categoryIds ?? [];
-  const stored = categoryIds.length > 0 ? await replaceValueCategories(userId, value.id, categoryIds) : [];
+  const stored =
+    categoryIds.length > 0 ? await replaceValueCategories(userId, value.id, categoryIds) : [];
 
   return { id: value.id, name: value.name, priority: value.priority, category_ids: stored };
 }
 
 /** Updates a value's name and/or priority (owner-scoped). */
-export async function updateValue(userId: string, valueId: string, input: UpdateValueInput): Promise<void> {
+export async function updateValue(
+  userId: string,
+  valueId: string,
+  input: UpdateValueInput
+): Promise<void> {
   const updates: { name?: string; priority?: number } = {};
   if (input.name !== undefined) updates.name = validName(input.name);
   if (input.priority !== undefined) updates.priority = input.priority;
   if (Object.keys(updates).length === 0) return;
 
   const supabase = await createClient();
-  const { error } = await supabase.from('user_values').update(updates).eq('id', valueId).eq('user_id', userId);
+  const { error } = await supabase
+    .from('user_values')
+    .update(updates)
+    .eq('id', valueId)
+    .eq('user_id', userId);
   if (error) {
     if (error.code === '23505') throw new Error('A value with that name already exists');
     logger.error('ValuesService', `update value failed: ${error.message}`);
@@ -111,7 +127,11 @@ export async function updateValue(userId: string, valueId: string, input: Update
 }
 
 /** Replaces the set of categories mapped to a value. */
-export async function setValueCategories(userId: string, valueId: string, categoryIds: string[]): Promise<void> {
+export async function setValueCategories(
+  userId: string,
+  valueId: string,
+  categoryIds: string[]
+): Promise<void> {
   const supabase = await createClient();
   // Confirm the value is the caller's (RLS would also block, but a clean 404 is nicer).
   const { data: value } = await supabase
@@ -125,7 +145,11 @@ export async function setValueCategories(userId: string, valueId: string, catego
 }
 
 /** Internal: delete existing mappings for a value, then insert the new (visible) set. Returns the ids stored. */
-async function replaceValueCategories(userId: string, valueId: string, categoryIds: string[]): Promise<string[]> {
+async function replaceValueCategories(
+  userId: string,
+  valueId: string,
+  categoryIds: string[]
+): Promise<string[]> {
   const supabase = await createClient();
   const { error: delError } = await supabase
     .from('value_categories')
@@ -165,7 +189,11 @@ async function replaceValueCategories(userId: string, valueId: string, categoryI
 /** Deletes a value (cascade removes its mappings). */
 export async function deleteValue(userId: string, valueId: string): Promise<void> {
   const supabase = await createClient();
-  const { error } = await supabase.from('user_values').delete().eq('id', valueId).eq('user_id', userId);
+  const { error } = await supabase
+    .from('user_values')
+    .delete()
+    .eq('id', valueId)
+    .eq('user_id', userId);
   if (error) {
     logger.error('ValuesService', `delete value failed: ${error.message}`);
     throw new Error('Failed to delete value');

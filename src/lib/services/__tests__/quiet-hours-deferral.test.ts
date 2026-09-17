@@ -22,10 +22,7 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 import { isWithinQuietHours, localHourIn } from '@/lib/services/pushService';
-import {
-  dayPeriodKey,
-  weekPeriodKey,
-} from '@/lib/services/notificationDeliveryService';
+import { dayPeriodKey, weekPeriodKey } from '@/lib/services/notificationDeliveryService';
 
 /** 09:00 UTC — inside a 22-08 window for Sofia (12:00 local), outside for UTC. */
 const AT_0900_UTC = new Date('2026-07-15T09:00:00Z');
@@ -64,9 +61,7 @@ describe('isWithinQuietHours', () => {
     expect(isWithinQuietHours(22, 8, 'UTC', AT_0900_UTC)).toBe(false);
     // For Sofia it is 12:00 — also not quiet. But the point is that the SAME
     // instant is evaluated against a different local hour.
-    expect(localHourIn('Europe/Sofia', AT_0900_UTC)).not.toBe(
-      localHourIn('UTC', AT_0900_UTC)
-    );
+    expect(localHourIn('Europe/Sofia', AT_0900_UTC)).not.toBe(localHourIn('UTC', AT_0900_UTC));
   });
 
   it('is quiet for a Sofia user when it is their night, not UTC night', () => {

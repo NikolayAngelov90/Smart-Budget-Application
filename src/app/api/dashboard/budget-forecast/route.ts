@@ -33,10 +33,7 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: { message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
     // The server runs UTC; `transactions.date` holds the client's LOCAL day, so
@@ -71,10 +68,7 @@ export async function GET(request: NextRequest) {
         .gte('date', threeMonthsAgo)
         .lt('date', currentMonthStart),
 
-      supabase
-        .from('categories')
-        .select('*')
-        .eq('user_id', user.id),
+      supabase.from('categories').select('*').eq('user_id', user.id),
 
       // ADR-025: explicit personal budget limits (fallback to averages when absent)
       supabase
@@ -92,14 +86,21 @@ export async function GET(request: NextRequest) {
     // 032 migration isn't applied yet), degrade to the historical-average fallback
     // instead of taking the whole forecast down — same policy as the nudge path.
     if (budgetsResult.error) {
-      logger.warn('BudgetForecastAPI', 'category_budgets unavailable, using averages:', budgetsResult.error);
+      logger.warn(
+        'BudgetForecastAPI',
+        'category_budgets unavailable, using averages:',
+        budgetsResult.error
+      );
     }
 
     const currentMonthTransactions = currentResult.data ?? [];
     const historicalTransactions = historicalResult.data ?? [];
     const categories = categoriesResult.data ?? [];
     const budgets = new Map<string, number>(
-      (budgetsResult.error ? [] : (budgetsResult.data ?? [])).map((b) => [b.category_id, b.limit_amount])
+      (budgetsResult.error ? [] : (budgetsResult.data ?? [])).map((b) => [
+        b.category_id,
+        b.limit_amount,
+      ])
     );
 
     if (currentMonthTransactions.length === 0) {

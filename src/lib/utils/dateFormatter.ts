@@ -63,9 +63,7 @@ export function formatDate(
     return 'Invalid date';
   }
 
-  const formatString = short
-    ? SHORT_DATE_FORMAT_MAP[dateFormat]
-    : DATE_FORMAT_MAP[dateFormat];
+  const formatString = short ? SHORT_DATE_FORMAT_MAP[dateFormat] : DATE_FORMAT_MAP[dateFormat];
 
   const locale = getDateLocale(language);
   return format(dateObj, formatString, locale ? { locale } : undefined);

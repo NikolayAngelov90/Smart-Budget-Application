@@ -26,7 +26,10 @@ import type {
 // ============================================================================
 
 /** Frequency interval ranges in days for classification */
-const FREQUENCY_RANGES: Record<SubscriptionFrequency, { min: number; max: number; nominal: number }> = {
+const FREQUENCY_RANGES: Record<
+  SubscriptionFrequency,
+  { min: number; max: number; nominal: number }
+> = {
   weekly: { min: 5, max: 9, nominal: 7 },
   monthly: { min: 25, max: 35, nominal: 30 },
   quarterly: { min: 80, max: 100, nominal: 90 },
@@ -37,7 +40,7 @@ const FREQUENCY_RANGES: Record<SubscriptionFrequency, { min: number; max: number
 const MIN_TRANSACTIONS_FOR_DETECTION = 3;
 
 /** Amount tolerance for matching (±10%) */
-const AMOUNT_TOLERANCE = 0.10;
+const AMOUNT_TOLERANCE = 0.1;
 
 /** Unused threshold: flag if overdue by >1.5x the frequency interval */
 const UNUSED_MULTIPLIER = 1.5;
@@ -71,9 +74,7 @@ export function normalizeMerchant(notes: string): string {
  * Classify the subscription frequency based on median interval between transactions.
  * Returns null if no consistent frequency pattern is found.
  */
-export function classifyFrequency(
-  intervals: number[]
-): SubscriptionFrequency | null {
+export function classifyFrequency(intervals: number[]): SubscriptionFrequency | null {
   if (intervals.length === 0) return null;
 
   // Sort and take median (length already checked > 0 above)
@@ -83,9 +84,7 @@ export function classifyFrequency(
   for (const [freq, range] of Object.entries(FREQUENCY_RANGES)) {
     if (median >= range.min && median <= range.max) {
       // Check consistency: >60% of intervals should fall in range
-      const matchingCount = intervals.filter(
-        (i) => i >= range.min && i <= range.max
-      ).length;
+      const matchingCount = intervals.filter((i) => i >= range.min && i <= range.max).length;
       const ratio = matchingCount / intervals.length;
 
       if (ratio >= MIN_CONSISTENCY_RATIO) {
@@ -119,9 +118,7 @@ interface MerchantGroup {
  * Group transactions by normalized merchant name.
  * Only includes expense transactions with notes (merchant info).
  */
-function groupByMerchant(
-  transactions: Transaction[]
-): Map<string, MerchantGroup> {
+function groupByMerchant(transactions: Transaction[]): Map<string, MerchantGroup> {
   const groups = new Map<string, MerchantGroup>();
 
   for (const tx of transactions) {
@@ -148,9 +145,7 @@ function groupByMerchant(
  * Detect subscriptions from a user's transaction history.
  * Analyzes 3-6 months of expense transactions for recurring patterns.
  */
-export async function detectSubscriptions(
-  userId: string
-): Promise<DetectedSubscriptionInsert[]> {
+export async function detectSubscriptions(userId: string): Promise<DetectedSubscriptionInsert[]> {
   const supabase = createServiceRoleClient();
   const sixMonthsAgo = toLocalISODate(subMonths(new Date(), 6));
 
@@ -198,9 +193,7 @@ export async function detectSubscriptions(
     const medianAmount = sortedAmounts[Math.floor(sortedAmounts.length / 2)] as number;
 
     // Verify amounts are within tolerance of median
-    const consistentAmounts = amounts.filter((a) =>
-      amountsMatch(a, medianAmount)
-    );
+    const consistentAmounts = amounts.filter((a) => amountsMatch(a, medianAmount));
     if (consistentAmounts.length / amounts.length < MIN_CONSISTENCY_RATIO) {
       continue;
     }
@@ -246,9 +239,7 @@ export async function detectSubscriptions(
           .eq('id', existing.id);
       }
     } else {
-      await supabase
-        .from('detected_subscriptions')
-        .insert(sub);
+      await supabase.from('detected_subscriptions').insert(sub);
     }
   }
 
@@ -309,7 +300,6 @@ export async function getSubscriptionsForUser(
   supabase: SupabaseClient,
   userId: string
 ): Promise<DetectedSubscription[]> {
-
   const { data, error } = await supabase
     .from('detected_subscriptions')
     .select('*')
@@ -337,7 +327,6 @@ export async function updateSubscriptionStatus(
   subscriptionId: string,
   status: 'dismissed' | 'kept'
 ): Promise<DetectedSubscription | null> {
-
   // Verify subscription belongs to user
   const { data: existing, error: fetchError } = await supabase
     .from('detected_subscriptions')

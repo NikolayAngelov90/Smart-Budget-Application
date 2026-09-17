@@ -34,8 +34,7 @@ import { SubscriptionItem } from './SubscriptionItem';
 export function SubscriptionGraveyard() {
   const t = useTranslations('subscriptions');
   const toast = useToast();
-  const { subscriptions, hasHistory, isLoading, error, mutate } =
-    useSubscriptions();
+  const { subscriptions, hasHistory, isLoading, error, mutate } = useSubscriptions();
   const { isUnlocked } = useFeatureDisclosure();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 

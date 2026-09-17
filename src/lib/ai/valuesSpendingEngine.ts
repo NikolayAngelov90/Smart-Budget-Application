@@ -9,7 +9,11 @@
  * only produces numbers + flags so it is trivially unit-testable.
  */
 
-import type { ValueWithCategories, ValueSpendRow, ValuesSpendingView } from '@/types/database.types';
+import type {
+  ValueWithCategories,
+  ValueSpendRow,
+  ValuesSpendingView,
+} from '@/types/database.types';
 
 export interface ValuesSpendingInput {
   /** The user's values in PRIORITY order (index 0 = highest priority). */
@@ -40,7 +44,8 @@ function trend(
   if (previous < BASELINE_FLOOR) return { trendDirection: 'flat', trendPct: 0 };
   const pct = ((current - previous) / previous) * 100;
   if (pct >= TREND_THRESHOLD_PCT) return { trendDirection: 'up', trendPct: Math.round(pct) };
-  if (pct <= -TREND_THRESHOLD_PCT) return { trendDirection: 'down', trendPct: Math.round(Math.abs(pct)) };
+  if (pct <= -TREND_THRESHOLD_PCT)
+    return { trendDirection: 'down', trendPct: Math.round(Math.abs(pct)) };
   return { trendDirection: 'flat', trendPct: 0 };
 }
 
@@ -59,7 +64,9 @@ export function computeValuesSpending(input: ValuesSpendingInput): ValuesSpendin
   const totalSpend = Object.values(currentByCategory).reduce((acc, n) => acc + n, 0);
 
   // Spend rank (1 = highest current spend) for the misalignment comparison.
-  const spendByValueId = new Map(values.map((v) => [v.id, sumOver(v.category_ids, currentByCategory)]));
+  const spendByValueId = new Map(
+    values.map((v) => [v.id, sumOver(v.category_ids, currentByCategory)])
+  );
   const spendRankById = new Map<string, number>();
   [...values]
     .sort((a, b) => (spendByValueId.get(b.id) ?? 0) - (spendByValueId.get(a.id) ?? 0))
@@ -71,7 +78,8 @@ export function computeValuesSpending(input: ValuesSpendingInput): ValuesSpendin
     const percentage = totalSpend > 0 ? Math.round((amount / totalSpend) * 100) : 0;
     const priorityRank = i + 1;
     const spendRank = spendRankById.get(v.id) ?? priorityRank;
-    const misaligned = percentage >= MISALIGN_SHARE_PCT && priorityRank - spendRank >= MISALIGN_RANK_GAP;
+    const misaligned =
+      percentage >= MISALIGN_SHARE_PCT && priorityRank - spendRank >= MISALIGN_RANK_GAP;
     return {
       id: v.id,
       name: v.name,

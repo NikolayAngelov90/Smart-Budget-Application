@@ -38,7 +38,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json().catch(() => null);
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'A valid name or priority is required' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'A valid name or priority is required' } },
+        { status: 400 }
+      );
     }
 
     await updateValue(user.id, id, parsed.data);
@@ -55,7 +58,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = await createClient();
     const {

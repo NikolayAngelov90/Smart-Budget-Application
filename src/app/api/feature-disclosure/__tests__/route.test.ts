@@ -83,7 +83,9 @@ describe('GET /api/feature-disclosure', () => {
   });
 
   it('respects the disclosure_show_all pref (unlocks all, no forced intros)', async () => {
-    mockCreateClient.mockResolvedValue(makeClient({ id: 'u-1' }, { disclosure_show_all: true }) as never);
+    mockCreateClient.mockResolvedValue(
+      makeClient({ id: 'u-1' }, { disclosure_show_all: true }) as never
+    );
     mockGetFeatureState.mockResolvedValue({
       transactions_count: 0,
       days_active: 0,
@@ -93,7 +95,9 @@ describe('GET /api/feature-disclosure', () => {
 
     const res = await GET();
     const body = await res.json();
-    expect(body.unlocked).toEqual(expect.arrayContaining(['heatmap', 'projections', 'subscriptions']));
+    expect(body.unlocked).toEqual(
+      expect.arrayContaining(['heatmap', 'projections', 'subscriptions'])
+    );
     expect(body.pending).toEqual([]);
   });
 
@@ -105,7 +109,9 @@ describe('GET /api/feature-disclosure', () => {
   });
 
   it('500s on a PREFS read failure — never caches an all-locked state for a show-all user (15-7 review)', async () => {
-    mockCreateClient.mockResolvedValue(makeClient({ id: 'u-1' }, {}, { message: 'prefs down' }) as never);
+    mockCreateClient.mockResolvedValue(
+      makeClient({ id: 'u-1' }, {}, { message: 'prefs down' }) as never
+    );
     mockGetFeatureState.mockResolvedValue({
       transactions_count: 0,
       days_active: 0,

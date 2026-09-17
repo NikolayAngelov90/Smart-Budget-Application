@@ -11,23 +11,20 @@ jest.mock('next-intl', () => ({
   useTranslations: () => (key: string) => {
     const map: Record<string, string> = {
       compact: 'For educational purposes only — not licensed financial advice.',
-      full: 'Smart Budget\'s AI-generated insights ... not licensed financial advice ... Consult a qualified financial professional before making important financial decisions.',
+      full: "Smart Budget's AI-generated insights ... not licensed financial advice ... Consult a qualified financial professional before making important financial decisions.",
       settingsHeading: 'About AI Insights',
     };
     return map[key] ?? key;
   },
 }));
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 describe('FinancialDisclaimer', () => {
   describe('compact variant (default)', () => {
     it('renders the compact disclaimer text', () => {
       renderWithChakra(<FinancialDisclaimer />);
-      expect(
-        screen.getByText(/not licensed financial advice/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/not licensed financial advice/i)).toBeInTheDocument();
     });
 
     it('mentions educational purposes', () => {
@@ -44,9 +41,7 @@ describe('FinancialDisclaimer', () => {
   describe('full variant', () => {
     it('renders the full disclaimer text', () => {
       renderWithChakra(<FinancialDisclaimer variant="full" />);
-      expect(
-        screen.getByText(/Consult a qualified financial professional/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Consult a qualified financial professional/i)).toBeInTheDocument();
     });
 
     it('renders inside an accessible note region', () => {

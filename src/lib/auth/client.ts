@@ -34,10 +34,7 @@ import { clearOfflineCache } from '@/lib/services/offlineService';
  * }
  * ```
  */
-export async function signIn(
-  email: string,
-  password: string
-): Promise<AuthResponse> {
+export async function signIn(email: string, password: string): Promise<AuthResponse> {
   const supabase = createClient();
   return supabase.auth.signInWithPassword({ email, password });
 }
@@ -64,10 +61,7 @@ export async function signIn(
  * }
  * ```
  */
-export async function signUp(
-  email: string,
-  password: string
-): Promise<AuthResponse> {
+export async function signUp(email: string, password: string): Promise<AuthResponse> {
   const supabase = createClient();
   return supabase.auth.signUp({ email, password });
 }
@@ -92,10 +86,7 @@ export async function signUp(
  * }
  * ```
  */
-export async function signInWithOAuth(
-  provider: Provider,
-  redirectTo?: string
-): Promise<void> {
+export async function signInWithOAuth(provider: Provider, redirectTo?: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -203,10 +194,7 @@ export async function getSession() {
  * ```
  */
 export function onAuthStateChange(
-  callback: (
-    event: string,
-    session: Awaited<ReturnType<typeof getSession>>
-  ) => void
+  callback: (event: string, session: Awaited<ReturnType<typeof getSession>>) => void
 ) {
   const supabase = createClient();
   const {

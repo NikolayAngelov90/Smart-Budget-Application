@@ -28,7 +28,10 @@ const updateCategorySchema = z.object({
       message: 'Only letters, numbers, and spaces allowed',
     })
     .optional(),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format')
+    .optional(),
   // Story 13.4: per-category transparency (owner-only — enforced below)
   visibility_level: z.enum(['shared', 'category_only', 'private']).optional(),
 });
@@ -37,10 +40,7 @@ const updateCategorySchema = z.object({
  * PUT /api/categories/:id
  * Update custom category (name and/or color only)
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient();
     const { id } = await params;
@@ -83,10 +83,7 @@ export async function PUT(
 
     // Prevent modification of predefined categories
     if (existingCategory.is_predefined) {
-      return NextResponse.json(
-        { error: 'Cannot modify predefined categories' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Cannot modify predefined categories' }, { status: 403 });
     }
 
     // Story 13.4: visibility is the owner's privacy control — only the category creator
@@ -133,7 +130,11 @@ export async function PUT(
     }
 
     // Build update object (only include fields that are provided)
-    const updates: { name?: string; color?: string; visibility_level?: 'shared' | 'category_only' | 'private' } = {};
+    const updates: {
+      name?: string;
+      color?: string;
+      visibility_level?: 'shared' | 'category_only' | 'private';
+    } = {};
     if (name !== undefined) updates.name = name;
     if (color !== undefined) updates.color = color;
     if (visibility_level !== undefined) updates.visibility_level = visibility_level;
@@ -148,10 +149,7 @@ export async function PUT(
 
     if (updateError) {
       logger.error('Categories', 'Error updating category:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update category' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to update category' }, { status: 500 });
     }
 
     return NextResponse.json({ data: updatedCategory }, { status: 200 });
@@ -214,10 +212,7 @@ export async function DELETE(
 
     // Prevent deletion of predefined categories
     if (category.is_predefined) {
-      return NextResponse.json(
-        { error: 'Cannot delete predefined categories' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Cannot delete predefined categories' }, { status: 403 });
     }
 
     // DW-5 #3 + #4: a shared category belongs to the household, so deleting it
@@ -276,10 +271,7 @@ export async function DELETE(
 
     if (countError) {
       logger.error('Categories', 'Error counting transactions:', countError);
-      return NextResponse.json(
-        { error: 'Failed to check transaction usage' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to check transaction usage' }, { status: 500 });
     }
 
     // In use → reassign the transactions to a same-type category before deleting.
@@ -311,10 +303,7 @@ export async function DELETE(
         .single();
 
       if (targetError || !target) {
-        return NextResponse.json(
-          { error: 'Target category not found' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Target category not found' }, { status: 400 });
       }
       if (target.type !== category.type) {
         return NextResponse.json(
@@ -330,25 +319,16 @@ export async function DELETE(
 
       if (reassignError) {
         logger.error('Categories', 'Error reassigning transactions:', reassignError);
-        return NextResponse.json(
-          { error: 'Failed to reassign transactions' },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to reassign transactions' }, { status: 500 });
       }
     }
 
     // Delete category (RLS enforces own personal OR shared-in-household)
-    const { error: deleteError } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', id);
+    const { error: deleteError } = await supabase.from('categories').delete().eq('id', id);
 
     if (deleteError) {
       logger.error('Categories', 'Error deleting category:', deleteError);
-      return NextResponse.json(
-        { error: 'Failed to delete category' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 });
     }
 
     return NextResponse.json(

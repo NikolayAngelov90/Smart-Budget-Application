@@ -46,12 +46,17 @@ export async function listHouseholdMembers(userId: string): Promise<HouseholdMem
   const householdId = membership?.household_id ?? null;
   if (!householdId) return [];
 
-  const { data, error } = await supabase.rpc('household_members_list', { p_household_id: householdId });
+  const { data, error } = await supabase.rpc('household_members_list', {
+    p_household_id: householdId,
+  });
   if (error) {
     logger.error('HouseholdMemberService', `members list RPC failed: ${error.message}`);
     throw new Error('Failed to load household members');
   }
-  return (data ?? []).map((row) => ({ ...row, isSelf: row.user_id === userId })) as HouseholdMemberListEntry[];
+  return (data ?? []).map((row) => ({
+    ...row,
+    isSelf: row.user_id === userId,
+  })) as HouseholdMemberListEntry[];
 }
 
 /**
@@ -122,7 +127,11 @@ export async function removeMember(adminUserId: string, targetUserId: string): P
 
   // Best-effort: notify the removed member. Never fail the removal on a push error.
   try {
-    const { data: household } = await admin.from('households').select('name').eq('id', householdId).maybeSingle();
+    const { data: household } = await admin
+      .from('households')
+      .select('name')
+      .eq('id', householdId)
+      .maybeSingle();
     const householdName = (household as { name?: string } | null)?.name ?? 'a household';
     // Story 15.5: through the central gate ('household' toggle + quiet hours)
     await dispatchCategorizedPush(targetUserId, 'household', {

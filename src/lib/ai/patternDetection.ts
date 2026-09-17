@@ -43,7 +43,9 @@ function categoryTotalForMonth(
   return transactions
     .filter((t) => {
       const d = parseISO(t.date);
-      return t.category_id === categoryId && t.type === 'expense' && d >= monthStart && d <= monthEnd;
+      return (
+        t.category_id === categoryId && t.type === 'expense' && d >= monthStart && d <= monthEnd
+      );
     })
     .reduce((sum, t) => sum + t.amount, 0);
 }
@@ -74,7 +76,13 @@ export function detectSpendingAnomalies(input: PatternDetectionInput): InsightIn
   const m2Start = startOfMonth(subMonths(currentMonth, 2));
   const m2End = endOfMonth(subMonths(currentMonth, 2));
 
-  const anomalies: Array<{ categoryId: string; categoryName: string; currentTotal: number; baseline: number; pctAbove: number }> = [];
+  const anomalies: Array<{
+    categoryId: string;
+    categoryName: string;
+    currentTotal: number;
+    baseline: number;
+    pctAbove: number;
+  }> = [];
 
   for (const category of categories) {
     const m0Total = categoryTotalForMonth(transactions, category.id, m0Start, m0End);
@@ -94,7 +102,13 @@ export function detectSpendingAnomalies(input: PatternDetectionInput): InsightIn
     // Threshold: current month must be ≥50% above 2-month average
     if (pctAbove < 50) continue;
 
-    anomalies.push({ categoryId: category.id, categoryName: category.name, currentTotal: m0Total, baseline, pctAbove });
+    anomalies.push({
+      categoryId: category.id,
+      categoryName: category.name,
+      currentTotal: m0Total,
+      baseline,
+      pctAbove,
+    });
   }
 
   // Sort by severity (largest spike first), cap at 3

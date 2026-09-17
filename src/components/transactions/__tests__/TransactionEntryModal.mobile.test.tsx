@@ -89,11 +89,7 @@ global.fetch = jest.fn().mockResolvedValue({
 const renderModal = () =>
   render(
     <ChakraProvider>
-      <TransactionEntryModal
-        isOpen={true}
-        onClose={jest.fn()}
-        onSuccess={jest.fn()}
-      />
+      <TransactionEntryModal isOpen={true} onClose={jest.fn()} onSuccess={jest.fn()} />
     </ChakraProvider>
   );
 
@@ -110,30 +106,21 @@ describe('TransactionEntryModal — mobile optimizations (AC-10.8.7)', () => {
   it('amount input has inputMode="decimal"', async () => {
     renderModal();
 
-    const amountInput = await waitFor(
-      () => screen.getByPlaceholderText('0.00'),
-      { timeout: 3000 }
-    );
+    const amountInput = await waitFor(() => screen.getByPlaceholderText('0.00'), { timeout: 3000 });
     expect(amountInput).toHaveAttribute('inputMode', 'decimal');
   });
 
   it('amount input has autoComplete="off"', async () => {
     renderModal();
 
-    const amountInput = await waitFor(
-      () => screen.getByPlaceholderText('0.00'),
-      { timeout: 3000 }
-    );
+    const amountInput = await waitFor(() => screen.getByPlaceholderText('0.00'), { timeout: 3000 });
     expect(amountInput).toHaveAttribute('autoComplete', 'off');
   });
 
   it('amount input has autoCorrect="off"', async () => {
     renderModal();
 
-    const amountInput = await waitFor(
-      () => screen.getByPlaceholderText('0.00'),
-      { timeout: 3000 }
-    );
+    const amountInput = await waitFor(() => screen.getByPlaceholderText('0.00'), { timeout: 3000 });
     expect(amountInput).toHaveAttribute('autoCorrect', 'off');
   });
 });

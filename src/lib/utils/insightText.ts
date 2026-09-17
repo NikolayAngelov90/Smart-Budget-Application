@@ -34,7 +34,11 @@ export function getLocalizedInsightText(
 
   switch (insight.type) {
     case 'spending_increase': {
-      if (meta?.percent_change != null && meta?.current_amount != null && meta?.previous_amount != null) {
+      if (
+        meta?.percent_change != null &&
+        meta?.current_amount != null &&
+        meta?.previous_amount != null
+      ) {
         return {
           title: t('spending_increase_title', {
             categoryName,

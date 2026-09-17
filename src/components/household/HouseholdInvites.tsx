@@ -97,11 +97,7 @@ export function HouseholdInvites() {
         {t('heading')}
       </Heading>
 
-      <Stack
-        direction={{ base: 'column', sm: 'row' }}
-        spacing={2}
-        mb={pending.length > 0 ? 4 : 0}
-      >
+      <Stack direction={{ base: 'column', sm: 'row' }} spacing={2} mb={pending.length > 0 ? 4 : 0}>
         <Input
           type="email"
           value={email}

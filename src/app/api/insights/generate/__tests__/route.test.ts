@@ -81,10 +81,9 @@ describe('POST /api/insights/generate', () => {
     mockCheckRateLimit.mockResolvedValueOnce({ exceeded: false });
     mockGenerateInsights.mockResolvedValueOnce([{ id: '1', title: 'Insight 1' }]);
 
-    const request = new NextRequest(
-      'http://localhost/api/insights/generate?forceRegenerate=true',
-      { method: 'POST' }
-    );
+    const request = new NextRequest('http://localhost/api/insights/generate?forceRegenerate=true', {
+      method: 'POST',
+    });
     const response = await POST(request);
     const data = await response.json();
 
@@ -104,10 +103,9 @@ describe('POST /api/insights/generate', () => {
       remainingSeconds: 180,
     });
 
-    const request = new NextRequest(
-      'http://localhost/api/insights/generate?forceRegenerate=true',
-      { method: 'POST' }
-    );
+    const request = new NextRequest('http://localhost/api/insights/generate?forceRegenerate=true', {
+      method: 'POST',
+    });
     const response = await POST(request);
     const data = await response.json();
 

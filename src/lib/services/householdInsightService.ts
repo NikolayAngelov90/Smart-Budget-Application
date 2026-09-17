@@ -21,7 +21,10 @@ function isoDate(d: Date): string {
 /**
  * Returns household insights for the caller's household (empty if none / no meaningful change).
  */
-export async function getHouseholdInsights(userId: string, now: Date = new Date()): Promise<HouseholdInsight[]> {
+export async function getHouseholdInsights(
+  userId: string,
+  now: Date = new Date()
+): Promise<HouseholdInsight[]> {
   const supabase = await createClient();
 
   const { data: membership } = await supabase
@@ -56,13 +59,21 @@ export async function getHouseholdInsights(userId: string, now: Date = new Date(
   ]);
 
   if (currentRes.error || previousRes.error) {
-    logger.error('HouseholdInsightService', `period totals RPC failed: ${currentRes.error?.message ?? previousRes.error?.message}`);
+    logger.error(
+      'HouseholdInsightService',
+      `period totals RPC failed: ${currentRes.error?.message ?? previousRes.error?.message}`
+    );
     throw new Error('Failed to load household spending');
   }
 
-  const { data: profile } = await supabase.from('user_profiles').select('preferences').eq('id', userId).maybeSingle();
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('preferences')
+    .eq('id', userId)
+    .maybeSingle();
   const prefs = (profile?.preferences ?? {}) as { currency_format?: unknown };
-  const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
+  const currency =
+    typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
 
   return generateHouseholdInsights({
     currency,

@@ -70,95 +70,93 @@ export async function GET(request: NextRequest) {
       contributedGoalsResult,
       streakResult,
     ] = await Promise.all([
-        supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('type', 'expense')
-          .gte('date', currentMonthStart)
-          .lte('date', currentMonthEnd),
+      supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'expense')
+        .gte('date', currentMonthStart)
+        .lte('date', currentMonthEnd),
 
-        supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('type', 'expense')
-          .gte('date', threeMonthsAgo)
-          .lt('date', currentMonthStart),
+      supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'expense')
+        .gte('date', threeMonthsAgo)
+        .lt('date', currentMonthStart),
 
-        supabase.from('categories').select('*').eq('user_id', user.id),
+      supabase.from('categories').select('*').eq('user_id', user.id),
 
-        // ADR-025 explicit limits — enrichment, degrade on error
-        supabase
-          .from('category_budgets')
-          .select('category_id, limit_amount')
-          .eq('user_id', user.id)
-          .eq('period', 'monthly')
-          .is('household_id', null),
+      // ADR-025 explicit limits — enrichment, degrade on error
+      supabase
+        .from('category_budgets')
+        .select('category_id, limit_amount')
+        .eq('user_id', user.id)
+        .eq('period', 'monthly')
+        .is('household_id', null),
 
-        // ALL own goals — the score factor needs only unexpired ones (filtered
-        // in code below; DATE strings compare lexicographically), but the
-        // achievement evaluation must see expired goals too: unlocks are
-        // once-ever, and a goal reached ON its deadline day must still count
-        // (15-3 review MED — the old server-side .gt filter permanently lost
-        // first_goal/goal_reached for goals that expired before the next
-        // dashboard visit). Own goals are few; no LIMIT starvation risk here.
-        // goals aren't in the typed Database schema (13-9 gotcha) — generic client.
-        (supabase as unknown as SupabaseClient).from('goals').select('*').eq('user_id', user.id),
+      // ALL own goals — the score factor needs only unexpired ones (filtered
+      // in code below; DATE strings compare lexicographically), but the
+      // achievement evaluation must see expired goals too: unlocks are
+      // once-ever, and a goal reached ON its deadline day must still count
+      // (15-3 review MED — the old server-side .gt filter permanently lost
+      // first_goal/goal_reached for goals that expired before the next
+      // dashboard visit). Own goals are few; no LIMIT starvation risk here.
+      // goals aren't in the typed Database schema (13-9 gotcha) — generic client.
+      (supabase as unknown as SupabaseClient).from('goals').select('*').eq('user_id', user.id),
 
-        // DW-6: SHARED goals this user has contributed to.
-        //
-        // Kept as a SEPARATE query rather than widening the one above, because
-        // that one also feeds the score's consistency factor and Story 15-2
-        // deliberately scopes the SCORE to personal goals. Only the achievement
-        // evaluation may see shared goals; the number must not move.
-        //
-        // Two layers keep this from leaking anything: `household_id IS NOT NULL`
-        // excludes every personal goal, and the 027 dual-path SELECT policy only
-        // exposes shared goals in the caller's OWN household. Participation comes
-        // from `goal_contributions`, never from household membership — otherwise
-        // every member would earn every shared goal's badge and the achievement
-        // would stop meaning anything (AC3).
-        //
-        // Enrichment: a failure must warn and degrade, never 500 the score.
-        (async () => {
-          try {
-            const client = supabase as unknown as SupabaseClient;
-            const { data: contributions, error: contribError } = await client
-              .from('goal_contributions')
-              .select('goal_id')
-              .eq('user_id', user.id);
+      // DW-6: SHARED goals this user has contributed to.
+      //
+      // Kept as a SEPARATE query rather than widening the one above, because
+      // that one also feeds the score's consistency factor and Story 15-2
+      // deliberately scopes the SCORE to personal goals. Only the achievement
+      // evaluation may see shared goals; the number must not move.
+      //
+      // Two layers keep this from leaking anything: `household_id IS NOT NULL`
+      // excludes every personal goal, and the 027 dual-path SELECT policy only
+      // exposes shared goals in the caller's OWN household. Participation comes
+      // from `goal_contributions`, never from household membership — otherwise
+      // every member would earn every shared goal's badge and the achievement
+      // would stop meaning anything (AC3).
+      //
+      // Enrichment: a failure must warn and degrade, never 500 the score.
+      (async () => {
+        try {
+          const client = supabase as unknown as SupabaseClient;
+          const { data: contributions, error: contribError } = await client
+            .from('goal_contributions')
+            .select('goal_id')
+            .eq('user_id', user.id);
 
-            if (contribError) return { data: null, error: contribError };
+          if (contribError) return { data: null, error: contribError };
 
-            const goalIds = [
-              ...new Set(
-                ((contributions ?? []) as { goal_id: string }[]).map((c) => c.goal_id)
-              ),
-            ];
-            if (goalIds.length === 0) return { data: [], error: null };
+          const goalIds = [
+            ...new Set(((contributions ?? []) as { goal_id: string }[]).map((c) => c.goal_id)),
+          ];
+          if (goalIds.length === 0) return { data: [], error: null };
 
-            return await client
-              .from('goals')
-              .select('*')
-              .in('id', goalIds)
-              .not('household_id', 'is', null);
-          } catch (err) {
-            return { data: null, error: err };
-          }
-        })(),
+          return await client
+            .from('goals')
+            .select('*')
+            .in('id', goalIds)
+            .not('household_id', 'is', null);
+        } catch (err) {
+          return { data: null, error: err };
+        }
+      })(),
 
-        // Streak enrichment — 034 may be unapplied; never let it 500 the score.
-        // Unknowable ≠ zero: an unreadable table marks consistency UNSCORED
-        // (degradation policy), while a missing row legitimately scores 0.
-        getStreak(user.id).then(
-          (state) => ({ state, unavailable: false }),
-          (error) => {
-            logger.warn('BudgetScoreAPI', 'streaks unavailable, consistency unscored:', error);
-            return { state: null, unavailable: true };
-          }
-        ),
-      ]);
+      // Streak enrichment — 034 may be unapplied; never let it 500 the score.
+      // Unknowable ≠ zero: an unreadable table marks consistency UNSCORED
+      // (degradation policy), while a missing row legitimately scores 0.
+      getStreak(user.id).then(
+        (state) => ({ state, unavailable: false }),
+        (error) => {
+          logger.warn('BudgetScoreAPI', 'streaks unavailable, consistency unscored:', error);
+          return { state: null, unavailable: true };
+        }
+      ),
+    ]);
 
     // Core inputs — a score computed without them would be fabricated
     if (currentResult.error) throw currentResult.error;
@@ -166,7 +164,11 @@ export async function GET(request: NextRequest) {
     if (categoriesResult.error) throw categoriesResult.error;
 
     if (budgetsResult.error) {
-      logger.warn('BudgetScoreAPI', 'category_budgets unavailable, using averages:', budgetsResult.error);
+      logger.warn(
+        'BudgetScoreAPI',
+        'category_budgets unavailable, using averages:',
+        budgetsResult.error
+      );
     }
     if (goalsResult.error) {
       logger.warn('BudgetScoreAPI', 'goals unavailable, factor unscored:', goalsResult.error);

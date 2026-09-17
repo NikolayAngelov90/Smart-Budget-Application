@@ -62,8 +62,23 @@ function chain(result: Result): ChainStub {
   // `upsert` matters: unlockAchievements upserts then selects, and a missing
   // method throws into the route's catch, silently yielding newlyUnlocked: [].
   const methods = [
-    'select', 'eq', 'gte', 'lte', 'lt', 'gt', 'is', 'or', 'in', 'not', 'order',
-    'upsert', 'insert', 'update', 'delete', 'single', 'maybeSingle',
+    'select',
+    'eq',
+    'gte',
+    'lte',
+    'lt',
+    'gt',
+    'is',
+    'or',
+    'in',
+    'not',
+    'order',
+    'upsert',
+    'insert',
+    'update',
+    'delete',
+    'single',
+    'maybeSingle',
   ];
   for (const m of methods) {
     c[m] = jest.fn(() => thenable);
@@ -105,8 +120,7 @@ const STREAK = {
   freeze_used_on: null,
 };
 
-const getRequest = () =>
-  ({ url: 'http://localhost:3000/api/gamification/score' }) as never;
+const getRequest = () => ({ url: 'http://localhost:3000/api/gamification/score' }) as never;
 
 /** A reached goal created by SOMEONE ELSE, shared with this household. */
 const SHARED_REACHED = {
@@ -157,9 +171,7 @@ describe('shared-goal achievements', () => {
 
     const body = await (await GET(getRequest())).json();
 
-    expect(body.newlyUnlocked).toEqual(
-      expect.arrayContaining(['first_goal', 'goal_reached'])
-    );
+    expect(body.newlyUnlocked).toEqual(expect.arrayContaining(['first_goal', 'goal_reached']));
   });
 
   it('unlocks nothing for a member who never contributed', async () => {
@@ -228,10 +240,7 @@ describe('shared-goal achievements', () => {
 
     await GET(getRequest());
 
-    expect(supabase.chains['goal_contributions']![0]!.eq).toHaveBeenCalledWith(
-      'user_id',
-      'user-1'
-    );
+    expect(supabase.chains['goal_contributions']![0]!.eq).toHaveBeenCalledWith('user_id', 'user-1');
   });
 
   it('leaves the SCORE personal — a shared goal does not move the goals factor', async () => {
@@ -252,9 +261,7 @@ describe('shared-goal achievements', () => {
 
     const body = await (await GET(getRequest())).json();
 
-    const goalsFactor = body.budgetScore?.factors?.find(
-      (f: { key: string }) => f.key === 'goals'
-    );
+    const goalsFactor = body.budgetScore?.factors?.find((f: { key: string }) => f.key === 'goals');
     // No OWN active goals → the factor stays unscored despite the shared one.
     expect(goalsFactor?.status).toBe('unscored');
   });

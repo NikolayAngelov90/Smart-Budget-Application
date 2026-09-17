@@ -24,10 +24,17 @@ jest.mock('@/lib/services/householdMemberService', () => ({
 jest.mock('@/lib/services/invitationService', () => ({
   NotHouseholdAdminError: class NotHouseholdAdminError extends Error {},
 }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
-import { listHouseholdMembers, removeMember, CannotRemoveSelfError, MemberNotFoundError } from '@/lib/services/householdMemberService';
+import {
+  listHouseholdMembers,
+  removeMember,
+  CannotRemoveSelfError,
+  MemberNotFoundError,
+} from '@/lib/services/householdMemberService';
 import { NotHouseholdAdminError } from '@/lib/services/invitationService';
 import { GET } from '../route';
 import { DELETE } from '../[userId]/route';
@@ -37,7 +44,13 @@ const mockList = listHouseholdMembers as jest.MockedFunction<typeof listHousehol
 const mockRemove = removeMember as jest.MockedFunction<typeof removeMember>;
 
 function authClient(user: object | null) {
-  return { auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }) } };
+  return {
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+    },
+  };
 }
 const params = Promise.resolve({ userId: 'target' });
 

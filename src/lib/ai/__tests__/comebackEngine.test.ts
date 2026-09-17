@@ -47,17 +47,13 @@ describe('isEligibleForChallenge', () => {
   it('one challenge per absence: a challenge from the CURRENT gap blocks re-offer', () => {
     // Last log Jul 1; challenge offered Jul 10 (during this gap) → not eligible
     const s = streak('2026-07-01');
-    expect(
-      isEligibleForChallenge(s, { started_at: '2026-07-10T08:00:00Z' }, TODAY)
-    ).toBe(false);
+    expect(isEligibleForChallenge(s, { started_at: '2026-07-10T08:00:00Z' }, TODAY)).toBe(false);
   });
 
   it('a challenge from a PREVIOUS absence does not block', () => {
     // Old challenge in May; user logged again Jul 1; new 12-day gap → eligible
     const s = streak('2026-07-01');
-    expect(
-      isEligibleForChallenge(s, { started_at: '2026-05-20T08:00:00Z' }, TODAY)
-    ).toBe(true);
+    expect(isEligibleForChallenge(s, { started_at: '2026-05-20T08:00:00Z' }, TODAY)).toBe(true);
   });
 
   it('rejects garbage last_log_date without judging', () => {

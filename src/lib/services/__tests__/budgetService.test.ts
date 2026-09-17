@@ -50,7 +50,10 @@ type Plan = Record<string, { data: unknown; error: unknown } | { data: unknown; 
 
 /** Builds a client whose `from(table)` consumes the next queued result for that table. */
 function makeClient(plan: Plan) {
-  const queues: Record<string, { data: unknown; error: unknown }[] | { data: unknown; error: unknown }> = {};
+  const queues: Record<
+    string,
+    { data: unknown; error: unknown }[] | { data: unknown; error: unknown }
+  > = {};
   for (const [k, v] of Object.entries(plan)) queues[k] = Array.isArray(v) ? [...v] : v;
   const from = jest.fn((table: string) => {
     const q = queues[table];

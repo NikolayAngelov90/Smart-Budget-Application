@@ -68,9 +68,7 @@ export async function GET(request: NextRequest) {
 
       // Story 11.1: Pre-fill display_name from OAuth metadata if available
       const oauthDisplayName =
-        data.user.user_metadata?.full_name ||
-        data.user.user_metadata?.name ||
-        null;
+        data.user.user_metadata?.full_name || data.user.user_metadata?.name || null;
 
       if (oauthDisplayName) {
         try {

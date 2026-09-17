@@ -57,7 +57,10 @@ function toLocalDateString(d: Date): string {
 export function buildReengagementSummary(input: ReengagementInput): ReengagementSummary {
   const { lastActivityDate, today, historicalTransactions, subscriptions, goals } = input;
 
-  const lapsedDays = Math.max(0, Math.floor((today.getTime() - lastActivityDate.getTime()) / MS_PER_DAY));
+  const lapsedDays = Math.max(
+    0,
+    Math.floor((today.getTime() - lastActivityDate.getTime()) / MS_PER_DAY)
+  );
 
   // Typical monthly spend — mean of monthly expense totals
   const monthlyTotals = new Map<string, number>();
@@ -76,13 +79,15 @@ export function buildReengagementSummary(input: ReengagementInput): Reengagement
 
   // Goals → progress, top 3 by pct
   const goalSummaries: ReengagementGoalSummary[] = goals
-    .map((g): ReengagementGoalSummary => ({
-      id: g.id,
-      name: g.name,
-      current_amount: round2(g.current_amount),
-      target_amount: round2(g.target_amount),
-      pct: g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0,
-    }))
+    .map(
+      (g): ReengagementGoalSummary => ({
+        id: g.id,
+        name: g.name,
+        current_amount: round2(g.current_amount),
+        target_amount: round2(g.target_amount),
+        pct: g.target_amount > 0 ? Math.round((g.current_amount / g.target_amount) * 100) : 0,
+      })
+    )
     .sort((a, b) => b.pct - a.pct)
     .slice(0, MAX_GOALS);
 

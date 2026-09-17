@@ -164,7 +164,8 @@ function consistencyEarned(input: BudgetScoreInput): number | null {
   if (!hasLogged) return null;
   if (!streak || streak.current_streak <= 0) return 0;
   if (isStreakBroken(streak, localDayKey(today))) return 0;
-  const daily = (Math.min(streak.current_streak, DAILY_STREAK_CAP) / DAILY_STREAK_CAP) * DAILY_POINTS;
+  const daily =
+    (Math.min(streak.current_streak, DAILY_STREAK_CAP) / DAILY_STREAK_CAP) * DAILY_POINTS;
   const weekly =
     (Math.min(streak.weekly_streak, WEEKLY_STREAK_CAP) / WEEKLY_STREAK_CAP) * WEEKLY_POINTS;
   return daily + weekly;

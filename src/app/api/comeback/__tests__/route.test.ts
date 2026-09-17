@@ -59,7 +59,9 @@ const mockGetActive = getActiveChallenge as jest.MockedFunction<typeof getActive
 const mockCreate = createChallenge as jest.MockedFunction<typeof createChallenge>;
 const mockMarkStatus = markStatus as jest.MockedFunction<typeof markStatus>;
 const mockCount = countLogsSince as jest.MockedFunction<typeof countLogsSince>;
-const mockComplete = completeChallengeIfEarned as jest.MockedFunction<typeof completeChallengeIfEarned>;
+const mockComplete = completeChallengeIfEarned as jest.MockedFunction<
+  typeof completeChallengeIfEarned
+>;
 const mockUnlock = unlockAchievements as jest.MockedFunction<typeof unlockAchievements>;
 
 function makeSupabase(user: object | null = { id: 'user-1' }) {
@@ -207,7 +209,11 @@ describe('PATCH /api/comeback', () => {
 describe('GET /api/comeback — self-heal (15-4 review)', () => {
   it('completes a target-reached active challenge and awards Phoenix idempotently', async () => {
     mockCreateClient.mockResolvedValue(makeSupabase() as never);
-    mockGetStreak.mockResolvedValue({ ...STALE_STREAK, last_log_date: daysAgoKey(0), current_streak: 3 });
+    mockGetStreak.mockResolvedValue({
+      ...STALE_STREAK,
+      last_log_date: daysAgoKey(0),
+      current_streak: 3,
+    });
     mockGetLatest.mockResolvedValue(ACTIVE);
     mockCount.mockResolvedValue(3); // filled by savings auto-logs / failed POST
     mockComplete.mockResolvedValue({ completed: true, restoredStreak: 9 } as never);

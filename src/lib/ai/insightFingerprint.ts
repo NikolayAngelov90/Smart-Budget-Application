@@ -84,12 +84,7 @@ export function fingerprintFor(insight: InsightInsert, currentMonth: Date): stri
  *   created_at                 when the claim was FIRST made, not last refreshed
  *   id, user_id, fingerprint   identity
  */
-export const UPSERT_UPDATABLE_FIELDS = [
-  'title',
-  'description',
-  'priority',
-  'metadata',
-] as const;
+export const UPSERT_UPDATABLE_FIELDS = ['title', 'description', 'priority', 'metadata'] as const;
 
 // `updated_at` is NOT here and is NOT written by the application. A BEFORE
 // UPDATE trigger sets it from the DATABASE clock. If the app wrote it instead,
@@ -98,10 +93,7 @@ export const UPSERT_UPDATABLE_FIELDS = [
 // immediately deleted.
 
 /** Narrow an insight to the fields an upsert may overwrite, plus its identity. */
-export function toUpsertRow(
-  insight: InsightInsert,
-  fingerprint: string
-): Record<string, unknown> {
+export function toUpsertRow(insight: InsightInsert, fingerprint: string): Record<string, unknown> {
   return {
     user_id: insight.user_id,
     type: insight.type,

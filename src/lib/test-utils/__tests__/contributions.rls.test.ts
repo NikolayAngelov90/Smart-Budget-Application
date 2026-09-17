@@ -54,24 +54,54 @@ rlsDescribe('Contribution splits (Story 13.7)', () => {
     // Shared category — A spends 100.
     const { data: sc } = await svc
       .from('categories')
-      .insert({ user_id: aId, name: 'Contrib Shared', color: '#abcdef', type: 'expense', household_id: householdId, visibility_level: 'shared' })
+      .insert({
+        user_id: aId,
+        name: 'Contrib Shared',
+        color: '#abcdef',
+        type: 'expense',
+        household_id: householdId,
+        visibility_level: 'shared',
+      })
       .select('id')
       .single();
     sharedCatId = sc!.id;
     await svc.from('transactions').insert({
-      user_id: aId, category_id: sharedCatId, amount: 100, type: 'expense', date: '2026-06-05', currency: 'EUR', household_id: householdId,
+      user_id: aId,
+      category_id: sharedCatId,
+      amount: 100,
+      type: 'expense',
+      date: '2026-06-05',
+      currency: 'EUR',
+      household_id: householdId,
     });
 
     // category_only category owned by B — B spends 50 (rows hidden from A, but counts).
     const { data: co } = await svc
       .from('categories')
-      .insert({ user_id: bId, name: 'Contrib CatOnly', color: '#123abc', type: 'expense', household_id: householdId, visibility_level: 'category_only' })
+      .insert({
+        user_id: bId,
+        name: 'Contrib CatOnly',
+        color: '#123abc',
+        type: 'expense',
+        household_id: householdId,
+        visibility_level: 'category_only',
+      })
       .select('id')
       .single();
     catOnlyId = co!.id;
-    const { data: coTx } = await svc.from('transactions').insert({
-      user_id: bId, category_id: catOnlyId, amount: 50, type: 'expense', date: '2026-06-05', currency: 'EUR', household_id: householdId,
-    }).select('id').single();
+    const { data: coTx } = await svc
+      .from('transactions')
+      .insert({
+        user_id: bId,
+        category_id: catOnlyId,
+        amount: 50,
+        type: 'expense',
+        date: '2026-06-05',
+        currency: 'EUR',
+        household_id: householdId,
+      })
+      .select('id')
+      .single();
     catOnlyTxId = coTx!.id;
   });
 
@@ -84,7 +114,14 @@ rlsDescribe('Contribution splits (Story 13.7)', () => {
   it('returns per-member contributed sums to a member', async () => {
     const a = await signInAsTestUser(aEmail, PWD);
     const { data } = await a.rpc('household_contributions', { p_household_id: householdId });
-    const byUser = Object.fromEntries((data ?? []).map((r: { user_id: string; contributed: number; contribution_percentage: number }) => [r.user_id, r]));
+    const byUser = Object.fromEntries(
+      (data ?? []).map(
+        (r: { user_id: string; contributed: number; contribution_percentage: number }) => [
+          r.user_id,
+          r,
+        ]
+      )
+    );
     expect(Number(byUser[aId].contributed)).toBe(100);
     expect(Number(byUser[bId].contributed)).toBe(50); // category_only spend included in the aggregate
     expect(Number(byUser[aId].contribution_percentage)).toBe(60);
@@ -107,7 +144,11 @@ rlsDescribe('Contribution splits (Story 13.7)', () => {
     const a = await signInAsTestUser(aEmail, PWD);
     await a.from('household_members').update({ contribution_percentage: 99 }).eq('user_id', bId);
     const svc = createServiceClient();
-    const { data } = await svc.from('household_members').select('contribution_percentage').eq('user_id', bId).single();
+    const { data } = await svc
+      .from('household_members')
+      .select('contribution_percentage')
+      .eq('user_id', bId)
+      .single();
     expect(Number(data?.contribution_percentage)).toBe(40); // unchanged
   });
 });

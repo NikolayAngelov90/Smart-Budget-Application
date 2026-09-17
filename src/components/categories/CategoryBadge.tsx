@@ -117,11 +117,7 @@ export function CategoryBadge({
           {category.name}
         </Text>
         {showType && (
-          <Text
-            fontSize="xs"
-            color="fg.subtle"
-            fontStyle="italic"
-          >
+          <Text fontSize="xs" color="fg.subtle" fontStyle="italic">
             ({category.type})
           </Text>
         )}

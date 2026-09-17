@@ -35,7 +35,9 @@ describe('analytics charts', () => {
 
     it('renders the section heading with data', () => {
       renderWithChakra(
-        <InsightEngagementChart data={[{ insight_type: 'spending_anomaly', views: 5, dismissals: 2 }]} />
+        <InsightEngagementChart
+          data={[{ insight_type: 'spending_anomaly', views: 5, dismissals: 2 }]}
+        />
       );
       expect(screen.getByRole('heading', { name: 'insightEngagement' })).toBeInTheDocument();
       expect(screen.queryByText('noData')).not.toBeInTheDocument();
@@ -44,12 +46,20 @@ describe('analytics charts', () => {
 
   describe('ExportUsageChart', () => {
     it('shows no-data when both counts are zero', () => {
-      renderWithChakra(<ExportUsageChart data={{ csv_count: 0, pdf_count: 0, csv_total_transactions: 0, pdf_total_pages: 0 }} />);
+      renderWithChakra(
+        <ExportUsageChart
+          data={{ csv_count: 0, pdf_count: 0, csv_total_transactions: 0, pdf_total_pages: 0 }}
+        />
+      );
       expect(screen.getByText('noData')).toBeInTheDocument();
     });
 
     it('renders volume stats with data', () => {
-      renderWithChakra(<ExportUsageChart data={{ csv_count: 3, pdf_count: 1, csv_total_transactions: 42, pdf_total_pages: 5 }} />);
+      renderWithChakra(
+        <ExportUsageChart
+          data={{ csv_count: 3, pdf_count: 1, csv_total_transactions: 42, pdf_total_pages: 5 }}
+        />
+      );
       expect(screen.getByText('42')).toBeInTheDocument();
       expect(screen.getByText('5')).toBeInTheDocument();
     });

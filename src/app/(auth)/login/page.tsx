@@ -183,12 +183,7 @@ export default function LoginPage() {
       <VStack spacing={8} align="stretch">
         {/* Header */}
         <VStack spacing={2} textAlign="center">
-          <Heading
-            as="h1"
-            size={{ base: 'xl', md: '2xl' }}
-            color="fg"
-            fontWeight="bold"
-          >
+          <Heading as="h1" size={{ base: 'xl', md: '2xl' }} color="fg" fontWeight="bold">
             Welcome back
           </Heading>
           <Text color="fg.muted" fontSize={{ base: 'sm', md: 'md' }}>
@@ -292,9 +287,7 @@ export default function LoginPage() {
                   aria-label="Password"
                   aria-required="true"
                   aria-invalid={!!errors.password}
-                  aria-describedby={
-                    errors.password ? 'password-error' : undefined
-                  }
+                  aria-describedby={errors.password ? 'password-error' : undefined}
                   autoComplete="current-password"
                   _focus={{
                     borderColor: 'accent',
@@ -313,11 +306,7 @@ export default function LoginPage() {
                 </InputRightElement>
               </InputGroup>
               {errors.password && (
-                <FormErrorMessage
-                  id="password-error"
-                  color="danger.fg"
-                  fontSize="sm"
-                >
+                <FormErrorMessage id="password-error" color="danger.fg" fontSize="sm">
                   {errors.password}
                 </FormErrorMessage>
               )}
@@ -327,7 +316,11 @@ export default function LoginPage() {
             <Box display="flex" justifyContent="flex-end" alignItems="center">
               <Link
                 href="/forgot-password"
-                style={{ color: 'var(--chakra-colors-accent)', fontSize: '14px', fontWeight: '600' }}
+                style={{
+                  color: 'var(--chakra-colors-accent)',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                }}
               >
                 Forgot password?
               </Link>

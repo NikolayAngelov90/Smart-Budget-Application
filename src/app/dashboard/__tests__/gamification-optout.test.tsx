@@ -14,13 +14,23 @@ import DashboardPage from '@/app/dashboard/page';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 
 // Core children → stubs (their own suites cover them)
-jest.mock('@/components/dashboard/BalanceFlowHero', () => ({ BalanceFlowHero: () => <div data-testid="balance-hero" /> }));
-jest.mock('@/components/dashboard/AIBudgetCoach', () => ({ AIBudgetCoach: () => <div data-testid="ai-coach" /> }));
-jest.mock('@/components/dashboard/CategorySpendingChart', () => ({ CategorySpendingChart: () => <div data-testid="category-chart" /> }));
-jest.mock('@/components/dashboard/SpendingTrendsChart', () => ({ SpendingTrendsChart: () => <div data-testid="trends-chart" /> }));
+jest.mock('@/components/dashboard/BalanceFlowHero', () => ({
+  BalanceFlowHero: () => <div data-testid="balance-hero" />,
+}));
+jest.mock('@/components/dashboard/AIBudgetCoach', () => ({
+  AIBudgetCoach: () => <div data-testid="ai-coach" />,
+}));
+jest.mock('@/components/dashboard/CategorySpendingChart', () => ({
+  CategorySpendingChart: () => <div data-testid="category-chart" />,
+}));
+jest.mock('@/components/dashboard/SpendingTrendsChart', () => ({
+  SpendingTrendsChart: () => <div data-testid="trends-chart" />,
+}));
 jest.mock('@/components/dashboard/MonthOverMonth', () => ({ MonthOverMonth: () => <div /> }));
 jest.mock('@/components/ai/SpendingHeatmap', () => ({ SpendingHeatmap: () => <div /> }));
-jest.mock('@/components/ai/AnnualizedProjections', () => ({ AnnualizedProjections: () => <div /> }));
+jest.mock('@/components/ai/AnnualizedProjections', () => ({
+  AnnualizedProjections: () => <div />,
+}));
 jest.mock('@/components/ai/BudgetForecast', () => ({ BudgetForecast: () => <div /> }));
 jest.mock('@/components/ai/RecoveryPlan', () => ({ RecoveryPlan: () => <div /> }));
 jest.mock('@/components/ai/SeasonalAwareness', () => ({ SeasonalAwareness: () => <div /> }));
@@ -32,7 +42,9 @@ jest.mock('@/components/dashboard/RecentTransactions', () => ({
   RECENT_TRANSACTIONS_KEY: '/api/transactions?recent',
 }));
 jest.mock('@/components/dashboard/BudgetHealthCard', () => ({ BudgetHealthCard: () => <div /> }));
-jest.mock('@/components/dashboard/FirstTransactionPrompt', () => ({ FirstTransactionPrompt: () => <div /> }));
+jest.mock('@/components/dashboard/FirstTransactionPrompt', () => ({
+  FirstTransactionPrompt: () => <div />,
+}));
 jest.mock('@/components/transactions/TransactionEntryModal', () => ({
   __esModule: true,
   default: () => null,
@@ -55,7 +67,12 @@ jest.mock('@/lib/hooks/useStreak', () => ({
   STREAK_KEY: '/api/streaks',
 }));
 jest.mock('@/lib/hooks/useBudgetScore', () => ({
-  useBudgetScore: () => ({ data: undefined, error: undefined, isLoading: false, mutate: jest.fn() }),
+  useBudgetScore: () => ({
+    data: undefined,
+    error: undefined,
+    isLoading: false,
+    mutate: jest.fn(),
+  }),
   SCORE_KEY: '/api/gamification/score',
 }));
 jest.mock('@/lib/hooks/useComeback', () => ({
@@ -82,7 +99,12 @@ const prefs = (gamification: boolean | undefined) =>
     error: undefined,
   }) as ReturnType<typeof useUserPreferences>;
 
-const renderPage = () => render(<ChakraProvider><DashboardPage /></ChakraProvider>);
+const renderPage = () =>
+  render(
+    <ChakraProvider>
+      <DashboardPage />
+    </ChakraProvider>
+  );
 
 describe('Dashboard with gamification OPTED OUT (Story 15.6, AC 2)', () => {
   beforeAll(() => {

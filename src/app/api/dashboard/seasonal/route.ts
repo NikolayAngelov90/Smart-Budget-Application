@@ -34,7 +34,9 @@ export async function GET() {
     // 13 complete months back so the next 6 months can find a same-month-of-year
     // basis. Exclude the in-progress current month — a partial month would drag
     // the baseline down and inflate months_analyzed.
-    const thirteenMonthsAgo = toLocalISODate(new Date(today.getFullYear(), today.getMonth() - 13, 1));
+    const thirteenMonthsAgo = toLocalISODate(
+      new Date(today.getFullYear(), today.getMonth() - 13, 1)
+    );
     const currentMonthStart = toLocalISODate(new Date(today.getFullYear(), today.getMonth(), 1));
 
     const { data, error } = await supabase

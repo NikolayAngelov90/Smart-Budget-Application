@@ -63,9 +63,10 @@ export async function upsertAllowance(
   if (!Number.isFinite(amount) || amount < 0) {
     throw new Error('Allowance amount must be a non-negative number');
   }
-  const currency = input.currency && (SUPPORTED_CURRENCIES as readonly string[]).includes(input.currency)
-    ? input.currency
-    : DEFAULT_CURRENCY;
+  const currency =
+    input.currency && (SUPPORTED_CURRENCIES as readonly string[]).includes(input.currency)
+      ? input.currency
+      : DEFAULT_CURRENCY;
 
   const supabase = await createClient();
 
@@ -76,7 +77,10 @@ export async function upsertAllowance(
     .eq('user_id', userId)
     .maybeSingle();
   if (memberError) {
-    logger.error('AllowanceService', `membership lookup failed for ${userId}: ${memberError.message}`);
+    logger.error(
+      'AllowanceService',
+      `membership lookup failed for ${userId}: ${memberError.message}`
+    );
     throw new Error('Failed to load household membership');
   }
   if (!membership?.household_id) {
@@ -125,7 +129,10 @@ export async function getAllowanceStatus(userId: string): Promise<AllowanceStatu
     .gte('date', currentMonthStart());
 
   if (error) {
-    logger.error('AllowanceService', `allowance spend query failed for ${userId}: ${error.message}`);
+    logger.error(
+      'AllowanceService',
+      `allowance spend query failed for ${userId}: ${error.message}`
+    );
     throw new Error('Failed to load allowance spend');
   }
 
@@ -136,10 +143,7 @@ export async function getAllowanceStatus(userId: string): Promise<AllowanceStatu
 /** Deletes the caller's allowance (owner-only via RLS). Tagged transactions are kept. */
 export async function deleteAllowance(userId: string): Promise<void> {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('personal_allowances')
-    .delete()
-    .eq('user_id', userId);
+  const { error } = await supabase.from('personal_allowances').delete().eq('user_id', userId);
   if (error) {
     logger.error('AllowanceService', `deleteAllowance failed for ${userId}: ${error.message}`);
     throw new Error('Failed to delete allowance');

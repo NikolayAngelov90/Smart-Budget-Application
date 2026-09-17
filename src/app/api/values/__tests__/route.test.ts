@@ -43,7 +43,11 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
 
 function authClient(user: object | null) {
   return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }) },
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }),
+    },
   };
 }
 function req(body: unknown) {
@@ -95,7 +99,9 @@ describe('POST /api/values', () => {
 
   it('409 on a duplicate name', async () => {
     mockCreateClient.mockResolvedValue(authClient({ id: 'user-1' }) as never);
-    (svc.createValue as jest.Mock).mockRejectedValue(new Error('A value with that name already exists'));
+    (svc.createValue as jest.Mock).mockRejectedValue(
+      new Error('A value with that name already exists')
+    );
     expect((await POST(req({ name: 'Health' }))).status).toBe(409);
   });
 });

@@ -65,25 +65,29 @@ export function useSettingsProfile() {
   const [isLoading, setIsLoading] = useState(cachedProfile === null);
   const [error, setError] = useState<Error | null>(null);
 
-  const loadProfile = useCallback(async (signal?: { cancelled: boolean }) => {
-    try {
-      setError(null);
-      const res = await fetch('/api/user/profile');
-      if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) throw new Error('Unexpected response format');
-      const json = await res.json();
-      if (signal?.cancelled) return;
-      if (!json.data) throw new Error('Profile response contained no data');
-      setProfile(json.data);
-      // Also update SWR cache so Header picks up the fresh data
-      mutate(PROFILE_KEY, json.data, false);
-    } catch (err) {
-      if (!signal?.cancelled) setError(err instanceof Error ? err : new Error('Unknown error'));
-    } finally {
-      if (!signal?.cancelled) setIsLoading(false);
-    }
-  }, [mutate]);
+  const loadProfile = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      try {
+        setError(null);
+        const res = await fetch('/api/user/profile');
+        if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json'))
+          throw new Error('Unexpected response format');
+        const json = await res.json();
+        if (signal?.cancelled) return;
+        if (!json.data) throw new Error('Profile response contained no data');
+        setProfile(json.data);
+        // Also update SWR cache so Header picks up the fresh data
+        mutate(PROFILE_KEY, json.data, false);
+      } catch (err) {
+        if (!signal?.cancelled) setError(err instanceof Error ? err : new Error('Unknown error'));
+      } finally {
+        if (!signal?.cancelled) setIsLoading(false);
+      }
+    },
+    [mutate]
+  );
 
   useEffect(() => {
     const signal = { cancelled: false };
@@ -114,7 +118,7 @@ export function useSettingsProfile() {
 
   const language: SupportedLocale =
     typeof document !== 'undefined'
-      ? ((document.cookie.match(/NEXT_LOCALE=(\w+)/)?.[1] as SupportedLocale) || 'en')
+      ? (document.cookie.match(/NEXT_LOCALE=(\w+)/)?.[1] as SupportedLocale) || 'en'
       : 'en';
 
   // displayName stays local state: it is a free-text field the user edits

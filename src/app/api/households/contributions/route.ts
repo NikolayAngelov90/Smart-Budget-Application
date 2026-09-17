@@ -28,6 +28,9 @@ export async function GET() {
     return NextResponse.json({ data: summary });
   } catch (error) {
     logger.error('Contributions', 'GET failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to load contributions' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to load contributions' } },
+      { status: 500 }
+    );
   }
 }

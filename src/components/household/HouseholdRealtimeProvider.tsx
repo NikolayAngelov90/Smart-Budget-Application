@@ -42,9 +42,12 @@ export function HouseholdRealtimeProvider({ children }: { children: React.ReactN
   }, [globalMutate]);
   useRealtimeSubscription(revalidate);
 
-  useEffect(() => () => {
-    if (pending.current) clearTimeout(pending.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (pending.current) clearTimeout(pending.current);
+    },
+    []
+  );
 
   return <>{children}</>;
 }

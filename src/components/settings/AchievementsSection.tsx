@@ -64,7 +64,12 @@ export function AchievementsSection() {
               opacity={unlock ? 1 : 0.75}
               aria-label={unlockedLabel ? `${name}, ${unlockedLabel}` : `${name}, ${t('locked')}`}
             >
-              <Text aria-hidden="true" fontSize="2xl" lineHeight="1" filter={unlock ? undefined : 'grayscale(1)'}>
+              <Text
+                aria-hidden="true"
+                fontSize="2xl"
+                lineHeight="1"
+                filter={unlock ? undefined : 'grayscale(1)'}
+              >
                 🏅
               </Text>
               <Text fontSize="sm" fontWeight={600} color={unlock ? 'fg' : 'fg.muted'}>
@@ -74,7 +79,13 @@ export function AchievementsSection() {
                 {t(`conditions.${key}`)}
               </Text>
               {unlockedLabel ? (
-                <Badge bg={ACHIEVEMENT_GOLD} color="paper.900" borderRadius="full" px={2} fontSize="0.65rem">
+                <Badge
+                  bg={ACHIEVEMENT_GOLD}
+                  color="paper.900"
+                  borderRadius="full"
+                  px={2}
+                  fontSize="0.65rem"
+                >
                   {unlockedLabel}
                 </Badge>
               ) : (

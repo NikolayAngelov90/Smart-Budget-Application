@@ -57,10 +57,9 @@ export function buildRecoveryPlanTargets(input: RecoveryPlannerInput): RecoveryT
     if (!historicalMonthMap.has(tx.category_id)) {
       historicalMonthMap.set(tx.category_id, new Map());
     }
-    historicalMonthMap.get(tx.category_id)!.set(
-      monthKey,
-      (historicalMonthMap.get(tx.category_id)!.get(monthKey) ?? 0) + tx.amount
-    );
+    historicalMonthMap
+      .get(tx.category_id)!
+      .set(monthKey, (historicalMonthMap.get(tx.category_id)!.get(monthKey) ?? 0) + tx.amount);
   }
 
   const scored: Array<{ target: RecoveryTarget; severity: number }> = [];

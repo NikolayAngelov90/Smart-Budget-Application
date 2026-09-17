@@ -84,9 +84,10 @@ export function AllowanceCard() {
   if (isLoading) return null;
 
   const remaining = allowance ? allowance.monthly_amount - spent : 0;
-  const pct = allowance && allowance.monthly_amount > 0
-    ? Math.min(100, (spent / allowance.monthly_amount) * 100)
-    : 0;
+  const pct =
+    allowance && allowance.monthly_amount > 0
+      ? Math.min(100, (spent / allowance.monthly_amount) * 100)
+      : 0;
 
   return (
     <Box>
@@ -136,10 +137,23 @@ export function AllowanceCard() {
             </Select>
           </Stack>
           <HStack justify="flex-end">
-            <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} isDisabled={isSaving} minH={{ base: '44px', sm: '32px' }}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsEditing(false)}
+              isDisabled={isSaving}
+              minH={{ base: '44px', sm: '32px' }}
+            >
               {t('cancel')}
             </Button>
-            <Button size="sm" colorScheme="brand" onClick={handleSave} isLoading={isSaving} loadingText={t('save')} minH={{ base: '44px', sm: '32px' }}>
+            <Button
+              size="sm"
+              colorScheme="brand"
+              onClick={handleSave}
+              isLoading={isSaving}
+              loadingText={t('save')}
+              minH={{ base: '44px', sm: '32px' }}
+            >
               {t('save')}
             </Button>
           </HStack>
@@ -154,7 +168,12 @@ export function AllowanceCard() {
               {formatAmount(allowance.monthly_amount, displayCurrency)}
             </Text>
           </HStack>
-          <Progress value={pct} size="sm" borderRadius="full" colorScheme={remaining < 0 ? 'expense' : 'brand'} />
+          <Progress
+            value={pct}
+            size="sm"
+            borderRadius="full"
+            colorScheme={remaining < 0 ? 'expense' : 'brand'}
+          />
           <HStack justify="space-between">
             <Text fontSize="xs" color="fg.subtle">
               {t('spentLabel')}: {formatAmount(spent, displayCurrency)}

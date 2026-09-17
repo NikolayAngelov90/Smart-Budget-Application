@@ -45,9 +45,7 @@ export const FEATURE_DISCLOSURE: Record<FeatureKey, FeatureDisclosure> = {
 };
 
 /** All valid feature keys — for validating REST-exposed acknowledge writes */
-export const FEATURE_KEYS = new Set<FeatureKey>(
-  Object.keys(FEATURE_DISCLOSURE) as FeatureKey[]
-);
+export const FEATURE_KEYS = new Set<FeatureKey>(Object.keys(FEATURE_DISCLOSURE) as FeatureKey[]);
 
 export function isFeatureKey(value: unknown): value is FeatureKey {
   return typeof value === 'string' && FEATURE_KEYS.has(value as FeatureKey);

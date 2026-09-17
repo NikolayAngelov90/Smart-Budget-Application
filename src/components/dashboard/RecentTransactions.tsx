@@ -130,7 +130,11 @@ export function RecentTransactions() {
       {!isLoading && !error && transactions.length > 0 && (
         <Card>
           <CardBody p={0}>
-            <VStack spacing={0} align="stretch" divider={<Box borderBottomWidth="1px" borderColor="border" />}>
+            <VStack
+              spacing={0}
+              align="stretch"
+              divider={<Box borderBottomWidth="1px" borderColor="border" />}
+            >
               {transactions.map((transaction) => {
                 const signedAmount =
                   transaction.type === 'expense' ? -transaction.amount : transaction.amount;

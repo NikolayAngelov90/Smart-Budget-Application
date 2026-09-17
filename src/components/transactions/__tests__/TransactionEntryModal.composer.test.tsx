@@ -38,7 +38,9 @@ jest.mock('@/lib/hooks/useOnlineStatus', () => ({ useOnlineStatus: () => ({ isOn
 jest.mock('@/lib/hooks/useUserPreferences', () => ({
   useUserPreferences: () => ({ preferences: { currency_format: 'EUR' } }),
 }));
-jest.mock('@/lib/config/currencies', () => ({ getEnabledCurrencies: () => [{ code: 'EUR', symbol: '€' }] }));
+jest.mock('@/lib/config/currencies', () => ({
+  getEnabledCurrencies: () => [{ code: 'EUR', symbol: '€' }],
+}));
 jest.mock('@/lib/utils/haptic', () => ({ triggerHaptic: jest.fn() }));
 // Mock the full CategoryMenu (its own suite covers it) so we test only the chips.
 jest.mock('@/components/categories/CategoryMenu', () => ({
@@ -74,7 +76,9 @@ const renderModal = () =>
 describe('TransactionEntryModal composer (Story 16.2)', () => {
   it('renders one-tap category chips (recent first) and marks the tapped one active', async () => {
     renderModal();
-    const chip = await waitFor(() => screen.getByRole('button', { name: /Groceries/i }), { timeout: 3000 });
+    const chip = await waitFor(() => screen.getByRole('button', { name: /Groceries/i }), {
+      timeout: 3000,
+    });
     expect(screen.getByRole('button', { name: /Transport/i })).toBeInTheDocument();
     expect(chip).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(chip);
@@ -83,9 +87,16 @@ describe('TransactionEntryModal composer (Story 16.2)', () => {
 
   it('hides secondary fields behind "More details" and toggles the disclosure', async () => {
     renderModal();
-    const toggle = await waitFor(() => screen.getByRole('button', { name: /More details/i }), { timeout: 3000 });
+    const toggle = await waitFor(() => screen.getByRole('button', { name: /More details/i }), {
+      timeout: 3000,
+    });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(toggle);
-    await waitFor(() => expect(screen.getByRole('button', { name: /Fewer details/i })).toHaveAttribute('aria-expanded', 'true'));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Fewer details/i })).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      )
+    );
   });
 });

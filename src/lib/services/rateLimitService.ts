@@ -77,7 +77,10 @@ function getRateLimiter(): Ratelimit | null {
       prefix: 'rate_limit',
     });
 
-    logger.info('Rate Limit', `Initialized @upstash/ratelimit (${RATE_LIMIT} req/${RATE_LIMIT_WINDOW}s)`);
+    logger.info(
+      'Rate Limit',
+      `Initialized @upstash/ratelimit (${RATE_LIMIT} req/${RATE_LIMIT_WINDOW}s)`
+    );
     return ratelimiter;
   } catch (error) {
     logger.error('Rate Limit', 'Failed to initialize @upstash/ratelimit:', error);
@@ -119,16 +122,22 @@ export async function checkRateLimit(
       }
 
       // Within rate limit
-      logger.info('Rate Limit', `User ${userId} within limit (${result.remaining}/${result.limit} remaining)`);
+      logger.info(
+        'Rate Limit',
+        `User ${userId} within limit (${result.remaining}/${result.limit} remaining)`
+      );
       return { exceeded: false, remainingSeconds: 0 };
     } catch (error) {
       fallbackActivationCount++;
-      logger.warn('Rate Limit', JSON.stringify({
-        event: 'redis_fallback_activated',
-        userId,
-        fallbackActivationCount,
-        error: error instanceof Error ? error.message : String(error),
-      }));
+      logger.warn(
+        'Rate Limit',
+        JSON.stringify({
+          event: 'redis_fallback_activated',
+          userId,
+          fallbackActivationCount,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      );
       // Fall through to in-memory fallback
     }
   }

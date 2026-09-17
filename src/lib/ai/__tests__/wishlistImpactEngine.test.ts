@@ -95,7 +95,12 @@ describe('computeWishlistImpact', () => {
 
   describe('goal delay', () => {
     // 2026-07-02 → 2026-08-01 is 30 days out
-    const GOAL = { name: 'Vacation', targetAmount: 1300, currentAmount: 1000, deadline: '2026-08-01' };
+    const GOAL = {
+      name: 'Vacation',
+      targetAmount: 1300,
+      currentAmount: 1000,
+      deadline: '2026-08-01',
+    };
 
     it('caps an absurd delay and flags it, rather than printing 30,000 days', () => {
       // A goal 1 cent short with a distant deadline: dailyRequired is minuscule,

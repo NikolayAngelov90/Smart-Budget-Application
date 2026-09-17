@@ -32,7 +32,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'A boolean "shared" flag is required' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'A boolean "shared" flag is required' } },
+        { status: 400 }
+      );
     }
 
     const category = await setCategoryShared(user.id, id, parsed.data.shared);

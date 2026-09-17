@@ -53,13 +53,23 @@ import {
   Progress,
   Divider,
 } from '@chakra-ui/react';
-import { CloseIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon } from '@chakra-ui/icons';
+import {
+  CloseIcon,
+  SearchIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  DownloadIcon,
+} from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import TransactionEntryModal from '@/components/transactions/TransactionEntryModal';
 import { FilterBreadcrumbs } from '@/components/transactions/FilterBreadcrumbs';
-import { PaginationControls, DEFAULT_PAGE_SIZE, LOCAL_STORAGE_KEY } from '@/components/transactions/PaginationControls';
+import {
+  PaginationControls,
+  DEFAULT_PAGE_SIZE,
+  LOCAL_STORAGE_KEY,
+} from '@/components/transactions/PaginationControls';
 import { SwipeableRow } from '@/components/transactions/SwipeableRow';
 import { TransactionRow } from '@/components/transactions/TransactionRow';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -138,14 +148,26 @@ function TransactionsContent() {
   const { isOpen: mobileFiltersOpen, onToggle: onToggleMobileFilters } = useDisclosure();
 
   // Edit modal state
-  const { isOpen: isEditModalOpen, onOpen: onEditModalOpen, onClose: onEditModalClose } = useDisclosure();
+  const {
+    isOpen: isEditModalOpen,
+    onOpen: onEditModalOpen,
+    onClose: onEditModalClose,
+  } = useDisclosure();
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   // Create modal state — opened from the empty-state CTA (Story 16.1)
-  const { isOpen: isCreateModalOpen, onOpen: onCreateModalOpen, onClose: onCreateModalClose } = useDisclosure();
+  const {
+    isOpen: isCreateModalOpen,
+    onOpen: onCreateModalOpen,
+    onClose: onCreateModalClose,
+  } = useDisclosure();
 
   // Delete confirmation state
-  const { isOpen: isDeleteAlertOpen, onOpen: onDeleteAlertOpen, onClose: onDeleteAlertClose } = useDisclosure();
+  const {
+    isOpen: isDeleteAlertOpen,
+    onOpen: onDeleteAlertOpen,
+    onClose: onDeleteAlertClose,
+  } = useDisclosure();
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -154,7 +176,11 @@ function TransactionsContent() {
   const [isExporting, setIsExporting] = useState(false);
 
   // Progress modal for large exports (AC-8.1.9)
-  const { isOpen: isProgressModalOpen, onOpen: onProgressModalOpen, onClose: onProgressModalClose } = useDisclosure();
+  const {
+    isOpen: isProgressModalOpen,
+    onOpen: onProgressModalOpen,
+    onClose: onProgressModalClose,
+  } = useDisclosure();
   const [exportProgress, setExportProgress] = useState(0);
 
   // Toast for undo functionality
@@ -260,17 +286,13 @@ function TransactionsContent() {
     error: transactionsError,
     isLoading: transactionsLoading,
     mutate,
-  } = useSWR<TransactionResponse>(
-    `/api/transactions?${buildQueryString()}`,
-    fetcher,
-    {
-      revalidateOnFocus: true, // Sync when tab regains focus
-      revalidateOnReconnect: true, // Sync when internet reconnects
-      dedupingInterval: 2000, // Prevent excessive requests (2 seconds)
-      errorRetryCount: 3, // Retry failed requests up to 3 times
-      focusThrottleInterval: 5000, // Throttle focus revalidation (5 seconds)
-    }
-  );
+  } = useSWR<TransactionResponse>(`/api/transactions?${buildQueryString()}`, fetcher, {
+    revalidateOnFocus: true, // Sync when tab regains focus
+    revalidateOnReconnect: true, // Sync when internet reconnects
+    dedupingInterval: 2000, // Prevent excessive requests (2 seconds)
+    errorRetryCount: 3, // Retry failed requests up to 3 times
+    focusThrottleInterval: 5000, // Throttle focus revalidation (5 seconds)
+  });
 
   // Review-fix (16-1): if the current page becomes empty (e.g. after deleting the
   // last row on page ≥2) snap back to page 1 — otherwise the first-run empty
@@ -803,91 +825,91 @@ function TransactionsContent() {
 
               {/* Filter grid — always shown on desktop, collapsible on mobile */}
               <Box display={{ base: mobileFiltersOpen ? 'block' : 'none', md: 'block' }}>
-              {/* Mobile: Vertical Stack, Desktop: Horizontal Grid */}
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 5 }} spacing={4}>
-                {/* Date Range Filters */}
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
-                    {t('startDate')}
-                  </Text>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    max={format(new Date(), 'yyyy-MM-dd')}
-                    size="md"
-                  />
-                </Box>
+                {/* Mobile: Vertical Stack, Desktop: Horizontal Grid */}
+                <SimpleGrid columns={{ base: 1, md: 2, lg: 5 }} spacing={4}>
+                  {/* Date Range Filters */}
+                  <Box>
+                    <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
+                      {t('startDate')}
+                    </Text>
+                    <Input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      max={format(new Date(), 'yyyy-MM-dd')}
+                      size="md"
+                    />
+                  </Box>
 
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
-                    {t('endDate')}
-                  </Text>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    max={format(new Date(), 'yyyy-MM-dd')}
-                    size="md"
-                  />
-                </Box>
+                  <Box>
+                    <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
+                      {t('endDate')}
+                    </Text>
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      max={format(new Date(), 'yyyy-MM-dd')}
+                      size="md"
+                    />
+                  </Box>
 
-                {/* Category Filter */}
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
-                    {t('category')}
-                  </Text>
-                  <Select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    placeholder={t('allCategories')}
-                    size="md"
-                  >
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Box>
+                  {/* Category Filter */}
+                  <Box>
+                    <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
+                      {t('category')}
+                    </Text>
+                    <Select
+                      value={categoryFilter}
+                      onChange={(e) => setCategoryFilter(e.target.value)}
+                      placeholder={t('allCategories')}
+                      size="md"
+                    >
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Box>
 
-                {/* Type Filter */}
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
-                    {t('type')}
-                  </Text>
-                  <Select
-                    value={typeFilter}
-                    onChange={(e) =>
-                      setTypeFilter(e.target.value as 'all' | 'income' | 'expense')
-                    }
-                    size="md"
-                  >
-                    <option value="all">{t('all')}</option>
-                    <option value="income">{t('income')}</option>
-                    <option value="expense">{t('expense')}</option>
-                  </Select>
-                </Box>
+                  {/* Type Filter */}
+                  <Box>
+                    <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
+                      {t('type')}
+                    </Text>
+                    <Select
+                      value={typeFilter}
+                      onChange={(e) =>
+                        setTypeFilter(e.target.value as 'all' | 'income' | 'expense')
+                      }
+                      size="md"
+                    >
+                      <option value="all">{t('all')}</option>
+                      <option value="income">{t('income')}</option>
+                      <option value="expense">{t('expense')}</option>
+                    </Select>
+                  </Box>
 
-                {/* Story 10-6: Currency Filter (AC-10.6.7) */}
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
-                    {t('currency')}
-                  </Text>
-                  <Select
-                    value={currencyFilter}
-                    onChange={(e) => setCurrencyFilter(e.target.value)}
-                    placeholder={t('allCurrencies')}
-                    size="md"
-                  >
-                    {getEnabledCurrencies().map((curr) => (
-                      <option key={curr.code} value={curr.code}>
-                        {curr.symbol} {curr.code}
-                      </option>
-                    ))}
-                  </Select>
-                </Box>
-              </SimpleGrid>
+                  {/* Story 10-6: Currency Filter (AC-10.6.7) */}
+                  <Box>
+                    <Text fontSize="sm" fontWeight="medium" mb={2} color="fg.muted">
+                      {t('currency')}
+                    </Text>
+                    <Select
+                      value={currencyFilter}
+                      onChange={(e) => setCurrencyFilter(e.target.value)}
+                      placeholder={t('allCurrencies')}
+                      size="md"
+                    >
+                      {getEnabledCurrencies().map((curr) => (
+                        <option key={curr.code} value={curr.code}>
+                          {curr.symbol} {curr.code}
+                        </option>
+                      ))}
+                    </Select>
+                  </Box>
+                </SimpleGrid>
               </Box>
 
               {/* Search Input — always visible */}
@@ -948,100 +970,103 @@ function TransactionsContent() {
 
         {/* Transaction List — ref attached for pull-to-refresh hook */}
         <Box ref={pullToRefreshRef}>
-        {transactionsLoading && renderSkeletons()}
+          {transactionsLoading && renderSkeletons()}
 
-        {!transactionsLoading && transactionsError && (
-          <Box
-            textAlign="center"
-            py={8}
-            px={6}
-            bg="expense.subtle"
-            borderRadius="xl"
-            borderWidth="1px"
-            borderColor="expense"
-          >
-            <Text color="expense" fontWeight="medium">{t('failedToLoadRetry')}</Text>
-          </Box>
-        )}
-
-        {!transactionsLoading &&
-          !transactionsError &&
-          transactionsResponse?.data.length === 0 &&
-          renderEmptyState()}
-
-        {!transactionsLoading &&
-          !transactionsError &&
-          transactionsResponse &&
-          transactionsResponse.data.length > 0 && (
-            <VStack spacing={{ base: 6, md: 7 }} align="stretch">
-              {groupTransactionsByDate(transactionsResponse.data, {
-                todayLabel: t('groupToday'),
-                yesterdayLabel: t('groupYesterday'),
-                locale: dateLocale,
-              }).map((group) => (
-                <Box key={group.key}>
-                  {/* Date header — Today / Yesterday / weekday · date */}
-                  <Text
-                    fontSize="2xs"
-                    fontWeight="semibold"
-                    letterSpacing="wider"
-                    textTransform="uppercase"
-                    color="fg.muted"
-                    mb={2}
-                    ml={1}
-                  >
-                    {group.label}
-                  </Text>
-
-                  {/* The group's rows share one calm surface, split by hairlines. */}
-                  <Box
-                    bg="surface"
-                    borderWidth="1px"
-                    borderColor="border"
-                    borderRadius="xl"
-                    overflow="hidden"
-                    boxShadow="sm"
-                  >
-                    {group.items.map((transaction, i) => {
-                      const { formatted, convertedText } = formatAmount(
-                        transaction.amount,
-                        transaction.type,
-                        transaction.currency,
-                        transaction.exchange_rate
-                      );
-
-                      return (
-                        <Box key={transaction.id}>
-                          {i > 0 && <Divider borderColor="border" />}
-                          {/* AC-10.8.3: swipe left=Delete, swipe right=Edit (mobile) */}
-                          <SwipeableRow
-                            onDelete={() => handleDelete(transaction)}
-                            onEdit={() => handleEdit(transaction)}
-                          >
-                            <TransactionRow
-                              category={transaction.category}
-                              type={transaction.type}
-                              notes={transaction.notes}
-                              amountFormatted={formatted}
-                              convertedText={convertedText}
-                              typeLabel={t(transaction.type)}
-                              editLabel={t('editTransactionAriaLabel')}
-                              deleteLabel={t('deleteTransactionAriaLabel')}
-                              onEdit={() => handleEdit(transaction)}
-                              onDelete={() => handleDelete(transaction)}
-                            />
-                          </SwipeableRow>
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                </Box>
-              ))}
-            </VStack>
+          {!transactionsLoading && transactionsError && (
+            <Box
+              textAlign="center"
+              py={8}
+              px={6}
+              bg="expense.subtle"
+              borderRadius="xl"
+              borderWidth="1px"
+              borderColor="expense"
+            >
+              <Text color="expense" fontWeight="medium">
+                {t('failedToLoadRetry')}
+              </Text>
+            </Box>
           )}
 
-        {/* Story 9-7: Pagination Controls */}
-        </Box>{/* end pull-to-refresh wrapper */}
+          {!transactionsLoading &&
+            !transactionsError &&
+            transactionsResponse?.data.length === 0 &&
+            renderEmptyState()}
+
+          {!transactionsLoading &&
+            !transactionsError &&
+            transactionsResponse &&
+            transactionsResponse.data.length > 0 && (
+              <VStack spacing={{ base: 6, md: 7 }} align="stretch">
+                {groupTransactionsByDate(transactionsResponse.data, {
+                  todayLabel: t('groupToday'),
+                  yesterdayLabel: t('groupYesterday'),
+                  locale: dateLocale,
+                }).map((group) => (
+                  <Box key={group.key}>
+                    {/* Date header — Today / Yesterday / weekday · date */}
+                    <Text
+                      fontSize="2xs"
+                      fontWeight="semibold"
+                      letterSpacing="wider"
+                      textTransform="uppercase"
+                      color="fg.muted"
+                      mb={2}
+                      ml={1}
+                    >
+                      {group.label}
+                    </Text>
+
+                    {/* The group's rows share one calm surface, split by hairlines. */}
+                    <Box
+                      bg="surface"
+                      borderWidth="1px"
+                      borderColor="border"
+                      borderRadius="xl"
+                      overflow="hidden"
+                      boxShadow="sm"
+                    >
+                      {group.items.map((transaction, i) => {
+                        const { formatted, convertedText } = formatAmount(
+                          transaction.amount,
+                          transaction.type,
+                          transaction.currency,
+                          transaction.exchange_rate
+                        );
+
+                        return (
+                          <Box key={transaction.id}>
+                            {i > 0 && <Divider borderColor="border" />}
+                            {/* AC-10.8.3: swipe left=Delete, swipe right=Edit (mobile) */}
+                            <SwipeableRow
+                              onDelete={() => handleDelete(transaction)}
+                              onEdit={() => handleEdit(transaction)}
+                            >
+                              <TransactionRow
+                                category={transaction.category}
+                                type={transaction.type}
+                                notes={transaction.notes}
+                                amountFormatted={formatted}
+                                convertedText={convertedText}
+                                typeLabel={t(transaction.type)}
+                                editLabel={t('editTransactionAriaLabel')}
+                                deleteLabel={t('deleteTransactionAriaLabel')}
+                                onEdit={() => handleEdit(transaction)}
+                                onDelete={() => handleDelete(transaction)}
+                              />
+                            </SwipeableRow>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                ))}
+              </VStack>
+            )}
+
+          {/* Story 9-7: Pagination Controls */}
+        </Box>
+        {/* end pull-to-refresh wrapper */}
 
         {!transactionsLoading && !transactionsError && transactionsResponse && (
           <PaginationControls
@@ -1129,16 +1154,8 @@ function TransactionsContent() {
           <ModalHeader>{t('exportingTransactions')}</ModalHeader>
           <ModalBody pb={6}>
             <VStack spacing={4} align="stretch">
-              <Text>
-                {t('processingLargeDataset')}
-              </Text>
-              <Progress
-                value={exportProgress}
-                size="lg"
-                colorScheme="brand"
-                hasStripe
-                isAnimated
-              />
+              <Text>{t('processingLargeDataset')}</Text>
+              <Progress value={exportProgress} size="lg" colorScheme="brand" hasStripe isAnimated />
               <Text fontSize="sm" color="fg.muted" textAlign="center">
                 {t('percentComplete', { percent: exportProgress })}
               </Text>

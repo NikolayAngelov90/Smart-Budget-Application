@@ -27,7 +27,9 @@ import {
 } from '@/lib/services/comebackService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
+const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
 const mockRestoreStreak = restoreStreak as jest.MockedFunction<typeof restoreStreak>;
 
 interface ChainStub {
@@ -52,8 +54,7 @@ function chain(result: Result): ChainStub {
   }
   q.maybeSingle = jest.fn().mockResolvedValue(result);
   q.single = jest.fn().mockResolvedValue(result);
-  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) =>
-    resolve(result);
+  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) => resolve(result);
   return q;
 }
 

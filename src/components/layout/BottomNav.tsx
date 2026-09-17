@@ -82,13 +82,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
       paddingLeft="env(safe-area-inset-left)"
       paddingRight="env(safe-area-inset-right)"
     >
-      <Flex
-        w="full"
-        h="56px"
-        align="center"
-        justify="space-around"
-        px={1}
-      >
+      <Flex w="full" h="56px" align="center" justify="space-around" px={1}>
         {/* Left two tabs */}
         {NAV_TABS.slice(0, 2).map((tab) => {
           const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/');
@@ -111,7 +105,12 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
             >
               <VStack spacing={1}>
                 <Box as={tab.icon} boxSize={5} />
-                <Text fontSize="2xs" fontWeight={isActive ? 'semibold' : 'medium'} lineHeight={1} letterSpacing="tight">
+                <Text
+                  fontSize="2xs"
+                  fontWeight={isActive ? 'semibold' : 'medium'}
+                  lineHeight={1}
+                  letterSpacing="tight"
+                >
                   {t(tab.key)}
                 </Text>
               </VStack>
@@ -147,7 +146,14 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
             _active={{ bg: 'accent.emphasis', transform: 'scale(0.96)' }}
             transition="all 0.16s cubic-bezier(0.4, 0, 0.2, 1)"
           />
-          <Text fontSize="2xs" color="accent" fontWeight="semibold" mt="3px" lineHeight={1} letterSpacing="tight">
+          <Text
+            fontSize="2xs"
+            color="accent"
+            fontWeight="semibold"
+            mt="3px"
+            lineHeight={1}
+            letterSpacing="tight"
+          >
             {t('add')}
           </Text>
         </Flex>
@@ -174,7 +180,12 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
             >
               <VStack spacing={1}>
                 <Box as={tab.icon} boxSize={5} />
-                <Text fontSize="2xs" fontWeight={isActive ? 'semibold' : 'medium'} lineHeight={1} letterSpacing="tight">
+                <Text
+                  fontSize="2xs"
+                  fontWeight={isActive ? 'semibold' : 'medium'}
+                  lineHeight={1}
+                  letterSpacing="tight"
+                >
                   {t(tab.key)}
                 </Text>
               </VStack>

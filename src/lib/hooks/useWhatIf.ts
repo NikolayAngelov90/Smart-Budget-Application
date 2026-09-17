@@ -51,11 +51,15 @@ export interface UseWhatIfResult {
  */
 export function useWhatIf(): UseWhatIfResult {
   const dated = useDatedParams();
-  const { data, error, isLoading, mutate } = useSWR<WhatIfContextResponse>(what_ifUrl(dated), fetcher, {
-    dedupingInterval: 5000,
-    revalidateOnFocus: true,
-    keepPreviousData: true,
-  });
+  const { data, error, isLoading, mutate } = useSWR<WhatIfContextResponse>(
+    what_ifUrl(dated),
+    fetcher,
+    {
+      dedupingInterval: 5000,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+    }
+  );
 
   return { data, error, isLoading, mutate };
 }

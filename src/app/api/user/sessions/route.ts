@@ -83,14 +83,13 @@ export async function GET(): Promise<NextResponse> {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get current auth session token and hash it for secure DB storage
-    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const {
+      data: { session: authSession },
+    } = await supabase.auth.getSession();
     const sessionToken = authSession?.access_token;
     const hashedToken = sessionToken ? hashToken(sessionToken) : null;
 
@@ -161,10 +160,7 @@ export async function GET(): Promise<NextResponse> {
 
     if (fetchError) {
       logger.error('Sessions', 'Error fetching sessions:', fetchError);
-      return NextResponse.json(
-        { error: 'Failed to fetch sessions' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -173,9 +169,6 @@ export async function GET(): Promise<NextResponse> {
     });
   } catch (error) {
     logger.error('Sessions', 'Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
