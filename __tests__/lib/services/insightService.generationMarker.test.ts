@@ -61,11 +61,27 @@ function transactionCounter(count: number) {
 
 beforeEach(() => jest.clearAllMocks());
 
+/**
+ * "Recent" as a RELATIVE value, because the assertions below depend on it.
+ *
+ * These fixtures used to hardcode 2026-08-20, which meant "recent" on the day
+ * they were written and means "four weeks ago" now. That was harmless while
+ * `shouldTriggerGeneration` looked only at the transaction COUNT — the date was
+ * inert. The staleness condition made it load-bearing, and the fixture
+ * immediately contradicted the test name it sat under: a marker that old IS
+ * stale, so "does NOT regenerate when the marker is recent" started failing for
+ * the honest reason that the marker was no longer recent.
+ *
+ * A fixture that encodes "recent" as an absolute date decays into its opposite.
+ */
+const RECENTLY = () => new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
 describe('shouldTriggerGeneration — the cold-start bug', () => {
   it('does NOT regenerate when the marker is recent and few transactions followed', async () => {
+    const recent = RECENTLY();
     // THE BUG: on a cold start this returned true for everyone, because the Map
     // was empty. With a durable marker the same request answers correctly.
-    const profile = profileReader(new Date('2026-08-20T10:00:00Z').toISOString());
+    const profile = profileReader(recent);
     const counter = transactionCounter(3);
 
     (createClient as jest.Mock)
@@ -81,14 +97,12 @@ describe('shouldTriggerGeneration — the cold-start bug', () => {
     expect(profile.eq).toHaveBeenCalledWith('id', USER);
     expect(counter.from).toHaveBeenCalledWith('transactions');
     expect(counter.eq).toHaveBeenCalledWith('user_id', USER);
-    expect(counter.gte).toHaveBeenCalledWith(
-      'created_at',
-      new Date('2026-08-20T10:00:00Z').toISOString()
-    );
+    expect(counter.gte).toHaveBeenCalledWith('created_at', recent);
   });
 
   it('regenerates once the 10-transaction threshold is crossed', async () => {
-    const profile = profileReader(new Date('2026-08-20T10:00:00Z').toISOString());
+    const recent = RECENTLY();
+    const profile = profileReader(recent);
     const counter = transactionCounter(10);
 
     (createClient as jest.Mock)

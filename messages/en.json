@@ -500,7 +500,7 @@
     "pageSubtitle": "View and manage all your personalized budget recommendations",
     "failedToLoad": "Failed to load insights. Please try again later.",
     "noMatchingInsights": "No insights match your filters",
-    "noInsightsYet": "No insights available yet. Check back soon for personalized budget recommendations!",
+    "noInsightsYet": "No insights yet. They appear automatically once you have logged enough spending for a pattern to show.",
     "adjustFilters": "Try adjusting your filters or search terms",
     "allCaughtUp": "All caught up!",
     "allCaughtUpDescription": "No new insights at this time. Keep tracking your spending!",
@@ -590,7 +590,8 @@
     "meta_why_spending_increase": "You're seeing this because your spending in this category increased by more than 20% compared to last month. We calculate this by comparing your total spending in each category month-over-month to help you spot unusual spending patterns early.",
     "meta_why_budget_recommendation": "You're seeing this because you don't have a budget set for this category, but you've been spending consistently here. We calculated the recommended budget by taking your average spending over the last 3 months and adding a 10% buffer to give you flexibility.",
     "meta_why_unusual_expense": "You're seeing this because we detected a transaction that's significantly higher than your typical spending in this category. We use statistical analysis to identify expenses that are more than 2 standard deviations above your category average, which helps catch potential errors or unexpected charges.",
-    "meta_why_positive_reinforcement": "You're seeing this because you stayed under your budget limit for this category! We want to celebrate your success and encourage this positive behavior. Keep up the great work managing your spending."
+    "meta_why_positive_reinforcement": "You're seeing this because you stayed under your budget limit for this category! We want to celebrate your success and encourage this positive behavior. Keep up the great work managing your spending.",
+    "noInsightsYetHint": "You can also generate them now from what you have already logged."
   },
   "settings": {
     "title": "Settings",
