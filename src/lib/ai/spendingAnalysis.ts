@@ -260,10 +260,38 @@ export function compareMonthlySpending(
  * DELETED the user's rows and reinserted fresh ones - and `is_dismissed` was not
  * the only casualty. All six engagement columns rode the same rows, so
  * `view_count` and `metadata_expanded_count` were resetting on every run too.
- * None of this was unmeasured; it was unmeasurable in principle. The same applies
- * to the Epic 12-8 analytics dashboard, whose engagement numbers are only
- * meaningful from the migration date (2026-08-28) forward and were untrustworthy
- * before it.
+ * None of this was unmeasured; it was unmeasurable in principle.
+ *
+ * CORRECTION (2026-09-17). An earlier version of this note claimed the Epic 12-8
+ * analytics dashboard became trustworthy from 2026-08-28 forward. THAT WAS
+ * FALSE. It was never trustworthy, and hp-10 did not fix it: hp-10 made the
+ * engagement columns DURABLE, and could not make them POPULATED. Measured on
+ * production 2026-09-16, across all 33 rows ever written: `view_count` 0,
+ * `metadata_expanded_count` 0, `first_viewed_at` NULL — never once non-zero.
+ *
+ * Two independent faults, each of which alone produced an empty table, so each
+ * hid the other:
+ *   1. NOTHING CALLED THE ENDPOINT. `POST /api/insights/:id/track` shipped in
+ *      Epic 6 and had no client. The only `/track` callers in the codebase hit
+ *      `/api/analytics/track` — a different endpoint, a different table.
+ *   2. THE WRITE WOULD HAVE BEEN REJECTED ANYWAY. The route uses the user
+ *      client, and `authenticated` had no UPDATE grant on any of the five
+ *      columns (`has_column_privilege` -> false for all five; RLS was never the
+ *      blocker — the policy allows the row and carries no WITH CHECK). Every
+ *      call would have returned 42501, silently, because telemetry does not
+ *      surface failures.
+ *
+ * Both were fixed on 2026-09-17: the client is wired in AIInsightCard via
+ * insightEngagementService, and 20260916120000_insight_engagement_column_grants
+ * grants the five columns.
+ *
+ * SO THE TRIGGER BELOW WAS UNFIRABLE UNTIL 2026-09-17. `metadata_expanded_count
+ * > 0` could never be true, so every dismissal classified as NOISE by
+ * construction — and a reader checking it would have found a 100% noise rate and
+ * concluded the rule floods, which is the opposite of what that number meant.
+ * It becomes firable from 2026-09-17 and not before. Engagement data older than
+ * that date is absent because NOTHING WAS RECORDING, not because nobody engaged.
+ * Those two read identically in a query and mean opposite things.
  *
  * THE FIRST READING IS CONTAMINATED - DO NOT USE IT AS A BASELINE. The clock
  * starts at the hp-10 migration (2026-08-28), which cleared the table, so every
@@ -281,8 +309,15 @@ export function compareMonthlySpending(
  *          count(*) FILTER (WHERE is_dismissed
  *                             AND coalesce(metadata_expanded_count, 0) > 0) AS handled
  *   FROM public.insights
- *   WHERE created_at >= DATE '2026-08-29'  -- exclude hp-10 verification rows
+ *   WHERE created_at >= DATE '2026-09-17'  -- see the two cutoffs below
  *   GROUP BY type;
+ *
+ * TWO CUTOFFS, AND THE LATER ONE WINS. 2026-08-29 excludes the seven hp-10
+ * verification dismissals. 2026-09-17 is when engagement tracking began
+ * recording at all. Rows between those dates have honest DISMISSAL data and
+ * structurally empty ENGAGEMENT data, so they would land in NOISE for the same
+ * reason every row before them did - nothing was recording. Since this query
+ * reads the engagement columns, it must use the later date.
  *
  * `coalesce` is defensive rather than currently required - no NULLs exist today -
  * but the column is INTEGER DEFAULT 0 with no NOT NULL constraint, and a NULL
