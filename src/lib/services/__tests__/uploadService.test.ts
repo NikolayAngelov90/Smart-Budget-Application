@@ -116,7 +116,12 @@ describe('uploadService', () => {
 
       // Trigger onload
       if (mockFileReader.onload) {
-        mockFileReader.onload.call(mockFileReader as unknown as FileReader, { target: { result: 'data:image/jpeg;base64,mockBase64Data' } } as ProgressEvent<FileReader>);
+        mockFileReader.onload.call(
+          mockFileReader as unknown as FileReader,
+          {
+            target: { result: 'data:image/jpeg;base64,mockBase64Data' },
+          } as ProgressEvent<FileReader>
+        );
       }
 
       const preview = await previewPromise;
@@ -141,7 +146,10 @@ describe('uploadService', () => {
 
       // Trigger onerror
       if (mockFileReader.onerror) {
-        mockFileReader.onerror.call(mockFileReader as unknown as FileReader, {} as ProgressEvent<FileReader>);
+        mockFileReader.onerror.call(
+          mockFileReader as unknown as FileReader,
+          {} as ProgressEvent<FileReader>
+        );
       }
 
       await expect(previewPromise).rejects.toThrow('Failed to read file');
@@ -250,7 +258,9 @@ describe('uploadService', () => {
         upload: mockUpload,
       });
 
-      await expect(uploadProfilePicture(file, userId)).rejects.toThrow('Upload failed: Storage error');
+      await expect(uploadProfilePicture(file, userId)).rejects.toThrow(
+        'Upload failed: Storage error'
+      );
     });
   });
 
@@ -343,7 +353,8 @@ describe('uploadService', () => {
     });
 
     test('rejects URL from different domain', () => {
-      const url = 'https://other-domain.com/storage/v1/object/public/profile-pictures/user-123/profile.jpg';
+      const url =
+        'https://other-domain.com/storage/v1/object/public/profile-pictures/user-123/profile.jpg';
 
       const result = isValidSupabaseStorageUrl(url, projectUrl);
 

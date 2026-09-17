@@ -46,13 +46,19 @@ const failProfileWith = (status: number) => {
     if (typeof url === 'string' && url.includes('/api/user/profile')) {
       return Promise.resolve({ ok: false, status, headers: jsonHeaders, json: async () => ({}) });
     }
-    return Promise.resolve({ ok: true, status: 200, headers: jsonHeaders, json: async () => ({ data: [] }) });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: jsonHeaders,
+      json: async () => ({ data: [] }),
+    });
   });
 };
 
 const profilePuts = () =>
   (global.fetch as jest.Mock).mock.calls.filter(
-    ([url, init]) => typeof url === 'string' && url.includes('/api/user/profile') && init?.method === 'PUT'
+    ([url, init]) =>
+      typeof url === 'string' && url.includes('/api/user/profile') && init?.method === 'PUT'
   );
 
 beforeEach(() => {
@@ -65,7 +71,9 @@ describe('Settings sub-page when the profile cannot be loaded', () => {
     render(<PreferencesPage />, { wrapper: ChakraProvider });
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load profile. Please refresh the page.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Failed to load profile. Please refresh the page.')
+      ).toBeInTheDocument();
     });
 
     // The controls must NOT be there: rendering the currency select would show
@@ -94,7 +102,9 @@ describe('Settings sub-page when the profile cannot be loaded', () => {
     render(<AccountPage />, { wrapper: ChakraProvider });
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load profile. Please refresh the page.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Failed to load profile. Please refresh the page.')
+      ).toBeInTheDocument();
     });
 
     // The regression this guards: the Save button rendered, enabled, and did
@@ -106,15 +116,27 @@ describe('Settings sub-page when the profile cannot be loaded', () => {
   it('treats a 200 with no data as a failure, not as an empty profile', async () => {
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (typeof url === 'string' && url.includes('/api/user/profile')) {
-        return Promise.resolve({ ok: true, status: 200, headers: jsonHeaders, json: async () => ({}) });
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: jsonHeaders,
+          json: async () => ({}),
+        });
       }
-      return Promise.resolve({ ok: true, status: 200, headers: jsonHeaders, json: async () => ({ data: [] }) });
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: jsonHeaders,
+        json: async () => ({ data: [] }),
+      });
     });
 
     render(<PreferencesPage />, { wrapper: ChakraProvider });
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load profile. Please refresh the page.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Failed to load profile. Please refresh the page.')
+      ).toBeInTheDocument();
     });
   });
 });

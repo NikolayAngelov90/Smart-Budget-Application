@@ -42,9 +42,7 @@ jest.mock('@/lib/services/exchangeRateService', () => ({
 }));
 
 import { getExchangeRates } from '@/lib/services/exchangeRateService';
-const mockGetExchangeRates = getExchangeRates as jest.MockedFunction<
-  typeof getExchangeRates
->;
+const mockGetExchangeRates = getExchangeRates as jest.MockedFunction<typeof getExchangeRates>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createMockRequest(url: string): any {
@@ -123,9 +121,7 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
   });
 
   test('returns correct income, expenses, and balance for current month', async () => {
-    const request = createMockRequest(
-      'http://localhost:3000/api/dashboard/stats?month=2026-01'
-    );
+    const request = createMockRequest('http://localhost:3000/api/dashboard/stats?month=2026-01');
     const response = await GET(request);
     const data = await response.json();
 
@@ -137,9 +133,7 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
   });
 
   test('returns trend comparing current vs previous month', async () => {
-    const request = createMockRequest(
-      'http://localhost:3000/api/dashboard/stats?month=2026-01'
-    );
+    const request = createMockRequest('http://localhost:3000/api/dashboard/stats?month=2026-01');
     const response = await GET(request);
     const data = await response.json();
 
@@ -153,9 +147,7 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
   });
 
   test('returns correct month format in response', async () => {
-    const request = createMockRequest(
-      'http://localhost:3000/api/dashboard/stats?month=2026-01'
-    );
+    const request = createMockRequest('http://localhost:3000/api/dashboard/stats?month=2026-01');
     const response = await GET(request);
     const data = await response.json();
 
@@ -201,9 +193,7 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
       return Promise.resolve(response).then(resolve);
     });
 
-    const request = createMockRequest(
-      'http://localhost:3000/api/dashboard/stats?currency=EUR'
-    );
+    const request = createMockRequest('http://localhost:3000/api/dashboard/stats?currency=EUR');
     const response = await GET(request);
     const data = await response.json();
 
@@ -216,9 +206,7 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
 
   test('fetches live rate when exchange_rate is null and currency differs', async () => {
     // EUR transaction with no stored exchange_rate — needs live USD conversion
-    const eurWithoutRate = [
-      { amount: 100, type: 'expense', currency: 'EUR', exchange_rate: null },
-    ];
+    const eurWithoutRate = [{ amount: 100, type: 'expense', currency: 'EUR', exchange_rate: null }];
 
     let callCount = 0;
     mockQuery.then.mockImplementation((resolve: (v: unknown) => void) => {
@@ -232,9 +220,7 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
     });
 
     // USD is preferred currency, EUR transactions have no stored rate
-    const request = createMockRequest(
-      'http://localhost:3000/api/dashboard/stats?currency=USD'
-    );
+    const request = createMockRequest('http://localhost:3000/api/dashboard/stats?currency=USD');
     const response = await GET(request);
     const data = await response.json();
 
@@ -246,9 +232,7 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
 
   test('does not fetch live rates when all transactions match preferred currency', async () => {
     // EUR transactions with preferred currency EUR — no conversion needed
-    const request = createMockRequest(
-      'http://localhost:3000/api/dashboard/stats?currency=EUR'
-    );
+    const request = createMockRequest('http://localhost:3000/api/dashboard/stats?currency=EUR');
     await GET(request);
 
     expect(mockGetExchangeRates).not.toHaveBeenCalled();

@@ -68,8 +68,7 @@ function mockResponse(data: unknown, ok = true, status = 200) {
     ok,
     status,
     headers: {
-      get: (name: string) =>
-        name.toLowerCase() === 'content-type' ? 'application/json' : null,
+      get: (name: string) => (name.toLowerCase() === 'content-type' ? 'application/json' : null),
     },
     json: async () => data,
   };
@@ -292,7 +291,9 @@ describe('Settings Page - PDF Export Integration Tests', () => {
         await waitFor(() => {
           expect(screen.getByLabelText('Show all features')).toBeInTheDocument();
         });
-        expect((screen.getByLabelText('Show all features') as HTMLInputElement).checked).toBe(false);
+        expect((screen.getByLabelText('Show all features') as HTMLInputElement).checked).toBe(
+          false
+        );
       });
 
       test('toggling on PUTs { preferences: { disclosure_show_all: true } } AND revalidates DISCLOSURE_KEY', async () => {
@@ -324,11 +325,9 @@ describe('Settings Page - PDF Export Integration Tests', () => {
         // The disclosure GET reads this pref server-side, so the key must be
         // revalidated on flip (15-7 review LOW-1)
         await waitFor(() => {
-          expect(mockSwrMutate).toHaveBeenCalledWith(
-            '/api/feature-disclosure',
-            undefined,
-            { revalidate: true }
-          );
+          expect(mockSwrMutate).toHaveBeenCalledWith('/api/feature-disclosure', undefined, {
+            revalidate: true,
+          });
         });
       });
     });
@@ -414,7 +413,9 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     customRender(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /export monthly report \(pdf\)/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /export monthly report \(pdf\)/i })
+      ).toBeInTheDocument();
     });
 
     // Click export button
@@ -502,19 +503,15 @@ describe('Settings Page - PDF Export Integration Tests', () => {
   // Test loading state disables controls
   test('disables month selector during PDF generation', async () => {
     (global.fetch as jest.Mock).mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () => resolve(mockResponse({ data: [] })),
-            100
-          )
-        )
+      () => new Promise((resolve) => setTimeout(() => resolve(mockResponse({ data: [] })), 100))
     );
 
     customRender(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /export monthly report \(pdf\)/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /export monthly report \(pdf\)/i })
+      ).toBeInTheDocument();
     });
 
     const exportButton = screen.getByRole('button', { name: /export monthly report \(pdf\)/i });
@@ -550,7 +547,9 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     customRender(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /export monthly report \(pdf\)/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /export monthly report \(pdf\)/i })
+      ).toBeInTheDocument();
     });
 
     const exportButton = screen.getByRole('button', { name: /export monthly report \(pdf\)/i });
@@ -601,7 +600,9 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     customRender(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /export monthly report \(pdf\)/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /export monthly report \(pdf\)/i })
+      ).toBeInTheDocument();
     });
 
     const exportButton = screen.getByRole('button', { name: /export monthly report \(pdf\)/i });
@@ -634,7 +635,9 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     customRender(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /export monthly report \(pdf\)/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /export monthly report \(pdf\)/i })
+      ).toBeInTheDocument();
     });
 
     const exportButton = screen.getByRole('button', { name: /export monthly report \(pdf\)/i });
@@ -713,7 +716,9 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     customRender(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /export monthly report \(pdf\)/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /export monthly report \(pdf\)/i })
+      ).toBeInTheDocument();
     });
 
     const exportButton = screen.getByRole('button', { name: /export monthly report \(pdf\)/i });
@@ -791,7 +796,9 @@ describe('Settings Page - PDF Export Integration Tests', () => {
     customRender(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /export monthly report \(pdf\)/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /export monthly report \(pdf\)/i })
+      ).toBeInTheDocument();
     });
 
     const exportButton = screen.getByRole('button', { name: /export monthly report \(pdf\)/i });

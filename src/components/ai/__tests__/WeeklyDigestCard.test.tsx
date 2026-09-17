@@ -32,7 +32,8 @@ jest.mock('next-intl', () => ({
       highlight: "This Week's Highlight",
       loading: 'Loading weekly digest...',
     };
-    if (key === 'weekOf') return `Week of ${String(params?.start ?? '')} – ${String(params?.end ?? '')}`;
+    if (key === 'weekOf')
+      return `Week of ${String(params?.start ?? '')} – ${String(params?.end ?? '')}`;
     if (key === 'vsLastWeek') return `${String(params?.pct ?? '')} vs last week`;
     return map[key] ?? key;
   },
@@ -45,8 +46,7 @@ const mockUseWeeklyDigest = useWeeklyDigest as jest.MockedFunction<typeof useWee
 // HELPERS
 // ============================================================================
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 const baseDigest: WeeklyDigest = {
   id: 'd-1',
@@ -121,7 +121,11 @@ describe('WeeklyDigestCard', () => {
   });
 
   it('shows up-arrow icon and positive text when spending_change_pct > 0 (AC6)', () => {
-    mockUseWeeklyDigest.mockReturnValue({ digest: { ...baseDigest, spending_change_pct: 25 }, isLoading: false, error: undefined });
+    mockUseWeeklyDigest.mockReturnValue({
+      digest: { ...baseDigest, spending_change_pct: 25 },
+      isLoading: false,
+      error: undefined,
+    });
     renderWithChakra(<WeeklyDigestCard />);
     // Verify up-arrow icon is rendered (AC6: "up-arrow")
     expect(screen.getByTestId('change-increase-icon')).toBeInTheDocument();
@@ -130,7 +134,11 @@ describe('WeeklyDigestCard', () => {
   });
 
   it('shows down-arrow icon and negative text when spending_change_pct < 0 (AC6)', () => {
-    mockUseWeeklyDigest.mockReturnValue({ digest: { ...baseDigest, spending_change_pct: -15 }, isLoading: false, error: undefined });
+    mockUseWeeklyDigest.mockReturnValue({
+      digest: { ...baseDigest, spending_change_pct: -15 },
+      isLoading: false,
+      error: undefined,
+    });
     renderWithChakra(<WeeklyDigestCard />);
     // Verify down-arrow icon is rendered (AC6: "down-arrow")
     expect(screen.getByTestId('change-decrease-icon')).toBeInTheDocument();
@@ -139,7 +147,11 @@ describe('WeeklyDigestCard', () => {
   });
 
   it('shows neither arrow icon when spending_change_pct is 0', () => {
-    mockUseWeeklyDigest.mockReturnValue({ digest: { ...baseDigest, spending_change_pct: 0 }, isLoading: false, error: undefined });
+    mockUseWeeklyDigest.mockReturnValue({
+      digest: { ...baseDigest, spending_change_pct: 0 },
+      isLoading: false,
+      error: undefined,
+    });
     renderWithChakra(<WeeklyDigestCard />);
     expect(screen.queryByTestId('change-increase-icon')).not.toBeInTheDocument();
     expect(screen.queryByTestId('change-decrease-icon')).not.toBeInTheDocument();
@@ -147,21 +159,33 @@ describe('WeeklyDigestCard', () => {
   });
 
   it('renders nothing when fetch errors and there is no cached digest (M5)', () => {
-    mockUseWeeklyDigest.mockReturnValue({ digest: null, isLoading: false, error: new Error('Network error') });
+    mockUseWeeklyDigest.mockReturnValue({
+      digest: null,
+      isLoading: false,
+      error: new Error('Network error'),
+    });
     renderWithChakra(<WeeklyDigestCard />);
     expect(screen.queryByTestId('weekly-digest-card')).not.toBeInTheDocument();
   });
 
   it('renders stale digest even when a revalidation error occurs (M5)', () => {
     // SWR preserves previous value — digest is not null even though error is set
-    mockUseWeeklyDigest.mockReturnValue({ digest: baseDigest, isLoading: false, error: new Error('Revalidation failed') });
+    mockUseWeeklyDigest.mockReturnValue({
+      digest: baseDigest,
+      isLoading: false,
+      error: new Error('Revalidation failed'),
+    });
     renderWithChakra(<WeeklyDigestCard />);
     expect(screen.getByTestId('weekly-digest-card')).toBeInTheDocument();
   });
 
   it('renders nothing when top_categories is empty (no Top Categories section)', () => {
     const digestNoCategories = { ...baseDigest, top_categories: [], actionable_highlight: '' };
-    mockUseWeeklyDigest.mockReturnValue({ digest: digestNoCategories, isLoading: false, error: undefined });
+    mockUseWeeklyDigest.mockReturnValue({
+      digest: digestNoCategories,
+      isLoading: false,
+      error: undefined,
+    });
     renderWithChakra(<WeeklyDigestCard />);
     expect(screen.queryByText('Top Categories')).not.toBeInTheDocument();
   });

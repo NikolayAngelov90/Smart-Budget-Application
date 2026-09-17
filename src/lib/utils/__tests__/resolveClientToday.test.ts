@@ -14,12 +14,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import {
-  clientTimeZoneParam,
-  clientTodayParam,
-  resolveClientToday,
-  toLocalISODate,
-} from '../date';
+import { clientTimeZoneParam, clientTodayParam, resolveClientToday, toLocalISODate } from '../date';
 
 const ROOT = path.resolve(__dirname, '../../../..');
 
@@ -53,12 +48,17 @@ describe('resolveClientToday', () => {
     expect(toLocalISODate(resolveClientToday('2030-01-01'))).toBe('2026-07-30');
   });
 
-  it.each([[null], [undefined], [''], ['not-a-date'], ['2026-7-3'], ['30-07-2026'], ['2026-13-01']])(
-    'falls back to the server clock for %p',
-    (value) => {
-      expect(toLocalISODate(resolveClientToday(value as string | null))).toBe('2026-07-30');
-    }
-  );
+  it.each([
+    [null],
+    [undefined],
+    [''],
+    ['not-a-date'],
+    ['2026-7-3'],
+    ['30-07-2026'],
+    ['2026-13-01'],
+  ])('falls back to the server clock for %p', (value) => {
+    expect(toLocalISODate(resolveClientToday(value as string | null))).toBe('2026-07-30');
+  });
 
   it('returns midday, so a DST shift cannot cross a date boundary', () => {
     expect(resolveClientToday('2026-07-31').getHours()).toBe(12);

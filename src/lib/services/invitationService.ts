@@ -13,7 +13,12 @@
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
-import type { Household, HouseholdInvitation, HouseholdInvitationWithState, MyInvitation } from '@/types/database.types';
+import type {
+  Household,
+  HouseholdInvitation,
+  HouseholdInvitationWithState,
+  MyInvitation,
+} from '@/types/database.types';
 
 /** Caller is not an admin of any household (or not in one). → 403 */
 export class NotHouseholdAdminError extends Error {
@@ -113,7 +118,10 @@ async function requireAdminHouseholdId(userId: string): Promise<string> {
  * Creates a pending invitation for `email` in the caller's household.
  * @throws NotHouseholdAdminError | InvitationExistsError | Error
  */
-export async function createInvitation(userId: string, email: string): Promise<HouseholdInvitation> {
+export async function createInvitation(
+  userId: string,
+  email: string
+): Promise<HouseholdInvitation> {
   const normalized = normalizeEmail(email);
   if (!EMAIL_RE.test(normalized) || normalized.length > 254) {
     throw new Error('A valid email address is required');
@@ -137,7 +145,12 @@ export async function createInvitation(userId: string, email: string): Promise<H
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
   const { data, error } = await admin
     .from('household_invitations')
-    .insert({ household_id: householdId, email: normalized, invited_by: userId, expires_at: expiresAt })
+    .insert({
+      household_id: householdId,
+      email: normalized,
+      invited_by: userId,
+      expires_at: expiresAt,
+    })
     .select()
     .single();
 
@@ -290,7 +303,12 @@ export async function listMyPendingInvitations(userEmail: string): Promise<MyInv
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 
-export type InvitationInvalidReason = 'invalid' | 'not_pending' | 'expired' | 'email_mismatch' | 'already_in_household';
+export type InvitationInvalidReason =
+  | 'invalid'
+  | 'not_pending'
+  | 'expired'
+  | 'email_mismatch'
+  | 'already_in_household';
 
 export interface InvitationValidation {
   valid: boolean;
@@ -302,7 +320,11 @@ export interface InvitationValidation {
 
 /** True if the user already belongs to any household (one-household-per-user MVP rule). */
 async function isUserInHousehold(admin: ServiceClient, userId: string): Promise<boolean> {
-  const { data } = await admin.from('household_members').select('id').eq('user_id', userId).maybeSingle();
+  const { data } = await admin
+    .from('household_members')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
   return Boolean(data);
 }
 
@@ -335,9 +357,11 @@ export async function validateInvitation(
   const base = { householdName, invitedEmail, emailMatches };
 
   if (inv.status !== 'pending') return { valid: false, reason: 'not_pending', ...base };
-  if (new Date(inv.expires_at).getTime() < Date.now()) return { valid: false, reason: 'expired', ...base };
+  if (new Date(inv.expires_at).getTime() < Date.now())
+    return { valid: false, reason: 'expired', ...base };
   if (!emailMatches) return { valid: false, reason: 'email_mismatch', ...base };
-  if (await isUserInHousehold(admin, userId)) return { valid: false, reason: 'already_in_household', ...base };
+  if (await isUserInHousehold(admin, userId))
+    return { valid: false, reason: 'already_in_household', ...base };
 
   return { valid: true, ...base };
 }
@@ -348,7 +372,11 @@ export async function validateInvitation(
  * @throws InvalidTokenError | InvitationNotPendingError | InvitationExpiredError
  *         | EmailMismatchError | AlreadyInHouseholdError
  */
-export async function acceptInvitation(userId: string, userEmail: string, token: string): Promise<Household> {
+export async function acceptInvitation(
+  userId: string,
+  userEmail: string,
+  token: string
+): Promise<Household> {
   const admin = createServiceRoleClient();
 
   const { data: inv, error } = await admin
@@ -375,7 +403,10 @@ export async function acceptInvitation(userId: string, userEmail: string, token:
     if (memberError.code === PG_UNIQUE_VIOLATION) {
       throw new AlreadyInHouseholdError();
     }
-    logger.error('InvitationService', `Join membership insert failed for ${userId}: ${memberError.message}`);
+    logger.error(
+      'InvitationService',
+      `Join membership insert failed for ${userId}: ${memberError.message}`
+    );
     throw new Error('Failed to join household');
   }
 
@@ -385,7 +416,10 @@ export async function acceptInvitation(userId: string, userEmail: string, token:
     .eq('id', inv.id);
   if (flipError) {
     // Non-fatal: the membership exists; the invite just wasn't flipped. Log for follow-up.
-    logger.error('InvitationService', `Invite ${inv.id} flip-to-accepted failed (membership already created): ${flipError.message}`);
+    logger.error(
+      'InvitationService',
+      `Invite ${inv.id} flip-to-accepted failed (membership already created): ${flipError.message}`
+    );
   }
 
   // Best-effort: notify the inviting admin. Never fail the join on push errors.

@@ -295,11 +295,7 @@ export function AIInsightCard({
               _hover={{ bg: 'accent.subtle' }}
               onClick={handleSeeDetails}
               rightIcon={
-                isMobile ? undefined : isExpanded ? (
-                  <ChevronUpIcon />
-                ) : (
-                  <ChevronDownIcon />
-                )
+                isMobile ? undefined : isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />
               }
               aria-label={
                 isMobile
@@ -318,16 +314,8 @@ export function AIInsightCard({
           {/* Expandable Metadata Section (Desktop only, inline) */}
           {expandable && !isMobile && (
             <Collapse in={isExpanded} animateOpacity style={{ width: '100%' }}>
-              <Box
-                mt={4}
-                pt={4}
-                borderTop="1px"
-                borderColor="border"
-                w="full"
-              >
-                <InsightErrorBoundary>
-                  {children}
-                </InsightErrorBoundary>
+              <Box mt={4} pt={4} borderTop="1px" borderColor="border" w="full">
+                <InsightErrorBoundary>{children}</InsightErrorBoundary>
               </Box>
             </Collapse>
           )}

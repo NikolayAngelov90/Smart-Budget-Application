@@ -8,10 +8,7 @@
  *   trend, is_recurring, sort order
  */
 
-import {
-  hasEnoughDataForProjections,
-  getAnnualizedProjections,
-} from '../projectionsService';
+import { hasEnoughDataForProjections, getAnnualizedProjections } from '../projectionsService';
 
 // ============================================================================
 // HELPERS
@@ -48,7 +45,6 @@ function createLtLimitChainMock(resolveWith: any) {
   return chain;
 }
 
-
 // ============================================================================
 // hasEnoughDataForProjections
 // ============================================================================
@@ -56,7 +52,9 @@ function createLtLimitChainMock(resolveWith: any) {
 describe('hasEnoughDataForProjections', () => {
   it('returns true when expense transaction exists before current month', async () => {
     const chain = createLtLimitChainMock({ data: [{ date: '2026-01-15' }], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof hasEnoughDataForProjections>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof hasEnoughDataForProjections
+    >[0];
 
     const result = await hasEnoughDataForProjections(supabase, 'user-1');
 
@@ -67,7 +65,9 @@ describe('hasEnoughDataForProjections', () => {
 
   it('returns false when no expense transactions before current month', async () => {
     const chain = createLtLimitChainMock({ data: [], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof hasEnoughDataForProjections>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof hasEnoughDataForProjections
+    >[0];
 
     const result = await hasEnoughDataForProjections(supabase, 'user-1');
 
@@ -78,7 +78,9 @@ describe('hasEnoughDataForProjections', () => {
     // The .lt('date', currentMonthStart) filter returns empty — current-month transactions
     // are excluded by the service query, so the result data is empty
     const chain = createLtLimitChainMock({ data: [], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof hasEnoughDataForProjections>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof hasEnoughDataForProjections
+    >[0];
 
     const result = await hasEnoughDataForProjections(supabase, 'user-1');
 
@@ -90,9 +92,13 @@ describe('hasEnoughDataForProjections', () => {
   it('throws on DB error (never silently returns false)', async () => {
     const dbError = new Error('Connection refused');
     const chain = createLtLimitChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof hasEnoughDataForProjections>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof hasEnoughDataForProjections
+    >[0];
 
-    await expect(hasEnoughDataForProjections(supabase, 'user-1')).rejects.toThrow('Connection refused');
+    await expect(hasEnoughDataForProjections(supabase, 'user-1')).rejects.toThrow(
+      'Connection refused'
+    );
   });
 });
 
@@ -101,10 +107,7 @@ describe('hasEnoughDataForProjections', () => {
 // ============================================================================
 
 describe('getAnnualizedProjections', () => {
-  function buildSupabaseMock(
-    currentTxns: object[],
-    prevTxns: object[],
-  ) {
+  function buildSupabaseMock(currentTxns: object[], prevTxns: object[]) {
     const currChain = createOrderChainMock({ data: currentTxns, error: null });
     const prevChain = createOrderChainMock({ data: prevTxns, error: null });
 
@@ -120,9 +123,24 @@ describe('getAnnualizedProjections', () => {
 
   it('aggregates spending across multiple categories', async () => {
     const currentTxns = [
-      { amount: 50, category_id: 'cat-1', date: '2026-01-10', categories: { id: 'cat-1', name: 'Food', color: '#ff0000' } },
-      { amount: 30, category_id: 'cat-1', date: '2026-01-20', categories: { id: 'cat-1', name: 'Food', color: '#ff0000' } },
-      { amount: 100, category_id: 'cat-2', date: '2026-01-15', categories: { id: 'cat-2', name: 'Transport', color: '#00ff00' } },
+      {
+        amount: 50,
+        category_id: 'cat-1',
+        date: '2026-01-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff0000' },
+      },
+      {
+        amount: 30,
+        category_id: 'cat-1',
+        date: '2026-01-20',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff0000' },
+      },
+      {
+        amount: 100,
+        category_id: 'cat-2',
+        date: '2026-01-15',
+        categories: { id: 'cat-2', name: 'Transport', color: '#00ff00' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
@@ -142,8 +160,18 @@ describe('getAnnualizedProjections', () => {
   it('computes monthly avg as total / months_analyzed', async () => {
     // Two distinct months of data
     const currentTxns = [
-      { amount: 120, category_id: 'cat-1', date: '2025-12-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
-      { amount: 60, category_id: 'cat-1', date: '2026-01-15', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 120,
+        category_id: 'cat-1',
+        date: '2025-12-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
+      {
+        amount: 60,
+        category_id: 'cat-1',
+        date: '2026-01-15',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
@@ -159,9 +187,24 @@ describe('getAnnualizedProjections', () => {
   it('rounds monthly avg and annual projection to 2dp', async () => {
     // 100 / 3 months = 33.333... → rounds to 33.33
     const currentTxns = [
-      { amount: 33, category_id: 'cat-1', date: '2025-11-01', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
-      { amount: 33, category_id: 'cat-1', date: '2025-12-01', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
-      { amount: 34, category_id: 'cat-1', date: '2026-01-01', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 33,
+        category_id: 'cat-1',
+        date: '2025-11-01',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
+      {
+        amount: 33,
+        category_id: 'cat-1',
+        date: '2025-12-01',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
+      {
+        amount: 34,
+        category_id: 'cat-1',
+        date: '2026-01-01',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
@@ -174,7 +217,12 @@ describe('getAnnualizedProjections', () => {
 
   it("sets trend to 'new' when no prior period data for category", async () => {
     const currentTxns = [
-      { amount: 100, category_id: 'cat-1', date: '2026-01-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 100,
+        category_id: 'cat-1',
+        date: '2026-01-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
@@ -187,10 +235,20 @@ describe('getAnnualizedProjections', () => {
 
   it("sets trend to 'up' when current monthly avg > prior by ≥5%", async () => {
     const currentTxns = [
-      { amount: 110, category_id: 'cat-1', date: '2026-01-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 110,
+        category_id: 'cat-1',
+        date: '2026-01-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const prevTxns = [
-      { amount: 100, category_id: 'cat-1', date: '2025-10-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 100,
+        category_id: 'cat-1',
+        date: '2025-10-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, prevTxns);
     const result = await getAnnualizedProjections(supabase, 'user-1');
@@ -203,10 +261,20 @@ describe('getAnnualizedProjections', () => {
 
   it("sets trend to 'down' when current monthly avg < prior by ≥5%", async () => {
     const currentTxns = [
-      { amount: 90, category_id: 'cat-1', date: '2026-01-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 90,
+        category_id: 'cat-1',
+        date: '2026-01-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const prevTxns = [
-      { amount: 100, category_id: 'cat-1', date: '2025-10-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 100,
+        category_id: 'cat-1',
+        date: '2025-10-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, prevTxns);
     const result = await getAnnualizedProjections(supabase, 'user-1');
@@ -219,10 +287,20 @@ describe('getAnnualizedProjections', () => {
 
   it("sets trend to 'stable' when change < 5%", async () => {
     const currentTxns = [
-      { amount: 102, category_id: 'cat-1', date: '2026-01-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 102,
+        category_id: 'cat-1',
+        date: '2026-01-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const prevTxns = [
-      { amount: 100, category_id: 'cat-1', date: '2025-10-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 100,
+        category_id: 'cat-1',
+        date: '2025-10-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, prevTxns);
     const result = await getAnnualizedProjections(supabase, 'user-1');
@@ -233,8 +311,18 @@ describe('getAnnualizedProjections', () => {
 
   it('sets is_recurring false for all categories (detected_subscriptions has no category_id column)', async () => {
     const currentTxns = [
-      { amount: 15, category_id: 'cat-streaming', date: '2026-01-01', categories: { id: 'cat-streaming', name: 'Streaming', color: '#blue' } },
-      { amount: 50, category_id: 'cat-food', date: '2026-01-05', categories: { id: 'cat-food', name: 'Food', color: '#green' } },
+      {
+        amount: 15,
+        category_id: 'cat-streaming',
+        date: '2026-01-01',
+        categories: { id: 'cat-streaming', name: 'Streaming', color: '#blue' },
+      },
+      {
+        amount: 50,
+        category_id: 'cat-food',
+        date: '2026-01-05',
+        categories: { id: 'cat-food', name: 'Food', color: '#green' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
@@ -248,9 +336,24 @@ describe('getAnnualizedProjections', () => {
 
   it('sorts projections by annual_projection descending', async () => {
     const currentTxns = [
-      { amount: 10, category_id: 'cat-small', date: '2026-01-01', categories: { id: 'cat-small', name: 'Small', color: '#aaa' } },
-      { amount: 500, category_id: 'cat-big', date: '2026-01-02', categories: { id: 'cat-big', name: 'Big', color: '#bbb' } },
-      { amount: 100, category_id: 'cat-mid', date: '2026-01-03', categories: { id: 'cat-mid', name: 'Mid', color: '#ccc' } },
+      {
+        amount: 10,
+        category_id: 'cat-small',
+        date: '2026-01-01',
+        categories: { id: 'cat-small', name: 'Small', color: '#aaa' },
+      },
+      {
+        amount: 500,
+        category_id: 'cat-big',
+        date: '2026-01-02',
+        categories: { id: 'cat-big', name: 'Big', color: '#bbb' },
+      },
+      {
+        amount: 100,
+        category_id: 'cat-mid',
+        date: '2026-01-03',
+        categories: { id: 'cat-mid', name: 'Mid', color: '#ccc' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');
@@ -290,9 +393,24 @@ describe('getAnnualizedProjections', () => {
 
   it('returns hasEnoughData true with correct months_analyzed', async () => {
     const currentTxns = [
-      { amount: 50, category_id: 'cat-1', date: '2025-12-05', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
-      { amount: 60, category_id: 'cat-1', date: '2026-01-10', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
-      { amount: 70, category_id: 'cat-1', date: '2026-02-15', categories: { id: 'cat-1', name: 'Food', color: '#ff' } },
+      {
+        amount: 50,
+        category_id: 'cat-1',
+        date: '2025-12-05',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
+      {
+        amount: 60,
+        category_id: 'cat-1',
+        date: '2026-01-10',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
+      {
+        amount: 70,
+        category_id: 'cat-1',
+        date: '2026-02-15',
+        categories: { id: 'cat-1', name: 'Food', color: '#ff' },
+      },
     ];
     const supabase = buildSupabaseMock(currentTxns, []);
     const result = await getAnnualizedProjections(supabase, 'user-1');

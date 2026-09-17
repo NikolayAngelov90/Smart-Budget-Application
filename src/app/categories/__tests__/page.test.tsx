@@ -108,7 +108,7 @@ describe('Categories page — Story 16-3 spend caption', () => {
     expect(screen.queryAllByText('€0.00')).toHaveLength(0);
   });
 
-  it('suppresses the caption on another household member\'s shared expense category (isOwn === false)', async () => {
+  it("suppresses the caption on another household member's shared expense category (isOwn === false)", async () => {
     mockHousehold = { household: { id: 'h1' } };
     mockCategories = [
       cat({ id: 'c1', name: 'Groceries', type: 'expense', isOwn: true }),
@@ -208,7 +208,11 @@ describe('Categories page — delete with reassignment (in-use category)', () =>
         return Promise.resolve({
           ok: false,
           status: 409,
-          json: async () => ({ error: 'Category has transactions', requiresReassign: true, transactionCount: 3 }),
+          json: async () => ({
+            error: 'Category has transactions',
+            requiresReassign: true,
+            transactionCount: 3,
+          }),
         });
       }
       const b = url.includes('/api/dashboard/spending-by-category')

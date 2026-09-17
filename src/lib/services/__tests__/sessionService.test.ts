@@ -108,7 +108,9 @@ describe('sessionService', () => {
 
     it('returns "Chrome" for Chrome user agent', () => {
       Object.defineProperty(global, 'navigator', {
-        value: { userAgent: 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/90.0.4430.93' },
+        value: {
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/90.0.4430.93',
+        },
         writable: true,
       });
       expect(detectBrowser()).toBe('Chrome');
@@ -124,7 +126,10 @@ describe('sessionService', () => {
 
     it('returns "Safari" for Safari user agent', () => {
       Object.defineProperty(global, 'navigator', {
-        value: { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15' },
+        value: {
+          userAgent:
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15',
+        },
         writable: true,
       });
       expect(detectBrowser()).toBe('Safari');
@@ -167,7 +172,10 @@ describe('sessionService', () => {
 
     it('generates "Safari on iPhone" for iPhone Safari', () => {
       Object.defineProperty(global, 'navigator', {
-        value: { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 Safari/605.1.15' },
+        value: {
+          userAgent:
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 Safari/605.1.15',
+        },
         writable: true,
       });
       expect(generateDeviceName()).toBe('Safari on iPhone');
@@ -175,7 +183,10 @@ describe('sessionService', () => {
 
     it('generates "Chrome on Mac" for Mac Chrome', () => {
       Object.defineProperty(global, 'navigator', {
-        value: { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/90.0' },
+        value: {
+          userAgent:
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/90.0',
+        },
         writable: true,
       });
       expect(generateDeviceName()).toBe('Chrome on Mac');
@@ -183,7 +194,9 @@ describe('sessionService', () => {
 
     it('generates "Chrome on Android Phone" for Android mobile Chrome', () => {
       Object.defineProperty(global, 'navigator', {
-        value: { userAgent: 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 Chrome/90.0' },
+        value: {
+          userAgent: 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 Chrome/90.0',
+        },
         writable: true,
       });
       expect(generateDeviceName()).toBe('Chrome on Android Phone');

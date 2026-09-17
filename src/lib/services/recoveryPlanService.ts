@@ -38,7 +38,11 @@ async function fetchPlanDataset(
 ): Promise<PlanDataset> {
   const currentMonthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
   const currentMonthEnd = toLocalISODate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
-  const threeMonthsAgoDate = new Date(today.getFullYear(), today.getMonth() - AVERAGE_WINDOW_MONTHS, 1);
+  const threeMonthsAgoDate = new Date(
+    today.getFullYear(),
+    today.getMonth() - AVERAGE_WINDOW_MONTHS,
+    1
+  );
   const threeMonthsAgo = toLocalISODate(threeMonthsAgoDate);
 
   const [currentResult, historicalResult, categoriesResult] = await Promise.all([
@@ -103,8 +107,14 @@ async function computeProgress(
     const currentSpend = round2(spendByCategory.get(target.category_id) ?? 0);
     const proratedTarget = target.monthly_target * (daysElapsed / PLAN_DAYS);
     const onTrack = currentSpend <= proratedTarget;
-    const pctOfTarget = target.monthly_target > 0 ? Math.round((currentSpend / target.monthly_target) * 100) : 0;
-    return { ...target, current_spend: currentSpend, on_track: onTrack, pct_of_target: pctOfTarget };
+    const pctOfTarget =
+      target.monthly_target > 0 ? Math.round((currentSpend / target.monthly_target) * 100) : 0;
+    return {
+      ...target,
+      current_spend: currentSpend,
+      on_track: onTrack,
+      pct_of_target: pctOfTarget,
+    };
   });
 
   return { plan, days_elapsed: daysElapsed, days_remaining: daysRemaining, categories };

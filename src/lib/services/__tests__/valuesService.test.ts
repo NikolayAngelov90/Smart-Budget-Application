@@ -51,7 +51,10 @@ type Plan = Record<string, { data: unknown; error: unknown } | { data: unknown; 
 
 /** Builds a client whose `from(table)` consumes the next queued result for that table. */
 function makeClient(plan: Plan) {
-  const queues: Record<string, { data: unknown; error: unknown }[] | { data: unknown; error: unknown }> = {};
+  const queues: Record<
+    string,
+    { data: unknown; error: unknown }[] | { data: unknown; error: unknown }
+  > = {};
   for (const [k, v] of Object.entries(plan)) queues[k] = Array.isArray(v) ? [...v] : v;
   const from = jest.fn((table: string) => {
     const q = queues[table];
@@ -67,7 +70,8 @@ function makeClient(plan: Plan) {
 function chainsFor(client: { from: jest.Mock }, table: string): ChainStub[] {
   const out: ChainStub[] = [];
   for (let i = 0; i < client.from.mock.calls.length; i++) {
-    if (client.from.mock.calls[i][0] === table) out.push(client.from.mock.results[i]!.value as ChainStub);
+    if (client.from.mock.calls[i][0] === table)
+      out.push(client.from.mock.results[i]!.value as ChainStub);
   }
   return out;
 }
@@ -129,10 +133,18 @@ describe('createValue', () => {
     const result = await createValue('user-1', { name: '  Growth  ', categoryIds: ['c1', 'c2'] });
     expect(result).toEqual({ id: 'v9', name: 'Growth', priority: 3, category_ids: ['c1', 'c2'] });
 
-    const insertChain = chainsFor(client, 'user_values').find((q) => q.insert.mock.calls.length > 0)!;
-    expect(insertChain.insert).toHaveBeenCalledWith({ user_id: 'user-1', name: 'Growth', priority: 3 });
+    const insertChain = chainsFor(client, 'user_values').find(
+      (q) => q.insert.mock.calls.length > 0
+    )!;
+    expect(insertChain.insert).toHaveBeenCalledWith({
+      user_id: 'user-1',
+      name: 'Growth',
+      priority: 3,
+    });
 
-    const mapInsert = chainsFor(client, 'value_categories').find((q) => q.insert.mock.calls.length > 0)!;
+    const mapInsert = chainsFor(client, 'value_categories').find(
+      (q) => q.insert.mock.calls.length > 0
+    )!;
     expect(mapInsert.insert).toHaveBeenCalledWith([
       { user_id: 'user-1', value_id: 'v9', category_id: 'c1' },
       { user_id: 'user-1', value_id: 'v9', category_id: 'c2' },
@@ -149,8 +161,14 @@ describe('createValue', () => {
     mockCreateClient.mockResolvedValue(client as never);
     const result = await createValue('user-1', { name: 'First' });
     expect(result.priority).toBe(0);
-    const insertChain = chainsFor(client, 'user_values').find((q) => q.insert.mock.calls.length > 0)!;
-    expect(insertChain.insert).toHaveBeenCalledWith({ user_id: 'user-1', name: 'First', priority: 0 });
+    const insertChain = chainsFor(client, 'user_values').find(
+      (q) => q.insert.mock.calls.length > 0
+    )!;
+    expect(insertChain.insert).toHaveBeenCalledWith({
+      user_id: 'user-1',
+      name: 'First',
+      priority: 0,
+    });
   });
 
   it('rejects an empty name without touching the DB', async () => {
@@ -230,7 +248,9 @@ describe('setValueCategories', () => {
     mockCreateClient.mockResolvedValue(client as never);
     await setValueCategories('user-1', 'v1', ['c3', 'c-evil']);
     const ins = chainsFor(client, 'value_categories').find((q) => q.insert.mock.calls.length > 0)!;
-    expect(ins.insert).toHaveBeenCalledWith([{ user_id: 'user-1', value_id: 'v1', category_id: 'c3' }]);
+    expect(ins.insert).toHaveBeenCalledWith([
+      { user_id: 'user-1', value_id: 'v1', category_id: 'c3' },
+    ]);
   });
 });
 

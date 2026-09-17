@@ -83,7 +83,10 @@ rlsDescribe('Values plan privacy (Story 14.1)', () => {
     const a = await signInAsTestUser(aEmail, PWD);
     const { data: values } = await a.from('user_values').select('id, name').eq('id', valueId);
     expect((values ?? []).map((r: { name: string }) => r.name)).toEqual(['Health']);
-    const { data: maps } = await a.from('value_categories').select('category_id').eq('value_id', valueId);
+    const { data: maps } = await a
+      .from('value_categories')
+      .select('category_id')
+      .eq('value_id', valueId);
     expect((maps ?? []).map((r: { category_id: string }) => r.category_id)).toEqual([categoryId]);
   });
 
@@ -94,7 +97,9 @@ rlsDescribe('Values plan privacy (Story 14.1)', () => {
       .insert({ user_id: aId, name: 'Temp', priority: 1 })
       .select('id')
       .single();
-    await svc.from('value_categories').insert({ user_id: aId, value_id: v!.id, category_id: categoryId });
+    await svc
+      .from('value_categories')
+      .insert({ user_id: aId, value_id: v!.id, category_id: categoryId });
 
     await svc.from('user_values').delete().eq('id', v!.id);
     const { data: maps } = await svc.from('value_categories').select('id').eq('value_id', v!.id);

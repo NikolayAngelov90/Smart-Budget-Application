@@ -68,8 +68,7 @@ function txs(amounts: number[]): Transaction[] {
  * reading the first element, which is the most-deviant one. `null` for "nothing
  * fired" still means the same thing.
  */
-const run = (amounts: number[]) =>
-  flagUnusualExpenseAll(amounts)[0] ?? null;
+const run = (amounts: number[]) => flagUnusualExpenseAll(amounts)[0] ?? null;
 
 const flagUnusualExpenseAll = (amounts: number[]) =>
   flagUnusualExpense({
@@ -121,7 +120,11 @@ describe('flagUnusualExpense — direction', () => {
   it('never reports a negative deviation while claiming "higher"', () => {
     // The self-contradiction, asserted directly: whenever the rule speaks, its
     // own signed metadata must agree with the word it used.
-    for (const amounts of [[...CLUSTER, 200], [...CLUSTER, 5, 200], [...CLUSTER, 120]]) {
+    for (const amounts of [
+      [...CLUSTER, 200],
+      [...CLUSTER, 5, 200],
+      [...CLUSTER, 120],
+    ]) {
       const insight = run(amounts);
       if (!insight) continue;
       expect(insight.description).toContain('higher');

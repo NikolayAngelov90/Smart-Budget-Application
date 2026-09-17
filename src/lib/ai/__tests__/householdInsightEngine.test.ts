@@ -85,7 +85,11 @@ describe('detectHouseholdSpendChange', () => {
 
   it('returns nothing below threshold', () => {
     expect(
-      detectHouseholdSpendChange({ currency: 'EUR', current: [cat('a', 'A', 105)], previous: [cat('a', 'A', 100)] })
+      detectHouseholdSpendChange({
+        currency: 'EUR',
+        current: [cat('a', 'A', 105)],
+        previous: [cat('a', 'A', 100)],
+      })
     ).toEqual([]);
   });
 });

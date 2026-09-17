@@ -45,7 +45,6 @@ import { GET } from '../route';
 const getRequest = (query = '') =>
   ({ url: `http://localhost:3000/api/gamification/score${query}` }) as Parameters<typeof GET>[0];
 
-
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockGetStreak = getStreak as jest.MockedFunction<typeof getStreak>;
 
@@ -67,8 +66,7 @@ function chain(result: { data: unknown; error: unknown }): ChainStub {
   for (const m of ['select', 'eq', 'is', 'gte', 'lte', 'lt', 'or', 'order', 'upsert']) {
     bag[m] = jest.fn(() => q);
   }
-  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) =>
-    resolve(result);
+  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) => resolve(result);
   return q;
 }
 
@@ -78,7 +76,10 @@ type Result = { data: unknown; error: unknown };
  * Queries arrive in Promise.all order per table:
  * transactions (current, historical), categories, category_budgets, goals.
  */
-function makeSupabase(plan: Partial<Record<string, Result | Result[]>>, user: object | null = { id: 'user-1' }) {
+function makeSupabase(
+  plan: Partial<Record<string, Result | Result[]>>,
+  user: object | null = { id: 'user-1' }
+) {
   const queues: Record<string, Result[]> = {};
   for (const [k, v] of Object.entries(plan)) {
     queues[k] = Array.isArray(v) ? [...v] : [v as Result];
@@ -130,7 +131,10 @@ describe('GET /api/gamification/score', () => {
   it('computes a score with all inputs, user-scoped queries', async () => {
     const supabase = makeSupabase({
       transactions: [
-        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
+        {
+          data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }],
+          error: null,
+        },
         { data: [], error: null },
       ],
       categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
@@ -184,7 +188,10 @@ describe('GET /api/gamification/score', () => {
     ];
     const supabase = makeSupabase({
       transactions: [
-        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
+        {
+          data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }],
+          error: null,
+        },
         { data: [], error: null },
       ],
       categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
@@ -224,7 +231,10 @@ describe('GET /api/gamification/score', () => {
   it('an EXPIRED reached goal still unlocks goal achievements but never scores the goals factor', async () => {
     const supabase = makeSupabase({
       transactions: [
-        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
+        {
+          data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }],
+          error: null,
+        },
         { data: [], error: null },
       ],
       categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
@@ -257,7 +267,10 @@ describe('GET /api/gamification/score', () => {
   it('achievement enrichment failure leaves the score intact (200, newlyUnlocked [])', async () => {
     const supabase = makeSupabase({
       transactions: [
-        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
+        {
+          data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }],
+          error: null,
+        },
         { data: [], error: null },
       ],
       categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
@@ -299,8 +312,14 @@ describe('GET /api/gamification/score', () => {
   it('degrades when category_budgets is unavailable (032 unapplied) — averages only', async () => {
     const supabase = makeSupabase({
       transactions: [
-        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
-        { data: [{ category_id: 'c1', amount: 300, date: '2026-06-10', type: 'expense' }], error: null },
+        {
+          data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }],
+          error: null,
+        },
+        {
+          data: [{ category_id: 'c1', amount: 300, date: '2026-06-10', type: 'expense' }],
+          error: null,
+        },
       ],
       categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
       category_budgets: { data: null, error: { message: 'relation does not exist' } },
@@ -317,7 +336,10 @@ describe('GET /api/gamification/score', () => {
   it('degrades when the streaks table is unavailable (034 unapplied) — consistency UNSCORED, never punished', async () => {
     const supabase = makeSupabase({
       transactions: [
-        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
+        {
+          data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }],
+          error: null,
+        },
         { data: [], error: null },
       ],
       categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },
@@ -343,7 +365,10 @@ describe('GET /api/gamification/score', () => {
   it('degrades when goals query fails — factor unscored, still 200', async () => {
     const supabase = makeSupabase({
       transactions: [
-        { data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }], error: null },
+        {
+          data: [{ category_id: 'c1', amount: 100, date: '2026-07-10', type: 'expense' }],
+          error: null,
+        },
         { data: [], error: null },
       ],
       categories: { data: [{ id: 'c1', name: 'Food', type: 'expense' }], error: null },

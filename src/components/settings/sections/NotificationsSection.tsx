@@ -33,10 +33,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
 import { useSettingsProfile } from '@/lib/hooks/useSettingsProfile';
-import {
-  detectBrowserTimezone,
-  useTimezoneCapture,
-} from '@/lib/hooks/useTimezoneCapture';
+import { detectBrowserTimezone, useTimezoneCapture } from '@/lib/hooks/useTimezoneCapture';
 import { SettingsSectionGate } from '@/components/settings/SettingsSectionGate';
 
 type PushPreferenceField =
@@ -85,7 +82,8 @@ export function NotificationsSection() {
   const onUpdatePreferences = (field: PushPreferenceField, value: boolean | number) =>
     updatePreference(field, value);
   const toast = useToast();
-  const { isSupported, isSubscribed, isLoading, permission, subscribe, unsubscribe, error } = usePushNotifications();
+  const { isSupported, isSubscribed, isLoading, permission, subscribe, unsubscribe, error } =
+    usePushNotifications();
   const [isTesting, setIsTesting] = useState(false);
 
   const isBlocked = permission === 'denied';
@@ -152,7 +150,9 @@ export function NotificationsSection() {
             </Text>
 
             {!isSupported && (
-              <Text fontSize="sm" color="fg.subtle">{t('pushNotSupported')}</Text>
+              <Text fontSize="sm" color="fg.subtle">
+                {t('pushNotSupported')}
+              </Text>
             )}
 
             {isSupported && (
@@ -205,7 +205,14 @@ export function NotificationsSection() {
 
                 {/* Verify the whole pipeline end-to-end */}
                 {isSubscribed && (
-                  <Button size="sm" variant="ghost" colorScheme="brand" onClick={handleTest} isLoading={isTesting} alignSelf="flex-start">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    colorScheme="brand"
+                    onClick={handleTest}
+                    isLoading={isTesting}
+                    alignSelf="flex-start"
+                  >
                     {t('sendTest')}
                   </Button>
                 )}
@@ -264,9 +271,7 @@ export function NotificationsSection() {
                     <FormLabel mb={0}>{t('categoryDigest')}</FormLabel>
                     <Switch
                       isChecked={pushDigestEnabled}
-                      onChange={(e) =>
-                        onUpdatePreferences('push_digest_enabled', e.target.checked)
-                      }
+                      onChange={(e) => onUpdatePreferences('push_digest_enabled', e.target.checked)}
                     />
                   </HStack>
                   <FormHelperText>{t('categoryDigestDescription')}</FormHelperText>
@@ -293,12 +298,16 @@ export function NotificationsSection() {
                   </FormLabel>
                   <Select
                     value={quietHoursStart}
-                    onChange={(e) => onUpdatePreferences('quiet_hours_start', Number(e.target.value))}
+                    onChange={(e) =>
+                      onUpdatePreferences('quiet_hours_start', Number(e.target.value))
+                    }
                     size="sm"
                     maxW="120px"
                   >
                     {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                      <option key={i} value={i}>
+                        {String(i).padStart(2, '0')}:00
+                      </option>
                     ))}
                   </Select>
                 </FormControl>
@@ -315,7 +324,9 @@ export function NotificationsSection() {
                     maxW="120px"
                   >
                     {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                      <option key={i} value={i}>
+                        {String(i).padStart(2, '0')}:00
+                      </option>
                     ))}
                   </Select>
                 </FormControl>

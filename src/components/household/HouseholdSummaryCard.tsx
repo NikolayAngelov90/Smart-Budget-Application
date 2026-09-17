@@ -31,9 +31,7 @@ export function HouseholdSummaryCard() {
             </Text>
           </VStack>
           <Badge
-            {...(household.role === 'admin'
-              ? { colorScheme: 'income' }
-              : { colorScheme: 'paper' })}
+            {...(household.role === 'admin' ? { colorScheme: 'income' } : { colorScheme: 'paper' })}
             borderRadius="full"
             px={3}
             py={1}

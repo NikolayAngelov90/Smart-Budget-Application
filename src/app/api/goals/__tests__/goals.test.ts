@@ -126,9 +126,7 @@ describe('GET /api/goals', () => {
     await GET();
 
     expect(mockGetGoals).toHaveBeenCalledWith(expect.anything(), 'user-1');
-    expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ goals: [sampleGoal] })
-    );
+    expect(mockJsonResponse).toHaveBeenCalledWith(expect.objectContaining({ goals: [sampleGoal] }));
   });
 
   it('returns empty goals array when user has no goals', async () => {
@@ -137,9 +135,7 @@ describe('GET /api/goals', () => {
 
     await GET();
 
-    expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ goals: [] })
-    );
+    expect(mockJsonResponse).toHaveBeenCalledWith(expect.objectContaining({ goals: [] }));
   });
 
   it('returns 500 on service error', async () => {

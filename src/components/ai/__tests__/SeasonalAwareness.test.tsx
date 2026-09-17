@@ -52,8 +52,22 @@ function hookResult(overrides: Partial<ReturnType<typeof useSeasonalAwareness>>)
 }
 
 const TIMELINE: SeasonalMonth[] = [
-  { month: '2026-07', month_label: '2026-07', month_index: 7, predicted_amount: 100, is_seasonal_high: false, historical_basis: '2025-07' },
-  { month: '2026-12', month_label: '2026-12', month_index: 12, predicted_amount: 300, is_seasonal_high: true, historical_basis: '2025-12' },
+  {
+    month: '2026-07',
+    month_label: '2026-07',
+    month_index: 7,
+    predicted_amount: 100,
+    is_seasonal_high: false,
+    historical_basis: '2025-07',
+  },
+  {
+    month: '2026-12',
+    month_label: '2026-12',
+    month_index: 12,
+    predicted_amount: 300,
+    is_seasonal_high: true,
+    historical_basis: '2025-12',
+  },
 ];
 
 describe('SeasonalAwareness', () => {
@@ -75,7 +89,9 @@ describe('SeasonalAwareness', () => {
   });
 
   it('renders the timeline with a seasonal-high badge when data present', () => {
-    mockUseSeasonal.mockReturnValue(hookResult({ hasEnoughData: true, monthsAnalyzed: 12, timeline: TIMELINE }));
+    mockUseSeasonal.mockReturnValue(
+      hookResult({ hasEnoughData: true, monthsAnalyzed: 12, timeline: TIMELINE })
+    );
     renderWithChakra(<SeasonalAwareness />);
     expect(screen.getByText('Seasonal Spending Outlook')).toBeInTheDocument();
     expect(screen.getByText('Seasonal high')).toBeInTheDocument();
@@ -84,7 +100,9 @@ describe('SeasonalAwareness', () => {
   });
 
   it('renders the FinancialDisclaimer (AC #5)', () => {
-    mockUseSeasonal.mockReturnValue(hookResult({ hasEnoughData: true, monthsAnalyzed: 12, timeline: TIMELINE }));
+    mockUseSeasonal.mockReturnValue(
+      hookResult({ hasEnoughData: true, monthsAnalyzed: 12, timeline: TIMELINE })
+    );
     renderWithChakra(<SeasonalAwareness />);
     expect(screen.getByRole('note')).toBeInTheDocument();
   });

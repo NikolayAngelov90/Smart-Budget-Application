@@ -6,7 +6,12 @@
 import { computeValuesSpending } from '@/lib/ai/valuesSpendingEngine';
 import type { ValueWithCategories } from '@/types/database.types';
 
-function value(id: string, name: string, priority: number, category_ids: string[]): ValueWithCategories {
+function value(
+  id: string,
+  name: string,
+  priority: number,
+  category_ids: string[]
+): ValueWithCategories {
   return { id, name, priority, category_ids };
 }
 
@@ -87,7 +92,11 @@ describe('computeValuesSpending', () => {
   });
 
   it('returns hasPlan=false for an empty plan', () => {
-    const view = computeValuesSpending({ values: [], currentByCategory: { a: 50 }, previousByCategory: {} });
+    const view = computeValuesSpending({
+      values: [],
+      currentByCategory: { a: 50 },
+      previousByCategory: {},
+    });
     expect(view).toEqual({
       hasPlan: false,
       totalSpend: 50,

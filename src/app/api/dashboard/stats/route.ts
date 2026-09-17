@@ -13,10 +13,7 @@ import { format } from 'date-fns';
 import { createClient } from '@/lib/supabase/server';
 import { calculateTrend } from '@/lib/utils/currency';
 import { logger } from '@/lib/utils/logger';
-import {
-  buildLiveRateMap,
-  convertToPreferred,
-} from '@/lib/services/currencyConversion';
+import { buildLiveRateMap, convertToPreferred } from '@/lib/services/currencyConversion';
 import { resolveClientToday } from '@/lib/utils/date';
 import {
   isDashboardPeriod,
@@ -118,10 +115,7 @@ export async function GET(request: NextRequest) {
 
     if (currentError) {
       logger.error('Dashboard', 'Error fetching current month stats:', currentError);
-      return NextResponse.json(
-        { error: 'Failed to fetch current month stats' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch current month stats' }, { status: 500 });
     }
 
     // Query previous month aggregation
@@ -134,10 +128,7 @@ export async function GET(request: NextRequest) {
 
     if (previousError) {
       logger.error('Dashboard', 'Error fetching previous month stats:', previousError);
-      return NextResponse.json(
-        { error: 'Failed to fetch previous month stats' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch previous month stats' }, { status: 500 });
     }
 
     // DW-1: this route's conversion is now the SHARED implementation, used by
@@ -150,18 +141,20 @@ export async function GET(request: NextRequest) {
     );
 
     // Aggregate current month data (convert to preferred currency using stored or live exchange rates)
-    const currentAggregates = aggregateTransactions(currentData || [], preferredCurrency, liveRateMap);
-    const previousAggregates = aggregateTransactions(previousData || [], preferredCurrency, liveRateMap);
+    const currentAggregates = aggregateTransactions(
+      currentData || [],
+      preferredCurrency,
+      liveRateMap
+    );
+    const previousAggregates = aggregateTransactions(
+      previousData || [],
+      preferredCurrency,
+      liveRateMap
+    );
 
     // Calculate trends
-    const incomeTrend = calculateTrend(
-      currentAggregates.income,
-      previousAggregates.income
-    );
-    const expensesTrend = calculateTrend(
-      currentAggregates.expenses,
-      previousAggregates.expenses
-    );
+    const incomeTrend = calculateTrend(currentAggregates.income, previousAggregates.income);
+    const expensesTrend = calculateTrend(currentAggregates.expenses, previousAggregates.expenses);
 
     // Calculate balance (income - expenses)
     const balance = currentAggregates.income - currentAggregates.expenses;
@@ -190,10 +183,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     logger.error('Dashboard', 'Unexpected error in dashboard stats API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

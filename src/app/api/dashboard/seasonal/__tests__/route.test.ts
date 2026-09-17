@@ -70,7 +70,14 @@ describe('GET /api/dashboard/seasonal', () => {
     mockCreateClient.mockResolvedValue(makeClient({ id: 'u1' }, []) as never);
     mockAnalyze.mockReturnValue({
       timeline: [
-        { month: '2026-07', month_label: '2026-07', month_index: 7, predicted_amount: 100, is_seasonal_high: false, historical_basis: '2025-07' },
+        {
+          month: '2026-07',
+          month_label: '2026-07',
+          month_index: 7,
+          predicted_amount: 100,
+          is_seasonal_high: false,
+          historical_basis: '2025-07',
+        },
       ],
       baseline_monthly: 100,
       months_analyzed: 12,
@@ -86,7 +93,9 @@ describe('GET /api/dashboard/seasonal', () => {
   });
 
   it('returns 500 on database error', async () => {
-    mockCreateClient.mockResolvedValue(makeClient({ id: 'u1' }, [], { message: 'DB error' }) as never);
+    mockCreateClient.mockResolvedValue(
+      makeClient({ id: 'u1' }, [], { message: 'DB error' }) as never
+    );
     const res = await GET();
     expect(res.status).toBe(500);
   });

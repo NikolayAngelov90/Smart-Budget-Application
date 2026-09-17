@@ -11,7 +11,15 @@
  * - Dismiss button clears the nudge
  */
 
-import { Alert, AlertDescription, AlertIcon, AlertTitle, Box, CloseButton, Flex } from '@chakra-ui/react';
+import {
+  Alert,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+  Box,
+  CloseButton,
+  Flex,
+} from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { FinancialDisclaimer } from '@/components/ai/FinancialDisclaimer';
 import type { NudgePayload } from '@/types/database.types';
@@ -52,11 +60,7 @@ export function SmartNudge({ nudge, onDismiss }: SmartNudgeProps) {
           </Box>
         </Box>
         <Flex flexShrink={0} ml={2}>
-          <CloseButton
-            size="sm"
-            onClick={onDismiss}
-            aria-label={t('dismiss')}
-          />
+          <CloseButton size="sm" onClick={onDismiss} aria-label={t('dismiss')} />
         </Flex>
       </Alert>
     </Box>

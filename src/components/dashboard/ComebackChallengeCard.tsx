@@ -10,14 +10,7 @@
  */
 
 import { useState } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  Heading,
-  Progress,
-  Text,
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Heading, Progress, Text } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { useComeback } from '@/lib/hooks/useComeback';
 import { useGamification } from '@/lib/hooks/useGamification';

@@ -25,7 +25,10 @@ export async function POST() {
 
     // Server-side guard: clear signal when push isn't configured for the deployment.
     if (!process.env.VAPID_PRIVATE_KEY || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-      return NextResponse.json({ error: { message: 'Push notifications are not configured on the server' } }, { status: 503 });
+      return NextResponse.json(
+        { error: { message: 'Push notifications are not configured on the server' } },
+        { status: 503 }
+      );
     }
 
     const admin = createServiceRoleClient();
@@ -49,6 +52,9 @@ export async function POST() {
     return NextResponse.json({ data: { sent: deviceCount } });
   } catch (error) {
     logger.error('PushTest', 'POST failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to send test notification' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to send test notification' } },
+      { status: 500 }
+    );
   }
 }

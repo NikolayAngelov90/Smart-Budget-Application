@@ -54,7 +54,14 @@ export function PendingInviteBanner() {
   return (
     <VStack align="stretch" spacing={2}>
       {invitations.map((inv) => (
-        <Box key={inv.id} borderWidth="1px" borderColor="accent" bg="accent.subtle" borderRadius="md" p={3}>
+        <Box
+          key={inv.id}
+          borderWidth="1px"
+          borderColor="accent"
+          bg="accent.subtle"
+          borderRadius="md"
+          p={3}
+        >
           <HStack justify="space-between" align="center" flexWrap="wrap" gap={2}>
             <Text fontSize="sm" color="fg">
               {t('invitedToJoin', { household: inv.householdName })}

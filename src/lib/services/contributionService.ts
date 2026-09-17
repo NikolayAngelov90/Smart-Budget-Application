@@ -41,7 +41,10 @@ export async function setContribution(userId: string, percentage: number): Promi
     .eq('user_id', userId)
     .maybeSingle();
   if (memberError) {
-    logger.error('ContributionService', `membership lookup failed for ${userId}: ${memberError.message}`);
+    logger.error(
+      'ContributionService',
+      `membership lookup failed for ${userId}: ${memberError.message}`
+    );
     throw new Error('Failed to load household membership');
   }
   if (!membership?.household_id) {

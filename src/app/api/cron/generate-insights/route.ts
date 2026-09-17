@@ -54,17 +54,15 @@ export async function GET(request: NextRequest) {
     const cronSecret = process.env.CRON_SECRET ?? '';
 
     // Use timing-safe comparison to prevent timing attacks
-    const isAuthorized = token.length > 0 &&
+    const isAuthorized =
+      token.length > 0 &&
       cronSecret.length > 0 &&
       token.length === cronSecret.length &&
       timingSafeEqual(Buffer.from(token), Buffer.from(cronSecret));
 
     if (!isAuthorized) {
       logger.error('Cron', 'Unauthorized access attempt');
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     // 2. Check if it's the 1st day of the month (new month detection)

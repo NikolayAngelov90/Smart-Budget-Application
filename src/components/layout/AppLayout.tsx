@@ -84,11 +84,11 @@ export function AppLayout({ children }: AppLayoutProps) {
 
     // Also trigger revalidation with all possible query params
     await mutate(
-      (key) => typeof key === 'string' && (
-        key.startsWith('/api/dashboard/stats') ||
-        key.startsWith('/api/dashboard/spending-by-category') ||
-        key.startsWith('/api/dashboard/trends')
-      ),
+      (key) =>
+        typeof key === 'string' &&
+        (key.startsWith('/api/dashboard/stats') ||
+          key.startsWith('/api/dashboard/spending-by-category') ||
+          key.startsWith('/api/dashboard/trends')),
       undefined,
       { revalidate: true }
     );
@@ -103,11 +103,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         mutate(STREAK_KEY, undefined, { revalidate: true }),
         // PREFIX match: these keys now carry the client's local `?today=`,
         // so an exact-key mutate no longer matches and would go stale.
-        mutate(
-          (key) => typeof key === 'string' && key.startsWith(SCORE_KEY),
-          undefined,
-          { revalidate: true }
-        ),
+        mutate((key) => typeof key === 'string' && key.startsWith(SCORE_KEY), undefined, {
+          revalidate: true,
+        }),
         mutate(COMEBACK_KEY, undefined, { revalidate: true }),
       ]);
     }
@@ -128,10 +126,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <Flex flex={1} overflow="hidden">
         <Box display={{ base: 'none', md: 'block' }}>
           {isInitialized && (
-            <Sidebar
-              isCollapsed={isSidebarCollapsed}
-              onToggleCollapse={toggleSidebarCollapse}
-            />
+            <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
           )}
         </Box>
         <Box

@@ -36,9 +36,7 @@ import type { Goal } from '@/types/database.types';
 // ============================================================================
 
 const contributionSchema = z.object({
-  amount: z
-    .number({ error: 'Amount is required' })
-    .positive('Must be greater than 0'),
+  amount: z.number({ error: 'Amount is required' }).positive('Must be greater than 0'),
   note: z.string().optional().nullable(),
 });
 
@@ -85,11 +83,11 @@ export function ContributionModal({
       });
 
       if (!response.ok) {
-        const data = await response.json() as { error?: { message?: string } };
+        const data = (await response.json()) as { error?: { message?: string } };
         throw new Error(data.error?.message ?? 'Request failed');
       }
 
-      const updatedGoal = await response.json() as Goal;
+      const updatedGoal = (await response.json()) as Goal;
       toast({
         title: t('contributeSuccess'),
         status: 'success',
@@ -133,10 +131,7 @@ export function ContributionModal({
 
               <FormControl isInvalid={!!errors.note}>
                 <FormLabel>{t('contributionNote')}</FormLabel>
-                <Input
-                  placeholder={t('contributionNotePlaceholder')}
-                  {...register('note')}
-                />
+                <Input placeholder={t('contributionNotePlaceholder')} {...register('note')} />
                 <FormErrorMessage>{errors.note?.message}</FormErrorMessage>
               </FormControl>
             </VStack>
@@ -145,11 +140,7 @@ export function ContributionModal({
             <Button variant="ghost" onClick={onClose} isDisabled={isSubmitting}>
               {t('cancel')}
             </Button>
-            <Button
-              type="submit"
-              colorScheme="brand"
-              isLoading={isSubmitting}
-            >
+            <Button type="submit" colorScheme="brand" isLoading={isSubmitting}>
               {t('add')}
             </Button>
           </ModalFooter>

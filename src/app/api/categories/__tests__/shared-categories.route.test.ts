@@ -16,7 +16,9 @@ jest.mock('next/server', () => ({
 }));
 
 jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn() }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
 import { POST } from '../route';
@@ -28,7 +30,11 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
  * - household_members: select().eq().maybeSingle() -> membership
  * - categories: select().eq().eq().eq().maybeSingle() -> dup check; insert().select().single() -> inserted row
  */
-function makeSupabase(opts: { user?: object | null; membership?: object | null; inserted?: object }) {
+function makeSupabase(opts: {
+  user?: object | null;
+  membership?: object | null;
+  inserted?: object;
+}) {
   const { user = { id: 'user-1' }, membership = null, inserted = { id: 'cat-1' } } = opts;
   const members = {
     select: jest.fn().mockReturnThis(),
@@ -47,7 +53,11 @@ function makeSupabase(opts: { user?: object | null; membership?: object | null; 
     }),
   };
   const client = {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }) },
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+    },
     from: jest.fn((t: string) => (t === 'household_members' ? members : categories)),
   };
   return { client, getInsert: () => capturedInsert };
@@ -60,10 +70,15 @@ function req(body: unknown) {
 beforeEach(() => jest.clearAllMocks());
 
 it('creates a shared category with household_id when the caller has a household', async () => {
-  const { client, getInsert } = makeSupabase({ membership: { household_id: 'h-1' }, inserted: { id: 'cat-1', household_id: 'h-1' } });
+  const { client, getInsert } = makeSupabase({
+    membership: { household_id: 'h-1' },
+    inserted: { id: 'cat-1', household_id: 'h-1' },
+  });
   mockCreateClient.mockResolvedValue(client as never);
 
-  const res = await POST(req({ name: 'Groceries', color: '#48bb78', type: 'expense', shared: true }));
+  const res = await POST(
+    req({ name: 'Groceries', color: '#48bb78', type: 'expense', shared: true })
+  );
   expect(res.status).toBe(201);
   expect(getInsert()).toMatchObject({ household_id: 'h-1', user_id: 'user-1' });
 });
@@ -72,7 +87,9 @@ it('returns 403 when shared is requested but the caller has no household', async
   const { client } = makeSupabase({ membership: null });
   mockCreateClient.mockResolvedValue(client as never);
 
-  const res = await POST(req({ name: 'Groceries', color: '#48bb78', type: 'expense', shared: true }));
+  const res = await POST(
+    req({ name: 'Groceries', color: '#48bb78', type: 'expense', shared: true })
+  );
   expect(res.status).toBe(403);
 });
 

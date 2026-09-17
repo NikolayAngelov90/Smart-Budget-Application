@@ -34,16 +34,40 @@ rlsDescribe('Household period totals (Story 13.10)', () => {
   let catOnlyId: string;
   let privateCatId: string;
 
-  async function cat(svc: ReturnType<typeof createServiceClient>, name: string, visibility: string) {
+  async function cat(
+    svc: ReturnType<typeof createServiceClient>,
+    name: string,
+    visibility: string
+  ) {
     const { data } = await svc
       .from('categories')
-      .insert({ user_id: aId, name, color: '#abcdef', type: 'expense', household_id: householdId, visibility_level: visibility })
+      .insert({
+        user_id: aId,
+        name,
+        color: '#abcdef',
+        type: 'expense',
+        household_id: householdId,
+        visibility_level: visibility,
+      })
       .select('id')
       .single();
     return data!.id as string;
   }
-  async function tx(svc: ReturnType<typeof createServiceClient>, categoryId: string, amount: number, date: string) {
-    await svc.from('transactions').insert({ user_id: aId, category_id: categoryId, amount, type: 'expense', date, currency: 'EUR', household_id: householdId });
+  async function tx(
+    svc: ReturnType<typeof createServiceClient>,
+    categoryId: string,
+    amount: number,
+    date: string
+  ) {
+    await svc.from('transactions').insert({
+      user_id: aId,
+      category_id: categoryId,
+      amount,
+      type: 'expense',
+      date,
+      currency: 'EUR',
+      household_id: householdId,
+    });
   }
 
   beforeAll(async () => {
@@ -52,7 +76,11 @@ rlsDescribe('Household period totals (Story 13.10)', () => {
     bId = await createTestUser(bEmail, PWD);
     outId = await createTestUser(outEmail, PWD);
 
-    const { data: h } = await svc.from('households').insert({ name: 'Insights HH', created_by: aId }).select('id').single();
+    const { data: h } = await svc
+      .from('households')
+      .insert({ name: 'Insights HH', created_by: aId })
+      .select('id')
+      .single();
     householdId = h!.id;
     await svc.from('household_members').insert([
       { household_id: householdId, user_id: aId, role: 'admin' },
@@ -79,8 +107,17 @@ rlsDescribe('Household period totals (Story 13.10)', () => {
 
   it('returns shared + category_only totals in the window, EXCLUDES private', async () => {
     const b = await signInAsTestUser(bEmail, PWD);
-    const { data } = await b.rpc('household_category_period_totals', { p_household_id: householdId, p_start: CUR_START, p_end: CUR_END });
-    const byId = Object.fromEntries((data ?? []).map((r: { category_id: string; total: number }) => [r.category_id, Number(r.total)]));
+    const { data } = await b.rpc('household_category_period_totals', {
+      p_household_id: householdId,
+      p_start: CUR_START,
+      p_end: CUR_END,
+    });
+    const byId = Object.fromEntries(
+      (data ?? []).map((r: { category_id: string; total: number }) => [
+        r.category_id,
+        Number(r.total),
+      ])
+    );
     expect(byId[sharedCatId]).toBe(100); // in-window only (999 from May excluded)
     expect(byId[catOnlyId]).toBe(30);
     expect(byId[privateCatId]).toBeUndefined(); // private never appears
@@ -88,7 +125,11 @@ rlsDescribe('Household period totals (Story 13.10)', () => {
 
   it('returns nothing to an outsider', async () => {
     const out = await signInAsTestUser(outEmail, PWD);
-    const { data } = await out.rpc('household_category_period_totals', { p_household_id: householdId, p_start: CUR_START, p_end: CUR_END });
+    const { data } = await out.rpc('household_category_period_totals', {
+      p_household_id: householdId,
+      p_start: CUR_START,
+      p_end: CUR_END,
+    });
     expect(data ?? []).toEqual([]);
   });
 });

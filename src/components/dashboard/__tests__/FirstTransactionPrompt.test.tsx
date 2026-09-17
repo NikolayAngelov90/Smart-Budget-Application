@@ -16,7 +16,8 @@ jest.mock('next-intl', () => ({
   useTranslations: () => (key: string) => {
     const translations: Record<string, string> = {
       firstTransactionTitle: 'Add Your First Transaction',
-      firstTransactionDescription: 'Start tracking your finances by adding your first income or expense.',
+      firstTransactionDescription:
+        'Start tracking your finances by adding your first income or expense.',
       firstTransactionCta: 'Add Transaction',
     };
     return translations[key] || key;

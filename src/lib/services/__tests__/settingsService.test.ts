@@ -183,9 +183,7 @@ describe('settingsService', () => {
       mockSelect.mockReturnValue({ eq: mockEq });
       mockEq.mockReturnValue({ single: mockSingle });
 
-      await expect(getUserProfile(mockUserId)).rejects.toThrow(
-        'Failed to fetch user profile'
-      );
+      await expect(getUserProfile(mockUserId)).rejects.toThrow('Failed to fetch user profile');
     });
   });
 
@@ -513,9 +511,7 @@ describe('settingsService', () => {
       });
       mockDelete.mockReturnValue({ eq: mockEq });
 
-      await expect(deleteUserAccount(mockUserId)).rejects.toThrow(
-        'Failed to delete user profile'
-      );
+      await expect(deleteUserAccount(mockUserId)).rejects.toThrow('Failed to delete user profile');
     });
 
     test('cascade deletes auth.users record (verified through RLS and FK constraints)', async () => {

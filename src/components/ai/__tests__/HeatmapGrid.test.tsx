@@ -157,9 +157,7 @@ describe('HeatmapGrid (visual grid mode)', () => {
   });
 
   it('renders aria-label with amount and count for days with spending', () => {
-    const entries: DailySpendingEntry[] = [
-      { date: '2026-03-15', total: 142.5, count: 5 },
-    ];
+    const entries: DailySpendingEntry[] = [{ date: '2026-03-15', total: 142.5, count: 5 }];
     renderWithChakra(<HeatmapGrid {...defaultProps} entries={entries} />);
     const cell = screen.getByRole('gridcell', { name: /142/ });
     expect(cell).toBeInTheDocument();
@@ -168,12 +166,8 @@ describe('HeatmapGrid (visual grid mode)', () => {
 
   it('calls onDayClick with date string when a spending day is clicked', () => {
     const onDayClick = jest.fn();
-    const entries: DailySpendingEntry[] = [
-      { date: '2026-03-15', total: 50.0, count: 2 },
-    ];
-    renderWithChakra(
-      <HeatmapGrid {...defaultProps} entries={entries} onDayClick={onDayClick} />
-    );
+    const entries: DailySpendingEntry[] = [{ date: '2026-03-15', total: 50.0, count: 2 }];
+    renderWithChakra(<HeatmapGrid {...defaultProps} entries={entries} onDayClick={onDayClick} />);
     const cell = screen.getByRole('gridcell', { name: /50/ });
     fireEvent.click(cell);
     expect(onDayClick).toHaveBeenCalledWith('2026-03-15');
@@ -181,12 +175,8 @@ describe('HeatmapGrid (visual grid mode)', () => {
 
   it('calls onDayClick with Enter key press', () => {
     const onDayClick = jest.fn();
-    const entries: DailySpendingEntry[] = [
-      { date: '2026-03-15', total: 50.0, count: 1 },
-    ];
-    renderWithChakra(
-      <HeatmapGrid {...defaultProps} entries={entries} onDayClick={onDayClick} />
-    );
+    const entries: DailySpendingEntry[] = [{ date: '2026-03-15', total: 50.0, count: 1 }];
+    renderWithChakra(<HeatmapGrid {...defaultProps} entries={entries} onDayClick={onDayClick} />);
     const cell = screen.getByRole('gridcell', { name: /50/ });
     fireEvent.keyDown(cell, { key: 'Enter' });
     expect(onDayClick).toHaveBeenCalledWith('2026-03-15');
@@ -194,9 +184,7 @@ describe('HeatmapGrid (visual grid mode)', () => {
 
   it('does not call onDayClick when clicking empty day', () => {
     const onDayClick = jest.fn();
-    renderWithChakra(
-      <HeatmapGrid {...defaultProps} entries={[]} onDayClick={onDayClick} />
-    );
+    renderWithChakra(<HeatmapGrid {...defaultProps} entries={[]} onDayClick={onDayClick} />);
     // Click the first non-hidden gridcell (first day, no spending)
     const dayCells = screen.getAllByRole('gridcell', { name: /No spending/i });
     fireEvent.click(dayCells[0]!);
@@ -224,9 +212,7 @@ describe('HeatmapGrid (data table mode)', () => {
       { date: '2026-03-05', total: 25.0, count: 2 },
       { date: '2026-03-10', total: 100.0, count: 3 },
     ];
-    renderWithChakra(
-      <HeatmapGrid {...defaultProps} showTable entries={entries} />
-    );
+    renderWithChakra(<HeatmapGrid {...defaultProps} showTable entries={entries} />);
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
@@ -235,24 +221,18 @@ describe('HeatmapGrid (data table mode)', () => {
       { date: '2026-03-05', total: 25.0, count: 2 },
       { date: '2026-03-10', total: 100.0, count: 3 },
     ];
-    renderWithChakra(
-      <HeatmapGrid {...defaultProps} showTable entries={entries} />
-    );
+    renderWithChakra(<HeatmapGrid {...defaultProps} showTable entries={entries} />);
     expect(screen.getByText('2026-03-05')).toBeInTheDocument();
     expect(screen.getByText('2026-03-10')).toBeInTheDocument();
   });
 
   it('shows "No spending" message in table mode when no entries', () => {
-    renderWithChakra(
-      <HeatmapGrid {...defaultProps} showTable entries={[]} />
-    );
+    renderWithChakra(<HeatmapGrid {...defaultProps} showTable entries={[]} />);
     expect(screen.getByText('No spending')).toBeInTheDocument();
   });
 
   it('does not render the visual grid when showTable is true', () => {
-    renderWithChakra(
-      <HeatmapGrid {...defaultProps} showTable entries={[]} />
-    );
+    renderWithChakra(<HeatmapGrid {...defaultProps} showTable entries={[]} />);
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
   });
 });

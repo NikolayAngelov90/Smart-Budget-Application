@@ -41,8 +41,7 @@ const mockUseSWR = jest.fn<
 
 jest.mock('swr', () => ({
   __esModule: true,
-  default: (key: unknown, fetcher?: unknown, config?: unknown) =>
-    mockUseSWR(key, fetcher, config),
+  default: (key: unknown, fetcher?: unknown, config?: unknown) => mockUseSWR(key, fetcher, config),
   useSWRConfig: () => ({ mutate: jest.fn() }),
 }));
 
@@ -50,10 +49,7 @@ import { useBudgets, BUDGETS_KEY } from '@/lib/hooks/useBudgets';
 import { useWhatIf, WHAT_IF_KEY } from '@/lib/hooks/useWhatIf';
 import { useWishlist, WISHLIST_KEY } from '@/lib/hooks/useWishlist';
 import { useBudgetForecast, BUDGET_FORECAST_KEY } from '@/lib/hooks/useBudgetForecast';
-import {
-  useSpendingByCategory,
-  SPENDING_BY_CATEGORY_KEY,
-} from '@/lib/hooks/useSpendingByCategory';
+import { useSpendingByCategory, SPENDING_BY_CATEGORY_KEY } from '@/lib/hooks/useSpendingByCategory';
 import { toLocalISODate } from '@/lib/utils/date';
 
 const today = () => toLocalISODate(new Date());
@@ -68,9 +64,7 @@ function routesUsingClientToday(dir: string, acc: string[] = []): string[] {
       routesUsingClientToday(full, acc);
     } else if (entry.name === 'route.ts') {
       if (fs.readFileSync(full, 'utf8').includes('resolveClientToday(')) {
-        acc.push(
-          '/api/' + path.relative(API_DIR, path.dirname(full)).split(path.sep).join('/')
-        );
+        acc.push('/api/' + path.relative(API_DIR, path.dirname(full)).split(path.sep).join('/'));
       }
     }
   }
@@ -110,8 +104,9 @@ const CLIENTS: Record<string, DatedClient> = {
 };
 
 const HOOK_CASES = Object.entries(CLIENTS)
-  .filter((entry): entry is [string, DatedClient & { render: () => unknown }] =>
-    typeof entry[1].render === 'function'
+  .filter(
+    (entry): entry is [string, DatedClient & { render: () => unknown }] =>
+      typeof entry[1].render === 'function'
   )
   .map(([route, client]) => [route, client.render, client.keyConstant] as const);
 

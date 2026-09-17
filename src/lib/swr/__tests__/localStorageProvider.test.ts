@@ -13,10 +13,7 @@
  *  2. `loadPersistedEntries` reads the persisted entries and honours the cache version.
  */
 
-import {
-  localStorageProvider,
-  loadPersistedEntries,
-} from '@/lib/swr/localStorageProvider';
+import { localStorageProvider, loadPersistedEntries } from '@/lib/swr/localStorageProvider';
 
 const PREFIX = 'smart-budget-swr-cache';
 const META_KEY = 'smart-budget-cache-metadata';
@@ -26,7 +23,9 @@ const CURRENT_VERSION = '4';
 /** Seed a persisted entry the way SWR's cache value is stored ({ data, ... }). */
 function seedEntry(key: string, value: unknown) {
   localStorage.setItem(`${PREFIX}-${key}`, JSON.stringify(value));
-  const meta = JSON.parse(localStorage.getItem(META_KEY) || '{"totalSize":0,"keys":[],"cacheTimestamp":0}');
+  const meta = JSON.parse(
+    localStorage.getItem(META_KEY) || '{"totalSize":0,"keys":[],"cacheTimestamp":0}'
+  );
   if (!meta.keys.includes(key)) meta.keys.push(key);
   localStorage.setItem(META_KEY, JSON.stringify(meta));
 }
@@ -135,10 +134,7 @@ describe('dated cache keys are pruned', () => {
 
     const entries = loadPersistedEntries();
 
-    expect(entries.map(([k]) => k).sort()).toEqual([
-      '/api/categories',
-      '/api/transactions?page=2',
-    ]);
+    expect(entries.map(([k]) => k).sort()).toEqual(['/api/categories', '/api/transactions?page=2']);
   });
 
   it('keeps a key whose date merely looks similar', () => {

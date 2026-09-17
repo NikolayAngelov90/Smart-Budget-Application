@@ -28,11 +28,7 @@ const LOCALE_MAP: Record<string, string> = {
  * @param currencyCode - Optional ISO 4217 currency code (default: DEFAULT_CURRENCY)
  * @returns Formatted currency string (e.g., "€1,234.56" or "$1,234.56")
  */
-export function formatCurrency(
-  amount: number,
-  language?: string,
-  currencyCode?: string
-): string {
+export function formatCurrency(amount: number, language?: string, currencyCode?: string): string {
   const locale = language ? LOCALE_MAP[language] || 'en-US' : 'en-US';
   const currency = currencyCode || DEFAULT_CURRENCY;
   return new Intl.NumberFormat(locale, {
@@ -86,11 +82,7 @@ export function formatCurrencyWithSign(
  * @param rate - Exchange rate
  * @returns Formatted rate string
  */
-export function formatExchangeRate(
-  fromCurrency: string,
-  toCurrency: string,
-  rate: number
-): string {
+export function formatExchangeRate(fromCurrency: string, toCurrency: string, rate: number): string {
   return `1 ${fromCurrency} = ${rate.toFixed(4)} ${toCurrency}`;
 }
 

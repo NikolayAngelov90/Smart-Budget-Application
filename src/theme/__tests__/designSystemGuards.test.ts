@@ -232,7 +232,6 @@ describe('Story 16.7 badges stay visible as pills against their card', () => {
   });
 });
 
-
 /**
  * The contrast blocks above assert facts about `colors.ts`. On their own they
  * do NOT stop a component from pointing at a different token — flipping the

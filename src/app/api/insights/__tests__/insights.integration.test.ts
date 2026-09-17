@@ -171,9 +171,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
     });
 
     test('filters by type=spending_increase', async () => {
-      const filteredInsights = mockInsights.filter(
-        (i) => i.type === 'spending_increase'
-      );
+      const filteredInsights = mockInsights.filter((i) => i.type === 'spending_increase');
       mockQuery.mockResolvedValue({
         data: filteredInsights,
         error: null,
@@ -197,9 +195,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
         count: activeInsights.length,
       });
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/insights?dismissed=false'
-      );
+      const request = createMockRequest('http://localhost:3000/api/insights?dismissed=false');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -214,9 +210,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
         count: dismissedInsights.length,
       });
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/insights?dismissed=true'
-      );
+      const request = createMockRequest('http://localhost:3000/api/insights?dismissed=true');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -226,21 +220,15 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
     test('applies search filter to title and description', async () => {
       mockQuery.mockResolvedValue({ data: [mockInsights[0]], error: null, count: 1 });
 
-      const request = createMockRequest(
-        'http://localhost:3000/api/insights?search=Food'
-      );
+      const request = createMockRequest('http://localhost:3000/api/insights?search=Food');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      expect(mockQuery.or).toHaveBeenCalledWith(
-        expect.stringContaining('title.ilike.%Food%')
-      );
+      expect(mockQuery.or).toHaveBeenCalledWith(expect.stringContaining('title.ilike.%Food%'));
     });
 
     test('applies pagination via limit and offset', async () => {
-      const request = createMockRequest(
-        'http://localhost:3000/api/insights?limit=10&offset=5'
-      );
+      const request = createMockRequest('http://localhost:3000/api/insights?limit=10&offset=5');
       await GET(request);
 
       // range(offset, offset+limit-1) → range(5, 14)
@@ -248,9 +236,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
     });
 
     test('clamps limit to max 100', async () => {
-      const request = createMockRequest(
-        'http://localhost:3000/api/insights?limit=500'
-      );
+      const request = createMockRequest('http://localhost:3000/api/insights?limit=500');
       await GET(request);
 
       // Should use clamped limit of 100: range(0, 99)
@@ -258,18 +244,14 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
     });
 
     test('orders by custom field when orderBy param provided', async () => {
-      const request = createMockRequest(
-        'http://localhost:3000/api/insights?orderBy=priority'
-      );
+      const request = createMockRequest('http://localhost:3000/api/insights?orderBy=priority');
       await GET(request);
 
       expect(mockQuery.order).toHaveBeenCalledWith('priority', { ascending: true });
     });
 
     test('ignores invalid insight type in type filter', async () => {
-      const request = createMockRequest(
-        'http://localhost:3000/api/insights?type=invalid_type'
-      );
+      const request = createMockRequest('http://localhost:3000/api/insights?type=invalid_type');
       await GET(request);
 
       // Should NOT call eq with an invalid type

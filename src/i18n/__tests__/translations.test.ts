@@ -110,15 +110,15 @@ describe('Translation files', () => {
   test('bg.json values are actually translated (not identical to en.json)', () => {
     // Keys that are intentionally the same in both languages (proper nouns, abbreviations, etc.)
     const allowlist = new Set([
-      'common.appName',             // Brand name stays the same
-      'settings.languageEnglish',   // "English" stays in English
+      'common.appName', // Brand name stays the same
+      'settings.languageEnglish', // "English" stays in English
       'settings.languageBulgarian', // "Български" is already Bulgarian
-      'common.or',                  // Short words may coincide
+      'common.or', // Short words may coincide
       'common.and',
       'transactions.convertedAmount', // Format pattern: ({amount}) - language-agnostic
-      'heatmap.subtitle',             // Format pattern: {month} {year} - language-agnostic template
-      'projections.trendUp',          // Format pattern: +{percentage}% - numeric, language-agnostic
-      'projections.trendDown',        // Format pattern: -{percentage}% - numeric, language-agnostic
+      'heatmap.subtitle', // Format pattern: {month} {year} - language-agnostic template
+      'projections.trendUp', // Format pattern: +{percentage}% - numeric, language-agnostic
+      'projections.trendDown', // Format pattern: -{percentage}% - numeric, language-agnostic
       'invitations.emailPlaceholder', // Email example (name@email.com) - language-agnostic
     ]);
 
@@ -138,7 +138,10 @@ describe('Translation files', () => {
     });
 
     if (untranslatedKeys.length > 0) {
-      console.warn('Potentially untranslated keys (bg.json value equals en.json value):', untranslatedKeys);
+      console.warn(
+        'Potentially untranslated keys (bg.json value equals en.json value):',
+        untranslatedKeys
+      );
     }
 
     expect(untranslatedKeys).toEqual([]);

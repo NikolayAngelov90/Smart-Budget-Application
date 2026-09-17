@@ -57,9 +57,7 @@ function makeClient(rowsPerQuery: object[][], captured: Captured) {
   let call = 0;
   return {
     auth: {
-      getUser: jest
-        .fn()
-        .mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
+      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
     },
     from: jest.fn(() => {
       const index = call++;

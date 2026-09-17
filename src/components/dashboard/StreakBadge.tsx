@@ -63,7 +63,10 @@ export function StreakBadge() {
 
   return (
     <>
-      <Tooltip hasArrow label={`${t('longestLabel', { longest: streak.longest_streak })} · ${freezeStatus}`}>
+      <Tooltip
+        hasArrow
+        label={`${t('longestLabel', { longest: streak.longest_streak })} · ${freezeStatus}`}
+      >
         {/* Focusable so keyboard/touch users can open the tooltip; the aria-label
             carries the same information for screen readers */}
         <Box

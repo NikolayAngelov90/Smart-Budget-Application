@@ -38,13 +38,12 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import {
-  getSubscriptionsForUser,
-  hasEnoughHistory,
-} from '@/lib/services/subscriptionService';
+import { getSubscriptionsForUser, hasEnoughHistory } from '@/lib/services/subscriptionService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockGetSubscriptions = getSubscriptionsForUser as jest.MockedFunction<typeof getSubscriptionsForUser>;
+const mockGetSubscriptions = getSubscriptionsForUser as jest.MockedFunction<
+  typeof getSubscriptionsForUser
+>;
 const mockHasEnoughHistory = hasEnoughHistory as jest.MockedFunction<typeof hasEnoughHistory>;
 const mockJsonResponse = NextResponse.json as jest.MockedFunction<typeof NextResponse.json>;
 
@@ -63,7 +62,9 @@ describe('GET /api/subscriptions', () => {
   it('returns 401 when user is not authenticated', async () => {
     mockCreateClient.mockResolvedValue({
       auth: {
-        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: { message: 'Not authenticated' } }),
+        getUser: jest
+          .fn()
+          .mockResolvedValue({ data: { user: null }, error: { message: 'Not authenticated' } }),
       },
     } as unknown as Awaited<ReturnType<typeof createClient>>);
 
@@ -84,9 +85,17 @@ describe('GET /api/subscriptions', () => {
     } as unknown as Awaited<ReturnType<typeof createClient>>);
 
     const subs = [
-      { id: 'sub-1', merchant_pattern: 'netflix', estimated_amount: 9.99, frequency: 'monthly', status: 'active' },
+      {
+        id: 'sub-1',
+        merchant_pattern: 'netflix',
+        estimated_amount: 9.99,
+        frequency: 'monthly',
+        status: 'active',
+      },
     ];
-    mockGetSubscriptions.mockResolvedValue(subs as Awaited<ReturnType<typeof getSubscriptionsForUser>>);
+    mockGetSubscriptions.mockResolvedValue(
+      subs as Awaited<ReturnType<typeof getSubscriptionsForUser>>
+    );
     mockHasEnoughHistory.mockResolvedValue(true);
 
     await GET();

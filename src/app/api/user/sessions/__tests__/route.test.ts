@@ -10,7 +10,8 @@ import { GET } from '@/app/api/user/sessions/route';
 jest.mock('next/headers', () => ({
   headers: jest.fn().mockResolvedValue({
     get: (name: string) => {
-      if (name === 'user-agent') return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0';
+      if (name === 'user-agent')
+        return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0';
       if (name === 'x-forwarded-for') return '127.0.0.1';
       return null;
     },
@@ -147,7 +148,14 @@ describe('GET /api/user/sessions', () => {
     mockMaybeSingle.mockResolvedValueOnce({ data: null });
     // Fetch returns the newly inserted session
     mockOrder.mockResolvedValueOnce({
-      data: [{ id: 'new-session', user_id: 'user-123', device_name: 'Chrome on Windows', session_token: 'token-abc' }],
+      data: [
+        {
+          id: 'new-session',
+          user_id: 'user-123',
+          device_name: 'Chrome on Windows',
+          session_token: 'token-abc',
+        },
+      ],
       error: null,
     });
 

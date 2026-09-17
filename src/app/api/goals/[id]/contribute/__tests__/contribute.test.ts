@@ -140,12 +140,10 @@ describe('POST /api/goals/[id]/contribute', () => {
 
     await POST(buildRequest({ amount: 100, note: 'Monthly savings' }), buildContext('goal-1'));
 
-    expect(mockAddContribution).toHaveBeenCalledWith(
-      expect.anything(),
-      'user-1',
-      'goal-1',
-      { amount: 100, note: 'Monthly savings' }
-    );
+    expect(mockAddContribution).toHaveBeenCalledWith(expect.anything(), 'user-1', 'goal-1', {
+      amount: 100,
+      note: 'Monthly savings',
+    });
     expect(mockJsonResponse).toHaveBeenCalledWith(updatedGoal);
   });
 
@@ -155,12 +153,10 @@ describe('POST /api/goals/[id]/contribute', () => {
 
     await POST(buildRequest({ amount: 50 }), buildContext('goal-1'));
 
-    expect(mockAddContribution).toHaveBeenCalledWith(
-      expect.anything(),
-      'user-1',
-      'goal-1',
-      { amount: 50, note: null }
-    );
+    expect(mockAddContribution).toHaveBeenCalledWith(expect.anything(), 'user-1', 'goal-1', {
+      amount: 50,
+      note: null,
+    });
   });
 
   it('returns 404 when goal not found', async () => {

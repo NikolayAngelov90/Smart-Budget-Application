@@ -19,9 +19,13 @@ import webpush from 'web-push';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { dispatchCategorizedPush, isWithinQuietHours, sendPushToUser } from '../pushService';
 
-const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
+const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
 
-const mockSendNotification = webpush.sendNotification as jest.MockedFunction<typeof webpush.sendNotification>;
+const mockSendNotification = webpush.sendNotification as jest.MockedFunction<
+  typeof webpush.sendNotification
+>;
 
 // ============================================================================
 // isWithinQuietHours
@@ -110,12 +114,27 @@ describe('isWithinQuietHours', () => {
 // ============================================================================
 
 describe('sendPushToUser', () => {
-  const payload = { type: 'nudge' as const, title: 'Test', body: 'Body', data: { url: '/dashboard' } };
+  const payload = {
+    type: 'nudge' as const,
+    title: 'Test',
+    body: 'Body',
+    data: { url: '/dashboard' },
+  };
 
-  const sub1 = { id: 'sub-1', endpoint: 'https://push.example.com/1', p256dh: 'pk1', auth: 'auth1' };
-  const sub2 = { id: 'sub-2', endpoint: 'https://push.example.com/2', p256dh: 'pk2', auth: 'auth2' };
+  const sub1 = {
+    id: 'sub-1',
+    endpoint: 'https://push.example.com/1',
+    p256dh: 'pk1',
+    auth: 'auth1',
+  };
+  const sub2 = {
+    id: 'sub-2',
+    endpoint: 'https://push.example.com/2',
+    p256dh: 'pk2',
+    auth: 'auth2',
+  };
 
-  function makeSupabaseMock(subs: typeof sub1[], deleteError: unknown = null) {
+  function makeSupabaseMock(subs: (typeof sub1)[], deleteError: unknown = null) {
     const deleteEq = jest.fn().mockResolvedValue({ error: deleteError });
     const deleteFn = jest.fn().mockReturnValue({ eq: deleteEq });
     return {
@@ -294,7 +313,7 @@ describe('dispatchCategorizedPush', () => {
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 
-  it("suppresses ACHIEVEMENT pushes when gamification is opted out (Story 15.6)", async () => {
+  it('suppresses ACHIEVEMENT pushes when gamification is opted out (Story 15.6)', async () => {
     mockServiceClient.mockReturnValue(
       makeGateClient({ push_milestones_enabled: true, gamification_enabled: false }) as never
     );
@@ -317,7 +336,9 @@ describe('dispatchCategorizedPush', () => {
       body: 'We saved your progress — log a transaction to pick up where you left off.',
       data: { url: '/dashboard' },
     };
-    await expect(dispatchCategorizedPush('u-1', 'reengagement', comebackPush)).resolves.toBe('suppressed');
+    await expect(dispatchCategorizedPush('u-1', 'reengagement', comebackPush)).resolves.toBe(
+      'suppressed'
+    );
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 
@@ -329,7 +350,9 @@ describe('dispatchCategorizedPush', () => {
       body: 'x',
       data: { url: '/dashboard' },
     };
-    await expect(dispatchCategorizedPush('u-1', 'reengagement', comebackPush)).resolves.toBe('sent');
+    await expect(dispatchCategorizedPush('u-1', 'reengagement', comebackPush)).resolves.toBe(
+      'sent'
+    );
   });
 
   it("non-achievement 'milestones' pushes (shared-goal milestone) are UNAFFECTED by the gamification flag", async () => {

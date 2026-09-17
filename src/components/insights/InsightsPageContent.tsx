@@ -43,12 +43,15 @@ export function InsightsPageContent() {
   const tCommon = useTranslations('common');
 
   // Extract filters from URL
-  const filters = useMemo(() => ({
-    type: searchParams.get('type') || 'all',
-    dismissed: searchParams.get('dismissed') === 'true',
-    search: searchParams.get('search') || '',
-    page: parseInt(searchParams.get('page') || '1', 10),
-  }), [searchParams]);
+  const filters = useMemo(
+    () => ({
+      type: searchParams.get('type') || 'all',
+      dismissed: searchParams.get('dismissed') === 'true',
+      search: searchParams.get('search') || '',
+      page: parseInt(searchParams.get('page') || '1', 10),
+    }),
+    [searchParams]
+  );
 
   // Pagination configuration
   const INSIGHTS_PER_PAGE = 20;
@@ -158,13 +161,11 @@ export function InsightsPageContent() {
     if (!data) return;
 
     // Find the insight to get its type for analytics
-    const insight = data.insights.find(i => i.id === id);
+    const insight = data.insights.find((i) => i.id === id);
 
     // Optimistic update
     const optimisticData: InsightsResponse = {
-      insights: data.insights.map(i =>
-        i.id === id ? { ...i, is_dismissed: true } : i
-      ),
+      insights: data.insights.map((i) => (i.id === id ? { ...i, is_dismissed: true } : i)),
       total: data.total,
     };
     mutate(optimisticData, false);
@@ -212,7 +213,7 @@ export function InsightsPageContent() {
 
     // Optimistic update
     const optimisticData: InsightsResponse = {
-      insights: data.insights.map(insight =>
+      insights: data.insights.map((insight) =>
         insight.id === id ? { ...insight, is_dismissed: false } : insight
       ),
       total: data.total,
@@ -302,28 +303,18 @@ export function InsightsPageContent() {
         <SubscriptionGraveyard />
 
         {/* Filters */}
-        <InsightsFilters
-          filters={filters}
-          onFilterChange={handleFilterChange}
-        />
+        <InsightsFilters filters={filters} onFilterChange={handleFilterChange} />
 
         {/* Error State */}
         {error && (
-          <EmptyInsightsState
-            message={t('failedToLoad')}
-            isError
-            onRetry={() => mutate()}
-          />
+          <EmptyInsightsState message={t('failedToLoad')} isError onRetry={() => mutate()} />
         )}
 
         {/* Insights List or Empty State */}
         {!error && (
           <>
             {!isLoading && insights && insights.length === 0 ? (
-              <EmptyInsightsState
-                message={getEmptyMessage()}
-                hasFilters={hasActiveFilters}
-              />
+              <EmptyInsightsState message={getEmptyMessage()} hasFilters={hasActiveFilters} />
             ) : (
               <>
                 <InsightsList

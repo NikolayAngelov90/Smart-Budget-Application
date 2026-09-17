@@ -19,7 +19,9 @@ jest.mock('@/lib/services/householdService', () => ({
   applyPreset: jest.fn(),
   NotHouseholdMemberError: class NotHouseholdMemberError extends Error {},
 }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
 import { applyPreset, NotHouseholdMemberError } from '@/lib/services/householdService';
@@ -29,7 +31,13 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
 const mockApply = applyPreset as jest.MockedFunction<typeof applyPreset>;
 
 function authClient(user: object | null) {
-  return { auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }) } };
+  return {
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+    },
+  };
 }
 function req(body: unknown) {
   return { json: async () => body } as never;

@@ -96,8 +96,14 @@ describe('GET /api/analytics', () => {
     mockCreateClient.mockResolvedValue(clientWithUser({ id: 'u1' }) as never);
     mockIsViewer.mockResolvedValue(true);
     mockGetDashboard.mockResolvedValue({
-      range_days: 30, insight_engagement: [], export_usage: { csv_count: 0, pdf_count: 0, csv_total_transactions: 0, pdf_total_pages: 0 },
-      pwa_installs_by_platform: [], pwa_installs_total: 0, wau_trend: [], total_events: 0, generated_at: 'x',
+      range_days: 30,
+      insight_engagement: [],
+      export_usage: { csv_count: 0, pdf_count: 0, csv_total_transactions: 0, pdf_total_pages: 0 },
+      pwa_installs_by_platform: [],
+      pwa_installs_total: 0,
+      wau_trend: [],
+      total_events: 0,
+      generated_at: 'x',
     });
     const res = await GET(req());
     expect(res.status).toBe(200);

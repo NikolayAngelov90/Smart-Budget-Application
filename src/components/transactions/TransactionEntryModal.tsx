@@ -340,10 +340,9 @@ export default function TransactionEntryModal({
     const controller = new AbortController();
     async function fetchRate() {
       try {
-        const response = await fetch(
-          `/api/exchange-rates?base=${selectedCurrency}`,
-          { signal: controller.signal }
-        );
+        const response = await fetch(`/api/exchange-rates?base=${selectedCurrency}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           throw new Error('Failed to fetch exchange rate');
         }
@@ -356,7 +355,9 @@ export default function TransactionEntryModal({
         if (error instanceof DOMException && error.name === 'AbortError') return;
         toast({
           title: t('exchangeRateUnavailable') || 'Exchange rate unavailable',
-          description: t('exchangeRateError') || 'Could not fetch exchange rate. You can still save the transaction.',
+          description:
+            t('exchangeRateError') ||
+            'Could not fetch exchange rate. You can still save the transaction.',
           status: 'warning',
           duration: 4000,
           isClosable: true,
@@ -365,7 +366,9 @@ export default function TransactionEntryModal({
     }
 
     fetchRate();
-    return () => { controller.abort(); };
+    return () => {
+      controller.abort();
+    };
   }, [selectedCurrency, preferredCurrency, toast, t]);
 
   // Quick date setter functions
@@ -422,7 +425,8 @@ export default function TransactionEntryModal({
             currency: selectedCurrency,
             exchange_rate: exchangeRate,
             // Story 13.6: tag as private allowance spending when the toggle is eligible + on.
-            allowance_id: canTagAllowance && useAllowanceTag ? allowanceStatus?.allowance?.id : undefined,
+            allowance_id:
+              canTagAllowance && useAllowanceTag ? allowanceStatus?.allowance?.id : undefined,
             // Story 15.1: the USER's calendar day, so the streak counts local days
             // (server clamps to ±1 day of its own clock)
             log_day: localDayKey(new Date()),
@@ -433,7 +437,10 @@ export default function TransactionEntryModal({
       const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error((responseData as { error?: string }).error || `Failed to ${mode === 'edit' ? 'update' : 'create'} transaction`);
+        throw new Error(
+          (responseData as { error?: string }).error ||
+            `Failed to ${mode === 'edit' ? 'update' : 'create'} transaction`
+        );
       }
 
       // Story 12.3: Surface spending nudge if one fired (expense creates only)
@@ -470,7 +477,7 @@ export default function TransactionEntryModal({
         setSelectedCurrency(preferredCurrency);
         setExchangeRate(null);
         setUseAllowanceTag(false);
-      setShowDetails(false);
+        setShowDetails(false);
       }
 
       // AC-10.8.6: Haptic feedback on successful transaction save
@@ -504,7 +511,13 @@ export default function TransactionEntryModal({
     <form onSubmit={handleSubmit(onSubmit)}>
       <VStack spacing={5} align="stretch">
         {/* Story 12.3: Spending nudge banner — shown when transaction triggers a threshold */}
-        <SmartNudge nudge={nudge} onDismiss={() => { dismissNudge(); onClose(); }} />
+        <SmartNudge
+          nudge={nudge}
+          onDismiss={() => {
+            dismissNudge();
+            onClose();
+          }}
+        />
 
         {/* Amount — the hero of the composer (Story 16.2) */}
         <FormControl isInvalid={!!errors.amount} isRequired>
@@ -591,7 +604,14 @@ export default function TransactionEntryModal({
 
         {/* Transaction Type — segmented control (Story 16.2) */}
         <FormControl>
-          <HStack spacing={1} p={1} bg="surface.sunken" borderRadius="xl" role="group" aria-label={t('type')}>
+          <HStack
+            spacing={1}
+            p={1}
+            bg="surface.sunken"
+            borderRadius="xl"
+            role="group"
+            aria-label={t('type')}
+          >
             <Button
               flex={1}
               variant="unstyled"
@@ -633,11 +653,15 @@ export default function TransactionEntryModal({
 
         {/* Category — quick-pick chips (fast path) + full menu (Story 16.2) */}
         <FormControl isInvalid={!!errors.category_id} isRequired>
-          <FormLabel htmlFor="category_id" fontSize="sm" color="fg.muted">{t('category')}</FormLabel>
+          <FormLabel htmlFor="category_id" fontSize="sm" color="fg.muted">
+            {t('category')}
+          </FormLabel>
           {isLoadingCategories ? (
             <Box display="flex" alignItems="center" justifyContent="center" py={4}>
               <Spinner size="md" color="accent" />
-              <Text ml={3} color="fg.muted">{tCommon('loading')}</Text>
+              <Text ml={3} color="fg.muted">
+                {tCommon('loading')}
+              </Text>
             </Box>
           ) : (
             <VStack align="stretch" spacing={2}>
@@ -690,7 +714,9 @@ export default function TransactionEntryModal({
               <CategoryMenu
                 categories={categories}
                 value={watch('category_id')}
-                onChange={(categoryId) => setValue('category_id', categoryId, { shouldValidate: true })}
+                onChange={(categoryId) =>
+                  setValue('category_id', categoryId, { shouldValidate: true })
+                }
                 placeholder={t('selectCategory')}
                 isInvalid={!!errors.category_id}
                 size="lg"
@@ -698,9 +724,7 @@ export default function TransactionEntryModal({
               />
             </VStack>
           )}
-          {errors.category_id && (
-            <FormErrorMessage>{errors.category_id.message}</FormErrorMessage>
-          )}
+          {errors.category_id && <FormErrorMessage>{errors.category_id.message}</FormErrorMessage>}
         </FormControl>
 
         {/* Story 13.6: tag this expense to the private personal allowance */}
@@ -734,54 +758,56 @@ export default function TransactionEntryModal({
         </Button>
         <Collapse in={detailsOpen} animateOpacity>
           <VStack align="stretch" spacing={5}>
-        {/* Date Picker with Quick Options */}
-        <FormControl isInvalid={!!errors.date} isRequired>
-          <FormLabel htmlFor="date">{t('date')}</FormLabel>
-          <HStack spacing={2} mb={2}>
-            <Button size="sm" variant="outline" onClick={() => setQuickDate(0)} minH="36px">
-              {t('today')}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setQuickDate(1)} minH="36px">
-              {t('yesterday')}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setQuickDate(2)} minH="36px">
-              {t('twoDaysAgo')}
-            </Button>
-          </HStack>
-          <Input
-            id="date"
-            type="date"
-            size="lg"
-            max={format(new Date(), 'yyyy-MM-dd')}
-            {...register('date')}
-            _focus={{
-              borderColor: 'accent',
-              boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
-            }}
-          />
-          {errors.date && <FormErrorMessage>{errors.date.message}</FormErrorMessage>}
-        </FormControl>
+            {/* Date Picker with Quick Options */}
+            <FormControl isInvalid={!!errors.date} isRequired>
+              <FormLabel htmlFor="date">{t('date')}</FormLabel>
+              <HStack spacing={2} mb={2}>
+                <Button size="sm" variant="outline" onClick={() => setQuickDate(0)} minH="36px">
+                  {t('today')}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setQuickDate(1)} minH="36px">
+                  {t('yesterday')}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setQuickDate(2)} minH="36px">
+                  {t('twoDaysAgo')}
+                </Button>
+              </HStack>
+              <Input
+                id="date"
+                type="date"
+                size="lg"
+                max={format(new Date(), 'yyyy-MM-dd')}
+                {...register('date')}
+                _focus={{
+                  borderColor: 'accent',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
+                }}
+              />
+              {errors.date && <FormErrorMessage>{errors.date.message}</FormErrorMessage>}
+            </FormControl>
 
-        {/* Notes Field (Optional) */}
-        <FormControl isInvalid={!!errors.notes}>
-          <FormLabel htmlFor="notes">{t('notes')} ({tCommon('optional')})</FormLabel>
-          <Textarea
-            id="notes"
-            placeholder={t('notesPlaceholder')}
-            size="md"
-            rows={2}
-            maxLength={100}
-            {...register('notes')}
-            _focus={{
-              borderColor: 'accent',
-              boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
-            }}
-          />
-          {errors.notes && <FormErrorMessage>{errors.notes.message}</FormErrorMessage>}
-          <Text fontSize="xs" color="fg.subtle" mt={1}>
-            {t('maxCharacters', { max: 100 })}
-          </Text>
-        </FormControl>
+            {/* Notes Field (Optional) */}
+            <FormControl isInvalid={!!errors.notes}>
+              <FormLabel htmlFor="notes">
+                {t('notes')} ({tCommon('optional')})
+              </FormLabel>
+              <Textarea
+                id="notes"
+                placeholder={t('notesPlaceholder')}
+                size="md"
+                rows={2}
+                maxLength={100}
+                {...register('notes')}
+                _focus={{
+                  borderColor: 'accent',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-accent)',
+                }}
+              />
+              {errors.notes && <FormErrorMessage>{errors.notes.message}</FormErrorMessage>}
+              <Text fontSize="xs" color="fg.subtle" mt={1}>
+                {t('maxCharacters', { max: 100 })}
+              </Text>
+            </FormControl>
           </VStack>
         </Collapse>
       </VStack>
@@ -801,19 +827,10 @@ export default function TransactionEntryModal({
         pt={3}
         pb={isMobile ? 4 : 0}
       >
-        <Button
-          variant="ghost"
-          onClick={onClose}
-          isDisabled={isSubmitting}
-          minH="48px"
-        >
+        <Button variant="ghost" onClick={onClose} isDisabled={isSubmitting} minH="48px">
           {tCommon('cancel')}
         </Button>
-        <Tooltip
-          label={!isOnline ? t('availableWhenOnline') : ''}
-          placement="top"
-          hasArrow
-        >
+        <Tooltip label={!isOnline ? t('availableWhenOnline') : ''} placement="top" hasArrow>
           <Button
             type="submit"
             bg="accent"

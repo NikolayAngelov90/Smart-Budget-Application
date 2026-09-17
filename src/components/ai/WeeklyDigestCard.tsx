@@ -97,7 +97,10 @@ export function WeeklyDigestCard() {
   const changeColor = isDecrease ? 'income' : isIncrease ? 'expense' : 'fg.subtle';
   const changeLabel = `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
 
-  const totalForBar = digest.top_categories.reduce((sum: number, c: DigestTopCategory) => sum + c.total, 0);
+  const totalForBar = digest.top_categories.reduce(
+    (sum: number, c: DigestTopCategory) => sum + c.total,
+    0
+  );
 
   return (
     <Card
@@ -125,8 +128,12 @@ export function WeeklyDigestCard() {
                 {formatAmount(digest.total_spending, digest.currency)}
               </Text>
               <HStack spacing={1} color={changeColor}>
-                {isIncrease && <ArrowUpIcon data-testid="change-increase-icon" aria-hidden="true" />}
-                {isDecrease && <ArrowDownIcon data-testid="change-decrease-icon" aria-hidden="true" />}
+                {isIncrease && (
+                  <ArrowUpIcon data-testid="change-increase-icon" aria-hidden="true" />
+                )}
+                {isDecrease && (
+                  <ArrowDownIcon data-testid="change-decrease-icon" aria-hidden="true" />
+                )}
                 <Text fontSize="sm" fontWeight="semibold">
                   {t('vsLastWeek', { pct: changeLabel })}
                 </Text>

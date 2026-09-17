@@ -82,9 +82,11 @@ function makeAdmin(opts: AdminOpts = {}) {
     update: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue(
-      revokeLookup !== undefined ? revokeLookup : { data: precheck, error: null }
-    ),
+    maybeSingle: jest
+      .fn()
+      .mockResolvedValue(
+        revokeLookup !== undefined ? revokeLookup : { data: precheck, error: null }
+      ),
     single: jest.fn().mockResolvedValue(insert),
     then: jest.fn((resolve: (v: unknown) => unknown) => Promise.resolve(thenResult).then(resolve)),
   };
@@ -113,25 +115,35 @@ describe('createInvitation', () => {
   it('throws NotHouseholdAdminError when caller is not an admin', async () => {
     const { client } = makeAdmin({ member: { household_id: 'h-1', role: 'member' } });
     mockSrv.mockReturnValue(client as never);
-    await expect(createInvitation('user-1', 'a@x.com')).rejects.toBeInstanceOf(NotHouseholdAdminError);
+    await expect(createInvitation('user-1', 'a@x.com')).rejects.toBeInstanceOf(
+      NotHouseholdAdminError
+    );
   });
 
   it('throws NotHouseholdAdminError when caller has no household', async () => {
     const { client } = makeAdmin({ member: null });
     mockSrv.mockReturnValue(client as never);
-    await expect(createInvitation('user-1', 'a@x.com')).rejects.toBeInstanceOf(NotHouseholdAdminError);
+    await expect(createInvitation('user-1', 'a@x.com')).rejects.toBeInstanceOf(
+      NotHouseholdAdminError
+    );
   });
 
   it('throws InvitationExistsError when an active invite already exists (pre-check)', async () => {
     const { client } = makeAdmin({ precheck: { id: 'inv-existing' } });
     mockSrv.mockReturnValue(client as never);
-    await expect(createInvitation('user-1', 'a@x.com')).rejects.toBeInstanceOf(InvitationExistsError);
+    await expect(createInvitation('user-1', 'a@x.com')).rejects.toBeInstanceOf(
+      InvitationExistsError
+    );
   });
 
   it('maps a unique-violation (23505) on insert to InvitationExistsError', async () => {
-    const { client } = makeAdmin({ insert: { data: null, error: { code: '23505', message: 'dup' } } });
+    const { client } = makeAdmin({
+      insert: { data: null, error: { code: '23505', message: 'dup' } },
+    });
     mockSrv.mockReturnValue(client as never);
-    await expect(createInvitation('user-1', 'a@x.com')).rejects.toBeInstanceOf(InvitationExistsError);
+    await expect(createInvitation('user-1', 'a@x.com')).rejects.toBeInstanceOf(
+      InvitationExistsError
+    );
   });
 
   it('pushes a notification when the invitee already has an account', async () => {
@@ -208,11 +220,15 @@ describe('revokeInvitation', () => {
   it('throws InvitationNotFoundError when not in the caller household', async () => {
     const { client } = makeAdmin({ revokeLookup: { data: null, error: null } });
     mockSrv.mockReturnValue(client as never);
-    await expect(revokeInvitation('user-1', 'nope')).rejects.toBeInstanceOf(InvitationNotFoundError);
+    await expect(revokeInvitation('user-1', 'nope')).rejects.toBeInstanceOf(
+      InvitationNotFoundError
+    );
   });
 
   it('is idempotent for an already non-pending invite', async () => {
-    const { client } = makeAdmin({ revokeLookup: { data: { id: 'inv-1', status: 'revoked' }, error: null } });
+    const { client } = makeAdmin({
+      revokeLookup: { data: { id: 'inv-1', status: 'revoked' }, error: null },
+    });
     mockSrv.mockReturnValue(client as never);
     await expect(revokeInvitation('user-1', 'inv-1')).resolves.toBeUndefined();
   });
@@ -222,7 +238,13 @@ describe('revokeInvitation', () => {
 // Story 13.3: accept / validate
 // ============================================================================
 
-const HOUSEHOLD = { id: 'h-1', name: 'Home', created_by: 'admin-1', created_at: 'x', updated_at: 'x' };
+const HOUSEHOLD = {
+  id: 'h-1',
+  name: 'Home',
+  created_by: 'admin-1',
+  created_at: 'x',
+  updated_at: 'x',
+};
 
 interface AcceptOpts {
   inv?: object | null;
@@ -238,12 +260,16 @@ function makeAcceptAdmin(opts: AcceptOpts = {}) {
     eq: jest.fn().mockReturnThis(),
     update: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn().mockResolvedValue({ data: inv, error: null }),
-    then: jest.fn((resolve: (v: unknown) => unknown) => Promise.resolve({ error: flipErr }).then(resolve)),
+    then: jest.fn((resolve: (v: unknown) => unknown) =>
+      Promise.resolve({ error: flipErr }).then(resolve)
+    ),
   };
   const membersChain = {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue({ data: inHousehold ? { id: 'm' } : null, error: null }),
+    maybeSingle: jest
+      .fn()
+      .mockResolvedValue({ data: inHousehold ? { id: 'm' } : null, error: null }),
     insert: jest.fn().mockResolvedValue({ error: memberErr }),
   };
   const householdsChain = {
@@ -252,7 +278,11 @@ function makeAcceptAdmin(opts: AcceptOpts = {}) {
     single: jest.fn().mockResolvedValue({ data: HOUSEHOLD, error: null }),
   };
   const from = jest.fn((t: string) =>
-    t === 'household_invitations' ? invChain : t === 'household_members' ? membersChain : householdsChain
+    t === 'household_invitations'
+      ? invChain
+      : t === 'household_members'
+        ? membersChain
+        : householdsChain
   );
   return { client: { from } };
 }
@@ -263,7 +293,11 @@ describe('acceptInvitation', () => {
     mockSrv.mockReturnValue(client as never);
     const result = await acceptInvitation('user-2', 'A@x.com', 'tok-1');
     expect(result).toEqual(HOUSEHOLD);
-    expect(mockPush).toHaveBeenCalledWith('user-1', 'household', expect.objectContaining({ type: 'household_event' }));
+    expect(mockPush).toHaveBeenCalledWith(
+      'user-1',
+      'household',
+      expect.objectContaining({ type: 'household_event' })
+    );
   });
 
   it('still joins when the best-effort push fails', async () => {
@@ -276,37 +310,51 @@ describe('acceptInvitation', () => {
   it('throws InvalidTokenError for an unknown token', async () => {
     const { client } = makeAcceptAdmin({ inv: null });
     mockSrv.mockReturnValue(client as never);
-    await expect(acceptInvitation('user-2', 'a@x.com', 'nope')).rejects.toBeInstanceOf(InvalidTokenError);
+    await expect(acceptInvitation('user-2', 'a@x.com', 'nope')).rejects.toBeInstanceOf(
+      InvalidTokenError
+    );
   });
 
   it('throws InvitationNotPendingError for an already-used invite', async () => {
     const { client } = makeAcceptAdmin({ inv: { ...INVITE, status: 'accepted' } });
     mockSrv.mockReturnValue(client as never);
-    await expect(acceptInvitation('user-2', 'a@x.com', 'tok-1')).rejects.toBeInstanceOf(InvitationNotPendingError);
+    await expect(acceptInvitation('user-2', 'a@x.com', 'tok-1')).rejects.toBeInstanceOf(
+      InvitationNotPendingError
+    );
   });
 
   it('throws InvitationExpiredError for an expired invite', async () => {
-    const { client } = makeAcceptAdmin({ inv: { ...INVITE, expires_at: new Date(Date.now() - 1000).toISOString() } });
+    const { client } = makeAcceptAdmin({
+      inv: { ...INVITE, expires_at: new Date(Date.now() - 1000).toISOString() },
+    });
     mockSrv.mockReturnValue(client as never);
-    await expect(acceptInvitation('user-2', 'a@x.com', 'tok-1')).rejects.toBeInstanceOf(InvitationExpiredError);
+    await expect(acceptInvitation('user-2', 'a@x.com', 'tok-1')).rejects.toBeInstanceOf(
+      InvitationExpiredError
+    );
   });
 
   it('throws EmailMismatchError when the user email differs', async () => {
     const { client } = makeAcceptAdmin();
     mockSrv.mockReturnValue(client as never);
-    await expect(acceptInvitation('user-2', 'someone-else@x.com', 'tok-1')).rejects.toBeInstanceOf(EmailMismatchError);
+    await expect(acceptInvitation('user-2', 'someone-else@x.com', 'tok-1')).rejects.toBeInstanceOf(
+      EmailMismatchError
+    );
   });
 
   it('throws AlreadyInHouseholdError when the caller already has a household', async () => {
     const { client } = makeAcceptAdmin({ inHousehold: true });
     mockSrv.mockReturnValue(client as never);
-    await expect(acceptInvitation('user-2', 'a@x.com', 'tok-1')).rejects.toBeInstanceOf(AlreadyInHouseholdError);
+    await expect(acceptInvitation('user-2', 'a@x.com', 'tok-1')).rejects.toBeInstanceOf(
+      AlreadyInHouseholdError
+    );
   });
 
   it('maps a membership unique-violation (23505) to AlreadyInHouseholdError', async () => {
     const { client } = makeAcceptAdmin({ memberErr: { code: '23505', message: 'dup' } });
     mockSrv.mockReturnValue(client as never);
-    await expect(acceptInvitation('user-2', 'a@x.com', 'tok-1')).rejects.toBeInstanceOf(AlreadyInHouseholdError);
+    await expect(acceptInvitation('user-2', 'a@x.com', 'tok-1')).rejects.toBeInstanceOf(
+      AlreadyInHouseholdError
+    );
   });
 });
 
@@ -317,13 +365,21 @@ describe('validateInvitation', () => {
     const { client } = makeAcceptAdmin({ inv: invWithHousehold });
     mockSrv.mockReturnValue(client as never);
     const result = await validateInvitation('user-2', 'a@x.com', 'tok-1');
-    expect(result).toEqual({ valid: true, householdName: 'Home', invitedEmail: 'a@x.com', emailMatches: true });
+    expect(result).toEqual({
+      valid: true,
+      householdName: 'Home',
+      invitedEmail: 'a@x.com',
+      emailMatches: true,
+    });
   });
 
   it('reports invalid for an unknown token', async () => {
     const { client } = makeAcceptAdmin({ inv: null });
     mockSrv.mockReturnValue(client as never);
-    expect(await validateInvitation('user-2', 'a@x.com', 'nope')).toEqual({ valid: false, reason: 'invalid' });
+    expect(await validateInvitation('user-2', 'a@x.com', 'nope')).toEqual({
+      valid: false,
+      reason: 'invalid',
+    });
   });
 
   it('reports email_mismatch when the user email differs', async () => {

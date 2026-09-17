@@ -28,7 +28,12 @@ function makeClient(
   selectResult: { data: unknown; error: unknown },
   rpcResult: { error: unknown } = { error: null }
 ) {
-  const captured: { insert?: unknown; update?: unknown; eqArgs: unknown[][]; rpc?: [string, unknown] } = { eqArgs: [] };
+  const captured: {
+    insert?: unknown;
+    update?: unknown;
+    eqArgs: unknown[][];
+    rpc?: [string, unknown];
+  } = { eqArgs: [] };
 
   const selectChain: Record<string, jest.Mock> = {
     maybeSingle: jest.fn().mockResolvedValue(selectResult),
@@ -130,7 +135,12 @@ describe('recordFeatureActivity', () => {
 describe('acknowledgeFeature', () => {
   it('appends a valid key when absent', async () => {
     const { client, captured } = makeClient({
-      data: { transactions_count: 40, days_active: 5, features_unlocked: [], last_active_date: '2026-07-21' },
+      data: {
+        transactions_count: 40,
+        days_active: 5,
+        features_unlocked: [],
+        last_active_date: '2026-07-21',
+      },
       error: null,
     });
     mockCreateClient.mockResolvedValue(client as never);
@@ -141,7 +151,12 @@ describe('acknowledgeFeature', () => {
 
   it('is idempotent — no write when already acknowledged', async () => {
     const { client, captured } = makeClient({
-      data: { transactions_count: 40, days_active: 5, features_unlocked: ['heatmap'], last_active_date: '2026-07-21' },
+      data: {
+        transactions_count: 40,
+        days_active: 5,
+        features_unlocked: ['heatmap'],
+        last_active_date: '2026-07-21',
+      },
       error: null,
     });
     mockCreateClient.mockResolvedValue(client as never);
@@ -151,7 +166,9 @@ describe('acknowledgeFeature', () => {
   });
 
   it('rejects an unknown feature key (REST trust boundary, 15-3 lesson)', async () => {
-    await expect(acknowledgeFeature('u-1', 'not_a_feature' as never)).rejects.toThrow('Unknown feature key');
+    await expect(acknowledgeFeature('u-1', 'not_a_feature' as never)).rejects.toThrow(
+      'Unknown feature key'
+    );
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 });

@@ -10,8 +10,7 @@ import { render, screen } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { StatCard } from '@/components/dashboard/StatCard';
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 const baseProps = {
   label: 'Monthly Income',
@@ -56,11 +55,7 @@ describe('StatCard', () => {
 
   it('hides the percentage and shows only the label when showTrend is false', () => {
     renderWithChakra(
-      <StatCard
-        {...baseProps}
-        showTrend={false}
-        trendLabel="No income recorded this month"
-      />
+      <StatCard {...baseProps} showTrend={false} trendLabel="No income recorded this month" />
     );
 
     expect(screen.getByText('No income recorded this month')).toBeInTheDocument();

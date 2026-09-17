@@ -32,7 +32,10 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json().catch(() => null);
     const parsed = presetSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: { message: 'A valid preset is required' } }, { status: 400 });
+      return NextResponse.json(
+        { error: { message: 'A valid preset is required' } },
+        { status: 400 }
+      );
     }
 
     const preset = await applyPreset(user.id, parsed.data.preset);

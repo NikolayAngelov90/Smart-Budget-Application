@@ -36,7 +36,11 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 import { createClient } from '@/lib/supabase/server';
-import { createHousehold, getCurrentHousehold, HouseholdExistsError } from '@/lib/services/householdService';
+import {
+  createHousehold,
+  getCurrentHousehold,
+  HouseholdExistsError,
+} from '@/lib/services/householdService';
 import { POST, GET } from '../route';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -45,7 +49,11 @@ const mockGet = getCurrentHousehold as jest.MockedFunction<typeof getCurrentHous
 
 function authClient(user: object | null) {
   return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }) },
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }),
+    },
   };
 }
 
@@ -53,7 +61,14 @@ function req(body: unknown) {
   return { json: async () => body } as never;
 }
 
-const HOUSEHOLD = { id: 'h-1', name: 'Our Home', created_by: 'user-1', created_at: 'x', updated_at: 'x', role: 'admin' as const };
+const HOUSEHOLD = {
+  id: 'h-1',
+  name: 'Our Home',
+  created_by: 'user-1',
+  created_at: 'x',
+  updated_at: 'x',
+  role: 'admin' as const,
+};
 
 beforeEach(() => jest.clearAllMocks());
 

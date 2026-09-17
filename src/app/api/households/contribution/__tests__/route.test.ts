@@ -22,7 +22,9 @@ jest.mock('@/lib/services/contributionService', () => ({
 jest.mock('@/lib/services/householdService', () => ({
   NotHouseholdMemberError: class NotHouseholdMemberError extends Error {},
 }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
 import { setContribution, getContributionSummary } from '@/lib/services/contributionService';
@@ -35,7 +37,13 @@ const mockSet = setContribution as jest.MockedFunction<typeof setContribution>;
 const mockSummary = getContributionSummary as jest.MockedFunction<typeof getContributionSummary>;
 
 function authClient(user: object | null) {
-  return { auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }) } };
+  return {
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+    },
+  };
 }
 function req(body: unknown) {
   return { json: async () => body } as never;

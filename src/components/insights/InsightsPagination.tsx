@@ -66,7 +66,11 @@ export function InsightsPagination({
         pages.push('...');
       }
 
-      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      for (
+        let i = Math.max(2, currentPage - 1);
+        i <= Math.min(totalPages - 1, currentPage + 1);
+        i++
+      ) {
         pages.push(i);
       }
 
@@ -83,13 +87,7 @@ export function InsightsPagination({
   const pageNumbers = getPageNumbers();
 
   return (
-    <Box
-      w="full"
-      py={6}
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-    >
+    <Box w="full" py={6} display="flex" justifyContent="center" alignItems="center">
       <HStack spacing={2}>
         {/* Previous Button */}
         <IconButton
@@ -132,12 +130,7 @@ export function InsightsPagination({
         </HStack>
 
         {/* Mobile: Current Page Display */}
-        <Text
-          display={{ base: 'block', md: 'none' }}
-          px={4}
-          fontSize="sm"
-          fontWeight="medium"
-        >
+        <Text display={{ base: 'block', md: 'none' }} px={4} fontSize="sm" fontWeight="medium">
           {t('pageOfTotal', { current: currentPage, total: totalPages })}
         </Text>
 

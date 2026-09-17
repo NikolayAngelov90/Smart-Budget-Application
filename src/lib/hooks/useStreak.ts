@@ -36,11 +36,15 @@ export function useStreak(): UseStreakResult {
   // mutates of STREAK_KEY elsewhere (dashboard/AppLayout onSuccess) become
   // harmless no-ops for the unmounted key.
   const { enabled } = useGamification();
-  const { data, error, isLoading, mutate } = useSWR<StreakResponse>(enabled ? STREAK_KEY : null, fetcher, {
-    dedupingInterval: 5000,
-    revalidateOnFocus: true,
-    keepPreviousData: true,
-  });
+  const { data, error, isLoading, mutate } = useSWR<StreakResponse>(
+    enabled ? STREAK_KEY : null,
+    fetcher,
+    {
+      dedupingInterval: 5000,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+    }
+  );
 
   return { data, error, isLoading, mutate };
 }

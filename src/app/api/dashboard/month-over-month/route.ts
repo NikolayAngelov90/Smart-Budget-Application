@@ -20,17 +20,17 @@ export interface CategoryChangeData {
   categoryId: string;
   categoryName: string;
   categoryColor: string;
-  currentAmount: number;              // Spending this month
-  previousAmount: number;             // Spending last month
-  percentChange: number;              // ((current - previous) / previous) * 100
-  absoluteChange: number;             // current - previous
+  currentAmount: number; // Spending this month
+  previousAmount: number; // Spending last month
+  percentChange: number; // ((current - previous) / previous) * 100
+  absoluteChange: number; // current - previous
   direction: 'increase' | 'decrease'; // For rendering up/down arrows
 }
 
 export interface MonthOverMonthResponse {
-  changes: CategoryChangeData[];      // Filtered to significant changes (>20%)
-  currentMonth: string;               // YYYY-MM
-  previousMonth: string;              // YYYY-MM
+  changes: CategoryChangeData[]; // Filtered to significant changes (>20%)
+  currentMonth: string; // YYYY-MM
+  previousMonth: string; // YYYY-MM
 }
 
 /**
@@ -88,10 +88,7 @@ export async function GET(request: NextRequest) {
 
     if (currentError) {
       logger.error('Dashboard', 'Error fetching current month transactions:', currentError);
-      return NextResponse.json(
-        { error: 'Failed to fetch current month data' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch current month data' }, { status: 500 });
     }
 
     // Query previous month transactions
@@ -105,10 +102,7 @@ export async function GET(request: NextRequest) {
 
     if (previousError) {
       logger.error('Dashboard', 'Error fetching previous month transactions:', previousError);
-      return NextResponse.json(
-        { error: 'Failed to fetch previous month data' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch previous month data' }, { status: 500 });
     }
 
     // Aggregate by category (client-side)
@@ -139,10 +133,7 @@ export async function GET(request: NextRequest) {
 
     if (categoriesError) {
       logger.error('Dashboard', 'Error fetching categories:', categoriesError);
-      return NextResponse.json(
-        { error: 'Failed to fetch categories' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
     }
 
     // Calculate changes and filter to significant ones (>20%)
@@ -201,9 +192,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     logger.error('Dashboard', 'Unexpected error in month-over-month API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

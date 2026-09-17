@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  VStack,
-  Text,
-  Box,
-  Divider,
-  Badge,
-  Grid,
-  GridItem,
-} from '@chakra-ui/react';
+import { VStack, Text, Box, Divider, Badge, Grid, GridItem } from '@chakra-ui/react';
 import Link from 'next/link';
 import { ArrowForwardIcon } from '@chakra-ui/icons';
 import type { Insight } from '@/types/database.types';
@@ -108,12 +100,7 @@ interface MetadataFieldProps {
   highlightColor?: string;
 }
 
-function MetadataField({
-  label,
-  value,
-  highlight = false,
-  highlightColor,
-}: MetadataFieldProps) {
+function MetadataField({ label, value, highlight = false, highlightColor }: MetadataFieldProps) {
   return (
     <GridItem>
       <VStack align="start" spacing={1}>
@@ -172,10 +159,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
         return (
           <VStack align="start" spacing={4} w="full">
             <Text fontSize="sm" fontWeight="semibold" color="fg">
-              {t('meta_spending_details_for', { category: meta.category_name ?? t('meta_unknown_category') })}
+              {t('meta_spending_details_for', {
+                category: meta.category_name ?? t('meta_unknown_category'),
+              })}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
+            <Grid
+              templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }}
+              gap={4}
+              w="full"
+            >
               <MetadataField
                 label={t('meta_current_month')}
                 value={
@@ -200,7 +193,11 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               />
               <MetadataField
                 label={t('meta_absolute_change')}
-                value={formatCurrency((meta.current_amount ?? 0) - (meta.previous_amount ?? 0), undefined, currencyCode)}
+                value={formatCurrency(
+                  (meta.current_amount ?? 0) - (meta.previous_amount ?? 0),
+                  undefined,
+                  currencyCode
+                )}
                 highlight
                 highlightColor={toneFg}
               />
@@ -213,8 +210,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             </Grid>
 
             <Box fontSize="xs" color="fg.subtle">
-              <Text>{t('meta_period', { value: formatMonth(meta.current_month ?? t('meta_not_available')) })}</Text>
-              <Text>{t('meta_compared_to', { value: formatMonth(meta.previous_month ?? t('meta_not_available')) })}</Text>
+              <Text>
+                {t('meta_period', {
+                  value: formatMonth(meta.current_month ?? t('meta_not_available')),
+                })}
+              </Text>
+              <Text>
+                {t('meta_compared_to', {
+                  value: formatMonth(meta.previous_month ?? t('meta_not_available')),
+                })}
+              </Text>
             </Box>
 
             {/* Transaction Link */}
@@ -242,10 +247,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
         return (
           <VStack align="start" spacing={4} w="full">
             <Text fontSize="sm" fontWeight="semibold" color="fg">
-              {t('meta_budget_recommendation_for', { category: meta.category_name ?? t('meta_unknown_category') })}
+              {t('meta_budget_recommendation_for', {
+                category: meta.category_name ?? t('meta_unknown_category'),
+              })}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
+            <Grid
+              templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }}
+              gap={4}
+              w="full"
+            >
               <MetadataField
                 label={t('meta_three_month_average')}
                 value={formatCurrency(meta.three_month_average ?? 0, undefined, currencyCode)}
@@ -268,8 +279,7 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
               <Text>
                 {t('meta_based_on_spending_in', {
                   months:
-                    meta.months_analyzed?.map(formatMonth).join(', ') ??
-                    t('meta_not_available'),
+                    meta.months_analyzed?.map(formatMonth).join(', ') ?? t('meta_not_available'),
                 })}
               </Text>
             </Box>
@@ -277,7 +287,10 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             {/* Transaction Link */}
             {meta.category_id && meta.months_analyzed && meta.months_analyzed.length > 0 && (
               <Link
-                href={buildTransactionLink(meta.category_id, meta.months_analyzed[meta.months_analyzed.length - 1] ?? '')}
+                href={buildTransactionLink(
+                  meta.category_id,
+                  meta.months_analyzed[meta.months_analyzed.length - 1] ?? ''
+                )}
                 style={{
                   color: 'var(--chakra-colors-accent)',
                   fontWeight: 'medium',
@@ -299,10 +312,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
         return (
           <VStack align="start" spacing={4} w="full">
             <Text fontSize="sm" fontWeight="semibold" color="fg">
-              {t('meta_unusual_expense_in', { category: meta.category_name ?? t('meta_unknown_category') })}
+              {t('meta_unusual_expense_in', {
+                category: meta.category_name ?? t('meta_unknown_category'),
+              })}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
+            <Grid
+              templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }}
+              gap={4}
+              w="full"
+            >
               <MetadataField
                 label={t('meta_transaction_amount')}
                 value={formatCurrency(meta.transaction_amount ?? 0, undefined, currencyCode)}
@@ -362,10 +381,16 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
         return (
           <VStack align="start" spacing={4} w="full">
             <Text fontSize="sm" fontWeight="semibold" color="fg">
-              {t('meta_budget_performance_for', { category: meta.category_name ?? t('meta_unknown_category') })}
+              {t('meta_budget_performance_for', {
+                category: meta.category_name ?? t('meta_unknown_category'),
+              })}
             </Text>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} w="full">
+            <Grid
+              templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }}
+              gap={4}
+              w="full"
+            >
               <MetadataField
                 label={t('meta_budget_limit')}
                 value={formatCurrency(meta.budget_amount ?? 0, undefined, currencyCode)}
@@ -389,7 +414,11 @@ export function InsightMetadata({ insight }: InsightMetadataProps) {
             </Grid>
 
             <Box fontSize="xs" color="fg.subtle">
-              <Text>{t('meta_period', { value: formatMonth(meta.current_month ?? t('meta_not_available')) })}</Text>
+              <Text>
+                {t('meta_period', {
+                  value: formatMonth(meta.current_month ?? t('meta_not_available')),
+                })}
+              </Text>
             </Box>
 
             {/* Transaction Link */}

@@ -54,12 +54,20 @@ rlsDescribe('Shared budget categories isolation (Story 13.5)', () => {
       .insert({ name: 'SC Household B', created_by: b1Id })
       .select('id')
       .single();
-    await svc.from('household_members').insert({ household_id: hB!.id, user_id: b1Id, role: 'admin' });
+    await svc
+      .from('household_members')
+      .insert({ household_id: hB!.id, user_id: b1Id, role: 'admin' });
 
     // Shared category in A (created by a1) + a personal category for a1.
     const { data: sharedCat } = await svc
       .from('categories')
-      .insert({ user_id: a1Id, name: 'Groceries', color: '#48bb78', type: 'expense', household_id: householdAId })
+      .insert({
+        user_id: a1Id,
+        name: 'Groceries',
+        color: '#48bb78',
+        type: 'expense',
+        household_id: householdAId,
+      })
       .select('id')
       .single();
     sharedCatId = sharedCat!.id;

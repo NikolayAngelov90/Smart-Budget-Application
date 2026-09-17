@@ -31,10 +31,10 @@ const MAX_SEARCH_LENGTH = 100;
 export function sanitizeSearchQuery(query: string): string {
   return query
     .slice(0, MAX_SEARCH_LENGTH)
-    .replace(/\\/g, '\\\\')     // Escape backslashes first
-    .replace(/%/g, '\\%')       // Escape ILIKE wildcards
-    .replace(/_/g, '\\_')       // Escape ILIKE single-char wildcards
-    .replace(/,/g, '')          // Remove commas (PostgREST OR separator)
-    .replace(/\./g, '')         // Remove dots (PostgREST operator separator)
+    .replace(/\\/g, '\\\\') // Escape backslashes first
+    .replace(/%/g, '\\%') // Escape ILIKE wildcards
+    .replace(/_/g, '\\_') // Escape ILIKE single-char wildcards
+    .replace(/,/g, '') // Remove commas (PostgREST OR separator)
+    .replace(/\./g, '') // Remove dots (PostgREST operator separator)
     .trim();
 }

@@ -17,10 +17,7 @@ const patchSchema = z.object({
   status: z.enum(['active', 'purchased', 'removed']),
 });
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient();
     const {
@@ -52,6 +49,9 @@ export async function PATCH(
       return NextResponse.json({ error: { message: 'Wishlist item not found' } }, { status: 404 });
     }
     logger.error('Wishlist', 'PATCH failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to update wishlist item' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to update wishlist item' } },
+      { status: 500 }
+    );
   }
 }

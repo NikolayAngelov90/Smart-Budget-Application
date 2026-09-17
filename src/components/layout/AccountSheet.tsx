@@ -55,10 +55,20 @@ export function AccountSheet({
           <VStack align="stretch" spacing={1}>
             {/* Identity */}
             <Flex align="center" gap={3} py={3}>
-              <Avatar size="md" name={displayName} src={avatarUrl} bg="accent" color="fg.onAccent" />
+              <Avatar
+                size="md"
+                name={displayName}
+                src={avatarUrl}
+                bg="accent"
+                color="fg.onAccent"
+              />
               <Box minW={0}>
-                <Text fontWeight="semibold" noOfLines={1}>{displayName}</Text>
-                <Text fontSize="sm" color="fg.muted" noOfLines={1}>{email}</Text>
+                <Text fontWeight="semibold" noOfLines={1}>
+                  {displayName}
+                </Text>
+                <Text fontSize="sm" color="fg.muted" noOfLines={1}>
+                  {email}
+                </Text>
               </Box>
             </Flex>
 
@@ -84,7 +94,10 @@ export function AccountSheet({
             {/* Sign out */}
             <Flex
               as="button"
-              onClick={() => { onClose(); onLogout(); }}
+              onClick={() => {
+                onClose();
+                onLogout();
+              }}
               align="center"
               gap={3}
               py={3}

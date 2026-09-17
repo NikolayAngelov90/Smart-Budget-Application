@@ -38,12 +38,7 @@ const fetcher = async (url: string): Promise<InsightsResponse> => {
 
 export function AIBudgetCoach() {
   const t = useTranslations('insights');
-  const {
-    data,
-    error,
-    isLoading,
-    mutate,
-  } = useSWR<InsightsResponse>(
+  const { data, error, isLoading, mutate } = useSWR<InsightsResponse>(
     '/api/insights?limit=3&dismissed=false&orderBy=priority',
     fetcher,
     {
@@ -93,21 +88,13 @@ export function AIBudgetCoach() {
   return (
     <Box w="full" mb={{ base: 6, md: 8 }}>
       {/* Section Heading */}
-      <Heading
-        as="h2"
-        size={{ base: 'lg', md: 'xl' }}
-        mb={4}
-        color="fg"
-      >
+      <Heading as="h2" size={{ base: 'lg', md: 'xl' }} mb={4} color="fg">
         {t('aiBudgetCoach')}
       </Heading>
 
       {/* Loading State */}
       {isLoading && (
-        <SimpleGrid
-          columns={{ base: 1, md: 2, lg: 3 }}
-          spacing={{ base: 4, md: 6 }}
-        >
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={{ base: 4, md: 6 }}>
           {[1, 2, 3].map((i) => (
             <Card key={i} minH="120px">
               <CardBody>
@@ -123,9 +110,7 @@ export function AIBudgetCoach() {
       {error && (
         <Card borderLeft="4px" borderColor="danger.fg">
           <CardBody>
-            <Text color="danger.fg">
-              {t('unableToLoad')}
-            </Text>
+            <Text color="danger.fg">{t('unableToLoad')}</Text>
           </CardBody>
         </Card>
       )}
@@ -141,9 +126,7 @@ export function AIBudgetCoach() {
                   {t('keepTracking')}
                 </Heading>
               </Flex>
-              <Text color="fg.muted">
-                {t('keepTrackingDescription')}
-              </Text>
+              <Text color="fg.muted">{t('keepTrackingDescription')}</Text>
             </VStack>
           </CardBody>
         </Card>
@@ -152,16 +135,9 @@ export function AIBudgetCoach() {
       {/* Insights Display */}
       {!isLoading && !error && data && data.insights.length > 0 && (
         <>
-          <SimpleGrid
-            columns={{ base: 1, md: 2, lg: 3 }}
-            spacing={{ base: 4, md: 6 }}
-          >
+          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={{ base: 4, md: 6 }}>
             {data.insights.map((insight) => (
-              <AIInsightCard
-                key={insight.id}
-                insight={insight}
-                onDismiss={handleDismiss}
-              />
+              <AIInsightCard key={insight.id} insight={insight} onDismiss={handleDismiss} />
             ))}
           </SimpleGrid>
 

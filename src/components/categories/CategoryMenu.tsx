@@ -78,9 +78,7 @@ export function CategoryMenu({
   const remainingCategories = categories.filter((cat) => !recentCategoryIds.has(cat.id));
 
   // Sort remaining categories alphabetically
-  const sortedCategories = [...remainingCategories].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const sortedCategories = [...remainingCategories].sort((a, b) => a.name.localeCompare(b.name));
 
   const hasRecentCategories = recentCategories.length > 0;
 

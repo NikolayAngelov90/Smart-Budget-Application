@@ -117,12 +117,10 @@ export async function uploadProfilePicture(
   const filePath = `${userId}/${fileName}`;
 
   // Upload file to Supabase Storage
-  const { data, error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false, // Don't overwrite existing files
-    });
+  const { data, error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file, {
+    cacheControl: '3600',
+    upsert: false, // Don't overwrite existing files
+  });
 
   if (error) {
     throw new Error(`Upload failed: ${error.message}`);

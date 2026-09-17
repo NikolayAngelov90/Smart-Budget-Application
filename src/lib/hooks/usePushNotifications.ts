@@ -33,10 +33,7 @@ export interface UsePushNotificationsResult {
 
 export function usePushNotifications(): UsePushNotificationsResult {
   const isSupported = useMemo(
-    () =>
-      typeof window !== 'undefined' &&
-      'serviceWorker' in navigator &&
-      'PushManager' in window,
+    () => typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window,
     []
   );
 
@@ -100,7 +97,11 @@ export function usePushNotifications(): UsePushNotificationsResult {
       const reg = await Promise.race([
         navigator.serviceWorker.ready,
         new Promise<ServiceWorkerRegistration>((_, reject) =>
-          setTimeout(() => reject(new Error('Service worker did not activate. Reload the app and try again.')), 10000)
+          setTimeout(
+            () =>
+              reject(new Error('Service worker did not activate. Reload the app and try again.')),
+            10000
+          )
         ),
       ]);
       const subscription = await reg.pushManager.subscribe({

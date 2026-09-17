@@ -55,7 +55,9 @@ describe('Transactions API ?all=true parameter', () => {
 
   // Test combining with other query parameters
   test('parses all=true with date filters', () => {
-    const url = new URL('http://localhost:3001/api/transactions?all=true&startDate=2025-01-01&endDate=2025-12-31');
+    const url = new URL(
+      'http://localhost:3001/api/transactions?all=true&startDate=2025-01-01&endDate=2025-12-31'
+    );
     const searchParams = url.searchParams;
 
     expect(searchParams.get('all')).toBe('true');

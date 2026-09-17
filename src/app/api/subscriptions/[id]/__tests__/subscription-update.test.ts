@@ -41,7 +41,9 @@ import { createClient } from '@/lib/supabase/server';
 import { updateSubscriptionStatus } from '@/lib/services/subscriptionService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockUpdateStatus = updateSubscriptionStatus as jest.MockedFunction<typeof updateSubscriptionStatus>;
+const mockUpdateStatus = updateSubscriptionStatus as jest.MockedFunction<
+  typeof updateSubscriptionStatus
+>;
 const mockJsonResponse = NextResponse.json as jest.MockedFunction<typeof NextResponse.json>;
 
 let PATCH: (request: Request, context: { params: Promise<{ id: string }> }) => Promise<unknown>;
@@ -83,7 +85,9 @@ describe('PATCH /api/subscriptions/:id', () => {
   it('returns 401 when user is not authenticated', async () => {
     mockCreateClient.mockResolvedValue({
       auth: {
-        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: { message: 'Not authenticated' } }),
+        getUser: jest
+          .fn()
+          .mockResolvedValue({ data: { user: null }, error: { message: 'Not authenticated' } }),
       },
     } as unknown as Awaited<ReturnType<typeof createClient>>);
 
@@ -126,28 +130,33 @@ describe('PATCH /api/subscriptions/:id', () => {
   it('successfully dismisses a subscription', async () => {
     mockAuthenticatedUser('user-1');
     const updated = { id: 'sub-1', status: 'dismissed', merchant_pattern: 'netflix' };
-    mockUpdateStatus.mockResolvedValue(updated as Awaited<ReturnType<typeof updateSubscriptionStatus>>);
+    mockUpdateStatus.mockResolvedValue(
+      updated as Awaited<ReturnType<typeof updateSubscriptionStatus>>
+    );
 
     const request = createRequest({ status: 'dismissed' });
     await PATCH(request, createParams('sub-1'));
 
-    expect(mockUpdateStatus).toHaveBeenCalledWith(expect.anything(), 'user-1', 'sub-1', 'dismissed');
-    expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ data: updated })
+    expect(mockUpdateStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      'user-1',
+      'sub-1',
+      'dismissed'
     );
+    expect(mockJsonResponse).toHaveBeenCalledWith(expect.objectContaining({ data: updated }));
   });
 
   it('successfully marks a subscription as kept', async () => {
     mockAuthenticatedUser('user-1');
     const updated = { id: 'sub-1', status: 'kept', merchant_pattern: 'netflix' };
-    mockUpdateStatus.mockResolvedValue(updated as Awaited<ReturnType<typeof updateSubscriptionStatus>>);
+    mockUpdateStatus.mockResolvedValue(
+      updated as Awaited<ReturnType<typeof updateSubscriptionStatus>>
+    );
 
     const request = createRequest({ status: 'kept' });
     await PATCH(request, createParams('sub-1'));
 
     expect(mockUpdateStatus).toHaveBeenCalledWith(expect.anything(), 'user-1', 'sub-1', 'kept');
-    expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ data: updated })
-    );
+    expect(mockJsonResponse).toHaveBeenCalledWith(expect.objectContaining({ data: updated }));
   });
 });

@@ -38,8 +38,8 @@ import { GoalForm } from './GoalForm';
 import { ContributionModal } from './ContributionModal';
 // M1: lazy-load per ADR-020 (gamification components must not inflate initial bundle)
 const MilestoneOverlay = dynamic(
-  () => import('./MilestoneOverlay').then(m => ({ default: m.MilestoneOverlay })),
-  { ssr: false },
+  () => import('./MilestoneOverlay').then((m) => ({ default: m.MilestoneOverlay })),
+  { ssr: false }
 );
 
 interface GoalCardProps {
@@ -53,23 +53,11 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
   const t = useTranslations('goals');
   const toast = useToast();
 
-  const {
-    isOpen: isEditOpen,
-    onOpen: onEditOpen,
-    onClose: onEditClose,
-  } = useDisclosure();
+  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
 
-  const {
-    isOpen: isContribOpen,
-    onOpen: onContribOpen,
-    onClose: onContribClose,
-  } = useDisclosure();
+  const { isOpen: isContribOpen, onOpen: onContribOpen, onClose: onContribClose } = useDisclosure();
 
-  const {
-    isOpen: isDeleteOpen,
-    onOpen: onDeleteOpen,
-    onClose: onDeleteClose,
-  } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
   const {
     isOpen: isMilestoneOpen,
@@ -112,7 +100,9 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ threshold }),
-          }).then(() => onMutate()).catch(() => onMutate());
+          })
+            .then(() => onMutate())
+            .catch(() => onMutate());
           break; // Only one milestone at a time
         }
       }
@@ -148,9 +138,7 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
 
   const celebratedMilestones = goal.milestones_celebrated ?? [];
   const highestMilestone =
-    celebratedMilestones.length > 0
-      ? Math.max(...celebratedMilestones)
-      : null;
+    celebratedMilestones.length > 0 ? Math.max(...celebratedMilestones) : null;
 
   return (
     <>
@@ -194,18 +182,10 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
           )}
 
           <Text fontSize="sm" color="fg.subtle" mt={2}>
-            {goal.deadline
-              ? `${t('deadline')}: ${goal.deadline}`
-              : t('noDeadline')}
+            {goal.deadline ? `${t('deadline')}: ${goal.deadline}` : t('noDeadline')}
           </Text>
 
-          <Button
-            mt={3}
-            size="sm"
-            colorScheme="brand"
-            variant="outline"
-            onClick={onContribOpen}
-          >
+          <Button mt={3} size="sm" colorScheme="brand" variant="outline" onClick={onContribOpen}>
             {t('addContribution')}
           </Button>
         </CardBody>
@@ -246,9 +226,7 @@ export function GoalCard({ goal, currency, onMutate }: GoalCardProps) {
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
               {t('deleteGoal')}
             </AlertDialogHeader>
-            <AlertDialogBody>
-              {t('deleteConfirm')}
-            </AlertDialogBody>
+            <AlertDialogBody>{t('deleteConfirm')}</AlertDialogBody>
             <AlertDialogFooter gap={3}>
               <Button ref={cancelDeleteRef} onClick={onDeleteClose}>
                 {t('cancel')}

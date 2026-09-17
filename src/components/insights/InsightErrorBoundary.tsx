@@ -50,13 +50,7 @@ export class InsightErrorBoundary extends Component<Props, State> {
 
       // Default fallback UI
       return (
-        <Box
-          p={6}
-          borderRadius="md"
-          bg="danger.subtle"
-          border="1px"
-          borderColor="danger.fg"
-        >
+        <Box p={6} borderRadius="md" bg="danger.subtle" border="1px" borderColor="danger.fg">
           <VStack spacing={3} align="start">
             <Box display="flex" alignItems="center" gap={2}>
               <WarningIcon color="danger.fg" />
@@ -65,20 +59,15 @@ export class InsightErrorBoundary extends Component<Props, State> {
               </Text>
             </Box>
             <Text fontSize="sm" color="danger.fg">
-              There was an error loading the detailed information for this insight.
-              The data may be incomplete or in an unexpected format.
+              There was an error loading the detailed information for this insight. The data may be
+              incomplete or in an unexpected format.
             </Text>
             {this.state.error && process.env.NODE_ENV === 'development' && (
               <Text fontSize="xs" color="danger.fg" fontFamily="mono">
                 {this.state.error.message}
               </Text>
             )}
-            <Button
-              size="sm"
-              colorScheme="red"
-              variant="outline"
-              onClick={this.handleReset}
-            >
+            <Button size="sm" colorScheme="red" variant="outline" onClick={this.handleReset}>
               Try Again
             </Button>
           </VStack>

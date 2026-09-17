@@ -83,8 +83,7 @@ export async function GET(request: NextRequest) {
     // the whole donut 500'd. `?period=` got that reasoning and the parameter
     // that WINS over it did not.
     const rawMonth = searchParams.get('month');
-    const monthParam =
-      rawMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(rawMonth) ? rawMonth : null;
+    const monthParam = rawMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(rawMonth) ? rawMonth : null;
 
     // The server runs UTC; `transactions.date` holds the client's LOCAL day, so
     // a window derived from the server clock is wrong for anyone east or west of
@@ -119,7 +118,8 @@ export async function GET(request: NextRequest) {
     // visible in the total and in every percentage.
     const { data: transactions, error: transactionsError } = await supabase
       .from('transactions')
-      .select(`
+      .select(
+        `
         amount,
         category_id,
         currency,
@@ -129,7 +129,8 @@ export async function GET(request: NextRequest) {
           name,
           color
         )
-      `)
+      `
+      )
       .eq('user_id', user.id)
       .eq('type', 'expense')
       // `yyyy-MM-dd` strings, never toISOString(): `transactions.date` is a DATE
@@ -140,20 +141,20 @@ export async function GET(request: NextRequest) {
 
     if (transactionsError) {
       logger.error('Dashboard', 'Error fetching transactions:', transactionsError);
-      return NextResponse.json(
-        { error: 'Failed to fetch spending data' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch spending data' }, { status: 500 });
     }
 
     // Aggregate by category
-    const categoryMap = new Map<string, {
-      category_id: string;
-      category_name: string;
-      category_color: string;
-      amount: number;
-      transaction_count: number;
-    }>();
+    const categoryMap = new Map<
+      string,
+      {
+        category_id: string;
+        category_name: string;
+        category_color: string;
+        amount: number;
+        transaction_count: number;
+      }
+    >();
 
     let totalExpenses = 0;
 
@@ -161,7 +162,10 @@ export async function GET(request: NextRequest) {
     // failure: the helper warns and leaves that row unconverted rather than
     // 500-ing the whole donut over one unavailable rate.
     const rows = (transactions ?? []) as unknown as Array<
-      ConvertibleRow & { category_id: string; categories: { id: string; name: string; color: string } | null }
+      ConvertibleRow & {
+        category_id: string;
+        categories: { id: string; name: string; color: string } | null;
+      }
     >;
     const preferredCurrency = await resolvePreferredCurrency(supabase, user.id);
     const liveRates = await buildLiveRateMap(rows, preferredCurrency, 'SpendingByCategory');
@@ -214,9 +218,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     logger.error('Dashboard', 'Unexpected error in spending-by-category API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -59,12 +59,7 @@ const TYPE_META: Record<string, GroupMeta> = {
 const FALLBACK: GroupMeta = { group: 'recommend', tone: 'accent' };
 
 /** Section order: most actionable first. */
-export const GROUP_ORDER: InsightGroupKey[] = [
-  'attention',
-  'changed',
-  'recommend',
-  'progress',
-];
+export const GROUP_ORDER: InsightGroupKey[] = ['attention', 'changed', 'recommend', 'progress'];
 
 /** i18n key (insights namespace) for each group heading. */
 export const GROUP_LABEL_KEY: Record<InsightGroupKey, string> = {

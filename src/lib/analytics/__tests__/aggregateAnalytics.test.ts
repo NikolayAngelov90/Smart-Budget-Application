@@ -19,7 +19,12 @@ describe('aggregateAnalytics', () => {
     const result = aggregateAnalytics([], 30);
     expect(result.range_days).toBe(30);
     expect(result.insight_engagement).toEqual([]);
-    expect(result.export_usage).toEqual({ csv_count: 0, pdf_count: 0, csv_total_transactions: 0, pdf_total_pages: 0 });
+    expect(result.export_usage).toEqual({
+      csv_count: 0,
+      pdf_count: 0,
+      csv_total_transactions: 0,
+      pdf_total_pages: 0,
+    });
     expect(result.pwa_installs_total).toBe(0);
     expect(result.wau_trend).toEqual([]);
     expect(result.total_events).toBe(0);
@@ -35,7 +40,9 @@ describe('aggregateAnalytics', () => {
     const result = aggregateAnalytics(events, 30);
     const anomaly = result.insight_engagement.find((e) => e.insight_type === 'spending_anomaly');
     expect(anomaly).toEqual({ insight_type: 'spending_anomaly', views: 2, dismissals: 1 });
-    const budget = result.insight_engagement.find((e) => e.insight_type === 'budget_recommendation');
+    const budget = result.insight_engagement.find(
+      (e) => e.insight_type === 'budget_recommendation'
+    );
     expect(budget).toEqual({ insight_type: 'budget_recommendation', views: 1, dismissals: 0 });
     // sorted by views desc
     expect(result.insight_engagement[0]!.insight_type).toBe('spending_anomaly');
@@ -97,7 +104,9 @@ describe('aggregateAnalytics', () => {
   });
 
   it('does not leak user ids in the output (PII-free)', () => {
-    const events = [ev('secret-user', 'insight_viewed', { insight_type: 'x' }, '2026-06-01T10:00:00Z')];
+    const events = [
+      ev('secret-user', 'insight_viewed', { insight_type: 'x' }, '2026-06-01T10:00:00Z'),
+    ];
     const result = aggregateAnalytics(events, 7);
     expect(JSON.stringify(result)).not.toContain('secret-user');
   });

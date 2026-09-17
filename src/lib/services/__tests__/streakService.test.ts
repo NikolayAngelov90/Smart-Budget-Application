@@ -33,15 +33,17 @@ function chain(result: { data: unknown; error: unknown }): ChainStub {
     bag[m] = jest.fn(() => q);
   }
   q.maybeSingle = jest.fn().mockResolvedValue(result);
-  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) =>
-    resolve(result);
+  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) => resolve(result);
   return q;
 }
 
 type Plan = Record<string, { data: unknown; error: unknown } | { data: unknown; error: unknown }[]>;
 
 function makeClient(plan: Plan) {
-  const queues: Record<string, { data: unknown; error: unknown }[] | { data: unknown; error: unknown }> = {};
+  const queues: Record<
+    string,
+    { data: unknown; error: unknown }[] | { data: unknown; error: unknown }
+  > = {};
   for (const [k, v] of Object.entries(plan)) queues[k] = Array.isArray(v) ? [...v] : v;
   const chains: ChainStub[] = [];
   const from = jest.fn((table: string) => {
@@ -203,9 +205,7 @@ describe('recordLogActivity', () => {
       ],
     });
     mockCreateClient.mockResolvedValue(client as never);
-    await expect(recordLogActivity('u-1', '2026-01-07')).rejects.toThrow(
-      'Failed to update streak'
-    );
+    await expect(recordLogActivity('u-1', '2026-01-07')).rejects.toThrow('Failed to update streak');
   });
 });
 
@@ -222,9 +222,7 @@ describe('restoreStreak (Story 15.4)', () => {
 
     await expect(restoreStreak('u-1', 4)).resolves.toBe(4);
     const updateChain = client.chains[1]!;
-    expect(updateChain.update).toHaveBeenCalledWith(
-      expect.objectContaining({ current_streak: 4 })
-    );
+    expect(updateChain.update).toHaveBeenCalledWith(expect.objectContaining({ current_streak: 4 }));
     expect(updateChain.eq).toHaveBeenCalledWith('user_id', 'u-1');
     expect(updateChain.eq).toHaveBeenCalledWith('last_log_date', '2026-01-06');
   });
@@ -267,7 +265,13 @@ describe('restoreStreak (Story 15.4)', () => {
   });
 
   it('no streak row: reports 0 without fabricating', async () => {
-    const client = makeClient({ streaks: [{ data: null, error: null }, { data: null, error: null }, { data: null, error: null }] });
+    const client = makeClient({
+      streaks: [
+        { data: null, error: null },
+        { data: null, error: null },
+        { data: null, error: null },
+      ],
+    });
     mockCreateClient.mockResolvedValue(client as never);
     await expect(restoreStreak('u-1', 4)).resolves.toBe(0);
   });

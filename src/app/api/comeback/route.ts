@@ -79,11 +79,7 @@ export async function GET() {
       }
     }
 
-    if (
-      !challenge &&
-      !expiryFailed &&
-      isEligibleForChallenge(streak, latest, localDayKey(now))
-    ) {
+    if (!challenge && !expiryFailed && isEligibleForChallenge(streak, latest, localDayKey(now))) {
       challenge = await createChallenge(user.id, streak!.current_streak);
     }
 

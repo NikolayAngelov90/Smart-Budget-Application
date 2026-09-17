@@ -14,11 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
-import {
-  listWishlist,
-  createItem,
-  WishlistCategoryError,
-} from '@/lib/services/wishlistService';
+import { listWishlist, createItem, WishlistCategoryError } from '@/lib/services/wishlistService';
 import { getValuesPlan } from '@/lib/services/valuesService';
 import { computeWishlistImpact } from '@/lib/ai/wishlistImpactEngine';
 import { toLocalISODate, resolveClientToday } from '@/lib/utils/date';
@@ -28,10 +24,7 @@ import type {
   WishlistResponse,
   ValueWithCategories,
 } from '@/types/database.types';
-import {
-  buildLiveRateMap,
-  convertToPreferred,
-} from '@/lib/services/currencyConversion';
+import { buildLiveRateMap, convertToPreferred } from '@/lib/services/currencyConversion';
 import { resolvePreferredCurrency } from '@/lib/services/preferredCurrency';
 
 export const dynamic = 'force-dynamic';
@@ -115,10 +108,7 @@ export async function GET(request: NextRequest) {
         .gt('deadline', todayKey)
         .order('deadline', { ascending: true })
         .limit(10),
-      supabase
-        .from('categories')
-        .select('id, name')
-        .eq('user_id', user.id),
+      supabase.from('categories').select('id, name').eq('user_id', user.id),
       getValuesPlan(user.id).catch((e) => {
         logger.warn('Wishlist', 'values plan unavailable:', e);
         return [] as ValueWithCategories[];
@@ -170,9 +160,8 @@ export async function GET(request: NextRequest) {
       logger.warn('Wishlist', 'goals unavailable:', goalsResult.error);
     } else {
       nearestGoal =
-        ((goalsResult.data ?? []) as GoalRow[]).find(
-          (g) => g.target_amount > g.current_amount
-        ) ?? null;
+        ((goalsResult.data ?? []) as GoalRow[]).find((g) => g.target_amount > g.current_amount) ??
+        null;
     }
 
     // Per-category current-month expense spend (for budget remaining). Queried
@@ -292,7 +281,11 @@ export async function POST(request: NextRequest) {
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: { message: 'A name (1–100 chars) and a positive price (max 2 decimals) are required' } },
+        {
+          error: {
+            message: 'A name (1–100 chars) and a positive price (max 2 decimals) are required',
+          },
+        },
         { status: 400 }
       );
     }
@@ -309,6 +302,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: { message: error.message } }, { status: 400 });
     }
     logger.error('Wishlist', 'POST failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to save wishlist item' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to save wishlist item' } },
+      { status: 500 }
+    );
   }
 }

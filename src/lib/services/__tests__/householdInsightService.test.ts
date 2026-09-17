@@ -4,7 +4,9 @@
  */
 
 jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn() }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
 import { getHouseholdInsights } from '@/lib/services/householdInsightService';
@@ -16,7 +18,9 @@ function membershipChain(householdId: string | null) {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn().mockResolvedValue({
-      data: householdId ? { household_id: householdId } : { preferences: { currency_format: 'EUR' } },
+      data: householdId
+        ? { household_id: householdId }
+        : { preferences: { currency_format: 'EUR' } },
       error: null,
     }),
   };
@@ -35,12 +39,18 @@ it('returns [] when the caller has no household', async () => {
 it('generates household insights from current vs previous month totals', async () => {
   const rpc = jest
     .fn()
-    .mockResolvedValueOnce({ data: [{ category_id: 'c1', category_name: 'Groceries', total: 200 }], error: null }) // current
-    .mockResolvedValueOnce({ data: [{ category_id: 'c1', category_name: 'Groceries', total: 100 }], error: null }); // previous
+    .mockResolvedValueOnce({
+      data: [{ category_id: 'c1', category_name: 'Groceries', total: 200 }],
+      error: null,
+    }) // current
+    .mockResolvedValueOnce({
+      data: [{ category_id: 'c1', category_name: 'Groceries', total: 100 }],
+      error: null,
+    }); // previous
 
   mockCreateClient.mockResolvedValue({
-    from: jest.fn((t: string) =>
-      t === 'household_members' ? membershipChain('h-1') : membershipChain(null) // user_profiles → preferences
+    from: jest.fn(
+      (t: string) => (t === 'household_members' ? membershipChain('h-1') : membershipChain(null)) // user_profiles → preferences
     ),
     rpc,
   } as never);

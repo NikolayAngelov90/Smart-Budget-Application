@@ -51,10 +51,7 @@ export async function POST() {
 
     if (authError || !user) {
       logger.error('Onboarding', 'Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Validate userId is a valid UUID (Code Review Finding #2)
@@ -63,10 +60,7 @@ export async function POST() {
 
     if (!validation.success) {
       logger.error('Onboarding', 'Invalid userId format:', user.id);
-      return NextResponse.json(
-        { error: 'Invalid user ID format' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid user ID format' }, { status: 400 });
     }
 
     // Seed default categories for the user

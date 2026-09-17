@@ -13,20 +13,20 @@ import useSWR from 'swr';
  * Monthly trend data point
  */
 export interface MonthlyTrendData {
-  month: string;                      // YYYY-MM format
-  monthLabel: string;                 // "Jan", "Feb", "Mar" for chart display
-  income: number;                     // Total income for this month
-  expenses: number;                   // Total expenses for this month
-  net: number;                        // income - expenses
+  month: string; // YYYY-MM format
+  monthLabel: string; // "Jan", "Feb", "Mar" for chart display
+  income: number; // Total income for this month
+  expenses: number; // Total expenses for this month
+  net: number; // income - expenses
 }
 
 /**
  * API response type for spending trends
  */
 export interface SpendingTrendsResponse {
-  months: MonthlyTrendData[];         // Last N months (default 6)
-  startDate: string;                  // ISO date of first month
-  endDate: string;                    // ISO date of last month
+  months: MonthlyTrendData[]; // Last N months (default 6)
+  startDate: string; // ISO date of first month
+  endDate: string; // ISO date of last month
 }
 
 /**
@@ -71,24 +71,20 @@ export function useTrends(months?: number | null): UseTrendsResult {
         ? `/api/dashboard/trends?months=${months}`
         : '/api/dashboard/trends';
 
-  const { data, error, isLoading, mutate } = useSWR<SpendingTrendsResponse>(
-    url,
-    fetcher,
-    {
-      // Deduplicate requests within 5 seconds for reasonable caching
-      dedupingInterval: 5000,
-      // Revalidate when window regains focus
-      revalidateOnFocus: true,
-      // Revalidate on network reconnect
-      revalidateOnReconnect: true,
-      // Revalidate on mount
-      revalidateOnMount: true,
-      // Keep previous data while revalidating
-      keepPreviousData: true,
-      // Disable automatic revalidation interval (we'll use Realtime instead)
-      refreshInterval: 0,
-    }
-  );
+  const { data, error, isLoading, mutate } = useSWR<SpendingTrendsResponse>(url, fetcher, {
+    // Deduplicate requests within 5 seconds for reasonable caching
+    dedupingInterval: 5000,
+    // Revalidate when window regains focus
+    revalidateOnFocus: true,
+    // Revalidate on network reconnect
+    revalidateOnReconnect: true,
+    // Revalidate on mount
+    revalidateOnMount: true,
+    // Keep previous data while revalidating
+    keepPreviousData: true,
+    // Disable automatic revalidation interval (we'll use Realtime instead)
+    refreshInterval: 0,
+  });
 
   return {
     data,

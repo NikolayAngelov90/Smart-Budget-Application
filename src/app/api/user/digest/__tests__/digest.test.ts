@@ -51,10 +51,13 @@ beforeAll(async () => {
 describe('GET /api/user/digest', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockJsonResponse.mockImplementation((body: unknown, init?: { status?: number }) => ({
-      status: init?.status ?? 200,
-      json: async () => body,
-    }) as never);
+    mockJsonResponse.mockImplementation(
+      (body: unknown, init?: { status?: number }) =>
+        ({
+          status: init?.status ?? 200,
+          json: async () => body,
+        }) as never
+    );
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -63,7 +66,7 @@ describe('GET /api/user/digest', () => {
     };
     mockCreateClient.mockResolvedValue(supabaseMock as never);
 
-    const response = await GET() as { status: number; json: () => Promise<unknown> };
+    const response = (await GET()) as { status: number; json: () => Promise<unknown> };
     expect(response.status).toBe(401);
     const body = await response.json();
     expect(body).toMatchObject({ error: { message: 'Unauthorized' } });
@@ -71,12 +74,14 @@ describe('GET /api/user/digest', () => {
 
   it('returns 200 with { data: null } when no digest exists', async () => {
     const supabaseMock = {
-      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }) },
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
+      },
     };
     mockCreateClient.mockResolvedValue(supabaseMock as never);
     mockGetLatestDigest.mockResolvedValue(null);
 
-    const response = await GET() as { status: number; json: () => Promise<unknown> };
+    const response = (await GET()) as { status: number; json: () => Promise<unknown> };
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toEqual({ data: null });
@@ -98,14 +103,16 @@ describe('GET /api/user/digest', () => {
     };
 
     const supabaseMock = {
-      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }) },
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
+      },
     };
     mockCreateClient.mockResolvedValue(supabaseMock as never);
     mockGetLatestDigest.mockResolvedValue(digest as never);
 
-    const response = await GET() as { status: number; json: () => Promise<unknown> };
+    const response = (await GET()) as { status: number; json: () => Promise<unknown> };
     expect(response.status).toBe(200);
-    const body = await response.json() as { data: typeof digest };
+    const body = (await response.json()) as { data: typeof digest };
     expect(body.data).toEqual(digest);
   });
 });

@@ -42,8 +42,21 @@ export class NotHouseholdMemberError extends Error {
  * Roommates preset (shared by default; everything else private). Substring, case-insensitive.
  */
 export const BILL_KEYWORDS = [
-  'rent', 'mortgage', 'utilities', 'electric', 'power', 'water', 'gas',
-  'internet', 'wifi', 'broadband', 'council tax', 'trash', 'garbage', 'sewage', 'heating',
+  'rent',
+  'mortgage',
+  'utilities',
+  'electric',
+  'power',
+  'water',
+  'gas',
+  'internet',
+  'wifi',
+  'broadband',
+  'council tax',
+  'trash',
+  'garbage',
+  'sewage',
+  'heating',
 ];
 
 function isBillCategory(name: string): boolean {
@@ -81,7 +94,10 @@ export async function createHousehold(userId: string, name: string): Promise<Hou
     .maybeSingle();
 
   if (existingError) {
-    logger.error('HouseholdService', `Membership lookup failed for ${userId}: ${existingError.message}`);
+    logger.error(
+      'HouseholdService',
+      `Membership lookup failed for ${userId}: ${existingError.message}`
+    );
     throw new Error('Failed to check existing household membership');
   }
   if (existing) {
@@ -96,7 +112,10 @@ export async function createHousehold(userId: string, name: string): Promise<Hou
     .single();
 
   if (householdError || !household) {
-    logger.error('HouseholdService', `Household insert failed for ${userId}: ${householdError?.message}`);
+    logger.error(
+      'HouseholdService',
+      `Household insert failed for ${userId}: ${householdError?.message}`
+    );
     throw new Error('Failed to create household');
   }
 
@@ -107,7 +126,10 @@ export async function createHousehold(userId: string, name: string): Promise<Hou
     .insert({ household_id: household.id, user_id: userId, role: adminRole });
 
   if (memberError) {
-    logger.error('HouseholdService', `Membership insert failed for ${userId}, rolling back: ${memberError.message}`);
+    logger.error(
+      'HouseholdService',
+      `Membership insert failed for ${userId}, rolling back: ${memberError.message}`
+    );
     await admin.from('households').delete().eq('id', household.id);
     throw new Error('Failed to create household membership');
   }
@@ -151,7 +173,10 @@ export async function getCurrentHousehold(userId: string): Promise<HouseholdWith
  * are only changed by re-applying a preset. Never touches other members' categories.
  * @throws NotHouseholdMemberError if the caller has no household.
  */
-export async function applyPreset(userId: string, preset: HouseholdPreset): Promise<HouseholdPreset> {
+export async function applyPreset(
+  userId: string,
+  preset: HouseholdPreset
+): Promise<HouseholdPreset> {
   const admin = createServiceRoleClient();
 
   const { data: membership, error: memberError } = await admin
@@ -160,7 +185,10 @@ export async function applyPreset(userId: string, preset: HouseholdPreset): Prom
     .eq('user_id', userId)
     .maybeSingle();
   if (memberError) {
-    logger.error('HouseholdService', `applyPreset membership lookup failed: ${memberError.message}`);
+    logger.error(
+      'HouseholdService',
+      `applyPreset membership lookup failed: ${memberError.message}`
+    );
     throw new Error('Failed to load household membership');
   }
   if (!membership?.household_id) {
@@ -197,7 +225,10 @@ export async function applyPreset(userId: string, preset: HouseholdPreset): Prom
         .eq('id', cat.id);
       if (updateError) {
         // Don't leave the preset applied to only some categories silently.
-        logger.error('HouseholdService', `applyPreset update failed for ${cat.id}: ${updateError.message}`);
+        logger.error(
+          'HouseholdService',
+          `applyPreset update failed for ${cat.id}: ${updateError.message}`
+        );
         throw new Error('Failed to apply preset to categories');
       }
     }

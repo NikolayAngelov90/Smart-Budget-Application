@@ -66,18 +66,18 @@ type FormData = z.infer<typeof createCategorySchema>;
 
 // 12 predefined theme colors from Chakra UI palette
 const PRESET_COLORS = [
-  { name: 'Blue', value: '#4299e1' },     // Trust Blue
-  { name: 'Red', value: '#f56565' },      // Coral Red
-  { name: 'Purple', value: '#9f7aea' },   // Purple
-  { name: 'Teal', value: '#38b2ac' },     // Teal
-  { name: 'Orange', value: '#ed8936' },   // Orange
-  { name: 'Green', value: '#48bb78' },    // Green
-  { name: 'Pink', value: '#ed64a6' },     // Pink
-  { name: 'Cyan', value: '#0bc5ea' },     // Cyan
-  { name: 'Yellow', value: '#ecc94b' },   // Yellow
-  { name: 'Indigo', value: '#667eea' },   // Indigo
-  { name: 'Gray', value: '#718096' },     // Gray
-  { name: 'Emerald', value: '#38a169' },  // Emerald (Salary green from defaults)
+  { name: 'Blue', value: '#4299e1' }, // Trust Blue
+  { name: 'Red', value: '#f56565' }, // Coral Red
+  { name: 'Purple', value: '#9f7aea' }, // Purple
+  { name: 'Teal', value: '#38b2ac' }, // Teal
+  { name: 'Orange', value: '#ed8936' }, // Orange
+  { name: 'Green', value: '#48bb78' }, // Green
+  { name: 'Pink', value: '#ed64a6' }, // Pink
+  { name: 'Cyan', value: '#0bc5ea' }, // Cyan
+  { name: 'Yellow', value: '#ecc94b' }, // Yellow
+  { name: 'Indigo', value: '#667eea' }, // Indigo
+  { name: 'Gray', value: '#718096' }, // Gray
+  { name: 'Emerald', value: '#38a169' }, // Emerald (Salary green from defaults)
 ];
 
 const DEFAULT_COLOR = PRESET_COLORS[0]?.value ?? '#4299e1';
@@ -101,7 +101,9 @@ export function CategoryModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [shared, setShared] = useState(false); // Story 13.5: create as a shared household category
-  const [visibilityLevel, setVisibilityLevel] = useState<'shared' | 'category_only' | 'private'>('shared'); // Story 13.4
+  const [visibilityLevel, setVisibilityLevel] = useState<'shared' | 'category_only' | 'private'>(
+    'shared'
+  ); // Story 13.4
   const { household } = useHousehold();
   const toast = useToast();
   const t = useTranslations('categories');
@@ -164,7 +166,9 @@ export function CategoryModal({
           name: data.name,
           color: data.color,
           ...(editMode
-            ? (category?.household_id ? { visibility_level: visibilityLevel } : {}) // Story 13.4: visibility on shared categories
+            ? category?.household_id
+              ? { visibility_level: visibilityLevel }
+              : {} // Story 13.4: visibility on shared categories
             : { type: data.type, shared }), // Type + shared only in create mode
         }),
       });
@@ -338,7 +342,9 @@ export function CategoryModal({
                   <FormLabel>{t('visibilityLabel')}</FormLabel>
                   <Select
                     value={visibilityLevel}
-                    onChange={(e) => setVisibilityLevel(e.target.value as 'shared' | 'category_only' | 'private')}
+                    onChange={(e) =>
+                      setVisibilityLevel(e.target.value as 'shared' | 'category_only' | 'private')
+                    }
                   >
                     <option value="shared">{t('visibilityShared')}</option>
                     <option value="category_only">{t('visibilityCategoryOnly')}</option>

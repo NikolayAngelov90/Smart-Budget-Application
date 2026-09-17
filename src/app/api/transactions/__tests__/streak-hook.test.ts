@@ -10,7 +10,11 @@
 
 jest.mock('next/server', () => ({
   NextResponse: {
-    json: jest.fn((data, init) => ({ json: async () => data, status: init?.status || 200, headers: new Headers() })),
+    json: jest.fn((data, init) => ({
+      json: async () => data,
+      status: init?.status || 200,
+      headers: new Headers(),
+    })),
   },
 }));
 jest.mock('@/lib/supabase/server', () => ({
@@ -21,7 +25,9 @@ jest.mock('@/lib/services/insightService', () => ({
   checkAndTriggerForTransactionCount: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('@/lib/ai/nudgeEngine', () => ({ evaluateNudge: jest.fn(() => null) }));
-jest.mock('@/lib/services/pushService', () => ({ dispatchCategorizedPush: jest.fn().mockResolvedValue('sent') }));
+jest.mock('@/lib/services/pushService', () => ({
+  dispatchCategorizedPush: jest.fn().mockResolvedValue('sent'),
+}));
 jest.mock('@/lib/services/streakService', () => ({
   recordLogActivity: jest.fn(),
 }));
@@ -37,7 +43,9 @@ jest.mock('@/lib/services/achievementService', () => ({
   getUnlocked: jest.fn().mockResolvedValue([]),
   unlockAchievements: jest.fn(),
 }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { POST } from '@/app/api/transactions/route';
 import { createClient } from '@/lib/supabase/server';
@@ -54,17 +62,33 @@ import {
 
 const mockGetLatestChallenge = getLatestChallenge as jest.MockedFunction<typeof getLatestChallenge>;
 const mockCreateChallenge = createChallenge as jest.MockedFunction<typeof createChallenge>;
-const mockComplete = completeChallengeIfEarned as jest.MockedFunction<typeof completeChallengeIfEarned>;
+const mockComplete = completeChallengeIfEarned as jest.MockedFunction<
+  typeof completeChallengeIfEarned
+>;
 
 const mockGetUnlocked = getUnlocked as jest.MockedFunction<typeof getUnlocked>;
 const mockUnlockAchievements = unlockAchievements as jest.MockedFunction<typeof unlockAchievements>;
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockRecordLogActivity = recordLogActivity as jest.MockedFunction<typeof recordLogActivity>;
-const mockRecordFeatureActivity = recordFeatureActivity as jest.MockedFunction<typeof recordFeatureActivity>;
+const mockRecordFeatureActivity = recordFeatureActivity as jest.MockedFunction<
+  typeof recordFeatureActivity
+>;
 
-const EXPENSE_CAT = { id: 'cat-e', name: 'Snacks', color: '#111111', type: 'expense', household_id: null };
-const INCOME_CAT = { id: 'cat-i', name: 'Salary', color: '#222222', type: 'income', household_id: null };
+const EXPENSE_CAT = {
+  id: 'cat-e',
+  name: 'Snacks',
+  color: '#111111',
+  type: 'expense',
+  household_id: null,
+};
+const INCOME_CAT = {
+  id: 'cat-i',
+  name: 'Salary',
+  color: '#222222',
+  type: 'income',
+  household_id: null,
+};
 
 const STREAK_STATE = {
   current_streak: 4,
@@ -81,20 +105,24 @@ function makeClient(category: object) {
     for (const m of ['select', 'eq', 'gte', 'lt', 'is', 'order', 'limit', 'not', 'insert']) {
       q[m] = jest.fn(() => q);
     }
-    q.single = jest.fn().mockResolvedValue(
-      table === 'categories'
-        ? { data: category, error: null }
-        : table === 'transactions'
-          ? { data: { id: 'tx-new' }, error: null }
-          : { data: { preferences: {} }, error: null }
-    );
+    q.single = jest
+      .fn()
+      .mockResolvedValue(
+        table === 'categories'
+          ? { data: category, error: null }
+          : table === 'transactions'
+            ? { data: { id: 'tx-new' }, error: null }
+            : { data: { preferences: {} }, error: null }
+      );
     q.maybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
     (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) =>
       resolve({ data: [], error: null });
     return q;
   };
   return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }) },
+    auth: {
+      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
+    },
     from: jest.fn((t: string) => universal(t)),
   };
 }
@@ -125,7 +153,9 @@ const ACTIVE_CHALLENGE = {
 
 it('records logging activity for an INCOME transaction and returns the streak', async () => {
   mockCreateClient.mockResolvedValue(makeClient(INCOME_CAT) as never);
-  const res = await POST(req({ amount: 100, type: 'income', category_id: 'cat-i', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 100, type: 'income', category_id: 'cat-i', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(res.status).toBe(201);
@@ -145,14 +175,18 @@ it('records feature-disclosure activity with the SAME resolved day key (Story 15
     expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
   );
   // reuses the streak's day key â€” same first-call arg
-  expect(mockRecordFeatureActivity.mock.calls[0]?.[1]).toBe(mockRecordLogActivity.mock.calls[0]?.[1]);
+  expect(mockRecordFeatureActivity.mock.calls[0]?.[1]).toBe(
+    mockRecordLogActivity.mock.calls[0]?.[1]
+  );
 });
 
 it('feature-activity failure is non-fatal: POST still 201', async () => {
   mockRecordFeatureActivity.mockRejectedValueOnce(new Error('feature_state table missing'));
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
   expect(res.status).toBe(201);
   expect(body.data).toBeDefined();
@@ -160,7 +194,9 @@ it('feature-activity failure is non-fatal: POST still 201', async () => {
 
 it('records logging activity for an expense transaction too', async () => {
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
 
   expect(res.status).toBe(201);
   expect(mockRecordLogActivity).toHaveBeenCalledTimes(1);
@@ -170,7 +206,9 @@ it('streak failure is non-fatal: POST still 201 with streak null', async () => {
   mockRecordLogActivity.mockRejectedValue(new Error('streaks table missing'));
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(res.status).toBe(201);
@@ -186,7 +224,9 @@ it('returns newly unlocked achievements in the 201 envelope (Story 15.3)', async
   });
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(res.status).toBe(201);
@@ -204,7 +244,9 @@ it('already-unlocked achievements are not re-reported', async () => {
   ] as never);
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(body.achievements).toEqual([]);
@@ -215,7 +257,9 @@ it('achievement evaluation failure is non-fatal: POST still 201 with achievement
   mockGetUnlocked.mockRejectedValue(new Error('achievements table missing'));
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(res.status).toBe(201);
@@ -233,7 +277,9 @@ it('completes the comeback challenge at target: service helper + Phoenix + envel
   });
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(res.status).toBe(201);
@@ -248,7 +294,9 @@ it('below target: helper returns null, comeback null in envelope', async () => {
   mockComplete.mockResolvedValue(null);
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(body.comeback).toBeNull();
@@ -260,7 +308,9 @@ it('comeback evaluation failure is non-fatal: POST still 201 with comeback null'
   mockComplete.mockRejectedValue(new Error('boom'));
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(res.status).toBe(201);
@@ -285,7 +335,9 @@ it('create-on-log: a returning user whose FIRST action is a log still gets the c
   mockCreateChallenge.mockResolvedValue(ACTIVE_CHALLENGE as never);
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: daysAgo(0) }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: daysAgo(0) })
+  );
   expect(res.status).toBe(201);
   // Snapshot captured from the PRE-advance state; window anchored at the tx
   expect(mockCreateChallenge).toHaveBeenCalledWith('user-1', 12, undefined);
@@ -301,7 +353,9 @@ it("nudge push goes THROUGH the gate with category 'nudges' (Story 15.5 review â
   } as never);
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(res.status).toBe(201);
@@ -324,7 +378,9 @@ it('Phoenix repair: a previously-completed challenge re-derives the signal (self
   mockComplete.mockResolvedValue(null); // nothing newly completed
   mockCreateClient.mockResolvedValue(makeClient(EXPENSE_CAT) as never);
 
-  const res = await POST(req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' }));
+  const res = await POST(
+    req({ amount: 10, type: 'expense', category_id: 'cat-e', date: '2026-07-02' })
+  );
   const body = await res.json();
 
   expect(res.status).toBe(201);

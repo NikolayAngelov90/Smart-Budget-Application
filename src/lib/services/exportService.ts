@@ -176,9 +176,7 @@ export async function exportTransactionsToCSV(
         const txCurrency = tx.currency || currencyCode || 'EUR';
         // eslint-disable-next-line no-restricted-syntax
         const hasConversion = tx.exchange_rate && txCurrency !== (currencyCode || 'EUR');
-        const convertedAmount = hasConversion
-          ? tx.amount * (tx.exchange_rate ?? 1)
-          : tx.amount;
+        const convertedAmount = hasConversion ? tx.amount * (tx.exchange_rate ?? 1) : tx.amount;
 
         return {
           // AC-8.1.8: Date in YYYY-MM-DD format (ISO 8601)
@@ -326,7 +324,10 @@ export async function exportMonthlyReportToPDF(
       head: [['Metric', 'Amount']],
       body: [
         ['Total Income', formatCurrency(reportData.summary.totalIncome, undefined, currencyCode)],
-        ['Total Expenses', formatCurrency(reportData.summary.totalExpenses, undefined, currencyCode)],
+        [
+          'Total Expenses',
+          formatCurrency(reportData.summary.totalExpenses, undefined, currencyCode),
+        ],
         ['Net Balance', formatCurrency(reportData.summary.netBalance, undefined, currencyCode)],
       ],
       theme: 'grid',

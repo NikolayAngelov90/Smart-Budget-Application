@@ -51,15 +51,11 @@ export function ContributionProgressCard() {
                       )}
                     </HStack>
                     <Text fontSize="xs" color="fg.subtle">
-                      {formatAmount(s.contributed, currency)} / {formatAmount(s.fairShare, currency)}
+                      {formatAmount(s.contributed, currency)} /{' '}
+                      {formatAmount(s.fairShare, currency)}
                     </Text>
                   </HStack>
-                  <Progress
-                    value={pct}
-                    size="xs"
-                    borderRadius="full"
-                    colorScheme="brand"
-                  />
+                  <Progress value={pct} size="xs" borderRadius="full" colorScheme="brand" />
                 </VStack>
               );
             })

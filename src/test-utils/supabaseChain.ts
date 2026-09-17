@@ -168,10 +168,7 @@ export function createQueryChain(result: QueryResult = { data: [], error: null }
       // Awaiting the chain resolves the configured result. Supabase's own
       // builders are thenables too, so this matches the real shape.
       if (prop === 'then') {
-        return (
-          resolve: (v: QueryResult) => unknown,
-          reject?: (reason?: unknown) => unknown
-        ) => {
+        return (resolve: (v: QueryResult) => unknown, reject?: (reason?: unknown) => unknown) => {
           try {
             // A real `then` returns a PROMISE of the callback's value.
             // Returning the raw value broke `.then(fn).catch(g)` — `.catch`

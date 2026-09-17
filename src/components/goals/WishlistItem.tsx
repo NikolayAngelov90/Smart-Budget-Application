@@ -20,7 +20,12 @@ interface WishlistItemProps {
   onStatusChange: (item: WishlistItemWithImpact, status: WishlistStatus) => void;
 }
 
-export function WishlistItem({ item, currencyCode, isUpdating, onStatusChange }: WishlistItemProps) {
+export function WishlistItem({
+  item,
+  currencyCode,
+  isUpdating,
+  onStatusChange,
+}: WishlistItemProps) {
   const t = useTranslations('wishlist');
   const { impact } = item;
   const isActive = item.status === 'active';

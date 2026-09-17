@@ -7,7 +7,11 @@
  */
 
 import useSWR, { type KeyedMutator } from 'swr';
-import type { AnalyticsDashboardData, AnalyticsDashboardResponse, AnalyticsRange } from '@/types/database.types';
+import type {
+  AnalyticsDashboardData,
+  AnalyticsDashboardResponse,
+  AnalyticsRange,
+} from '@/types/database.types';
 
 class ForbiddenError extends Error {}
 

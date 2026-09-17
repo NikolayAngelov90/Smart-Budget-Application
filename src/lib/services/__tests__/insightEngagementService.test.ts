@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe('trackInsightEngagement', () => {
-  it('posts the event to the insight\'s own track endpoint, not the analytics one', async () => {
+  it("posts the event to the insight's own track endpoint, not the analytics one", async () => {
     // ARGUMENTS asserted, not just the call count. The codebase already has a
     // `trackInsightViewed` that posts to /api/analytics/track — a different
     // endpoint writing a different table. A call-count-only assertion would go

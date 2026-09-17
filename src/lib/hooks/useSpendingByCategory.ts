@@ -99,24 +99,20 @@ export function useSpendingByCategory(
   if (tz) params.set('tz', tz);
   const url = `${SPENDING_BY_CATEGORY_KEY}?${params.toString()}`;
 
-  const { data, error, isLoading, mutate } = useSWR<SpendingByCategoryResponse>(
-    url,
-    fetcher,
-    {
-      // Deduplicate requests within 5 seconds for reasonable caching
-      dedupingInterval: 5000,
-      // Revalidate when window regains focus
-      revalidateOnFocus: true,
-      // Revalidate on network reconnect
-      revalidateOnReconnect: true,
-      // Revalidate on mount
-      revalidateOnMount: true,
-      // Keep previous data while revalidating
-      keepPreviousData: true,
-      // Disable automatic revalidation interval (we'll use Realtime instead)
-      refreshInterval: 0,
-    }
-  );
+  const { data, error, isLoading, mutate } = useSWR<SpendingByCategoryResponse>(url, fetcher, {
+    // Deduplicate requests within 5 seconds for reasonable caching
+    dedupingInterval: 5000,
+    // Revalidate when window regains focus
+    revalidateOnFocus: true,
+    // Revalidate on network reconnect
+    revalidateOnReconnect: true,
+    // Revalidate on mount
+    revalidateOnMount: true,
+    // Keep previous data while revalidating
+    keepPreviousData: true,
+    // Disable automatic revalidation interval (we'll use Realtime instead)
+    refreshInterval: 0,
+  });
 
   return {
     data,

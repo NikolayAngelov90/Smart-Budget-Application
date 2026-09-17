@@ -30,9 +30,7 @@ export const mockPathname = '/';
 /**
  * Mock search params for useSearchParams hook
  */
-export function createMockSearchParams(
-  params: Record<string, string> = {}
-): URLSearchParams {
+export function createMockSearchParams(params: Record<string, string> = {}): URLSearchParams {
   return new URLSearchParams(params);
 }
 

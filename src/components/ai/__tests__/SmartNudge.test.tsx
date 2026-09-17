@@ -20,8 +20,7 @@ jest.mock('@/components/ai/FinancialDisclaimer', () => ({
   FinancialDisclaimer: () => null,
 }));
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 const NUDGE: NudgePayload = {
   title: 'Groceries spending at 85%',

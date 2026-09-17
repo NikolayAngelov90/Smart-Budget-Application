@@ -7,13 +7,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { removeMember, CannotRemoveSelfError, MemberNotFoundError } from '@/lib/services/householdMemberService';
+import {
+  removeMember,
+  CannotRemoveSelfError,
+  MemberNotFoundError,
+} from '@/lib/services/householdMemberService';
 import { NotHouseholdAdminError } from '@/lib/services/invitationService';
 import { logger } from '@/lib/utils/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> }
+) {
   try {
     const supabase = await createClient();
     const {

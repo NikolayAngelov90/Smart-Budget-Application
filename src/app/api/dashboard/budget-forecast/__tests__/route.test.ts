@@ -48,11 +48,14 @@ import { GET } from '../route';
  * behaviour these tests already assume.
  */
 const getRequest = (query = '') =>
-  ({ url: `http://localhost:3000/api/dashboard/budget-forecast${query}` }) as Parameters<typeof GET>[0];
-
+  ({ url: `http://localhost:3000/api/dashboard/budget-forecast${query}` }) as Parameters<
+    typeof GET
+  >[0];
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockComputeForecasts = computeEndOfMonthForecasts as jest.MockedFunction<typeof computeEndOfMonthForecasts>;
+const mockComputeForecasts = computeEndOfMonthForecasts as jest.MockedFunction<
+  typeof computeEndOfMonthForecasts
+>;
 
 // Minimal chainable Supabase mock
 function makeSupabaseMock(overrides: {
@@ -64,7 +67,15 @@ function makeSupabaseMock(overrides: {
   budgets?: object[];
   dbError?: object | null;
 }) {
-  const { user = { id: 'user-1' }, authError = null, currentTx = [], historicalTx = [], categories = [], budgets = [], dbError = null } = overrides;
+  const {
+    user = { id: 'user-1' },
+    authError = null,
+    currentTx = [],
+    historicalTx = [],
+    categories = [],
+    budgets = [],
+    dbError = null,
+  } = overrides;
 
   const makeQueryChain = (data: object[], error: object | null = null) => {
     const chain = {
@@ -108,7 +119,9 @@ describe('GET /api/dashboard/budget-forecast', () => {
   });
 
   it('returns 401 when user is not authenticated', async () => {
-    mockCreateClient.mockResolvedValue(makeSupabaseMock({ user: null, authError: { message: 'No session' } }) as never);
+    mockCreateClient.mockResolvedValue(
+      makeSupabaseMock({ user: null, authError: { message: 'No session' } }) as never
+    );
     const res = await GET(getRequest());
     expect(res.status).toBe(401);
     const body = await res.json();
@@ -126,8 +139,32 @@ describe('GET /api/dashboard/budget-forecast', () => {
   });
 
   it('calls computeEndOfMonthForecasts and returns forecasts when data exists', async () => {
-    const fakeTx = { id: 't1', user_id: 'user-1', category_id: 'cat-1', amount: 100, type: 'expense', date: '2026-06-05', notes: null, currency: 'USD', exchange_rate: null, created_at: '2026-06-05T00:00:00Z', updated_at: '2026-06-05T00:00:00Z' };
-    const fakeForecast = { category_id: 'cat-1', category_name: 'Dining', category_color: '#aaa', spent_so_far: 100, projected_eom: 300, historical_avg: 200, is_at_risk: true, days_elapsed: 10, days_in_month: 30, budget_amount: 200, budget_source: 'historical_average' as const };
+    const fakeTx = {
+      id: 't1',
+      user_id: 'user-1',
+      category_id: 'cat-1',
+      amount: 100,
+      type: 'expense',
+      date: '2026-06-05',
+      notes: null,
+      currency: 'USD',
+      exchange_rate: null,
+      created_at: '2026-06-05T00:00:00Z',
+      updated_at: '2026-06-05T00:00:00Z',
+    };
+    const fakeForecast = {
+      category_id: 'cat-1',
+      category_name: 'Dining',
+      category_color: '#aaa',
+      spent_so_far: 100,
+      projected_eom: 300,
+      historical_avg: 200,
+      is_at_risk: true,
+      days_elapsed: 10,
+      days_in_month: 30,
+      budget_amount: 200,
+      budget_source: 'historical_average' as const,
+    };
 
     mockCreateClient.mockResolvedValue(makeSupabaseMock({ currentTx: [fakeTx] }) as never);
     mockComputeForecasts.mockReturnValue([fakeForecast]);
@@ -144,7 +181,9 @@ describe('GET /api/dashboard/budget-forecast', () => {
   });
 
   it('returns 500 on database error', async () => {
-    mockCreateClient.mockResolvedValue(makeSupabaseMock({ currentTx: [], dbError: { message: 'DB error' } }) as never);
+    mockCreateClient.mockResolvedValue(
+      makeSupabaseMock({ currentTx: [], dbError: { message: 'DB error' } }) as never
+    );
     // Make auth succeed but DB fail
     const mockClient = makeSupabaseMock({ currentTx: [] });
     mockClient.from = jest.fn().mockImplementation(() => ({

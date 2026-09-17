@@ -90,10 +90,7 @@ rlsDescribe('insights_last_generated_at is server-only (hp-8)', () => {
     // the payload. Read the value back through the service role to prove nothing
     // landed, rather than trusting the error alone.
     const svc = createServiceClient();
-    await svc
-      .from('user_profiles')
-      .update({ insights_last_generated_at: null })
-      .eq('id', userId);
+    await svc.from('user_profiles').update({ insights_last_generated_at: null }).eq('id', userId);
 
     const user = await signInAsTestUser(email, PWD);
     await user
@@ -107,7 +104,9 @@ rlsDescribe('insights_last_generated_at is server-only (hp-8)', () => {
       .eq('id', userId)
       .maybeSingle();
 
-    expect((data as { insights_last_generated_at: string | null } | null)?.insights_last_generated_at).toBeNull();
+    expect(
+      (data as { insights_last_generated_at: string | null } | null)?.insights_last_generated_at
+    ).toBeNull();
   });
 
   it('a user CANNOT grant themselves analytics_viewer', async () => {

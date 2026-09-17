@@ -28,9 +28,11 @@ jest.mock('next-intl', () => ({
       heading: 'Welcome back! 🔥',
       dismiss: 'Not now',
     };
-    if (key === 'body') return `Log ${params?.target} transactions this week to reignite your streak.`;
+    if (key === 'body')
+      return `Log ${params?.target} transactions this week to reignite your streak.`;
     if (key === 'progress') return `${params?.count} of ${params?.target} logged`;
-    if (key === 'restorePromise') return `Finish to bring back ${params?.days} days of your streak.`;
+    if (key === 'restorePromise')
+      return `Finish to bring back ${params?.days} days of your streak.`;
     return map[key] ?? key;
   },
 }));
@@ -90,9 +92,7 @@ describe('ComebackChallengeCard', () => {
   });
 
   it('is a labelled, navigable section — NOT a whole-card live region (Story 15.8 review)', () => {
-    mockUseComeback.mockReturnValue(
-      hookResult({ data: { challenge: CHALLENGE, loggedCount: 2 } })
-    );
+    mockUseComeback.mockReturnValue(hookResult({ data: { challenge: CHALLENGE, loggedCount: 2 } }));
     const { container } = renderWithChakra(<ComebackChallengeCard />);
     // discoverable via section landmark + aria-label + heading (h2)
     const section = container.querySelector('section[aria-label]');
@@ -103,9 +103,7 @@ describe('ComebackChallengeCard', () => {
   });
 
   it('shows the challenge, progress, and the guaranteed restore floor', () => {
-    mockUseComeback.mockReturnValue(
-      hookResult({ data: { challenge: CHALLENGE, loggedCount: 2 } })
-    );
+    mockUseComeback.mockReturnValue(hookResult({ data: { challenge: CHALLENGE, loggedCount: 2 } }));
     renderWithChakra(<ComebackChallengeCard />);
 
     expect(screen.getByText('Welcome back! 🔥')).toBeInTheDocument();
@@ -131,9 +129,7 @@ describe('ComebackChallengeCard', () => {
   });
 
   it('exposes the card and progress via aria labels', () => {
-    mockUseComeback.mockReturnValue(
-      hookResult({ data: { challenge: CHALLENGE, loggedCount: 1 } })
-    );
+    mockUseComeback.mockReturnValue(hookResult({ data: { challenge: CHALLENGE, loggedCount: 1 } }));
     renderWithChakra(<ComebackChallengeCard />);
 
     expect(screen.getByLabelText('Welcome back! 🔥')).toBeInTheDocument(); // section
@@ -141,9 +137,7 @@ describe('ComebackChallengeCard', () => {
   });
 
   it('dismiss PATCHes and hides optimistically', async () => {
-    mockUseComeback.mockReturnValue(
-      hookResult({ data: { challenge: CHALLENGE, loggedCount: 0 } })
-    );
+    mockUseComeback.mockReturnValue(hookResult({ data: { challenge: CHALLENGE, loggedCount: 0 } }));
     renderWithChakra(<ComebackChallengeCard />);
 
     fireEvent.click(screen.getByText('Not now'));
@@ -158,10 +152,12 @@ describe('ComebackChallengeCard', () => {
   });
 
   it('un-hides when the dismiss PATCH fails so the user can retry', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
-    mockUseComeback.mockReturnValue(
-      hookResult({ data: { challenge: CHALLENGE, loggedCount: 0 } })
-    );
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+    mockUseComeback.mockReturnValue(hookResult({ data: { challenge: CHALLENGE, loggedCount: 0 } }));
     renderWithChakra(<ComebackChallengeCard />);
 
     fireEvent.click(screen.getByText('Not now'));

@@ -27,10 +27,7 @@ const updateSubscriptionSchema = z.object({
  * PATCH /api/subscriptions/:id
  * Update subscription status to dismissed or kept.
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient();
     const {
@@ -39,10 +36,7 @@ export async function PATCH(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: { message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
     const { id } = await params;
@@ -66,10 +60,7 @@ export async function PATCH(
     const updated = await updateSubscriptionStatus(supabase, user.id, id, parsed.data.status);
 
     if (!updated) {
-      return NextResponse.json(
-        { error: { message: 'Subscription not found' } },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: { message: 'Subscription not found' } }, { status: 404 });
     }
 
     return NextResponse.json({ data: updated });

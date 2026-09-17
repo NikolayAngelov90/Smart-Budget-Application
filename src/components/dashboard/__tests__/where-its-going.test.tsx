@@ -110,10 +110,11 @@ describe('drill-down follows the window (D2)', () => {
     // The defect: `month` is only the ANCHOR month, so clicking a slice worth a
     // year of spend opened one month's transactions and the totals disagreed
     // with nothing on screen to explain it.
-    const query = buildDrillDownQuery(
-      'c1',
-      { month: '2026-07', start: '2026-01-01', end: '2026-12-31' }
-    );
+    const query = buildDrillDownQuery('c1', {
+      month: '2026-07',
+      start: '2026-01-01',
+      end: '2026-12-31',
+    });
 
     expect(query).toBe('category=c1&startDate=2026-01-01&endDate=2026-12-31');
     expect(query).not.toContain('month=');
@@ -122,9 +123,7 @@ describe('drill-down follows the window (D2)', () => {
   it('falls back to the month when the window is unknown', () => {
     // The persisted SWR cache can replay a response written before the route
     // sent bounds.
-    expect(buildDrillDownQuery('c1', { month: '2026-07' })).toBe(
-      'category=c1&month=2026-07'
-    );
+    expect(buildDrillDownQuery('c1', { month: '2026-07' })).toBe('category=c1&month=2026-07');
   });
 
   it('prefers an explicit month prop over the echoed one', () => {

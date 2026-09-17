@@ -20,11 +20,7 @@ import {
   isOutlier,
 } from './spendingAnalysis';
 import { formatAmount } from '@/lib/utils/formatAmount';
-import type {
-  Transaction,
-  InsightInsert,
-  InsightMetadata,
-} from '@/types/database.types';
+import type { Transaction, InsightInsert, InsightMetadata } from '@/types/database.types';
 
 // ============================================================================
 // TYPES
@@ -59,7 +55,14 @@ export interface BudgetRuleInput extends RuleInput {
  *  Consider reviewing recent expenses to see if this aligns with your goals."
  */
 export function detectSpendingIncrease(input: RuleInput): InsightInsert | null {
-  const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currency } = input;
+  const {
+    userId,
+    categoryId,
+    categoryName,
+    transactions,
+    currentMonth = new Date(),
+    currency,
+  } = input;
 
   // Filter transactions for current month
   const currentMonthStart = startOfMonth(currentMonth);
@@ -135,7 +138,15 @@ export function detectSpendingIncrease(input: RuleInput): InsightInsert | null {
  *  This gives you a comfortable 10% buffer while keeping spending mindful."
  */
 export function recommendBudgetLimit(input: BudgetRuleInput): InsightInsert | null {
-  const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currentBudget, currency } = input;
+  const {
+    userId,
+    categoryId,
+    categoryName,
+    transactions,
+    currentMonth = new Date(),
+    currentBudget,
+    currency,
+  } = input;
 
   // The window is the AVERAGE_WINDOW_MONTHS **complete** months before this one.
   // The current month is deliberately excluded — see the guard below.
@@ -337,7 +348,7 @@ function buildUnusualExpenseInsight(
     transaction_amount: mostSignificantOutlier.amount,
     category_average: Math.round(mean),
     standard_deviation: Math.round(stdDev),
-    std_devs_from_mean: Math.round((mostSignificantOutlier.amount - mean) / stdDev * 10) / 10,
+    std_devs_from_mean: Math.round(((mostSignificantOutlier.amount - mean) / stdDev) * 10) / 10,
     transaction_id: mostSignificantOutlier.id,
     transaction_date: mostSignificantOutlier.date,
   };
@@ -370,7 +381,15 @@ function buildUnusualExpenseInsight(
  *  Keep up the excellent work!"
  */
 export function generatePositiveReinforcement(input: BudgetRuleInput): InsightInsert | null {
-  const { userId, categoryId, categoryName, transactions, currentMonth = new Date(), currentBudget, currency } = input;
+  const {
+    userId,
+    categoryId,
+    categoryName,
+    transactions,
+    currentMonth = new Date(),
+    currentBudget,
+    currency,
+  } = input;
 
   // Must have a budget set to compare against
   if (!currentBudget || currentBudget <= 0) {

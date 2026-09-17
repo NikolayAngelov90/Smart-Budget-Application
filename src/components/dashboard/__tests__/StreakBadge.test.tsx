@@ -44,8 +44,7 @@ jest.mock('next-intl', () => ({
 const mockUseStreak = useStreak as jest.MockedFunction<typeof useStreak>;
 const mockUseGamification = useGamification as jest.MockedFunction<typeof useGamification>;
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 // Fixtures are CLOCK-RELATIVE: the badge now derives brokenness against the
 // real today, so a hardcoded last_log_date would go stale and hide the badge.
@@ -149,7 +148,9 @@ describe('StreakBadge', () => {
   it('does NOT show the freeze note for an older freeze', () => {
     mockUseStreak.mockReturnValue(
       hookResult({
-        data: { streak: makeStreak({ freeze_used_on: dayKeyAgo(12), last_log_date: dayKeyAgo(0) }) },
+        data: {
+          streak: makeStreak({ freeze_used_on: dayKeyAgo(12), last_log_date: dayKeyAgo(0) }),
+        },
       })
     );
     renderWithChakra(<StreakBadge />);

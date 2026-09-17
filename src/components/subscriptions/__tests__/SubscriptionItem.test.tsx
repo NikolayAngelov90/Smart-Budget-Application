@@ -38,7 +38,9 @@ const renderWithChakra = (component: React.ReactElement) => {
   );
 };
 
-const createSubscription = (overrides: Partial<DetectedSubscription> = {}): DetectedSubscription => ({
+const createSubscription = (
+  overrides: Partial<DetectedSubscription> = {}
+): DetectedSubscription => ({
   id: 'sub-1',
   user_id: 'user-1',
   merchant_pattern: 'netflix',
@@ -64,9 +66,7 @@ describe('SubscriptionItem', () => {
 
   it('renders merchant name and amount', () => {
     const sub = createSubscription();
-    renderWithChakra(
-      <SubscriptionItem subscription={sub} {...defaultProps} />
-    );
+    renderWithChakra(<SubscriptionItem subscription={sub} {...defaultProps} />);
 
     expect(screen.getByText('netflix')).toBeInTheDocument();
     // Amount is formatted with Intl.NumberFormat
@@ -75,45 +75,35 @@ describe('SubscriptionItem', () => {
 
   it('renders frequency label', () => {
     const sub = createSubscription({ frequency: 'monthly' });
-    renderWithChakra(
-      <SubscriptionItem subscription={sub} {...defaultProps} />
-    );
+    renderWithChakra(<SubscriptionItem subscription={sub} {...defaultProps} />);
 
     expect(screen.getByText(/Monthly/)).toBeInTheDocument();
   });
 
   it('renders active status badge', () => {
     const sub = createSubscription({ status: 'active' });
-    renderWithChakra(
-      <SubscriptionItem subscription={sub} {...defaultProps} />
-    );
+    renderWithChakra(<SubscriptionItem subscription={sub} {...defaultProps} />);
 
     expect(screen.getByText('Active')).toBeInTheDocument();
   });
 
   it('renders unused status badge', () => {
     const sub = createSubscription({ status: 'unused' });
-    renderWithChakra(
-      <SubscriptionItem subscription={sub} {...defaultProps} />
-    );
+    renderWithChakra(<SubscriptionItem subscription={sub} {...defaultProps} />);
 
     expect(screen.getByText('Potentially Unused')).toBeInTheDocument();
   });
 
   it('renders kept status badge', () => {
     const sub = createSubscription({ status: 'kept' });
-    renderWithChakra(
-      <SubscriptionItem subscription={sub} {...defaultProps} />
-    );
+    renderWithChakra(<SubscriptionItem subscription={sub} {...defaultProps} />);
 
     expect(screen.getByText('Kept')).toBeInTheDocument();
   });
 
   it('shows dismiss and keep buttons for active subscriptions', () => {
     const sub = createSubscription({ status: 'active' });
-    renderWithChakra(
-      <SubscriptionItem subscription={sub} {...defaultProps} />
-    );
+    renderWithChakra(<SubscriptionItem subscription={sub} {...defaultProps} />);
 
     expect(screen.getByText('Dismiss')).toBeInTheDocument();
     expect(screen.getByText('Keep')).toBeInTheDocument();
@@ -121,9 +111,7 @@ describe('SubscriptionItem', () => {
 
   it('shows dismiss and keep buttons for unused subscriptions', () => {
     const sub = createSubscription({ status: 'unused' });
-    renderWithChakra(
-      <SubscriptionItem subscription={sub} {...defaultProps} />
-    );
+    renderWithChakra(<SubscriptionItem subscription={sub} {...defaultProps} />);
 
     expect(screen.getByText('Dismiss')).toBeInTheDocument();
     expect(screen.getByText('Keep')).toBeInTheDocument();
@@ -131,9 +119,7 @@ describe('SubscriptionItem', () => {
 
   it('hides action buttons for kept subscriptions', () => {
     const sub = createSubscription({ status: 'kept' });
-    renderWithChakra(
-      <SubscriptionItem subscription={sub} {...defaultProps} />
-    );
+    renderWithChakra(<SubscriptionItem subscription={sub} {...defaultProps} />);
 
     expect(screen.queryByText('Dismiss')).not.toBeInTheDocument();
     expect(screen.queryByText('Keep')).not.toBeInTheDocument();
@@ -173,9 +159,7 @@ describe('SubscriptionItem', () => {
 
   it('has accessible aria-label on accordion button', () => {
     const sub = createSubscription();
-    renderWithChakra(
-      <SubscriptionItem subscription={sub} {...defaultProps} />
-    );
+    renderWithChakra(<SubscriptionItem subscription={sub} {...defaultProps} />);
 
     const button = screen.getByRole('button', { name: /netflix.*9\.99.*Monthly/i });
     expect(button).toBeInTheDocument();

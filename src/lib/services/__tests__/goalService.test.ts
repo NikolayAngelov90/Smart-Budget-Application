@@ -67,9 +67,7 @@ function createDeleteChainMock(resolveWith: any) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: any = {};
   chain.delete = jest.fn().mockReturnValue(chain);
-  chain.eq = jest.fn()
-    .mockReturnValueOnce(chain)
-    .mockResolvedValueOnce(resolveWith);
+  chain.eq = jest.fn().mockReturnValueOnce(chain).mockResolvedValueOnce(resolveWith);
   return chain;
 }
 
@@ -96,7 +94,9 @@ const sampleGoal = {
 describe('getGoals', () => {
   it('returns empty array when user has no goals', async () => {
     const chain = createOrderChainMock({ data: [], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof getGoals>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof getGoals
+    >[0];
 
     const result = await getGoals(supabase, 'user-1');
     expect(result).toEqual([]);
@@ -105,7 +105,9 @@ describe('getGoals', () => {
 
   it('returns goals array when goals exist', async () => {
     const chain = createOrderChainMock({ data: [sampleGoal], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof getGoals>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof getGoals
+    >[0];
 
     const result = await getGoals(supabase, 'user-1');
     expect(result).toEqual([sampleGoal]);
@@ -114,7 +116,9 @@ describe('getGoals', () => {
   it('throws on DB error', async () => {
     const dbError = new Error('Connection refused');
     const chain = createOrderChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof getGoals>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof getGoals
+    >[0];
 
     await expect(getGoals(supabase, 'user-1')).rejects.toThrow('Connection refused');
   });
@@ -127,7 +131,9 @@ describe('getGoals', () => {
 describe('getGoal', () => {
   it('returns goal when found', async () => {
     const chain = createSingleChainMock({ data: sampleGoal, error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof getGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof getGoal
+    >[0];
 
     const result = await getGoal(supabase, 'user-1', 'goal-1');
     expect(result).toEqual(sampleGoal);
@@ -136,7 +142,9 @@ describe('getGoal', () => {
   it('returns null when goal not found (PGRST116)', async () => {
     const notFoundError = { code: 'PGRST116', message: 'Row not found' };
     const chain = createSingleChainMock({ data: null, error: notFoundError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof getGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof getGoal
+    >[0];
 
     const result = await getGoal(supabase, 'user-1', 'nonexistent');
     expect(result).toBeNull();
@@ -145,7 +153,9 @@ describe('getGoal', () => {
   it('throws on non-PGRST116 DB error', async () => {
     const dbError = new Error('Query failed');
     const chain = createSingleChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof getGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof getGoal
+    >[0];
 
     await expect(getGoal(supabase, 'user-1', 'goal-1')).rejects.toThrow('Query failed');
   });
@@ -158,7 +168,9 @@ describe('getGoal', () => {
 describe('createGoal', () => {
   it('inserts correct fields and returns created goal', async () => {
     const chain = createSingleChainMock({ data: sampleGoal, error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof createGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof createGoal
+    >[0];
 
     const result = await createGoal(supabase, 'user-1', {
       name: 'Emergency Fund',
@@ -178,7 +190,9 @@ describe('createGoal', () => {
   it('passes deadline when provided', async () => {
     const goalWithDeadline = { ...sampleGoal, deadline: '2027-01-01' };
     const chain = createSingleChainMock({ data: goalWithDeadline, error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof createGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof createGoal
+    >[0];
 
     await createGoal(supabase, 'user-1', {
       name: 'Emergency Fund',
@@ -186,15 +200,15 @@ describe('createGoal', () => {
       deadline: '2027-01-01',
     });
 
-    expect(chain.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ deadline: '2027-01-01' })
-    );
+    expect(chain.insert).toHaveBeenCalledWith(expect.objectContaining({ deadline: '2027-01-01' }));
   });
 
   it('throws on DB error', async () => {
     const dbError = new Error('Insert failed');
     const chain = createSingleChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof createGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof createGoal
+    >[0];
 
     await expect(
       createGoal(supabase, 'user-1', { name: 'Test', target_amount: 100 })
@@ -210,7 +224,9 @@ describe('updateGoal', () => {
   it('updates goal and returns updated data', async () => {
     const updatedGoal = { ...sampleGoal, name: 'Updated Name' };
     const chain = createSingleChainMock({ data: updatedGoal, error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof updateGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof updateGoal
+    >[0];
 
     const result = await updateGoal(supabase, 'user-1', 'goal-1', { name: 'Updated Name' });
     expect(result).toEqual(updatedGoal);
@@ -222,21 +238,25 @@ describe('updateGoal', () => {
   it('throws "Goal not found" when PGRST116 returned', async () => {
     const notFoundError = { code: 'PGRST116', message: 'Row not found' };
     const chain = createSingleChainMock({ data: null, error: notFoundError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof updateGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof updateGoal
+    >[0];
 
-    await expect(
-      updateGoal(supabase, 'user-1', 'nonexistent', { name: 'New' })
-    ).rejects.toThrow('Goal not found');
+    await expect(updateGoal(supabase, 'user-1', 'nonexistent', { name: 'New' })).rejects.toThrow(
+      'Goal not found'
+    );
   });
 
   it('throws on DB error', async () => {
     const dbError = new Error('Update failed');
     const chain = createSingleChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof updateGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof updateGoal
+    >[0];
 
-    await expect(
-      updateGoal(supabase, 'user-1', 'goal-1', { name: 'New' })
-    ).rejects.toThrow('Update failed');
+    await expect(updateGoal(supabase, 'user-1', 'goal-1', { name: 'New' })).rejects.toThrow(
+      'Update failed'
+    );
   });
 });
 
@@ -247,7 +267,9 @@ describe('updateGoal', () => {
 describe('deleteGoal', () => {
   it('calls delete with correct ownership filters', async () => {
     const chain = createDeleteChainMock({ error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof deleteGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof deleteGoal
+    >[0];
 
     await deleteGoal(supabase, 'user-1', 'goal-1');
     expect(chain.delete).toHaveBeenCalled();
@@ -258,7 +280,9 @@ describe('deleteGoal', () => {
   it('throws on DB error', async () => {
     const dbError = new Error('Delete failed');
     const chain = createDeleteChainMock({ error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<typeof deleteGoal>[0];
+    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
+      typeof deleteGoal
+    >[0];
 
     await expect(deleteGoal(supabase, 'user-1', 'goal-1')).rejects.toThrow('Delete failed');
   });
@@ -271,7 +295,10 @@ describe('deleteGoal', () => {
 describe('addContribution', () => {
   function buildAddContribMock(
     insertResult: { error: Error | null },
-    fetchResult: { data: { current_amount: number } | null; error: Error | { code: string } | null },
+    fetchResult: {
+      data: { current_amount: number } | null;
+      error: Error | { code: string } | null;
+    },
     updateResult: { data: typeof sampleGoal | null; error: Error | null }
   ) {
     let fromCallCount = 0;
@@ -334,9 +361,9 @@ describe('addContribution', () => {
       { data: null, error: null }
     );
 
-    await expect(
-      addContribution(supabase, 'user-1', 'goal-1', { amount: 50 })
-    ).rejects.toThrow('Insert failed');
+    await expect(addContribution(supabase, 'user-1', 'goal-1', { amount: 50 })).rejects.toThrow(
+      'Insert failed'
+    );
   });
 
   it('throws "Goal not found" when fetch after insert returns PGRST116', async () => {
@@ -347,9 +374,9 @@ describe('addContribution', () => {
       { data: null, error: null }
     );
 
-    await expect(
-      addContribution(supabase, 'user-1', 'goal-1', { amount: 50 })
-    ).rejects.toThrow('Goal not found');
+    await expect(addContribution(supabase, 'user-1', 'goal-1', { amount: 50 })).rejects.toThrow(
+      'Goal not found'
+    );
   });
 
   it('throws when goal update fails', async () => {
@@ -360,9 +387,9 @@ describe('addContribution', () => {
       { data: null, error: updateError }
     );
 
-    await expect(
-      addContribution(supabase, 'user-1', 'goal-1', { amount: 50 })
-    ).rejects.toThrow('Update failed');
+    await expect(addContribution(supabase, 'user-1', 'goal-1', { amount: 50 })).rejects.toThrow(
+      'Update failed'
+    );
   });
 });
 
@@ -380,7 +407,10 @@ describe('markMilestoneCelebrated', () => {
    * and ownership filter (M2: security regression guard).
    */
   function buildMarkMilestoneMock(
-    fetchResult: { data: { milestones_celebrated: number[] } | null; error: { code?: string; message?: string } | null },
+    fetchResult: {
+      data: { milestones_celebrated: number[] } | null;
+      error: { code?: string; message?: string } | null;
+    },
     updateResult: { error: { message: string } | null }
   ) {
     let fromCallCount = 0;
@@ -388,9 +418,7 @@ describe('markMilestoneCelebrated', () => {
     const updateChain: any = {
       update: jest.fn().mockReturnThis(),
     };
-    updateChain.eq = jest.fn()
-      .mockReturnValueOnce(updateChain)
-      .mockResolvedValueOnce(updateResult);
+    updateChain.eq = jest.fn().mockReturnValueOnce(updateChain).mockResolvedValueOnce(updateResult);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase: any = {
@@ -453,9 +481,9 @@ describe('markMilestoneCelebrated', () => {
       { error: null }
     );
 
-    await expect(
-      markMilestoneCelebrated(supabase, 'user-1', 'goal-1', 25)
-    ).rejects.toMatchObject({ message: 'DB connection lost' });
+    await expect(markMilestoneCelebrated(supabase, 'user-1', 'goal-1', 25)).rejects.toMatchObject({
+      message: 'DB connection lost',
+    });
   });
 
   it('throws when UPDATE call fails', async () => {
@@ -464,8 +492,8 @@ describe('markMilestoneCelebrated', () => {
       { error: { message: 'Write failed' } }
     );
 
-    await expect(
-      markMilestoneCelebrated(supabase, 'user-1', 'goal-1', 50)
-    ).rejects.toMatchObject({ message: 'Write failed' });
+    await expect(markMilestoneCelebrated(supabase, 'user-1', 'goal-1', 50)).rejects.toMatchObject({
+      message: 'Write failed',
+    });
   });
 });

@@ -47,7 +47,14 @@ function CategoryRow({
     <Box px={4} py={3} borderBottom="1px solid" borderColor="border">
       <Flex align="center" justify="space-between" gap={2} mb={2} flexWrap="wrap">
         <HStack flex="1" minW={0}>
-          <Box w={3} h={3} borderRadius="full" bg={category.category_color} flexShrink={0} aria-hidden="true" />
+          <Box
+            w={3}
+            h={3}
+            borderRadius="full"
+            bg={category.category_color}
+            flexShrink={0}
+            aria-hidden="true"
+          />
           <Text fontWeight="medium" noOfLines={1}>
             {category.category_name}
           </Text>
@@ -66,7 +73,8 @@ function CategoryRow({
           color="fg.muted"
           aria-label={`${t('spentSoFar')}: ${formatAmount(category.current_spend, currency)}, ${t('monthlyTarget')}: ${formatAmount(category.monthly_target, currency)}`}
         >
-          {formatAmount(category.current_spend, currency)} / {formatAmount(category.monthly_target, currency)}
+          {formatAmount(category.current_spend, currency)} /{' '}
+          {formatAmount(category.monthly_target, currency)}
         </Text>
       </Flex>
       <Progress
@@ -108,7 +116,15 @@ export function RecoveryPlan() {
       }
     };
     return (
-      <Box as="section" aria-label={t('title')} borderRadius="md" border="1px solid" borderColor="warning.fg" bg="warning.subtle" p={4}>
+      <Box
+        as="section"
+        aria-label={t('title')}
+        borderRadius="md"
+        border="1px solid"
+        borderColor="warning.fg"
+        bg="warning.subtle"
+        p={4}
+      >
         <VStack align="start" spacing={3}>
           <Heading as="h2" fontSize={{ base: '1.1rem', lg: '1.25rem' }} color="fg">
             {t('ctaTitle')}
@@ -150,7 +166,13 @@ export function RecoveryPlan() {
               {t('subtitle', { day: plan.days_elapsed, daysRemaining: plan.days_remaining })}
             </Text>
           </VStack>
-          <Button size="xs" variant="ghost" colorScheme="gray" onClick={handleDismiss} isLoading={busy}>
+          <Button
+            size="xs"
+            variant="ghost"
+            colorScheme="gray"
+            onClick={handleDismiss}
+            isLoading={busy}
+          >
             {t('dismiss')}
           </Button>
         </Flex>

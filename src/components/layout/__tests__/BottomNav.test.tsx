@@ -67,7 +67,10 @@ describe('BottomNav', () => {
     expect(screen.getByRole('link', { name: /^household$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^settings$/i })).toBeInTheDocument();
     // Inline quick-add affordances for Categories + Goals.
-    expect(screen.getByRole('link', { name: /add category/i })).toHaveAttribute('href', '/categories?new=1');
+    expect(screen.getByRole('link', { name: /add category/i })).toHaveAttribute(
+      'href',
+      '/categories?new=1'
+    );
     expect(screen.getByRole('link', { name: /add goal/i })).toHaveAttribute('href', '/goals?new=1');
   });
 

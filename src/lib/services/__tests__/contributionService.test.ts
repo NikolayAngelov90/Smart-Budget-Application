@@ -16,7 +16,9 @@ import { setContribution, getContributionSummary } from '@/lib/services/contribu
 import { NotHouseholdMemberError } from '@/lib/services/householdService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
+const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
 
 function membershipClient(householdId: string | null) {
   return {

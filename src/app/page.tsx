@@ -13,15 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Container,
-  Heading,
-  Text,
-  Button,
-  VStack,
-  HStack,
-  useToast,
-} from '@chakra-ui/react';
+import { Container, Heading, Text, Button, VStack, HStack, useToast } from '@chakra-ui/react';
 import { createClient } from '@/lib/supabase/client';
 import { OnboardingModal } from '@/components/common/OnboardingModal';
 import type { User } from '@supabase/supabase-js';
@@ -45,8 +37,7 @@ export default function Home() {
 
       // Story 5.1: Redirect authenticated users to dashboard
       if (currentUser) {
-        const onboardingCompleted =
-          currentUser.user_metadata?.onboarding_completed === true;
+        const onboardingCompleted = currentUser.user_metadata?.onboarding_completed === true;
 
         if (!onboardingCompleted) {
           setShowOnboarding(true);
@@ -94,7 +85,10 @@ export default function Home() {
   }, [toast]);
 
   // Story 11.1: Handle onboarding completion with profile data
-  const handleOnboardingComplete = async (data: { displayName?: string; currencyFormat: string }) => {
+  const handleOnboardingComplete = async (data: {
+    displayName?: string;
+    currencyFormat: string;
+  }) => {
     setShowOnboarding(false);
 
     // Save display name, currency, and onboarding_completed to user profile (dual storage consistency)
@@ -129,7 +123,7 @@ export default function Home() {
 
     toast({
       title: 'Welcome aboard!',
-      description: 'You\'re all set to start tracking your finances.',
+      description: "You're all set to start tracking your finances.",
       status: 'success',
       duration: 3000,
       isClosable: true,
@@ -168,14 +162,15 @@ export default function Home() {
   const initializeFeatureState = async () => {
     if (!user) return;
     try {
-      const { error: featureStateError } = await supabase
-        .from('user_feature_state')
-        .upsert({
+      const { error: featureStateError } = await supabase.from('user_feature_state').upsert(
+        {
           user_id: user.id,
           transactions_count: 0,
           days_active: 0,
           features_unlocked: [],
-        }, { onConflict: 'user_id' });
+        },
+        { onConflict: 'user_id' }
+      );
 
       if (featureStateError) {
         console.error('Failed to initialize feature state:', featureStateError);
@@ -186,10 +181,7 @@ export default function Home() {
   };
 
   // Extract default display name from OAuth metadata
-  const defaultDisplayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    '';
+  const defaultDisplayName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
 
   // Show onboarding modal if user is authenticated but hasn't completed onboarding
   if (!loading && user && showOnboarding) {

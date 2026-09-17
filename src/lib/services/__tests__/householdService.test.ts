@@ -15,10 +15,16 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
-import { createHousehold, getCurrentHousehold, HouseholdExistsError } from '@/lib/services/householdService';
+import {
+  createHousehold,
+  getCurrentHousehold,
+  HouseholdExistsError,
+} from '@/lib/services/householdService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockCreateServiceRoleClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
+const mockCreateServiceRoleClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
 
 const HOUSEHOLD = {
   id: 'h-1',
@@ -37,14 +43,22 @@ interface AdminOpts {
 }
 
 function makeAdminMock(opts: AdminOpts) {
-  const { existingMembership = null, existingErr = null, household = HOUSEHOLD, householdErr = null, memberErr = null } = opts;
+  const {
+    existingMembership = null,
+    existingErr = null,
+    household = HOUSEHOLD,
+    householdErr = null,
+    memberErr = null,
+  } = opts;
   const deleteEq = jest.fn().mockResolvedValue({ error: null });
   const from = jest.fn((table: string) => {
     if (table === 'household_members') {
       return {
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            maybeSingle: jest.fn().mockResolvedValue({ data: existingMembership, error: existingErr }),
+            maybeSingle: jest
+              .fn()
+              .mockResolvedValue({ data: existingMembership, error: existingErr }),
           }),
         }),
         insert: jest.fn().mockResolvedValue({ error: memberErr }),
@@ -94,7 +108,9 @@ describe('createHousehold', () => {
     const { client } = makeAdminMock({ existingMembership: { id: 'm-1' } });
     mockCreateServiceRoleClient.mockReturnValue(client as never);
 
-    await expect(createHousehold('user-1', 'Second Home')).rejects.toBeInstanceOf(HouseholdExistsError);
+    await expect(createHousehold('user-1', 'Second Home')).rejects.toBeInstanceOf(
+      HouseholdExistsError
+    );
   });
 
   it('rejects an empty/whitespace name without touching the database', async () => {

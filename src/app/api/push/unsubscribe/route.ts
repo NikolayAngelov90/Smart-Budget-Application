@@ -12,13 +12,16 @@ import { logger } from '@/lib/utils/logger';
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
-    const body = await request.json() as { endpoint?: string };
+    const body = (await request.json()) as { endpoint?: string };
 
     if (!body.endpoint) {
       return NextResponse.json(
@@ -35,7 +38,10 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       logger.error('PushUnsubscribe', 'Failed to delete subscription:', error);
-      return NextResponse.json({ error: { message: 'Failed to remove subscription' } }, { status: 500 });
+      return NextResponse.json(
+        { error: { message: 'Failed to remove subscription' } },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true }, { status: 200 });

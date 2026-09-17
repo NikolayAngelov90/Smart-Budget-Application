@@ -88,15 +88,11 @@ export function ConfirmDeleteModal({
               <AlertIcon />
               <VStack align="start" spacing={1}>
                 <AlertTitle>{t('cannotBeUndone')}</AlertTitle>
-                <AlertDescription>
-                  {t('allDataDeleted')}
-                </AlertDescription>
+                <AlertDescription>{t('allDataDeleted')}</AlertDescription>
               </VStack>
             </Alert>
 
-            <Text color="fg.muted">
-              {t('exportBeforeDelete')}
-            </Text>
+            <Text color="fg.muted">{t('exportBeforeDelete')}</Text>
 
             <FormControl isRequired>
               <FormLabel>{t('enterPasswordToConfirm')}</FormLabel>

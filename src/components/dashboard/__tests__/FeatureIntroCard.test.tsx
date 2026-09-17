@@ -40,7 +40,12 @@ const hookResult = (over: Partial<ReturnType<typeof useFeatureDisclosure>>) =>
     ...over,
   }) as ReturnType<typeof useFeatureDisclosure>;
 
-const renderCard = () => render(<ChakraProvider><FeatureIntroCard /></ChakraProvider>);
+const renderCard = () =>
+  render(
+    <ChakraProvider>
+      <FeatureIntroCard />
+    </ChakraProvider>
+  );
 
 describe('FeatureIntroCard', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -80,7 +85,9 @@ describe('FeatureIntroCard', () => {
     mockUse.mockReturnValue(hookResult({ pending: ['heatmap'], acknowledge }));
     renderCard();
 
-    expect(screen.getByText("You've logged 30 transactions — check out your Spending Heatmap.")).toBeInTheDocument();
+    expect(
+      screen.getByText("You've logged 30 transactions — check out your Spending Heatmap.")
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText('Got it'));
 
     expect(acknowledge).toHaveBeenCalledWith('heatmap');

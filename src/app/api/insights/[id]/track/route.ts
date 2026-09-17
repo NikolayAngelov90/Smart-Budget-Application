@@ -31,10 +31,7 @@ type EngagementEventType = 'view' | 'metadata_expand';
  *   "message": "Event tracked successfully"
  * }
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Authenticate user
     const supabase = await createClient();
@@ -153,10 +150,7 @@ export async function POST(
     }
 
     // Should never reach here due to validation above
-    return NextResponse.json(
-      { success: false, error: 'Invalid event type' },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: 'Invalid event type' }, { status: 400 });
   } catch (error) {
     logger.error('Analytics', 'Error tracking engagement:', error);
 

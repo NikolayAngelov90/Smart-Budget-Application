@@ -6,11 +6,7 @@
  * which have a pending introduction (unlocked but not yet acknowledged).
  */
 
-import {
-  FEATURE_DISCLOSURE,
-  FEATURE_KEYS,
-  type FeatureKey,
-} from '@/lib/ai/disclosureCatalog';
+import { FEATURE_DISCLOSURE, FEATURE_KEYS, type FeatureKey } from '@/lib/ai/disclosureCatalog';
 
 export interface DisclosureState {
   transactions_count: number;
@@ -31,10 +27,7 @@ export interface DisclosureResult {
  *   forcing intros — opting in to see all features should not spam the user
  *   with a stack of "new feature!" cards.
  */
-export function computeDisclosure(
-  state: DisclosureState,
-  showAll: boolean
-): DisclosureResult {
+export function computeDisclosure(state: DisclosureState, showAll: boolean): DisclosureResult {
   const metricValue = (metric: 'transactions_count' | 'days_active'): number => {
     const raw = state[metric];
     // unknowable / absent != met — treat as 0 (never over-unlock on bad data)

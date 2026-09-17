@@ -16,10 +16,10 @@ export interface CategoryChangeData {
   categoryId: string;
   categoryName: string;
   categoryColor: string;
-  currentAmount: number;              // Spending this month
-  previousAmount: number;             // Spending last month
-  percentChange: number;              // ((current - previous) / previous) * 100
-  absoluteChange: number;             // current - previous
+  currentAmount: number; // Spending this month
+  previousAmount: number; // Spending last month
+  percentChange: number; // ((current - previous) / previous) * 100
+  absoluteChange: number; // current - previous
   direction: 'increase' | 'decrease'; // For rendering up/down arrows
 }
 
@@ -27,9 +27,9 @@ export interface CategoryChangeData {
  * API response type for month-over-month comparison
  */
 export interface MonthOverMonthResponse {
-  changes: CategoryChangeData[];      // Filtered to significant changes (>20%)
-  currentMonth: string;               // YYYY-MM
-  previousMonth: string;              // YYYY-MM
+  changes: CategoryChangeData[]; // Filtered to significant changes (>20%)
+  currentMonth: string; // YYYY-MM
+  previousMonth: string; // YYYY-MM
 }
 
 /**
@@ -67,24 +67,20 @@ export function useMonthOverMonth(month?: string): UseMonthOverMonthResult {
     ? `/api/dashboard/month-over-month?month=${month}`
     : '/api/dashboard/month-over-month';
 
-  const { data, error, isLoading, mutate } = useSWR<MonthOverMonthResponse>(
-    url,
-    fetcher,
-    {
-      // Deduplicate requests within 5 seconds for reasonable caching
-      dedupingInterval: 5000,
-      // Revalidate when window regains focus
-      revalidateOnFocus: true,
-      // Revalidate on network reconnect
-      revalidateOnReconnect: true,
-      // Revalidate on mount
-      revalidateOnMount: true,
-      // Keep previous data while revalidating
-      keepPreviousData: true,
-      // Disable automatic revalidation interval (we'll use Realtime instead)
-      refreshInterval: 0,
-    }
-  );
+  const { data, error, isLoading, mutate } = useSWR<MonthOverMonthResponse>(url, fetcher, {
+    // Deduplicate requests within 5 seconds for reasonable caching
+    dedupingInterval: 5000,
+    // Revalidate when window regains focus
+    revalidateOnFocus: true,
+    // Revalidate on network reconnect
+    revalidateOnReconnect: true,
+    // Revalidate on mount
+    revalidateOnMount: true,
+    // Keep previous data while revalidating
+    keepPreviousData: true,
+    // Disable automatic revalidation interval (we'll use Realtime instead)
+    refreshInterval: 0,
+  });
 
   return {
     data,

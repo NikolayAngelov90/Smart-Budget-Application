@@ -40,7 +40,10 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 
     // If profile doesn't exist, create it (for existing users before migration)
     if (profileError && profileError.code === 'PGRST116') {
-      logger.info('SettingsService', `Profile not found, creating default profile for user: ${userId}`);
+      logger.info(
+        'SettingsService',
+        `Profile not found, creating default profile for user: ${userId}`
+      );
 
       const defaultPreferences = {
         // eslint-disable-next-line no-restricted-syntax
@@ -150,7 +153,6 @@ function isMissingFunction(error: unknown): boolean {
     /could not find the function|does not exist/i.test(e.message ?? '')
   );
 }
-
 
 /**
  * Update user profile
@@ -312,10 +314,7 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
     const supabase = await createClient();
 
     // Delete user profile (cascades to auth.users via ON DELETE CASCADE)
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .delete()
-      .eq('id', userId);
+    const { error: profileError } = await supabase.from('user_profiles').delete().eq('id', userId);
 
     if (profileError) {
       logger.error('SettingsService', 'Error deleting user profile:', profileError);

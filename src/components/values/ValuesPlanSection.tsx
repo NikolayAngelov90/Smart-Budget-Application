@@ -34,7 +34,15 @@ import {
   MenuItem,
   useToast,
 } from '@chakra-ui/react';
-import { ChevronUpIcon, ChevronDownIcon, AddIcon, CheckIcon, CloseIcon, DeleteIcon, EditIcon } from '@chakra-ui/icons';
+import {
+  ChevronUpIcon,
+  ChevronDownIcon,
+  AddIcon,
+  CheckIcon,
+  CloseIcon,
+  DeleteIcon,
+  EditIcon,
+} from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
 import { useValues } from '@/lib/hooks/useValues';
@@ -60,7 +68,8 @@ export function ValuesPlanSection() {
 
   const fail = (msg?: string) =>
     toast({ title: msg || t('saveFailed'), status: 'error', duration: 5000, isClosable: true });
-  const ok = (msg: string) => toast({ title: msg, status: 'success', duration: 2500, isClosable: true });
+  const ok = (msg: string) =>
+    toast({ title: msg, status: 'success', duration: 2500, isClosable: true });
 
   const handleAdd = async () => {
     const name = newName.trim();
@@ -122,7 +131,9 @@ export function ValuesPlanSection() {
     orderedIds[target] = a;
     // Optimistic
     const byId = new Map(values.map((v) => [v.id, v]));
-    const reordered = orderedIds.map((id) => byId.get(id)).filter((v): v is ValueWithCategories => v !== undefined);
+    const reordered = orderedIds
+      .map((id) => byId.get(id))
+      .filter((v): v is ValueWithCategories => v !== undefined);
     await mutate({ data: reordered }, false);
     try {
       const res = await fetch('/api/values/reorder', {
@@ -254,7 +265,10 @@ function ValueRow({
   const unassigned = categories.filter((c) => !assigned.has(c.id));
 
   const removeCategory = (categoryId: string) =>
-    onSetCategories(value.id, value.category_ids.filter((id) => id !== categoryId));
+    onSetCategories(
+      value.id,
+      value.category_ids.filter((id) => id !== categoryId)
+    );
   const addCategory = (categoryId: string) =>
     onSetCategories(value.id, [...value.category_ids, categoryId]);
 
@@ -280,7 +294,8 @@ function ValueRow({
                 size="sm"
                 colorScheme="green"
                 onClick={() => {
-                  if (editName.trim() && editName.trim() !== value.name) onRename(value.id, editName.trim());
+                  if (editName.trim() && editName.trim() !== value.name)
+                    onRename(value.id, editName.trim());
                   setIsEditing(false);
                 }}
               />

@@ -17,17 +17,17 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export interface MonthlyTrendData {
-  month: string;                      // YYYY-MM format
-  monthLabel: string;                 // "Jan", "Feb", "Mar" for chart display
-  income: number;                     // Total income for this month
-  expenses: number;                   // Total expenses for this month
-  net: number;                        // income - expenses
+  month: string; // YYYY-MM format
+  monthLabel: string; // "Jan", "Feb", "Mar" for chart display
+  income: number; // Total income for this month
+  expenses: number; // Total expenses for this month
+  net: number; // income - expenses
 }
 
 export interface SpendingTrendsResponse {
-  months: MonthlyTrendData[];         // Last N months (default 6)
-  startDate: string;                  // ISO date of first month
-  endDate: string;                    // ISO date of last month
+  months: MonthlyTrendData[]; // Last N months (default 6)
+  startDate: string; // ISO date of first month
+  endDate: string; // ISO date of last month
 }
 
 /**
@@ -85,10 +85,7 @@ export async function GET(request: NextRequest) {
 
     if (transactionsError) {
       logger.error('Dashboard', 'Error fetching transactions:', transactionsError);
-      return NextResponse.json(
-        { error: 'Failed to fetch trends data' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch trends data' }, { status: 500 });
     }
 
     // Aggregate by month (client-side aggregation)
@@ -141,9 +138,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     logger.error('Dashboard', 'Unexpected error in trends API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

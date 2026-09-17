@@ -33,7 +33,9 @@ import { logger } from '@/lib/utils/logger';
 import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { GET } from '../route';
 
-const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
+const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
 const mockDispatch = dispatchCategorizedPush as jest.MockedFunction<typeof dispatchCategorizedPush>;
 
 /**
@@ -65,8 +67,7 @@ function makeClient(pages: Array<{ data: unknown; error: unknown }>) {
   };
 }
 
-const req = (auth?: string) =>
-  ({ headers: { get: () => auth ?? null } }) as never;
+const req = (auth?: string) => ({ headers: { get: () => auth ?? null } }) as never;
 
 const OLD_ENV = process.env;
 
@@ -95,7 +96,13 @@ describe('GET /api/cron/reengagement-push', () => {
 
   it('pushes exactly the day-7 users through the gate (opt-in enforced there)', async () => {
     const client = makeClient([
-      { data: [{ user_id: 'u-1', last_log_date: expectedDayKey }, { user_id: 'u-2', last_log_date: expectedDayKey }], error: null },
+      {
+        data: [
+          { user_id: 'u-1', last_log_date: expectedDayKey },
+          { user_id: 'u-2', last_log_date: expectedDayKey },
+        ],
+        error: null,
+      },
     ]);
     mockServiceClient.mockReturnValue(client as never);
 
@@ -132,7 +139,11 @@ describe('GET /api/cron/reengagement-push', () => {
   it('counts gate outcomes truthfully (the gate never throws — outcomes ARE the telemetry)', async () => {
     const client = makeClient([
       {
-        data: [{ user_id: 'u-1', last_log_date: expectedDayKey }, { user_id: 'u-2', last_log_date: expectedDayKey }, { user_id: 'u-3', last_log_date: expectedDayKey }],
+        data: [
+          { user_id: 'u-1', last_log_date: expectedDayKey },
+          { user_id: 'u-2', last_log_date: expectedDayKey },
+          { user_id: 'u-3', last_log_date: expectedDayKey },
+        ],
         error: null,
       },
     ]);
@@ -157,7 +168,10 @@ describe('GET /api/cron/reengagement-push', () => {
   });
 
   it('paginates past a full page instead of truncating the cohort', async () => {
-    const fullPage = Array.from({ length: 500 }, (_, i) => ({ user_id: `u-${i}`, last_log_date: expectedDayKey }));
+    const fullPage = Array.from({ length: 500 }, (_, i) => ({
+      user_id: `u-${i}`,
+      last_log_date: expectedDayKey,
+    }));
     const client = makeClient([
       { data: fullPage, error: null },
       { data: [{ user_id: 'u-500', last_log_date: expectedDayKey }], error: null },
@@ -179,7 +193,10 @@ describe('GET /api/cron/reengagement-push', () => {
   });
 
   it('warns when the cohort hits the hard cap (remainder is permanently skipped)', async () => {
-    const fullPage = Array.from({ length: 500 }, (_, i) => ({ user_id: `u-${i}`, last_log_date: expectedDayKey }));
+    const fullPage = Array.from({ length: 500 }, (_, i) => ({
+      user_id: `u-${i}`,
+      last_log_date: expectedDayKey,
+    }));
     // Every page full — the route stops at MAX_USERS (5000 = 10 pages)
     const client = makeClient([{ data: fullPage, error: null }]);
     mockServiceClient.mockReturnValue(client as never);

@@ -55,7 +55,11 @@ export function SharedGoalsCard() {
       const res = await fetch('/api/households/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), target_amount: targetNum, deadline: deadline || null }),
+        body: JSON.stringify({
+          name: name.trim(),
+          target_amount: targetNum,
+          deadline: deadline || null,
+        }),
       });
       if (!res.ok) throw new Error(t('createFailed'));
       await mutate();
@@ -65,7 +69,12 @@ export function SharedGoalsCard() {
       setCreating(false);
       toast({ title: t('created'), status: 'success', duration: 3000, isClosable: true });
     } catch (e) {
-      toast({ title: e instanceof Error ? e.message : t('createFailed'), status: 'error', duration: 4000, isClosable: true });
+      toast({
+        title: e instanceof Error ? e.message : t('createFailed'),
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
     } finally {
       setBusy(false);
     }
@@ -90,7 +99,12 @@ export function SharedGoalsCard() {
       setAmount('');
       toast({ title: t('contributed'), status: 'success', duration: 3000, isClosable: true });
     } catch (e) {
-      toast({ title: e instanceof Error ? e.message : t('contributeFailed'), status: 'error', duration: 4000, isClosable: true });
+      toast({
+        title: e instanceof Error ? e.message : t('contributeFailed'),
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
     } finally {
       setBusy(false);
     }
@@ -105,7 +119,13 @@ export function SharedGoalsCard() {
               {t('heading')}
             </Heading>
             {!creating && (
-              <Button size="sm" colorScheme="brand" variant="ghost" onClick={() => setCreating(true)} minH={{ base: '44px', sm: '32px' }}>
+              <Button
+                size="sm"
+                colorScheme="brand"
+                variant="ghost"
+                onClick={() => setCreating(true)}
+                minH={{ base: '44px', sm: '32px' }}
+              >
                 {t('newGoal')}
               </Button>
             )}
@@ -113,16 +133,54 @@ export function SharedGoalsCard() {
 
           {creating && (
             <VStack align="stretch" spacing={2} bg="surface.sunken" p={3} borderRadius="md">
-              <Input size="sm" placeholder={t('name')} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} aria-label={t('name')} minH={{ base: '44px', sm: '32px' }} />
+              <Input
+                size="sm"
+                placeholder={t('name')}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={100}
+                aria-label={t('name')}
+                minH={{ base: '44px', sm: '32px' }}
+              />
               <Stack direction={{ base: 'column', sm: 'row' }} spacing={2}>
-                <Input size="sm" type="number" min={0} step="0.01" placeholder={t('target')} value={target} onChange={(e) => setTarget(e.target.value)} aria-label={t('target')} minH={{ base: '44px', sm: '32px' }} />
-                <Input size="sm" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} aria-label={t('deadline')} minH={{ base: '44px', sm: '32px' }} />
+                <Input
+                  size="sm"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder={t('target')}
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  aria-label={t('target')}
+                  minH={{ base: '44px', sm: '32px' }}
+                />
+                <Input
+                  size="sm"
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  aria-label={t('deadline')}
+                  minH={{ base: '44px', sm: '32px' }}
+                />
               </Stack>
               <HStack justify="flex-end">
-                <Button size="sm" variant="ghost" onClick={() => setCreating(false)} isDisabled={busy} minH={{ base: '44px', sm: '32px' }}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setCreating(false)}
+                  isDisabled={busy}
+                  minH={{ base: '44px', sm: '32px' }}
+                >
                   {t('cancel')}
                 </Button>
-                <Button size="sm" colorScheme="brand" onClick={handleCreate} isLoading={busy} loadingText={t('create')} minH={{ base: '44px', sm: '32px' }}>
+                <Button
+                  size="sm"
+                  colorScheme="brand"
+                  onClick={handleCreate}
+                  isLoading={busy}
+                  loadingText={t('create')}
+                  minH={{ base: '44px', sm: '32px' }}
+                >
                   {t('create')}
                 </Button>
               </HStack>
@@ -135,7 +193,10 @@ export function SharedGoalsCard() {
             </Text>
           ) : (
             goals.map(({ goal, breakdown }) => {
-              const pct = goal.target_amount > 0 ? Math.min(100, (goal.current_amount / goal.target_amount) * 100) : 0;
+              const pct =
+                goal.target_amount > 0
+                  ? Math.min(100, (goal.current_amount / goal.target_amount) * 100)
+                  : 0;
               return (
                 <Box key={goal.id}>
                   <Divider mb={2} />
@@ -144,7 +205,8 @@ export function SharedGoalsCard() {
                       {goal.name}
                     </Text>
                     <Text fontSize="xs" color="fg.subtle">
-                      {formatAmount(goal.current_amount, currency)} / {formatAmount(goal.target_amount, currency)}
+                      {formatAmount(goal.current_amount, currency)} /{' '}
+                      {formatAmount(goal.target_amount, currency)}
                     </Text>
                   </HStack>
                   <Progress value={pct} size="sm" borderRadius="full" colorScheme="brand" mb={2} />
@@ -178,15 +240,36 @@ export function SharedGoalsCard() {
                         maxW={{ base: 'full', sm: '140px' }}
                         minH={{ base: '44px', sm: '32px' }}
                       />
-                      <Button size="sm" colorScheme="brand" onClick={() => handleContribute(goal.id)} isLoading={busy} loadingText={t('save')} minH={{ base: '44px', sm: '32px' }}>
+                      <Button
+                        size="sm"
+                        colorScheme="brand"
+                        onClick={() => handleContribute(goal.id)}
+                        isLoading={busy}
+                        loadingText={t('save')}
+                        minH={{ base: '44px', sm: '32px' }}
+                      >
                         {t('save')}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setContributeFor(null)} isDisabled={busy} minH={{ base: '44px', sm: '32px' }}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setContributeFor(null)}
+                        isDisabled={busy}
+                        minH={{ base: '44px', sm: '32px' }}
+                      >
                         {t('cancel')}
                       </Button>
                     </Stack>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => { setContributeFor(goal.id); setAmount(''); }} minH={{ base: '44px', sm: '32px' }}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setContributeFor(goal.id);
+                        setAmount('');
+                      }}
+                      minH={{ base: '44px', sm: '32px' }}
+                    >
                       {t('contribute')}
                     </Button>
                   )}

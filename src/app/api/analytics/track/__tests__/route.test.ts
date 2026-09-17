@@ -141,11 +141,7 @@ describe('POST /api/analytics/track', () => {
     });
 
     it('accepts valid event_name values', async () => {
-      const validEvents = [
-        'insights_page_viewed',
-        'insight_viewed',
-        'insight_dismissed',
-      ];
+      const validEvents = ['insights_page_viewed', 'insight_viewed', 'insight_dismissed'];
 
       for (const eventName of validEvents) {
         mockSingle.mockResolvedValueOnce({

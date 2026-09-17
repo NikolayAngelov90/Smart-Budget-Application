@@ -6,10 +6,6 @@ export const metadata: Metadata = {
   description: 'Your financial dashboard with AI-powered insights',
 };
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return <AppLayout>{children}</AppLayout>;
 }

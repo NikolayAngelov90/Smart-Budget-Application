@@ -32,7 +32,9 @@ function PeriodOption({ label, ...radioProps }: UseRadioProps & { label: string 
           box below aria-hidden (the input carries the semantics), so the
           visible text contributes NOTHING to the accessible name. Without
           this the group announces as four unnamed radio buttons. */}
-      <input {...getInputProps({ 'aria-label': label } as React.InputHTMLAttributes<HTMLInputElement>)} />
+      <input
+        {...getInputProps({ 'aria-label': label } as React.InputHTMLAttributes<HTMLInputElement>)}
+      />
       <Box
         {...getRadioProps()}
         // 44px minimum: this is a primary mobile control.

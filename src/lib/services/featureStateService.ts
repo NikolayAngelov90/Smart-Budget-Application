@@ -86,10 +86,7 @@ export async function getFeatureState(userId: string): Promise<FeatureState> {
  *
  * @param todayKey yyyy-MM-dd (DATE-col compare rule — never new Date()/ISO).
  */
-export async function recordFeatureActivity(
-  userId: string,
-  todayKey: string
-): Promise<void> {
+export async function recordFeatureActivity(userId: string, todayKey: string): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc('record_feature_activity', { p_today: todayKey });
 

@@ -50,7 +50,12 @@ export function analyzeSeasonalPatterns(input: SeasonalAnalysisInput): SeasonalA
   const hasEnoughData = monthsAnalyzed >= MIN_MONTHS;
 
   if (!hasEnoughData) {
-    return { timeline: [], baseline_monthly: baselineMonthly, months_analyzed: monthsAnalyzed, hasEnoughData: false };
+    return {
+      timeline: [],
+      baseline_monthly: baselineMonthly,
+      months_analyzed: monthsAnalyzed,
+      hasEnoughData: false,
+    };
   }
 
   // Build a month-of-year lookup (1-12 → latest matching {key,total})
@@ -74,7 +79,8 @@ export function analyzeSeasonalPatterns(input: SeasonalAnalysisInput): SeasonalA
     const monthIndex = d.getMonth() + 1;
     const basis = monthOfYearLookup.get(monthIndex) ?? null;
     const predicted = round2(basis?.total ?? 0);
-    const isSeasonalHigh = baselineMonthly > 0 && predicted >= baselineMonthly * SEASONAL_HIGH_MULTIPLIER;
+    const isSeasonalHigh =
+      baselineMonthly > 0 && predicted >= baselineMonthly * SEASONAL_HIGH_MULTIPLIER;
 
     timeline.push({
       month: monthKey,
@@ -86,5 +92,10 @@ export function analyzeSeasonalPatterns(input: SeasonalAnalysisInput): SeasonalA
     });
   }
 
-  return { timeline, baseline_monthly: baselineMonthly, months_analyzed: monthsAnalyzed, hasEnoughData: true };
+  return {
+    timeline,
+    baseline_monthly: baselineMonthly,
+    months_analyzed: monthsAnalyzed,
+    hasEnoughData: true,
+  };
 }

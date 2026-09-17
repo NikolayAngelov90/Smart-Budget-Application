@@ -180,10 +180,7 @@ export async function GET(request: NextRequest) {
 
     if (fetchError) {
       logger.error('Transactions', 'Error fetching transactions:', fetchError);
-      return NextResponse.json(
-        { error: 'Failed to fetch transactions' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 500 });
     }
 
     // If search query exists and includes text (not just numbers),
@@ -208,10 +205,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logger.error('Transactions', 'Unexpected error in GET /api/transactions:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -246,10 +240,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.amount || body.amount <= 0) {
-      return NextResponse.json(
-        { error: 'Amount must be a positive number' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 });
     }
 
     if (!body.type || !['income', 'expense'].includes(body.type)) {
@@ -260,10 +251,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!body.category_id) {
-      return NextResponse.json(
-        { error: 'Category is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Category is required' }, { status: 400 });
     }
 
     if (!body.date) {
@@ -276,18 +264,12 @@ export async function POST(request: NextRequest) {
     today.setHours(23, 59, 59, 999); // End of today
 
     if (transactionDate > today) {
-      return NextResponse.json(
-        { error: 'Date cannot be in the future' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Date cannot be in the future' }, { status: 400 });
     }
 
     // Validate notes length if provided
     if (body.notes && body.notes.length > 100) {
-      return NextResponse.json(
-        { error: 'Notes must be 100 characters or less' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Notes must be 100 characters or less' }, { status: 400 });
     }
 
     // Verify category is usable by the caller. RLS scopes to own personal categories
@@ -316,9 +298,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Story 10-6: Validate currency if provided
-    const currency = body.currency && (SUPPORTED_CURRENCIES as readonly string[]).includes(body.currency)
-      ? body.currency
-      : DEFAULT_CURRENCY;
+    const currency =
+      body.currency && (SUPPORTED_CURRENCIES as readonly string[]).includes(body.currency)
+        ? body.currency
+        : DEFAULT_CURRENCY;
 
     // Story 13.6: a transaction can be tagged to the caller's personal allowance (private).
     // Such a transaction must NOT be in a shared category, and is forced personal
@@ -345,10 +328,7 @@ export async function POST(request: NextRequest) {
         .eq('id', body.allowance_id)
         .maybeSingle();
       if (!allowance) {
-        return NextResponse.json(
-          { error: 'Invalid allowance' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Invalid allowance' }, { status: 400 });
       }
       allowanceId = allowance.id;
     }
@@ -391,10 +371,7 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       logger.error('Transactions', 'Error creating transaction:', insertError);
-      return NextResponse.json(
-        { error: 'Failed to create transaction' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to create transaction' }, { status: 500 });
     }
 
     // Async trigger: Check if 10+ transactions added and generate insights if needed
@@ -478,8 +455,7 @@ export async function POST(request: NextRequest) {
     // is a log (quick-add on any page), recordLogActivity has just destroyed
     // the stale row — but it handed us the PRE-advance snapshot. Anchor the
     // window at this transaction's created_at so this log counts toward the 3.
-    let challengeForCompletion =
-      latestChallenge?.status === 'active' ? latestChallenge : null;
+    let challengeForCompletion = latestChallenge?.status === 'active' ? latestChallenge : null;
     if (
       !challengeForCompletion &&
       streakResult?.previous &&
@@ -543,10 +519,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     logger.error('Transactions', 'Unexpected error in POST /api/transactions:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -583,10 +556,7 @@ async function fetchAchievementPrereqs(
 ): Promise<{ alreadyUnlocked: Set<string>; transactionCount: number | undefined }> {
   const [unlocked, countResult] = await Promise.all([
     getUnlocked(userId),
-    supabase
-      .from('transactions')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId),
+    supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('user_id', userId),
   ]);
 
   // Count unavailable → skip count conditions (unknowable ≠ 0), keep streak ones
@@ -664,7 +634,8 @@ async function evaluateNudgeForTransaction(
     .eq('id', userId)
     .maybeSingle();
   const prefs = (profile?.preferences ?? {}) as { currency_format?: unknown };
-  const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
+  const currency =
+    typeof prefs.currency_format === 'string' ? prefs.currency_format : DEFAULT_CURRENCY;
 
   const [currentResult, historicalResult, goalResult, budgetResult] = await Promise.all([
     supabase

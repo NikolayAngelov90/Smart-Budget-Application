@@ -35,20 +35,13 @@ interface GoalProgressProps {
 
 export function GoalProgress({ currentAmount, targetAmount, currency }: GoalProgressProps) {
   const t = useTranslations('goals');
-  const percentage = targetAmount > 0
-    ? Math.min(100, Math.round((currentAmount / targetAmount) * 100))
-    : 0;
+  const percentage =
+    targetAmount > 0 ? Math.min(100, Math.round((currentAmount / targetAmount) * 100)) : 0;
   const isCompleted = percentage >= 100;
 
   return (
     <Box>
-      <Progress
-        value={percentage}
-        colorScheme="brand"
-        borderRadius="full"
-        size="sm"
-        mb={1}
-      />
+      <Progress value={percentage} colorScheme="brand" borderRadius="full" size="sm" mb={1} />
       <Text fontSize="xs" color="fg.muted">
         {formatAmount(currentAmount, currency)} / {formatAmount(targetAmount, currency)}
       </Text>

@@ -36,7 +36,11 @@ rlsDescribe('Shared household goals (Story 13.9)', () => {
     bId = await createTestUser(bEmail, PWD);
     outId = await createTestUser(outEmail, PWD);
 
-    const { data: h } = await svc.from('households').insert({ name: 'Goals HH', created_by: aId }).select('id').single();
+    const { data: h } = await svc
+      .from('households')
+      .insert({ name: 'Goals HH', created_by: aId })
+      .select('id')
+      .single();
     householdId = h!.id;
     await svc.from('household_members').insert([
       { household_id: householdId, user_id: aId, role: 'admin' },
@@ -46,7 +50,13 @@ rlsDescribe('Shared household goals (Story 13.9)', () => {
     // Shared goal owned by A, with contributions from A (100) and B (50).
     const { data: sg } = await svc
       .from('goals')
-      .insert({ user_id: aId, household_id: householdId, name: 'Vacation', target_amount: 1000, current_amount: 150 })
+      .insert({
+        user_id: aId,
+        household_id: householdId,
+        name: 'Vacation',
+        target_amount: 1000,
+        current_amount: 150,
+      })
       .select('id')
       .single();
     sharedGoalId = sg!.id;
@@ -91,7 +101,12 @@ rlsDescribe('Shared household goals (Story 13.9)', () => {
   it('household_goal_breakdown returns per-member sums to a member', async () => {
     const b = await signInAsTestUser(bEmail, PWD);
     const { data } = await b.rpc('household_goal_breakdown', { p_goal_id: sharedGoalId });
-    const byUser = Object.fromEntries((data ?? []).map((r: { user_id: string; contributed: number }) => [r.user_id, Number(r.contributed)]));
+    const byUser = Object.fromEntries(
+      (data ?? []).map((r: { user_id: string; contributed: number }) => [
+        r.user_id,
+        Number(r.contributed),
+      ])
+    );
     expect(byUser[aId]).toBe(100);
     expect(byUser[bId]).toBe(50);
   });

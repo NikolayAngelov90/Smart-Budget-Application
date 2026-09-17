@@ -34,27 +34,18 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: { message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
     const goal = await getGoal(supabase, user.id, id);
     if (!goal) {
-      return NextResponse.json(
-        { error: { message: 'Not found' } },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: { message: 'Not found' } }, { status: 404 });
     }
 
     return NextResponse.json(goal);
   } catch (error) {
     logger.error('GoalsAPI', 'Error fetching goal:', error);
-    return NextResponse.json(
-      { error: { message: 'Failed to manage goals' } },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: { message: 'Failed to manage goals' } }, { status: 500 });
   }
 }
 
@@ -72,13 +63,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: { message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
-    const body = await request.json() as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
     const updates: Record<string, unknown> = {};
 
     if (body.name !== undefined) {
@@ -131,16 +119,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   } catch (error) {
     const msg = error instanceof Error ? error.message : '';
     if (msg === 'Goal not found') {
-      return NextResponse.json(
-        { error: { message: 'Not found' } },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: { message: 'Not found' } }, { status: 404 });
     }
     logger.error('GoalsAPI', 'Error updating goal:', error);
-    return NextResponse.json(
-      { error: { message: 'Failed to manage goals' } },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: { message: 'Failed to manage goals' } }, { status: 500 });
   }
 }
 
@@ -157,19 +139,13 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: { message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
     await deleteGoal(supabase, user.id, id);
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error('GoalsAPI', 'Error deleting goal:', error);
-    return NextResponse.json(
-      { error: { message: 'Failed to manage goals' } },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: { message: 'Failed to manage goals' } }, { status: 500 });
   }
 }

@@ -31,7 +31,9 @@ import { GET, POST } from '../route';
 import { PATCH } from '../[id]/route';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockGetActive = getActivePlanWithProgress as jest.MockedFunction<typeof getActivePlanWithProgress>;
+const mockGetActive = getActivePlanWithProgress as jest.MockedFunction<
+  typeof getActivePlanWithProgress
+>;
 const mockGenerate = generatePlan as jest.MockedFunction<typeof generatePlan>;
 const mockUpdateStatus = updatePlanStatus as jest.MockedFunction<typeof updatePlanStatus>;
 

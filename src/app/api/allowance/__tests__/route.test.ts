@@ -23,10 +23,16 @@ jest.mock('@/lib/services/allowanceService', () => ({
 jest.mock('@/lib/services/householdService', () => ({
   NotHouseholdMemberError: class NotHouseholdMemberError extends Error {},
 }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
-import { getAllowanceStatus, upsertAllowance, deleteAllowance } from '@/lib/services/allowanceService';
+import {
+  getAllowanceStatus,
+  upsertAllowance,
+  deleteAllowance,
+} from '@/lib/services/allowanceService';
 import { NotHouseholdMemberError } from '@/lib/services/householdService';
 import { GET, PUT, DELETE } from '../route';
 
@@ -37,7 +43,11 @@ const mockDelete = deleteAllowance as jest.MockedFunction<typeof deleteAllowance
 
 function authClient(user: object | null) {
   return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }) },
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+    },
   };
 }
 function req(body: unknown) {

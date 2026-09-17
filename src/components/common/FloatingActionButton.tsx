@@ -46,11 +46,7 @@ export default function FloatingActionButton({
   const { isOnline } = useOnlineStatus();
 
   return (
-    <Tooltip
-      label={!isOnline ? 'Available when online' : ariaLabel}
-      placement="left"
-      hasArrow
-    >
+    <Tooltip label={!isOnline ? 'Available when online' : ariaLabel} placement="left" hasArrow>
       <IconButton
         aria-label={ariaLabel}
         icon={<Icon as={AddIcon} boxSize={6} />}

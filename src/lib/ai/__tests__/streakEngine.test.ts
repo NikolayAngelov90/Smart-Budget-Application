@@ -72,7 +72,10 @@ describe('advanceStreak — state machine', () => {
   });
 
   it('updates the longest-streak high-water mark', () => {
-    const { state } = advanceStreak(makeState({ current_streak: 5, longest_streak: 5 }), '2026-01-07');
+    const { state } = advanceStreak(
+      makeState({ current_streak: 5, longest_streak: 5 }),
+      '2026-01-07'
+    );
     expect(state.current_streak).toBe(6);
     expect(state.longest_streak).toBe(6);
   });
@@ -85,7 +88,7 @@ describe('advanceStreak — state machine', () => {
     expect(state.freeze_used_on).toBe('2026-01-07'); // stamped on the MISSED day
   });
 
-  it('resets on a one-day gap when this week\'s freeze is already spent', () => {
+  it("resets on a one-day gap when this week's freeze is already spent", () => {
     const prev = makeState({ last_log_date: '2026-01-08', freeze_used_on: '2026-01-08' });
     const { state, event } = advanceStreak(prev, '2026-01-10'); // gap: Jan 9 missed, same W02
     expect(event).toBe('reset');
@@ -93,7 +96,7 @@ describe('advanceStreak — state machine', () => {
     expect(state.longest_streak).toBe(5); // high-water preserved
   });
 
-  it('freezes again in a NEW ISO week even though last week\'s freeze was spent', () => {
+  it("freezes again in a NEW ISO week even though last week's freeze was spent", () => {
     // freeze consumed in W02; now logging Mon Jan 12 (W03) then gap to Jan 14
     const prev = makeState({
       last_log_date: '2026-01-12',

@@ -30,12 +30,7 @@ function makeCategory(id: string, name: string): Category {
   };
 }
 
-function makeTx(
-  id: string,
-  categoryId: string,
-  amount: number,
-  date: string
-): Transaction {
+function makeTx(id: string, categoryId: string, amount: number, date: string): Transaction {
   return {
     id,
     user_id: 'user-1',
@@ -376,7 +371,14 @@ describe('detectNewHighSpendCategories', () => {
         userId: 'user-1',
         currency: 'USD',
         transactions,
-        categories: [CAT_DINING, CAT_ENTERTAINMENT, CAT_TRANSPORT, CAT_UTILITIES, CAT_SHOPPING, CAT_HEALTH],
+        categories: [
+          CAT_DINING,
+          CAT_ENTERTAINMENT,
+          CAT_TRANSPORT,
+          CAT_UTILITIES,
+          CAT_SHOPPING,
+          CAT_HEALTH,
+        ],
         currentMonth: CURRENT_MONTH,
       });
       expect(result).toHaveLength(1);

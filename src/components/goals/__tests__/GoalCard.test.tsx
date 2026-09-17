@@ -41,7 +41,13 @@ jest.mock('next-intl', () => ({
 }));
 
 jest.mock('@/components/goals/GoalProgress', () => ({
-  GoalProgress: ({ currentAmount, targetAmount }: { currentAmount: number; targetAmount: number }) => (
+  GoalProgress: ({
+    currentAmount,
+    targetAmount,
+  }: {
+    currentAmount: number;
+    targetAmount: number;
+  }) => (
     <div data-testid="goal-progress">
       {currentAmount}/{targetAmount}
     </div>
@@ -79,8 +85,7 @@ jest.mock('@/components/goals/MilestoneOverlay', () => ({
 // HELPERS
 // ============================================================================
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 const sampleGoal: Goal = {
   id: 'goal-1',
@@ -107,54 +112,40 @@ describe('GoalCard', () => {
   });
 
   it('renders goal name', () => {
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
     expect(screen.getByText('Emergency Fund')).toBeInTheDocument();
   });
 
   it('renders GoalProgress component', () => {
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
     expect(screen.getByTestId('goal-progress')).toBeInTheDocument();
   });
 
   it('shows "No deadline" when deadline is null', () => {
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
     expect(screen.getByText(/No deadline/)).toBeInTheDocument();
   });
 
   it('shows deadline when provided', () => {
     const goalWithDeadline = { ...sampleGoal, deadline: '2027-06-01' };
-    renderWithChakra(
-      <GoalCard goal={goalWithDeadline} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={goalWithDeadline} currency="EUR" onMutate={onMutate} />);
     expect(screen.getByText(/2027-06-01/)).toBeInTheDocument();
   });
 
   it('opens edit modal on edit button click', () => {
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
     fireEvent.click(screen.getByLabelText('Edit Goal'));
     expect(screen.getByTestId('goal-form-modal')).toBeInTheDocument();
   });
 
   it('opens contribution modal on add contribution click', () => {
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
     fireEvent.click(screen.getByText('Add Contribution'));
     expect(screen.getByTestId('contribution-modal')).toBeInTheDocument();
   });
 
   it('shows delete confirmation dialog on delete button click', () => {
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
     fireEvent.click(screen.getByLabelText('Delete Goal'));
     expect(screen.getByText('Are you sure you want to delete this goal?')).toBeInTheDocument();
   });
@@ -162,9 +153,7 @@ describe('GoalCard', () => {
   it('calls onMutate after successful delete', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
 
     // Open delete dialog
     fireEvent.click(screen.getByLabelText('Delete Goal'));
@@ -178,48 +167,40 @@ describe('GoalCard', () => {
   });
 
   it('closes delete dialog on cancel', async () => {
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
     fireEvent.click(screen.getByLabelText('Delete Goal'));
     expect(screen.getByText('Are you sure you want to delete this goal?')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Cancel'));
     // AlertDialog animates out — wait for it to be removed from DOM
     await waitFor(() => {
-      expect(screen.queryByText('Are you sure you want to delete this goal?')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Are you sure you want to delete this goal?')
+      ).not.toBeInTheDocument();
     });
   });
 
   it('does not show milestone badge when milestones_celebrated is empty', () => {
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
     expect(screen.queryByTestId('milestone-badge')).not.toBeInTheDocument();
   });
 
   it('shows milestone badge with correct text when milestones_celebrated has one entry', () => {
     const goal = { ...sampleGoal, milestones_celebrated: [50] };
-    renderWithChakra(
-      <GoalCard goal={goal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={goal} currency="EUR" onMutate={onMutate} />);
     expect(screen.getByTestId('milestone-badge')).toBeInTheDocument();
     expect(screen.getByText('50% milestone reached')).toBeInTheDocument();
   });
 
   it('shows highest milestone when multiple milestones celebrated', () => {
     const goal = { ...sampleGoal, milestones_celebrated: [25, 50] };
-    renderWithChakra(
-      <GoalCard goal={goal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={goal} currency="EUR" onMutate={onMutate} />);
     expect(screen.getByText('50% milestone reached')).toBeInTheDocument();
     expect(screen.queryByText('25% milestone reached')).not.toBeInTheDocument();
   });
 
   // L4: always-mounted guard
   it('always mounts MilestoneOverlay (closed) so aria-live region pre-exists in DOM', () => {
-    renderWithChakra(
-      <GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />
-    );
+    renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
     const container = screen.getByTestId('milestone-overlay-container');
     expect(container).toBeInTheDocument();
     expect(container).toHaveAttribute('data-open', 'false');
@@ -230,8 +211,18 @@ describe('GoalCard', () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
     // Start at 40% with 25% already celebrated — next uncelebrated threshold is 50%
-    const goalBelow = { ...sampleGoal, current_amount: 400, target_amount: 1000, milestones_celebrated: [25] };
-    const goalAbove = { ...sampleGoal, current_amount: 550, target_amount: 1000, milestones_celebrated: [25] };
+    const goalBelow = {
+      ...sampleGoal,
+      current_amount: 400,
+      target_amount: 1000,
+      milestones_celebrated: [25],
+    };
+    const goalAbove = {
+      ...sampleGoal,
+      current_amount: 550,
+      target_amount: 1000,
+      milestones_celebrated: [25],
+    };
 
     const { rerender } = renderWithChakra(
       <GoalCard goal={goalBelow} currency="EUR" onMutate={onMutate} />
@@ -260,8 +251,18 @@ describe('GoalCard', () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
     // 20% → 80%: crosses 25, 50, 75 — only 25 (first in loop) fires
-    const goalBelow = { ...sampleGoal, current_amount: 200, target_amount: 1000, milestones_celebrated: [] };
-    const goalAbove = { ...sampleGoal, current_amount: 800, target_amount: 1000, milestones_celebrated: [] };
+    const goalBelow = {
+      ...sampleGoal,
+      current_amount: 200,
+      target_amount: 1000,
+      milestones_celebrated: [],
+    };
+    const goalAbove = {
+      ...sampleGoal,
+      current_amount: 800,
+      target_amount: 1000,
+      milestones_celebrated: [],
+    };
 
     const { rerender } = renderWithChakra(
       <GoalCard goal={goalBelow} currency="EUR" onMutate={onMutate} />

@@ -28,13 +28,13 @@ const theme = extendTheme({
   // Every value has a `_dark` counterpart, so the whole app is dark-ready.
   semanticTokens: {
     colors: {
-      'canvas': { default: 'canvas', _dark: 'paper.900' },
-      'surface': { default: 'paper.0', _dark: 'paper.850' },
+      canvas: { default: 'canvas', _dark: 'paper.900' },
+      surface: { default: 'paper.0', _dark: 'paper.850' },
       'surface.raised': { default: 'paper.0', _dark: 'paper.800' },
       'surface.sunken': { default: 'paper.100', _dark: 'paper.900' },
       'surface.hover': { default: 'paper.50', _dark: 'paper.800' },
 
-      'fg': { default: 'ink', _dark: 'paper.50' },
+      fg: { default: 'ink', _dark: 'paper.50' },
       'fg.muted': { default: 'paper.600', _dark: 'paper.400' },
       // Darkened from paper.500 so small "subtle" text (hero date, inactive
       // nav labels) clears WCAG AA 4.5:1 on the warm canvas (~5:1).
@@ -43,7 +43,7 @@ const theme = extendTheme({
       // is only ~2.5:1 — the ink shade is what reads there.
       'fg.onAccent': { default: 'white', _dark: 'paper.900' },
 
-      'border': { default: 'paper.200', _dark: 'paper.800' },
+      border: { default: 'paper.200', _dark: 'paper.800' },
       'border.strong': { default: 'paper.300', _dark: 'paper.700' },
       // Ring around a USER-CHOSEN colour (category swatches). It must separate
       // the swatch from the surface whichever colour the user picked, so it
@@ -51,17 +51,17 @@ const theme = extendTheme({
       // `border` value vanished for dark swatches on the dark card.
       'border.onColor': { default: 'rgba(26,28,26,0.25)', _dark: 'rgba(246,245,242,0.32)' },
 
-      'accent': { default: 'evergreen.500', _dark: 'evergreen.300' },
+      accent: { default: 'evergreen.500', _dark: 'evergreen.300' },
       'accent.emphasis': { default: 'evergreen.600', _dark: 'evergreen.400' },
       'accent.subtle': { default: 'evergreen.50', _dark: 'rgba(11,94,74,0.22)' },
 
       // Finance semantics.
-      'income': { default: 'evergreen.500', _dark: 'evergreen.300' },
+      income: { default: 'evergreen.500', _dark: 'evergreen.300' },
       'income.subtle': { default: 'evergreen.50', _dark: 'rgba(11,94,74,0.22)' },
       // clay.600 (not .500) so expense amount TEXT at body sizes clears AA 4.5:1
       // on white (~5.4:1); clay.500 was ~4.3:1. Affects transaction rows + the
       // dashboard "Out" figure.
-      'expense': { default: 'clay.600', _dark: 'clay.300' },
+      expense: { default: 'clay.600', _dark: 'clay.300' },
       'expense.subtle': { default: 'clay.50', _dark: 'rgba(196,89,58,0.20)' },
       // Destructive text — red.600 is only ~3.2:1 on the dark canvas.
       'danger.fg': { default: 'red.600', _dark: 'red.300' },
@@ -250,7 +250,12 @@ const theme = extendTheme({
       variants: {
         // Primary evergreen action.
         solid: (props: { colorScheme?: string }) => {
-          if (props.colorScheme && props.colorScheme !== 'gray' && props.colorScheme !== 'brand' && props.colorScheme !== 'trustBlue') {
+          if (
+            props.colorScheme &&
+            props.colorScheme !== 'gray' &&
+            props.colorScheme !== 'brand' &&
+            props.colorScheme !== 'trustBlue'
+          ) {
             return {}; // let Chakra handle red/green/etc. (alerts, destructive)
           }
           return {

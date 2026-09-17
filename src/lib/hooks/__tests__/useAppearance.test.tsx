@@ -38,9 +38,7 @@ function mockMatchMedia(matches: boolean) {
   };
   // jest.setup defines matchMedia as writable-but-not-configurable, so assign
   // rather than redefine.
-  (window as unknown as { matchMedia: unknown }).matchMedia = jest
-    .fn()
-    .mockReturnValue(mql);
+  (window as unknown as { matchMedia: unknown }).matchMedia = jest.fn().mockReturnValue(mql);
   return {
     fire(next: boolean) {
       mql.matches = next;

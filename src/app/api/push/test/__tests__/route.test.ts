@@ -14,22 +14,35 @@ jest.mock('next/server', () => ({
     })),
   },
 }));
-jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn(), createServiceRoleClient: jest.fn() }));
+jest.mock('@/lib/supabase/server', () => ({
+  createClient: jest.fn(),
+  createServiceRoleClient: jest.fn(),
+}));
 jest.mock('@/lib/services/pushService', () => ({ sendPushToUser: jest.fn() }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { sendPushToUser } from '@/lib/services/pushService';
 import { POST } from '../route';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
-const mockServiceClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
+const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
 const mockPush = sendPushToUser as jest.MockedFunction<typeof sendPushToUser>;
 
 const ORIGINAL_ENV = process.env;
 
 function authClient(user: object | null) {
-  return { auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }) } };
+  return {
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+    },
+  };
 }
 function countClient(count: number) {
   return {

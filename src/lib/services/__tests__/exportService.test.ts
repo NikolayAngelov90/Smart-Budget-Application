@@ -63,7 +63,9 @@ describe('exportTransactionsToCSV', () => {
     global.Blob = jest.fn() as any;
 
     // Mock Papa.unparse to return CSV string
-    mockUnparse.mockReturnValue('Date,Type,Category,Amount,Notes,Created At\n2025-12-14,expense,Groceries,$50.00,,2025-12-14 10:30:00');
+    mockUnparse.mockReturnValue(
+      'Date,Type,Category,Amount,Notes,Created At\n2025-12-14,expense,Groceries,$50.00,,2025-12-14 10:30:00'
+    );
   });
 
   // AC-8.1.4, 8.1.7, 8.1.8: Test CSV structure with correct columns, amount formatting, date formatting
@@ -71,7 +73,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '1',
-        amount: 50.00,
+        amount: 50.0,
         type: 'expense' as const,
         date: '2025-12-14',
         notes: null,
@@ -109,7 +111,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '1',
-        amount: 25.50,
+        amount: 25.5,
         type: 'expense' as const,
         date: '2025-12-14',
         notes: 'Bought groceries, milk, and bread\n"Special quote"',
@@ -133,7 +135,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '1',
-        amount: 25.50,
+        amount: 25.5,
         type: 'expense' as const,
         date: '2025-12-14',
         notes: 'Хранителен магазин',
@@ -159,7 +161,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '1',
-        amount: 100.00,
+        amount: 100.0,
         type: 'income' as const,
         date: '2025-12-14',
         notes: null,
@@ -211,7 +213,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '1',
-        amount: 50.00,
+        amount: 50.0,
         type: 'expense' as const,
         date: '2025-12-14',
         notes: 'Test transaction',
@@ -231,7 +233,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '3',
-        amount: 30.00,
+        amount: 30.0,
         type: 'expense' as const,
         date: '2025-12-15', // Newest
         notes: null,
@@ -240,7 +242,7 @@ describe('exportTransactionsToCSV', () => {
       },
       {
         id: '2',
-        amount: 20.00,
+        amount: 20.0,
         type: 'expense' as const,
         date: '2025-12-14',
         notes: null,
@@ -249,7 +251,7 @@ describe('exportTransactionsToCSV', () => {
       },
       {
         id: '1',
-        amount: 10.00,
+        amount: 10.0,
         type: 'expense' as const,
         date: '2025-12-13', // Oldest
         notes: null,
@@ -273,7 +275,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '1',
-        amount: 50.00,
+        amount: 50.0,
         type: 'expense' as const,
         date: '2025-12-14',
         notes: null,
@@ -312,7 +314,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '1',
-        amount: 50.00,
+        amount: 50.0,
         type: 'expense' as const,
         date: '2025-12-14',
         notes: null,
@@ -335,7 +337,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '1',
-        amount: 50.00,
+        amount: 50.0,
         type: 'expense' as const,
         date: '2025-12-14',
         notes: null,
@@ -364,7 +366,7 @@ describe('exportTransactionsToCSV', () => {
     const transactions = [
       {
         id: '1',
-        amount: 1000.00,
+        amount: 1000.0,
         type: 'income' as const,
         date: '2025-12-14',
         notes: 'Salary',
@@ -373,7 +375,7 @@ describe('exportTransactionsToCSV', () => {
       },
       {
         id: '2',
-        amount: 50.00,
+        amount: 50.0,
         type: 'expense' as const,
         date: '2025-12-13',
         notes: 'Lunch',

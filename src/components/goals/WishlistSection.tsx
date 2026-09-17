@@ -148,7 +148,12 @@ export function WishlistSection() {
       setNameError('');
       setPriceError('');
       mutate();
-      toast({ title: t('addedSuccess', { name: trimmedName }), status: 'success', duration: 2500, isClosable: true });
+      toast({
+        title: t('addedSuccess', { name: trimmedName }),
+        status: 'success',
+        duration: 2500,
+        isClosable: true,
+      });
     } catch (err) {
       toast({
         title: t('addFailed'),
@@ -204,7 +209,12 @@ export function WishlistSection() {
           {t('title')}
         </Heading>
         {historyItems.length > 0 && (
-          <Button size="sm" variant="link" colorScheme="brand" onClick={() => setShowHistory(!showHistory)}>
+          <Button
+            size="sm"
+            variant="link"
+            colorScheme="brand"
+            onClick={() => setShowHistory(!showHistory)}
+          >
             {showHistory ? t('hideHistory') : t('showHistory', { count: historyItems.length })}
           </Button>
         )}
@@ -292,7 +302,9 @@ export function WishlistSection() {
 
       {/* List states — with keepPreviousData, stale data keeps rendering through a
           transient revalidation error; the alert shows only when nothing is cached */}
-      {isLoading && !data && <Skeleton height="96px" borderRadius="md" data-testid="wishlist-skeleton" />}
+      {isLoading && !data && (
+        <Skeleton height="96px" borderRadius="md" data-testid="wishlist-skeleton" />
+      )}
 
       {!isLoading && error && !data && (
         <Alert status="error" borderRadius="md">

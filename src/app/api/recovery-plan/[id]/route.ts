@@ -17,10 +17,7 @@ function isValidStatus(s: string): s is ValidStatus {
   return (VALID_STATUSES as readonly string[]).includes(s);
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient();
     const {

@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: { message: error.message } }, { status: 400 });
     }
     logger.error('Invitations', 'POST failed:', error);
-    return NextResponse.json({ error: { message: 'Failed to create invitation' } }, { status: 500 });
+    return NextResponse.json(
+      { error: { message: 'Failed to create invitation' } },
+      { status: 500 }
+    );
   }
 }
 

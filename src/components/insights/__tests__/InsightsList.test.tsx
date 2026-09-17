@@ -49,12 +49,7 @@ const ins = (over: Partial<Insight>): Insight =>
 const renderList = (props: Partial<React.ComponentProps<typeof InsightsList>> = {}) =>
   render(
     <ChakraProvider>
-      <InsightsList
-        insights={[]}
-        onDismiss={jest.fn()}
-        onUndismiss={jest.fn()}
-        {...props}
-      />
+      <InsightsList insights={[]} onDismiss={jest.fn()} onUndismiss={jest.fn()} {...props} />
     </ChakraProvider>
   );
 

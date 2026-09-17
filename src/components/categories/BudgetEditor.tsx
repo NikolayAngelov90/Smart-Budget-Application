@@ -92,7 +92,10 @@ export function BudgetEditor({
       const response = await fetch('/api/budgets', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category_id: categoryId, limit_amount: Math.round(parsed * 100) / 100 }),
+        body: JSON.stringify({
+          category_id: categoryId,
+          limit_amount: Math.round(parsed * 100) / 100,
+        }),
       });
       if (!response.ok) {
         const result = await response.json().catch(() => null);
@@ -205,7 +208,12 @@ export function BudgetEditor({
     return (
       <Box mt={2}>
         {editorPopover(
-          <Button size="xs" variant="ghost" onClick={openEditor} minH={{ base: '44px', md: '32px' }}>
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={openEditor}
+            minH={{ base: '44px', md: '32px' }}
+          >
             {t('setBudget')}
           </Button>
         )}
@@ -225,7 +233,12 @@ export function BudgetEditor({
           })}
         </Text>
         {editorPopover(
-          <Button size="xs" variant="ghost" onClick={openEditor} minH={{ base: '44px', md: '32px' }}>
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={openEditor}
+            minH={{ base: '44px', md: '32px' }}
+          >
             {t('edit')}
           </Button>
         )}

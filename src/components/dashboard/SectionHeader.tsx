@@ -33,7 +33,14 @@ export function SectionHeader({ eyebrow, title, hint, action, id }: SectionHeade
             {eyebrow}
           </Text>
         )}
-        <Heading as="h2" id={id} fontSize={{ base: 'lg', md: 'xl' }} fontWeight={600} letterSpacing="tight" color="fg">
+        <Heading
+          as="h2"
+          id={id}
+          fontSize={{ base: 'lg', md: 'xl' }}
+          fontWeight={600}
+          letterSpacing="tight"
+          color="fg"
+        >
           {title}
         </Heading>
         {hint && (

@@ -42,8 +42,7 @@ jest.mock('next-intl', () => ({
 // HELPERS
 // ============================================================================
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 const sampleGoal: Goal = {
   id: 'goal-1',
@@ -71,9 +70,7 @@ describe('GoalForm', () => {
   });
 
   it('renders "Create Goal" heading in create mode', () => {
-    renderWithChakra(
-      <GoalForm isOpen={true} onClose={onClose} onSuccess={onSuccess} />
-    );
+    renderWithChakra(<GoalForm isOpen={true} onClose={onClose} onSuccess={onSuccess} />);
     expect(screen.getByText('Create Goal')).toBeInTheDocument();
   });
 
@@ -96,9 +93,7 @@ describe('GoalForm', () => {
   });
 
   it('shows validation error for empty name on submit', async () => {
-    renderWithChakra(
-      <GoalForm isOpen={true} onClose={onClose} onSuccess={onSuccess} />
-    );
+    renderWithChakra(<GoalForm isOpen={true} onClose={onClose} onSuccess={onSuccess} />);
 
     fireEvent.click(screen.getByText('Save'));
 
@@ -114,9 +109,7 @@ describe('GoalForm', () => {
       json: jest.fn().mockResolvedValue(createdGoal),
     });
 
-    renderWithChakra(
-      <GoalForm isOpen={true} onClose={onClose} onSuccess={onSuccess} />
-    );
+    renderWithChakra(<GoalForm isOpen={true} onClose={onClose} onSuccess={onSuccess} />);
 
     fireEvent.change(screen.getByPlaceholderText('e.g. Emergency Fund'), {
       target: { value: 'New Goal' },

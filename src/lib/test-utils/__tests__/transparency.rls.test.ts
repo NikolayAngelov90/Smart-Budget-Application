@@ -36,13 +36,28 @@ rlsDescribe('Transparency per-category controls (Story 13.4)', () => {
   async function seedCategory(svc: ReturnType<typeof createServiceClient>, visibility: string) {
     const { data: c } = await svc
       .from('categories')
-      .insert({ user_id: a1Id, name: `Cat ${visibility}`, color: '#123456', type: 'expense', household_id: householdAId, visibility_level: visibility })
+      .insert({
+        user_id: a1Id,
+        name: `Cat ${visibility}`,
+        color: '#123456',
+        type: 'expense',
+        household_id: householdAId,
+        visibility_level: visibility,
+      })
       .select('id')
       .single();
     cat[visibility] = c!.id;
     const { data: t } = await svc
       .from('transactions')
-      .insert({ user_id: a1Id, category_id: c!.id, amount: 100, type: 'expense', date: '2026-06-04', currency: 'EUR', household_id: householdAId })
+      .insert({
+        user_id: a1Id,
+        category_id: c!.id,
+        amount: 100,
+        type: 'expense',
+        date: '2026-06-04',
+        currency: 'EUR',
+        household_id: householdAId,
+      })
       .select('id')
       .single();
     tx[visibility] = t!.id;
@@ -54,7 +69,11 @@ rlsDescribe('Transparency per-category controls (Story 13.4)', () => {
     a2Id = await createTestUser(a2Email, PWD);
     b1Id = await createTestUser(b1Email, PWD);
 
-    const { data: hA } = await svc.from('households').insert({ name: 'Transparency A', created_by: a1Id }).select('id').single();
+    const { data: hA } = await svc
+      .from('households')
+      .insert({ name: 'Transparency A', created_by: a1Id })
+      .select('id')
+      .single();
     householdAId = hA!.id;
     await svc.from('household_members').insert([
       { household_id: householdAId, user_id: a1Id, role: 'admin' },
@@ -74,7 +93,10 @@ rlsDescribe('Transparency per-category controls (Story 13.4)', () => {
 
   it('member sees shared + category_only categories, but NOT private', async () => {
     const a2 = await signInAsTestUser(a2Email, PWD);
-    const { data } = await a2.from('categories').select('id').in('id', [cat.shared, cat.category_only, cat.private]);
+    const { data } = await a2
+      .from('categories')
+      .select('id')
+      .in('id', [cat.shared, cat.category_only, cat.private]);
     const ids = (data ?? []).map((r) => r.id);
     expect(ids).toContain(cat.shared);
     expect(ids).toContain(cat.category_only);
@@ -99,7 +121,9 @@ rlsDescribe('Transparency per-category controls (Story 13.4)', () => {
     expect(ids).toContain(cat.category_only);
     expect(ids).not.toContain(cat.private);
     // category_only total is exposed even though the rows aren't visible
-    const catOnly = (data ?? []).find((r: { category_id: string }) => r.category_id === cat.category_only);
+    const catOnly = (data ?? []).find(
+      (r: { category_id: string }) => r.category_id === cat.category_only
+    );
     expect(Number(catOnly?.total)).toBe(100);
   });
 
@@ -121,10 +145,17 @@ rlsDescribe('Transparency per-category controls (Story 13.4)', () => {
 
   it('a member CANNOT change another owner’s category visibility (owner-only trigger)', async () => {
     const a2 = await signInAsTestUser(a2Email, PWD);
-    const { error } = await a2.from('categories').update({ visibility_level: 'shared' }).eq('id', cat.category_only);
+    const { error } = await a2
+      .from('categories')
+      .update({ visibility_level: 'shared' })
+      .eq('id', cat.category_only);
     expect(error).not.toBeNull(); // trigger raises
     const svc = createServiceClient();
-    const { data } = await svc.from('categories').select('visibility_level').eq('id', cat.category_only).single();
+    const { data } = await svc
+      .from('categories')
+      .select('visibility_level')
+      .eq('id', cat.category_only)
+      .single();
     expect(data?.visibility_level).toBe('category_only'); // unchanged
   });
 });

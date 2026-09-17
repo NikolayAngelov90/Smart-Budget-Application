@@ -7,10 +7,11 @@ const mk = (id: string, date: string) => ({ id, date });
 
 describe('groupTransactionsByDate', () => {
   it('labels the current and previous day as Today / Yesterday', () => {
-    const groups = groupTransactionsByDate(
-      [mk('a', '2026-07-23'), mk('b', '2026-07-22')],
-      { todayLabel: 'Today', yesterdayLabel: 'Yesterday', now }
-    );
+    const groups = groupTransactionsByDate([mk('a', '2026-07-23'), mk('b', '2026-07-22')], {
+      todayLabel: 'Today',
+      yesterdayLabel: 'Yesterday',
+      now,
+    });
     expect(groups.map((g) => g.label)).toEqual(['Today', 'Yesterday']);
   });
 

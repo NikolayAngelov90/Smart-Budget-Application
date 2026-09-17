@@ -13,11 +13,7 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 import { createClient } from '@/lib/supabase/server';
-import {
-  getAllowance,
-  upsertAllowance,
-  getAllowanceStatus,
-} from '@/lib/services/allowanceService';
+import { getAllowance, upsertAllowance, getAllowanceStatus } from '@/lib/services/allowanceService';
 import { NotHouseholdMemberError } from '@/lib/services/householdService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -55,12 +51,16 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('getAllowance', () => {
   it('returns the row when present', async () => {
-    mockCreateClient.mockResolvedValue(clientWith({ personal_allowances: { data: ALLOWANCE, error: null } }) as never);
+    mockCreateClient.mockResolvedValue(
+      clientWith({ personal_allowances: { data: ALLOWANCE, error: null } }) as never
+    );
     expect(await getAllowance('user-1')).toEqual(ALLOWANCE);
   });
 
   it('returns null when none exists', async () => {
-    mockCreateClient.mockResolvedValue(clientWith({ personal_allowances: { data: null, error: null } }) as never);
+    mockCreateClient.mockResolvedValue(
+      clientWith({ personal_allowances: { data: null, error: null } }) as never
+    );
     expect(await getAllowance('user-1')).toBeNull();
   });
 });
@@ -109,16 +109,26 @@ describe('upsertAllowance', () => {
 
 describe('getAllowanceStatus', () => {
   it('returns zeroed status when there is no allowance', async () => {
-    mockCreateClient.mockResolvedValue(clientWith({ personal_allowances: { data: null, error: null } }) as never);
-    expect(await getAllowanceStatus('user-1')).toEqual({ allowance: null, spent: 0, remaining: null });
+    mockCreateClient.mockResolvedValue(
+      clientWith({ personal_allowances: { data: null, error: null } }) as never
+    );
+    expect(await getAllowanceStatus('user-1')).toEqual({
+      allowance: null,
+      spent: 0,
+      remaining: null,
+    });
   });
 
   it('sums the current-month allowance spend and computes remaining', async () => {
     // First createClient call → getAllowance; second → the spend query.
     mockCreateClient
-      .mockResolvedValueOnce(clientWith({ personal_allowances: { data: ALLOWANCE, error: null } }) as never)
       .mockResolvedValueOnce(
-        clientWith({ transactions: { data: [{ amount: 30 }, { amount: 20.5 }], error: null } }) as never
+        clientWith({ personal_allowances: { data: ALLOWANCE, error: null } }) as never
+      )
+      .mockResolvedValueOnce(
+        clientWith({
+          transactions: { data: [{ amount: 30 }, { amount: 20.5 }], error: null },
+        }) as never
       );
     const status = await getAllowanceStatus('user-1');
     expect(status.allowance).toEqual(ALLOWANCE);

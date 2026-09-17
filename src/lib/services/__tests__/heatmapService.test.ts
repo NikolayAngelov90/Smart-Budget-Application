@@ -8,11 +8,7 @@
  * - getIntensityLevel: quartile calculations
  */
 
-import {
-  getDailySpending,
-  hasEnoughDataForHeatmap,
-  getIntensityLevel,
-} from '../heatmapService';
+import { getDailySpending, hasEnoughDataForHeatmap, getIntensityLevel } from '../heatmapService';
 
 // ============================================================================
 // HELPERS
@@ -91,8 +87,8 @@ describe('getIntensityLevel', () => {
   });
 
   it('handles decimal amounts', () => {
-    expect(getIntensityLevel(12.5, 50)).toBe(1);  // 0.25 exactly → 1
-    expect(getIntensityLevel(12.6, 50)).toBe(2);  // >0.25 → 2
+    expect(getIntensityLevel(12.5, 50)).toBe(1); // 0.25 exactly → 1
+    expect(getIntensityLevel(12.6, 50)).toBe(2); // >0.25 → 2
   });
 });
 
@@ -244,11 +240,7 @@ describe('hasEnoughDataForHeatmap', () => {
   });
 
   it('returns false when user has fewer than 7 distinct dates', async () => {
-    const data = [
-      { date: '2026-03-01' },
-      { date: '2026-03-02' },
-      { date: '2026-03-03' },
-    ];
+    const data = [{ date: '2026-03-01' }, { date: '2026-03-02' }, { date: '2026-03-03' }];
     const chain = createEqTerminalChainMock({ data, error: null });
     mockSupabase.from = jest.fn().mockReturnValue(chain);
 

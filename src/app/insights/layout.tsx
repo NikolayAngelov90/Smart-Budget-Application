@@ -6,10 +6,6 @@ export const metadata: Metadata = {
   description: 'View and manage your personalized AI budget insights',
 };
 
-export default function InsightsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function InsightsLayout({ children }: { children: React.ReactNode }) {
   return <AppLayout>{children}</AppLayout>;
 }

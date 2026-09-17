@@ -40,10 +40,7 @@ export async function GET() {
     const profile = await getUserProfile(user.id);
 
     if (!profile) {
-      return NextResponse.json(
-        { error: { message: 'Profile not found' } },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: { message: 'Profile not found' } }, { status: 404 });
     }
 
     return NextResponse.json({ data: profile });

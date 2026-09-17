@@ -46,29 +46,26 @@ import { getDateLocale } from '@/lib/utils/dateFormatter';
  * Component props
  */
 export interface SpendingTrendsChartProps {
-  months?: number;                    // Number of months to display (default 6)
-  height?: number;                    // Chart height in pixels (default 300)
+  months?: number; // Number of months to display (default 6)
+  height?: number; // Chart height in pixels (default 300)
 }
 
 /**
  * Recharts data format for line chart
  */
 interface LineChartDataPoint {
-  month: string;                      // Month label ("Jan", "Feb", etc.)
-  monthYYYYMM: string;                // Month in YYYY-MM format for navigation
-  income: number;                     // Income amount
-  expenses: number;                   // Expenses amount
-  [key: string]: string | number;     // Index signature for Recharts compatibility
+  month: string; // Month label ("Jan", "Feb", etc.)
+  monthYYYYMM: string; // Month in YYYY-MM format for navigation
+  income: number; // Income amount
+  expenses: number; // Expenses amount
+  [key: string]: string | number; // Index signature for Recharts compatibility
 }
 
 /**
  * SpendingTrendsChart Component
  * Renders a responsive line chart showing income vs expenses trends
  */
-export function SpendingTrendsChart({
-  months = 6,
-  height = 300,
-}: SpendingTrendsChartProps) {
+export function SpendingTrendsChart({ months = 6, height = 300 }: SpendingTrendsChartProps) {
   const t = useTranslations('dashboard');
   const locale = useLocale();
   const dateLocale = getDateLocale(locale);
@@ -134,8 +131,12 @@ export function SpendingTrendsChart({
       const firstPayload = payload[0];
       if (!firstPayload) return null;
       const tooltipData = firstPayload.payload as LineChartDataPoint;
-      const income = payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'income')?.value ?? 0;
-      const expenses = payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'expenses')?.value ?? 0;
+      const income =
+        payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'income')?.value ??
+        0;
+      const expenses =
+        payload.find((p: { dataKey?: string; value?: number }) => p.dataKey === 'expenses')
+          ?.value ?? 0;
 
       return (
         <Box
@@ -182,7 +183,14 @@ export function SpendingTrendsChart({
   // Loading state
   if (isLoading) {
     return (
-      <Box p={6} bg="surface" borderRadius="lg" boxShadow="sm" borderWidth="1px" borderColor="border">
+      <Box
+        p={6}
+        bg="surface"
+        borderRadius="lg"
+        boxShadow="sm"
+        borderWidth="1px"
+        borderColor="border"
+      >
         <Skeleton height="32px" width="220px" mb={4} />
         <Skeleton height={`${height}px`} borderRadius="md" />
       </Box>
@@ -286,11 +294,7 @@ export function SpendingTrendsChart({
           aria-label={t('trendsChartAria')}
         >
           <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-          <XAxis
-            dataKey="month"
-            stroke={chart.axis}
-            tick={{ fill: chart.tick, fontSize: 12 }}
-          />
+          <XAxis dataKey="month" stroke={chart.axis} tick={{ fill: chart.tick, fontSize: 12 }} />
           <YAxis
             stroke={chart.axis}
             tick={{ fill: chart.tick, fontSize: 12 }}

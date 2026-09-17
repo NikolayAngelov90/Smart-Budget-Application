@@ -96,7 +96,9 @@ describe('RecoveryPlan', () => {
   });
 
   it('renders nothing when no plan and cannot generate', () => {
-    mockUseRecoveryPlan.mockReturnValue(hookResult({ plan: null, canGenerate: false, isLoading: false }));
+    mockUseRecoveryPlan.mockReturnValue(
+      hookResult({ plan: null, canGenerate: false, isLoading: false })
+    );
     renderWithChakra(<RecoveryPlan />);
     expect(screen.queryByRole('heading', { name: /recovery plan/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Create my recovery plan/i)).not.toBeInTheDocument();

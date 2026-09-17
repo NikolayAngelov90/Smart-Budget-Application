@@ -45,9 +45,7 @@ export function getOfflineState(): OfflineState {
 /**
  * Update offline state in localStorage
  */
-export function updateOfflineState(
-  partialState: Partial<OfflineState>
-): void {
+export function updateOfflineState(partialState: Partial<OfflineState>): void {
   try {
     const currentState = getOfflineState();
     const newState = { ...currentState, ...partialState };

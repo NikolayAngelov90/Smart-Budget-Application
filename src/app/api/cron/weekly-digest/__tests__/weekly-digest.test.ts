@@ -47,8 +47,12 @@ import { NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { generateDigestForUser } from '@/lib/services/digestService';
 
-const mockCreateServiceRoleClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
-const mockGenerateDigest = generateDigestForUser as jest.MockedFunction<typeof generateDigestForUser>;
+const mockCreateServiceRoleClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
+const mockGenerateDigest = generateDigestForUser as jest.MockedFunction<
+  typeof generateDigestForUser
+>;
 const mockJsonResponse = NextResponse.json as jest.MockedFunction<typeof NextResponse.json>;
 
 let GET: (request: Request) => Promise<unknown>;
@@ -63,7 +67,8 @@ const CRON_SECRET = 'test-cron-secret';
 function makeRequest(token?: string) {
   return {
     headers: {
-      get: (header: string) => (header === 'authorization' ? (token ? `Bearer ${token}` : null) : null),
+      get: (header: string) =>
+        header === 'authorization' ? (token ? `Bearer ${token}` : null) : null,
     },
   } as unknown as Request;
 }
@@ -72,10 +77,13 @@ describe('GET /api/cron/weekly-digest', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.CRON_SECRET = CRON_SECRET;
-    mockJsonResponse.mockImplementation((body: unknown, init?: { status?: number }) => ({
-      status: init?.status ?? 200,
-      json: async () => body,
-    }) as never);
+    mockJsonResponse.mockImplementation(
+      (body: unknown, init?: { status?: number }) =>
+        ({
+          status: init?.status ?? 200,
+          json: async () => body,
+        }) as never
+    );
   });
 
   afterEach(() => {
@@ -83,12 +91,15 @@ describe('GET /api/cron/weekly-digest', () => {
   });
 
   it('returns 401 when Authorization header is missing', async () => {
-    const response = await GET(makeRequest()) as { status: number; json: () => Promise<unknown> };
+    const response = (await GET(makeRequest())) as { status: number; json: () => Promise<unknown> };
     expect(response.status).toBe(401);
   });
 
   it('returns 401 when CRON_SECRET is wrong', async () => {
-    const response = await GET(makeRequest('wrong-secret')) as { status: number; json: () => Promise<unknown> };
+    const response = (await GET(makeRequest('wrong-secret'))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
     expect(response.status).toBe(401);
   });
 
@@ -111,10 +122,17 @@ describe('GET /api/cron/weekly-digest', () => {
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
     mockGenerateDigest.mockResolvedValue(undefined);
 
-    const response = await GET(makeRequest(CRON_SECRET)) as { status: number; json: () => Promise<unknown> };
+    const response = (await GET(makeRequest(CRON_SECRET))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
     expect(response.status).toBe(200);
     expect(mockGenerateDigest).toHaveBeenCalledTimes(2);
-    const body = await response.json() as { success: boolean; digestsGenerated: number; usersProcessed: number };
+    const body = (await response.json()) as {
+      success: boolean;
+      digestsGenerated: number;
+      usersProcessed: number;
+    };
     expect(body.success).toBe(true);
     expect(body.digestsGenerated).toBe(2);
     expect(body.usersProcessed).toBe(2);
@@ -133,7 +151,9 @@ describe('GET /api/cron/weekly-digest', () => {
       eq: jest.fn().mockReturnThis(),
       in: jest.fn().mockResolvedValue({ data: [], error: null }),
       upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest.fn().mockResolvedValue({ data: [{ id: 'user-1', preferences: {} }], error: null }),
+      limit: jest
+        .fn()
+        .mockResolvedValue({ data: [{ id: 'user-1', preferences: {} }], error: null }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
     mockGenerateDigest.mockResolvedValue(undefined);
@@ -148,9 +168,7 @@ describe('GET /api/cron/weekly-digest', () => {
   });
 
   it('passes user currency_format preference to generateDigestForUser', async () => {
-    const users = [
-      { id: 'user-1', preferences: { currency_format: 'USD' } },
-    ];
+    const users = [{ id: 'user-1', preferences: { currency_format: 'USD' } }];
     const supabaseMock = {
       from: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -201,13 +219,18 @@ describe('GET /api/cron/weekly-digest', () => {
       eq: jest.fn().mockReturnThis(),
       in: jest.fn().mockResolvedValue({ data: [], error: null }),
       upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest.fn().mockResolvedValue({ data: null, error: { message: 'DB connection timeout' } }),
+      limit: jest
+        .fn()
+        .mockResolvedValue({ data: null, error: { message: 'DB connection timeout' } }),
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
 
-    const response = await GET(makeRequest(CRON_SECRET)) as { status: number; json: () => Promise<unknown> };
+    const response = (await GET(makeRequest(CRON_SECRET))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
     expect(response.status).toBe(500);
-    const body = await response.json() as { success: boolean; details: string };
+    const body = (await response.json()) as { success: boolean; details: string };
     expect(body.success).toBe(false);
     expect(body.details).toBe('DB connection timeout');
   });
@@ -231,10 +254,13 @@ describe('GET /api/cron/weekly-digest', () => {
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
     mockGenerateDigest.mockResolvedValue(undefined);
 
-    const response = await GET(makeRequest(CRON_SECRET)) as { status: number; json: () => Promise<unknown> };
+    const response = (await GET(makeRequest(CRON_SECRET))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
     expect(mockGenerateDigest).toHaveBeenCalledTimes(1);
     expect(mockGenerateDigest).toHaveBeenCalledWith('user-2', expect.any(Date), 'EUR');
-    const body = await response.json() as { digestsGenerated: number };
+    const body = (await response.json()) as { digestsGenerated: number };
     expect(body.digestsGenerated).toBe(1);
   });
 
@@ -259,9 +285,15 @@ describe('GET /api/cron/weekly-digest', () => {
       .mockRejectedValueOnce(new Error('DB timeout'))
       .mockResolvedValueOnce(undefined);
 
-    const response = await GET(makeRequest(CRON_SECRET)) as { status: number; json: () => Promise<unknown> };
+    const response = (await GET(makeRequest(CRON_SECRET))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
     expect(response.status).toBe(200);
-    const body = await response.json() as { digestsGenerated: number; errors: Array<{ userId: string; error: string }> };
+    const body = (await response.json()) as {
+      digestsGenerated: number;
+      errors: Array<{ userId: string; error: string }>;
+    };
     expect(body.digestsGenerated).toBe(1);
     expect(body.errors).toHaveLength(1);
     expect(body.errors[0]?.userId).toBe('user-1');
@@ -281,9 +313,12 @@ describe('GET /api/cron/weekly-digest', () => {
     };
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
 
-    const response = await GET(makeRequest(CRON_SECRET)) as { status: number; json: () => Promise<unknown> };
+    const response = (await GET(makeRequest(CRON_SECRET))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
     expect(response.status).toBe(200);
-    const body = await response.json() as { usersProcessed: number };
+    const body = (await response.json()) as { usersProcessed: number };
     expect(body.usersProcessed).toBe(0);
     expect(mockGenerateDigest).not.toHaveBeenCalled();
   });
@@ -293,9 +328,12 @@ describe('GET /api/cron/weekly-digest', () => {
       throw new Error('Connection refused');
     });
 
-    const response = await GET(makeRequest(CRON_SECRET)) as { status: number; json: () => Promise<unknown> };
+    const response = (await GET(makeRequest(CRON_SECRET))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
     expect(response.status).toBe(500);
-    const body = await response.json() as { success: boolean };
+    const body = (await response.json()) as { success: boolean };
     expect(body.success).toBe(false);
   });
 });

@@ -60,11 +60,15 @@ export function useBudgetScore(): UseBudgetScoreResult {
   // revalidations (AppLayout quick-add, dashboard pull-to-refresh) are gated
   // separately on the same pref so the reduction actually holds.
   const { enabled } = useGamification();
-  const { data, error, isLoading, mutate } = useSWR<BudgetScoreResponse>(enabled ? scoreUrl(dated) : null, fetcher, {
-    dedupingInterval: 5000,
-    revalidateOnFocus: true,
-    keepPreviousData: true,
-  });
+  const { data, error, isLoading, mutate } = useSWR<BudgetScoreResponse>(
+    enabled ? scoreUrl(dated) : null,
+    fetcher,
+    {
+      dedupingInterval: 5000,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+    }
+  );
 
   return { data, error, isLoading, mutate };
 }

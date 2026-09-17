@@ -45,10 +45,7 @@ export async function GET(request: NextRequest) {
 
     if (!isAuthorized) {
       logger.error('WeeklyDigestCron', 'Unauthorized access attempt');
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     logger.info('WeeklyDigestCron', 'Starting weekly digest generation');
@@ -136,8 +133,9 @@ export async function GET(request: NextRequest) {
           if (deliveredThisWeek.has(user.id)) return;
 
           // Pass the user's currency preference so digest amounts match their settings
-          // eslint-disable-next-line no-restricted-syntax
-          const currency = typeof prefs.currency_format === 'string' ? prefs.currency_format : 'EUR';
+          const currency =
+            // eslint-disable-next-line no-restricted-syntax
+            typeof prefs.currency_format === 'string' ? prefs.currency_format : 'EUR';
           await generateDigestForUser(user.id, weekStart, currency);
           digestsGenerated++;
 
@@ -159,7 +157,12 @@ export async function GET(request: NextRequest) {
           });
 
           if (outcome === 'sent') {
-            await markDelivered(supabase as unknown as SupabaseClient, 'weekly_digest', periodKey, user.id);
+            await markDelivered(
+              supabase as unknown as SupabaseClient,
+              'weekly_digest',
+              periodKey,
+              user.id
+            );
             pushesSent++;
           } else if (outcome === 'deferred') {
             // Left unmarked ON PURPOSE so the next hourly run retries.

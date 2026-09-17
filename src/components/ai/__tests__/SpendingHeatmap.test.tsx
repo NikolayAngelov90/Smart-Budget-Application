@@ -20,9 +20,7 @@ jest.mock('next-intl', () => ({
   useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     const translations: Record<string, string> = {
       title: 'Spending Heatmap',
-      'subtitle': params
-        ? `${params['month']} ${params['year']}`
-        : 'subtitle',
+      subtitle: params ? `${params['month']} ${params['year']}` : 'subtitle',
       previousMonth: 'Previous month',
       nextMonth: 'Next month',
       viewAsTable: 'View as table',
@@ -65,12 +63,8 @@ import { useSpendingHeatmap } from '@/lib/hooks/useSpendingHeatmap';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { useFeatureDisclosure } from '@/lib/hooks/useFeatureDisclosure';
 
-const mockUseSpendingHeatmap = useSpendingHeatmap as jest.MockedFunction<
-  typeof useSpendingHeatmap
->;
-const mockUseUserPreferences = useUserPreferences as jest.MockedFunction<
-  typeof useUserPreferences
->;
+const mockUseSpendingHeatmap = useSpendingHeatmap as jest.MockedFunction<typeof useSpendingHeatmap>;
+const mockUseUserPreferences = useUserPreferences as jest.MockedFunction<typeof useUserPreferences>;
 const mockUseFeatureDisclosure = useFeatureDisclosure as jest.MockedFunction<
   typeof useFeatureDisclosure
 >;
@@ -92,9 +86,7 @@ function setupDefaultMocks(overrides: Partial<ReturnType<typeof useSpendingHeatm
   });
 
   mockUseUserPreferences.mockReturnValue({
-    preferences: { currency_format: 'EUR' } as ReturnType<
-      typeof useUserPreferences
-    >['preferences'],
+    preferences: { currency_format: 'EUR' } as ReturnType<typeof useUserPreferences>['preferences'],
     isLoading: false,
     error: undefined,
   });
@@ -129,7 +121,7 @@ describe('SpendingHeatmap', () => {
         preferences: null,
         isLoading: false,
         error: undefined,
-          });
+      });
 
       renderWithChakra(<SpendingHeatmap />);
       expect(screen.queryByRole('heading', { name: 'Spending Heatmap' })).not.toBeInTheDocument();
@@ -162,7 +154,7 @@ describe('SpendingHeatmap', () => {
         preferences: null,
         isLoading: false,
         error: undefined,
-          });
+      });
 
       renderWithChakra(<SpendingHeatmap />);
       expect(screen.getByTestId('heatmap-skeleton')).toBeInTheDocument();

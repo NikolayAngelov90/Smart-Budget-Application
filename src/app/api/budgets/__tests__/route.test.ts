@@ -64,7 +64,6 @@ import { DELETE } from '../[id]/route';
 const getRequest = (query = '') =>
   ({ url: `http://localhost:3000/api/budgets${query}` }) as Parameters<typeof GET>[0];
 
-
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockListBudgets = listBudgets as jest.MockedFunction<typeof listBudgets>;
 const mockUpsertBudget = upsertBudget as jest.MockedFunction<typeof upsertBudget>;
@@ -82,11 +81,13 @@ function chain(result: { data: unknown; error: unknown }) {
   return q;
 }
 
-function makeSupabase(overrides: {
-  user?: object | null;
-  categories?: object[];
-  transactions?: object[];
-} = {}) {
+function makeSupabase(
+  overrides: {
+    user?: object | null;
+    categories?: object[];
+    transactions?: object[];
+  } = {}
+) {
   const { user = { id: 'user-1' }, categories = [], transactions = [] } = overrides;
   return {
     auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: null }) },
@@ -220,8 +221,14 @@ describe('PUT /api/budgets', () => {
 
   it.each([
     ['negative amount', { category_id: VALID_UUID, limit_amount: -5 }],
-    ['zero amount (surfaces must agree on 0 = no baseline)', { category_id: VALID_UUID, limit_amount: 0 }],
-    ['amount above NUMERIC(12,2) capacity', { category_id: VALID_UUID, limit_amount: 10_000_000_000 }],
+    [
+      'zero amount (surfaces must agree on 0 = no baseline)',
+      { category_id: VALID_UUID, limit_amount: 0 },
+    ],
+    [
+      'amount above NUMERIC(12,2) capacity',
+      { category_id: VALID_UUID, limit_amount: 10_000_000_000 },
+    ],
     ['3 decimal places', { category_id: VALID_UUID, limit_amount: 10.123 }],
     ['non-uuid category', { category_id: 'nope', limit_amount: 100 }],
     ['missing body', null],

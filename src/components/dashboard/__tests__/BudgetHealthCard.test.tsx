@@ -49,8 +49,7 @@ jest.mock('next/link', () => {
 
 const mockUseBudgets = useBudgets as jest.MockedFunction<typeof useBudgets>;
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 function makeBudget(overrides: Partial<BudgetSummary> = {}): BudgetSummary {
   return {

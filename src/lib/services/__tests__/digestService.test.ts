@@ -42,8 +42,10 @@ jest.mock('@/lib/utils/logger', () => ({
 // ============================================================================
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeTransactionRows(rows: { amount: number; category_id: string; name: string; color: string }[]) {
-  return rows.map(r => ({
+function makeTransactionRows(
+  rows: { amount: number; category_id: string; name: string; color: string }[]
+) {
+  return rows.map((r) => ({
     amount: r.amount,
     category_id: r.category_id,
     categories: { name: r.name, color: r.color },
@@ -243,7 +245,10 @@ describe('getLatestDigest', () => {
   });
 
   it('returns null when no digest found (PGRST116)', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'Not found' } });
+    mockMaybeSingle.mockResolvedValue({
+      data: null,
+      error: { code: 'PGRST116', message: 'Not found' },
+    });
 
     const result = await getLatestDigest(supabaseMock as never, 'user-1');
     expect(result).toBeNull();
@@ -257,8 +262,13 @@ describe('getLatestDigest', () => {
   });
 
   it('throws on non-PGRST116 error', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: null, error: { code: '42703', message: 'DB error' } });
+    mockMaybeSingle.mockResolvedValue({
+      data: null,
+      error: { code: '42703', message: 'DB error' },
+    });
 
-    await expect(getLatestDigest(supabaseMock as never, 'user-1')).rejects.toMatchObject({ message: 'DB error' });
+    await expect(getLatestDigest(supabaseMock as never, 'user-1')).rejects.toMatchObject({
+      message: 'DB error',
+    });
   });
 });

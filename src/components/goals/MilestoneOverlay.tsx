@@ -123,73 +123,75 @@ export function MilestoneOverlay({
       </VisuallyHidden>
 
       <Modal isOpen={isOpen} onClose={onClose} isCentered size="sm">
-      <ModalOverlay />
-      <ModalContent position="relative" overflow="hidden" data-testid="milestone-overlay">
-        {/* Confetti animation — hidden when reduced motion is preferred */}
-        {!reducedMotion && (
-          <Box position="absolute" top={0} left={0} right={0} bottom={0} pointerEvents="none">
-            {confettiPieces.map((piece) => (
+        <ModalOverlay />
+        <ModalContent position="relative" overflow="hidden" data-testid="milestone-overlay">
+          {/* Confetti animation — hidden when reduced motion is preferred */}
+          {!reducedMotion && (
+            <Box position="absolute" top={0} left={0} right={0} bottom={0} pointerEvents="none">
+              {confettiPieces.map((piece) => (
+                <motion.div
+                  key={piece.id}
+                  style={{
+                    position: 'absolute',
+                    top: '-10px',
+                    left: piece.left,
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '2px',
+                    backgroundColor: piece.color,
+                  }}
+                  animate={{ y: '100vh', rotate: 720, opacity: 0 }}
+                  initial={{ y: '-10px', rotate: 0, opacity: 1 }}
+                  transition={{ duration: 2, ease: 'linear', delay: piece.delay }}
+                />
+              ))}
+            </Box>
+          )}
+
+          {/* Reduced motion: instant emoji badge replaces confetti (duration 0 — no animation) */}
+          {reducedMotion && (
+            <Box display="flex" justifyContent="center" pt={4}>
               <motion.div
-                key={piece.id}
-                style={{
-                  position: 'absolute',
-                  top: '-10px',
-                  left: piece.left,
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '2px',
-                  backgroundColor: piece.color,
-                }}
-                animate={{ y: '100vh', rotate: 720, opacity: 0 }}
-                initial={{ y: '-10px', rotate: 0, opacity: 1 }}
-                transition={{ duration: 2, ease: 'linear', delay: piece.delay }}
-              />
-            ))}
-          </Box>
-        )}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0 }}
+              >
+                <Badge colorScheme="amber" fontSize="2xl" px={3} py={1}>
+                  {emoji}
+                </Badge>
+              </motion.div>
+            </Box>
+          )}
 
-        {/* Reduced motion: instant emoji badge replaces confetti (duration 0 — no animation) */}
-        {reducedMotion && (
-          <Box display="flex" justifyContent="center" pt={4}>
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0 }}
-            >
-              <Badge colorScheme="amber" fontSize="2xl" px={3} py={1}>
-                {emoji}
-              </Badge>
-            </motion.div>
-          </Box>
-        )}
+          <ModalBody textAlign="center" pt={reducedMotion ? 4 : 8} pb={4}>
+            <Text fontSize="4xl" mb={2}>
+              {emoji}
+            </Text>
 
-        <ModalBody textAlign="center" pt={reducedMotion ? 4 : 8} pb={4}>
-          <Text fontSize="4xl" mb={2}>{emoji}</Text>
+            <Heading size="4xl" mb={2}>
+              {milestone}%
+            </Heading>
 
-          <Heading size="4xl" mb={2}>
-            {milestone}%
-          </Heading>
+            <Text fontSize="lg" fontWeight="semibold" mb={1}>
+              {isComplete ? t('milestoneComplete') : t('milestoneTitle')}
+            </Text>
 
-          <Text fontSize="lg" fontWeight="semibold" mb={1}>
-            {isComplete ? t('milestoneComplete') : t('milestoneTitle')}
-          </Text>
+            <Text color="fg.muted" mb={2}>
+              {t('milestoneMessage', { goalName, percentage: milestone })}
+            </Text>
 
-          <Text color="fg.muted" mb={2}>
-            {t('milestoneMessage', { goalName, percentage: milestone })}
-          </Text>
+            <Text fontSize="sm" color="fg.subtle">
+              {t('milestoneAmount', { amount: formatAmount(currentAmount, currency) })}
+            </Text>
+          </ModalBody>
 
-          <Text fontSize="sm" color="fg.subtle">
-            {t('milestoneAmount', { amount: formatAmount(currentAmount, currency) })}
-          </Text>
-        </ModalBody>
-
-        <ModalFooter justifyContent="center" pt={0}>
-          <Button variant="ghost" colorScheme="brand" onClick={onClose}>
-            {t('milestoneDismiss')}
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+          <ModalFooter justifyContent="center" pt={0}>
+            <Button variant="ghost" colorScheme="brand" onClick={onClose}>
+              {t('milestoneDismiss')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   );
 }

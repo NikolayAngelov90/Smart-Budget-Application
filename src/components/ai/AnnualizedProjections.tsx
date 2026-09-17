@@ -11,15 +11,7 @@
  * Placement: Dashboard page, below Spending Heatmap (Story 11.3).
  */
 
-import {
-  Badge,
-  Box,
-  Flex,
-  Heading,
-  Skeleton,
-  Text,
-  VStack,
-} from '@chakra-ui/react';
+import { Badge, Box, Flex, Heading, Skeleton, Text, VStack } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import { useAnnualizedProjections } from '@/lib/hooks/useAnnualizedProjections';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -48,19 +40,11 @@ function TrendBadge({ trend, trend_percentage }: TrendBadgeProps) {
   }
   if (trend === 'up') {
     const pct = trend_percentage !== null ? Math.abs(trend_percentage) : 0;
-    return (
-      <Badge colorScheme="red">
-        {t('trendUp', { percentage: pct })}
-      </Badge>
-    );
+    return <Badge colorScheme="red">{t('trendUp', { percentage: pct })}</Badge>;
   }
   // down
   const pct = trend_percentage !== null ? Math.abs(trend_percentage) : 0;
-  return (
-    <Badge colorScheme="green">
-      {t('trendDown', { percentage: pct })}
-    </Badge>
-  );
+  return <Badge colorScheme="green">{t('trendDown', { percentage: pct })}</Badge>;
 }
 
 interface ProjectionRowProps {
@@ -125,15 +109,16 @@ function ProjectionRow({ projection, currency }: ProjectionRowProps) {
           <Text fontSize="xs" color="fg.subtle">
             {t('transactions')}
           </Text>
-          <Text fontWeight="medium">
-            {transaction_count}
-          </Text>
+          <Text fontWeight="medium">{transaction_count}</Text>
         </Box>
         <Box textAlign="right">
           <Text fontSize="xs" color="fg.subtle">
             {t('monthlyAvg')}
           </Text>
-          <Text fontWeight="medium" aria-label={`${t('monthlyAvg')}: ${formatAmount(monthly_avg, currency)}`}>
+          <Text
+            fontWeight="medium"
+            aria-label={`${t('monthlyAvg')}: ${formatAmount(monthly_avg, currency)}`}
+          >
             {formatAmount(monthly_avg, currency)}
           </Text>
         </Box>
@@ -141,7 +126,10 @@ function ProjectionRow({ projection, currency }: ProjectionRowProps) {
           <Text fontSize="xs" color="fg.subtle">
             {t('annualProjection')}
           </Text>
-          <Text fontWeight="semibold" aria-label={`${t('annualProjection')}: ${formatAmount(annual_projection, currency)}`}>
+          <Text
+            fontWeight="semibold"
+            aria-label={`${t('annualProjection')}: ${formatAmount(annual_projection, currency)}`}
+          >
             {formatAmount(annual_projection, currency)}
           </Text>
         </Box>
@@ -181,8 +169,7 @@ function TotalRow({ total, currency }: TotalRowProps) {
 
 export function AnnualizedProjections() {
   const t = useTranslations('projections');
-  const { projections, hasEnoughData, months_analyzed, isLoading } =
-    useAnnualizedProjections();
+  const { projections, hasEnoughData, months_analyzed, isLoading } = useAnnualizedProjections();
   const { preferences } = useUserPreferences();
   const currency = preferences?.currency_format ?? '';
   const { isUnlocked } = useFeatureDisclosure();

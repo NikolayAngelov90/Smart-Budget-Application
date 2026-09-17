@@ -49,7 +49,6 @@ import { GET } from '../route';
 const getRequest = (query = '') =>
   ({ url: `http://localhost:3000/api/what-if${query}` }) as Parameters<typeof GET>[0];
 
-
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
 // Chainable query stub: every method returns `this`; awaiting resolves to `result`.
@@ -136,7 +135,9 @@ describe('GET /api/what-if', () => {
         transactions: { data: [], error: null },
         categories: { data: CATEGORIES, error: null },
         detected_subscriptions: {
-          data: [{ id: 's-1', merchant_pattern: 'Netflix', estimated_amount: 15, frequency: 'monthly' }],
+          data: [
+            { id: 's-1', merchant_pattern: 'Netflix', estimated_amount: 15, frequency: 'monthly' },
+          ],
           error: null,
         },
       }) as never
@@ -155,7 +156,13 @@ describe('GET /api/what-if', () => {
       makeSupabase({
         transactions: {
           data: [
-            { category_id: 'cat-1', amount: 100, currency: 'USD', exchange_rate: 2, date: '2026-06-01' },
+            {
+              category_id: 'cat-1',
+              amount: 100,
+              currency: 'USD',
+              exchange_rate: 2,
+              date: '2026-06-01',
+            },
           ],
           error: null,
         },
@@ -187,9 +194,7 @@ describe('GET /api/what-if', () => {
 
     const res = await GET(getRequest());
     const body = await res.json();
-    expect(body.subscriptions).toEqual([
-      { id: 's-1', name: 'Netflix', monthly_amount: expected },
-    ]);
+    expect(body.subscriptions).toEqual([{ id: 's-1', name: 'Netflix', monthly_amount: expected }]);
   });
 
   it('picks the first unmet future-deadline goal', async () => {

@@ -35,7 +35,7 @@ import { formatCurrency } from '@/lib/utils/currency';
  * Component props
  */
 export interface MonthOverMonthProps {
-  month?: string;  // Optional month in YYYY-MM format (defaults to current)
+  month?: string; // Optional month in YYYY-MM format (defaults to current)
 }
 
 /**
@@ -74,14 +74,14 @@ function ChangeItem({
       transition="all 0.2s"
       minH="44px"
     >
-      <Flex align="center" justify="space-between" gap={{ base: 2, md: 3 }} flexWrap={{ base: 'wrap', md: 'nowrap' }}>
+      <Flex
+        align="center"
+        justify="space-between"
+        gap={{ base: 2, md: 3 }}
+        flexWrap={{ base: 'wrap', md: 'nowrap' }}
+      >
         <Flex align="center" gap={2} flex={1} minW="0">
-          <Icon
-            as={ArrowIcon}
-            boxSize={5}
-            color={`${colorScheme}.500`}
-            flexShrink={0}
-          />
+          <Icon as={ArrowIcon} boxSize={5} color={`${colorScheme}.500`} flexShrink={0} />
           <Text fontWeight="medium" fontSize={{ base: '0.875rem', lg: '1rem' }} noOfLines={1}>
             {change.categoryName}
           </Text>
@@ -97,7 +97,12 @@ function ChangeItem({
           >
             {arrow} {Math.abs(change.percentChange).toFixed(0)}%
           </Badge>
-          <Text fontSize={{ base: '0.625rem', md: '0.75rem' }} color="fg.muted" whiteSpace="nowrap" display={{ base: 'none', sm: 'block' }}>
+          <Text
+            fontSize={{ base: '0.625rem', md: '0.75rem' }}
+            color="fg.muted"
+            whiteSpace="nowrap"
+            display={{ base: 'none', sm: 'block' }}
+          >
             {t('momComparison', {
               current: formatCurrency(change.currentAmount, undefined, currencyCode),
               previous: formatCurrency(change.previousAmount, undefined, currencyCode),
@@ -137,12 +142,7 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   if (isLoading) {
     return (
       <Box>
-        <Text
-          as="h3"
-          fontSize={{ base: '1.125rem', lg: '1.25rem' }}
-          fontWeight="bold"
-          mb={4}
-        >
+        <Text as="h3" fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
           {t('momTitle')}
         </Text>
         <Stack spacing={3}>
@@ -158,12 +158,7 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   if (error) {
     return (
       <Box>
-        <Text
-          as="h3"
-          fontSize={{ base: '1.125rem', lg: '1.25rem' }}
-          fontWeight="bold"
-          mb={4}
-        >
+        <Text as="h3" fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
           {t('momTitle')}
         </Text>
         <Alert status="error" borderRadius="md">
@@ -179,12 +174,7 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   if (!data || data.changes.length === 0) {
     return (
       <Box>
-        <Text
-          as="h3"
-          fontSize={{ base: '1.125rem', lg: '1.25rem' }}
-          fontWeight="bold"
-          mb={4}
-        >
+        <Text as="h3" fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
           {t('momTitle')}
         </Text>
         <Flex
@@ -212,12 +202,7 @@ export function MonthOverMonth({ month }: MonthOverMonthProps) {
   // Render changes list
   return (
     <Box>
-      <Text
-        as="h3"
-        fontSize={{ base: '1.125rem', lg: '1.25rem' }}
-        fontWeight="bold"
-        mb={4}
-      >
+      <Text as="h3" fontSize={{ base: '1.125rem', lg: '1.25rem' }} fontWeight="bold" mb={4}>
         {t('momTitle')}
       </Text>
       <List spacing={3}>

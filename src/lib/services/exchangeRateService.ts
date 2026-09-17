@@ -62,9 +62,7 @@ function getApiUrl(baseCurrency: string): string {
  * @param baseCurrency - Base currency code (e.g., 'EUR')
  * @returns Exchange rate data or null if fetch fails
  */
-export async function fetchRatesFromApi(
-  baseCurrency: string
-): Promise<ExchangeRateData | null> {
+export async function fetchRatesFromApi(baseCurrency: string): Promise<ExchangeRateData | null> {
   try {
     const url = getApiUrl(baseCurrency);
     const response = await fetch(url, {
@@ -72,10 +70,7 @@ export async function fetchRatesFromApi(
     });
 
     if (!response.ok) {
-      logger.error(
-        'ExchangeRate',
-        `API returned ${response.status}: ${response.statusText}`
-      );
+      logger.error('ExchangeRate', `API returned ${response.status}: ${response.statusText}`);
       return null;
     }
 
@@ -150,9 +145,7 @@ async function setRateLimit(baseCurrency: string): Promise<void> {
  * Get cached exchange rates from Redis
  * AC-10.5.2: Server-side caching
  */
-async function getCachedRates(
-  baseCurrency: string
-): Promise<ExchangeRateData | null> {
+async function getCachedRates(baseCurrency: string): Promise<ExchangeRateData | null> {
   // Try Redis first
   if (isRedisConfigured()) {
     try {
@@ -179,10 +172,7 @@ async function getCachedRates(
 /**
  * Store exchange rates in cache (Redis + in-memory)
  */
-async function setCachedRates(
-  baseCurrency: string,
-  data: ExchangeRateData
-): Promise<void> {
+async function setCachedRates(baseCurrency: string, data: ExchangeRateData): Promise<void> {
   // Always update in-memory cache
   memoryCache.set(baseCurrency, data);
 
@@ -249,11 +239,7 @@ export async function getExchangeRates(
 
   // 4. API failed - fall back to cached data (AC-10.5.4)
   if (cached) {
-    logger.warn(
-      'ExchangeRate',
-      'API unavailable, using cached rates from',
-      cached.fetchedAt
-    );
+    logger.warn('ExchangeRate', 'API unavailable, using cached rates from', cached.fetchedAt);
     return {
       base: cached.base,
       rates: cached.rates,
@@ -278,9 +264,7 @@ export async function getExchangeRates(
  * Hardcoded fallback rates when both API and cache are unavailable
  * These are approximate rates as of early 2025
  */
-function getHardcodedFallbackRates(
-  baseCurrency: string
-): Record<string, number> {
+function getHardcodedFallbackRates(baseCurrency: string): Record<string, number> {
   const eurRates: Record<string, number> = {
     EUR: 1,
     USD: 1.08,
@@ -320,10 +304,7 @@ export async function getExchangeRate(
   const rate = rateData.rates[toCurrency];
 
   if (rate === undefined) {
-    logger.error(
-      'ExchangeRate',
-      `No rate found for ${fromCurrency} -> ${toCurrency}`
-    );
+    logger.error('ExchangeRate', `No rate found for ${fromCurrency} -> ${toCurrency}`);
     return null;
   }
 

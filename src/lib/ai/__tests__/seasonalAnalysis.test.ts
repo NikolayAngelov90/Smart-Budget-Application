@@ -11,20 +11,46 @@ import type { Transaction } from '@/types/database.types';
 const TODAY = new Date('2026-06-15T12:00:00');
 
 let seq = 0;
-function tx(categoryId: string, amount: number, date: string, type: 'expense' | 'income' = 'expense'): Transaction {
+function tx(
+  categoryId: string,
+  amount: number,
+  date: string,
+  type: 'expense' | 'income' = 'expense'
+): Transaction {
   seq += 1;
   return {
-    id: `t${seq}`, user_id: 'u1', category_id: categoryId, amount, date, type,
-    notes: null, currency: 'USD', exchange_rate: null, household_id: null, allowance_id: null, goal_contribution_id: null,
-    created_at: `${date}T00:00:00Z`, updated_at: `${date}T00:00:00Z`,
+    id: `t${seq}`,
+    user_id: 'u1',
+    category_id: categoryId,
+    amount,
+    date,
+    type,
+    notes: null,
+    currency: 'USD',
+    exchange_rate: null,
+    household_id: null,
+    allowance_id: null,
+    goal_contribution_id: null,
+    created_at: `${date}T00:00:00Z`,
+    updated_at: `${date}T00:00:00Z`,
   };
 }
 
 /** One transaction per month from 2025-07 .. 2026-06 (12 months), each `amount`. */
 function twelveMonths(amount: number): Transaction[] {
   const months = [
-    '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12',
-    '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06',
+    '2025-07',
+    '2025-08',
+    '2025-09',
+    '2025-10',
+    '2025-11',
+    '2025-12',
+    '2026-01',
+    '2026-02',
+    '2026-03',
+    '2026-04',
+    '2026-05',
+    '2026-06',
   ];
   return months.map((m) => tx('cat-1', amount, `${m}-10`));
 }
@@ -51,7 +77,12 @@ describe('analyzeSeasonalPatterns', () => {
     expect(result.months_analyzed).toBe(12);
     // Next 6 months after Jun 2026
     expect(result.timeline.map((m) => m.month)).toEqual([
-      '2026-07', '2026-08', '2026-09', '2026-10', '2026-11', '2026-12',
+      '2026-07',
+      '2026-08',
+      '2026-09',
+      '2026-10',
+      '2026-11',
+      '2026-12',
     ]);
   });
 
@@ -85,9 +116,13 @@ describe('analyzeSeasonalPatterns', () => {
     expect(july!.historical_basis).toBe('2025-07');
 
     // Now a history with only Jan..Jun 2026 → upcoming Jul..Dec have NO basis
-    const h2 = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'].map((m) => tx('cat-1', 100, `${m}-10`));
+    const h2 = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'].map((m) =>
+      tx('cat-1', 100, `${m}-10`)
+    );
     const r2 = analyzeSeasonalPatterns({ transactions: h2, today: TODAY });
-    expect(r2.timeline.every((m) => m.predicted_amount === 0 && m.historical_basis === null)).toBe(true);
+    expect(r2.timeline.every((m) => m.predicted_amount === 0 && m.historical_basis === null)).toBe(
+      true
+    );
   });
 
   it('ignores income transactions', () => {

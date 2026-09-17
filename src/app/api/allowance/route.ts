@@ -25,7 +25,10 @@ export const dynamic = 'force-dynamic';
 
 const upsertSchema = z.object({
   monthly_amount: z.number().nonnegative('Allowance amount must be non-negative'),
-  currency: z.string().regex(/^[A-Z]{3}$/, 'Invalid currency code').optional(),
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/, 'Invalid currency code')
+    .optional(),
 });
 
 async function requireUser() {

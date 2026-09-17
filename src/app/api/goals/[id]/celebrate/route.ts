@@ -35,13 +35,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: { message: 'Unauthorized' } },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: { message: 'Unauthorized' } }, { status: 401 });
     }
 
-    const body = await request.json() as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
     const threshold = Number(body.threshold);
 
     if (!VALID_THRESHOLDS.includes(threshold)) {
@@ -55,9 +52,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error('GoalsAPI', 'Error marking milestone celebrated:', error);
-    return NextResponse.json(
-      { error: { message: 'Failed to mark milestone' } },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: { message: 'Failed to mark milestone' } }, { status: 500 });
   }
 }

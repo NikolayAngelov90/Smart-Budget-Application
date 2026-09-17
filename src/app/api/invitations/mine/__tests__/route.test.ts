@@ -16,7 +16,9 @@ jest.mock('next/server', () => ({
 }));
 jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn() }));
 jest.mock('@/lib/services/invitationService', () => ({ listMyPendingInvitations: jest.fn() }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
 import { listMyPendingInvitations } from '@/lib/services/invitationService';
@@ -26,7 +28,13 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
 const mockList = listMyPendingInvitations as jest.MockedFunction<typeof listMyPendingInvitations>;
 
 function authClient(user: object | null) {
-  return { auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }) } };
+  return {
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+    },
+  };
 }
 
 beforeEach(() => jest.clearAllMocks());

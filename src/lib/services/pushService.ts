@@ -14,7 +14,11 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
 
 // Configure VAPID once at module init (env vars validated at runtime)
-if (process.env.VAPID_SUBJECT && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+if (
+  process.env.VAPID_SUBJECT &&
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY &&
+  process.env.VAPID_PRIVATE_KEY
+) {
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT,
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
@@ -233,7 +237,11 @@ export async function sendPushToUser(
             .delete()
             .eq('id', sub.id);
           if (deleteError) {
-            logger.error('PushService', `Failed to delete stale subscription ${sub.id}:`, deleteError);
+            logger.error(
+              'PushService',
+              `Failed to delete stale subscription ${sub.id}:`,
+              deleteError
+            );
           } else {
             logger.info('PushService', `Deleted stale subscription ${sub.id} (${status})`);
           }

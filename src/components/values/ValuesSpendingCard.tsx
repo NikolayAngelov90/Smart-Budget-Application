@@ -9,7 +9,17 @@
  * the picture honest. Progressive disclosure: renders nothing when there's no values plan.
  */
 
-import { Box, Card, CardBody, VStack, HStack, Heading, Text, Progress, Badge } from '@chakra-ui/react';
+import {
+  Box,
+  Card,
+  CardBody,
+  VStack,
+  HStack,
+  Heading,
+  Text,
+  Progress,
+  Badge,
+} from '@chakra-ui/react';
 import { TriangleUpIcon, TriangleDownIcon, MinusIcon } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
 import { useValuesSpending } from '@/lib/hooks/useValuesSpending';

@@ -24,10 +24,17 @@ jest.mock('@/lib/services/householdGoalService', () => ({
 jest.mock('@/lib/services/householdService', () => ({
   NotHouseholdMemberError: class NotHouseholdMemberError extends Error {},
 }));
-jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/utils/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { createClient } from '@/lib/supabase/server';
-import { getHouseholdGoals, createHouseholdGoal, contributeToHouseholdGoal, GoalNotFoundError } from '@/lib/services/householdGoalService';
+import {
+  getHouseholdGoals,
+  createHouseholdGoal,
+  contributeToHouseholdGoal,
+  GoalNotFoundError,
+} from '@/lib/services/householdGoalService';
 import { NotHouseholdMemberError } from '@/lib/services/householdService';
 import { GET, POST } from '../route';
 import { POST as CONTRIBUTE } from '../[id]/contribute/route';
@@ -35,10 +42,18 @@ import { POST as CONTRIBUTE } from '../[id]/contribute/route';
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockGet = getHouseholdGoals as jest.MockedFunction<typeof getHouseholdGoals>;
 const mockCreate = createHouseholdGoal as jest.MockedFunction<typeof createHouseholdGoal>;
-const mockContribute = contributeToHouseholdGoal as jest.MockedFunction<typeof contributeToHouseholdGoal>;
+const mockContribute = contributeToHouseholdGoal as jest.MockedFunction<
+  typeof contributeToHouseholdGoal
+>;
 
 function authClient(user: object | null) {
-  return { auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }) } };
+  return {
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+    },
+  };
 }
 function req(body: unknown) {
   return { json: async () => body } as never;

@@ -49,14 +49,11 @@ jest.mock('next-intl', () => ({
 
 const mockUseWhatIf = useWhatIf as jest.MockedFunction<typeof useWhatIf>;
 
-const renderWithChakra = (ui: React.ReactElement) =>
-  render(<ChakraProvider>{ui}</ChakraProvider>);
+const renderWithChakra = (ui: React.ReactElement) => render(<ChakraProvider>{ui}</ChakraProvider>);
 
 const CONTEXT: WhatIfContextResponse = {
   hasData: true,
-  categories: [
-    { category_id: 'cat-1', name: 'Dining', color: '#aaa', avg_monthly: 400 },
-  ],
+  categories: [{ category_id: 'cat-1', name: 'Dining', color: '#aaa', avg_monthly: 400 }],
   subscriptions: [{ id: 's-1', name: 'Netflix', monthly_amount: 10 }],
   goal: { name: 'Vacation', target_amount: 1300, current_amount: 1000, deadline: '2199-08-01' },
 };
@@ -87,9 +84,7 @@ describe('WhatIfSimulator', () => {
     renderWithChakra(<WhatIfSimulator />);
 
     expect(screen.getByText('Dining')).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('Reduce Dining spending by percentage')
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Reduce Dining spending by percentage')).toBeInTheDocument();
     expect(screen.getByText(/Cancel Netflix/)).toBeInTheDocument();
     expect(screen.getByText('Projected monthly savings')).toBeInTheDocument();
     expect(screen.getAllByText('€0.00')).toHaveLength(2); // monthly + annual

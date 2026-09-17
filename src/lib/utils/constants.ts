@@ -48,7 +48,7 @@ export const DEFAULT_CATEGORIES = [
  * Used for validation in API routes and display in UI components.
  */
 export const SUPPORTED_CURRENCIES = ['EUR', 'USD', 'GBP'] as const;
-export type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number];
+export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
 /**
  * Default currency used when no currency is specified

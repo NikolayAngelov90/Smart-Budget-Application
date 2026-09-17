@@ -37,8 +37,7 @@ function readCrons(): CronEntry[] {
  */
 function runsAtMostOncePerDay(schedule: string): boolean {
   const [minute, hour] = schedule.trim().split(/\s+/);
-  const isFixed = (field: string | undefined) =>
-    !!field && /^\d+$/.test(field);
+  const isFixed = (field: string | undefined) => !!field && /^\d+$/.test(field);
   return isFixed(minute) && isFixed(hour);
 }
 

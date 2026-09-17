@@ -51,7 +51,10 @@ describe('getInsightMeta / getInsightTone', () => {
   it('gives the Epic-12 types real (non-fallback) mappings', () => {
     // These previously fell through to grey/InfoIcon in AIInsightCard.
     expect(getInsightMeta('spending_anomaly')).toEqual({ group: 'attention', tone: 'expense' });
-    expect(getInsightMeta('new_high_spend_category')).toEqual({ group: 'changed', tone: 'warning' });
+    expect(getInsightMeta('new_high_spend_category')).toEqual({
+      group: 'changed',
+      tone: 'warning',
+    });
   });
 
   it('uses semantic tones: warnings clay, changes amber, progress income', () => {
@@ -126,10 +129,7 @@ describe('selectLeadInsight', () => {
   });
 
   it('returns lead=null and the untouched list when everything is dismissed', () => {
-    const list = [
-      ins({ id: 'a', is_dismissed: true }),
-      ins({ id: 'b', is_dismissed: true }),
-    ];
+    const list = [ins({ id: 'a', is_dismissed: true }), ins({ id: 'b', is_dismissed: true })];
 
     const { lead, rest } = selectLeadInsight(list);
 

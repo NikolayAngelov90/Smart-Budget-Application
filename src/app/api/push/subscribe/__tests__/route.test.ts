@@ -38,7 +38,9 @@ describe('POST /api/push/subscribe', () => {
 
   it('returns 401 when unauthenticated', async () => {
     mockCreateClient.mockResolvedValue(makeClient(null) as never);
-    const res = await POST(makeRequest({ endpoint: 'https://x.com', keys: { p256dh: 'pk', auth: 'a' } }));
+    const res = await POST(
+      makeRequest({ endpoint: 'https://x.com', keys: { p256dh: 'pk', auth: 'a' } })
+    );
     expect(res.status).toBe(401);
   });
 
@@ -50,7 +52,9 @@ describe('POST /api/push/subscribe', () => {
 
   it('returns 200 and upserts subscription on valid body', async () => {
     mockCreateClient.mockResolvedValue(makeClient({ id: 'u1' }) as never);
-    const res = await POST(makeRequest({ endpoint: 'https://push.example.com/1', keys: { p256dh: 'pk', auth: 'a' } }));
+    const res = await POST(
+      makeRequest({ endpoint: 'https://push.example.com/1', keys: { p256dh: 'pk', auth: 'a' } })
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);

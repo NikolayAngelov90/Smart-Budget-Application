@@ -7,15 +7,7 @@
  * Notifications group so it sits with the push controls.
  */
 
-import {
-  Card,
-  CardBody,
-  FormControl,
-  FormLabel,
-  Select,
-  Text,
-  VStack,
-} from '@chakra-ui/react';
+import { Card, CardBody, FormControl, FormLabel, Select, Text, VStack } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
 import useSWR from 'swr';
 import { SUPPORTED_CURRENCIES, getEnabledCurrencies } from '@/lib/config/currencies';
@@ -77,7 +69,14 @@ export function PreferencesSection() {
                 {t('currencyDescription')}
               </Text>
               {exchangeRates && exchangeRates.rates && (
-                <VStack align="stretch" mt={2} p={2} bg="accent.subtle" borderRadius="md" spacing={1}>
+                <VStack
+                  align="stretch"
+                  mt={2}
+                  p={2}
+                  bg="accent.subtle"
+                  borderRadius="md"
+                  spacing={1}
+                >
                   {getEnabledCurrencies()
                     .filter((c) => c.code !== 'EUR')
                     .map((c) => (

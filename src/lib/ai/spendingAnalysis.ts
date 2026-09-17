@@ -101,9 +101,7 @@ export function calculateStdDev(amounts: number[], mean?: number): number {
 
   const calculatedMean = mean !== undefined ? mean : calculateMean(amounts);
 
-  const squaredDifferences = amounts.map(amount =>
-    Math.pow(amount - calculatedMean, 2)
-  );
+  const squaredDifferences = amounts.map((amount) => Math.pow(amount - calculatedMean, 2));
 
   const variance = squaredDifferences.reduce((acc, val) => acc + val, 0) / amounts.length;
 

@@ -44,7 +44,11 @@ function txChain(result: { data: unknown; error: unknown }) {
 
 function client(user: object | null, txResult: { data: unknown; error: unknown }) {
   return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }) },
+    auth: {
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }),
+    },
     from: jest.fn(() => txChain(txResult)),
   };
 }
@@ -91,7 +95,9 @@ describe('GET /api/values/spending', () => {
       }
     );
     mockCreateClient.mockResolvedValue(c as never);
-    mockGetPlan.mockResolvedValue([{ id: 'v1', name: 'Health', priority: 0, category_ids: ['cA'] }]);
+    mockGetPlan.mockResolvedValue([
+      { id: 'v1', name: 'Health', priority: 0, category_ids: ['cA'] },
+    ]);
 
     const res = await GET();
     expect(res.status).toBe(200);
@@ -108,7 +114,9 @@ describe('GET /api/values/spending', () => {
   it('returns 500 on a DB error', async () => {
     const c = client({ id: 'user-1' }, { data: null, error: { message: 'db down' } });
     mockCreateClient.mockResolvedValue(c as never);
-    mockGetPlan.mockResolvedValue([{ id: 'v1', name: 'Health', priority: 0, category_ids: ['cA'] }]);
+    mockGetPlan.mockResolvedValue([
+      { id: 'v1', name: 'Health', priority: 0, category_ids: ['cA'] },
+    ]);
 
     const res = await GET();
     expect(res.status).toBe(500);

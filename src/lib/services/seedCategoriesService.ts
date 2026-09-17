@@ -42,9 +42,7 @@ import { logger } from '@/lib/utils/logger';
  * Idempotency: Safe to call multiple times - only seeds if count = 0
  * RLS: Uses Row Level Security policies (auth.uid() = user_id)
  */
-export async function seedDefaultCategories(
-  userId: string
-): Promise<SeedResult> {
+export async function seedDefaultCategories(userId: string): Promise<SeedResult> {
   try {
     const supabase = await createClient();
 
@@ -61,7 +59,10 @@ export async function seedDefaultCategories(
 
     // If user already has categories, return early (idempotent)
     if (existingCount && existingCount > 0) {
-      logger.info('SeedCategoriesService', `User ${userId} already has ${existingCount} categories - skipping seed`);
+      logger.info(
+        'SeedCategoriesService',
+        `User ${userId} already has ${existingCount} categories - skipping seed`
+      );
       return {
         success: true,
         count: 0,
@@ -89,7 +90,10 @@ export async function seedDefaultCategories(
       throw new Error(`Failed to insert categories: ${insertError.message}`);
     }
 
-    logger.info('SeedCategoriesService', `Successfully seeded ${insertedCategories.length} categories for user ${userId}`);
+    logger.info(
+      'SeedCategoriesService',
+      `Successfully seeded ${insertedCategories.length} categories for user ${userId}`
+    );
 
     return {
       success: true,

@@ -11,10 +11,7 @@ import { logger } from '@/lib/utils/logger';
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Authenticate user
     const supabase = await createClient();
@@ -24,10 +21,7 @@ export async function PUT(
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get insight ID from params (await in Next.js 15)
@@ -45,7 +39,7 @@ export async function PUT(
     const updatePayload = {
       is_dismissed: true,
       dismissed_at: new Date().toISOString(),
-    }
+    };
 
     // Update insight (RLS will enforce user can only update their own insights)
     const { data: insight, error } = await supabase

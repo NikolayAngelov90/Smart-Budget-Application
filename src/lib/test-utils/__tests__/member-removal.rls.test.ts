@@ -36,7 +36,11 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
     aId = await createTestUser(aEmail, PWD);
     bId = await createTestUser(bEmail, PWD);
 
-    const { data: h } = await svc.from('households').insert({ name: 'Removal HH', created_by: aId }).select('id').single();
+    const { data: h } = await svc
+      .from('households')
+      .insert({ name: 'Removal HH', created_by: aId })
+      .select('id')
+      .single();
     householdId = h!.id;
     await svc.from('household_members').insert([
       { household_id: householdId, user_id: aId, role: 'admin' },
@@ -45,13 +49,28 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
 
     const { data: sc } = await svc
       .from('categories')
-      .insert({ user_id: aId, name: 'Groceries', color: '#abcdef', type: 'expense', household_id: householdId, visibility_level: 'shared' })
+      .insert({
+        user_id: aId,
+        name: 'Groceries',
+        color: '#abcdef',
+        type: 'expense',
+        household_id: householdId,
+        visibility_level: 'shared',
+      })
       .select('id')
       .single();
     sharedCatId = sc!.id;
     const { data: tx } = await svc
       .from('transactions')
-      .insert({ user_id: aId, category_id: sharedCatId, amount: 100, type: 'expense', date: '2026-06-10', currency: 'EUR', household_id: householdId })
+      .insert({
+        user_id: aId,
+        category_id: sharedCatId,
+        amount: 100,
+        type: 'expense',
+        date: '2026-06-10',
+        currency: 'EUR',
+        household_id: householdId,
+      })
       .select('id')
       .single();
     sharedTxId = tx!.id;
@@ -68,7 +87,14 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
     // loses owner-branch read/write, while it stays in the household.
     const { data: bsc } = await svc
       .from('categories')
-      .insert({ user_id: bId, name: 'B Shared', color: '#654321', type: 'expense', household_id: householdId, visibility_level: 'shared' })
+      .insert({
+        user_id: bId,
+        name: 'B Shared',
+        color: '#654321',
+        type: 'expense',
+        household_id: householdId,
+        visibility_level: 'shared',
+      })
       .select('id')
       .single();
     bSharedCatId = bsc!.id;
@@ -90,7 +116,11 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
     // to the admin (the two writes the service performs).
     const svc = createServiceClient();
     await svc.from('household_members').delete().eq('household_id', householdId).eq('user_id', bId);
-    await svc.from('categories').update({ user_id: aId }).eq('user_id', bId).eq('household_id', householdId);
+    await svc
+      .from('categories')
+      .update({ user_id: aId })
+      .eq('user_id', bId)
+      .eq('household_id', householdId);
 
     const b = await signInAsTestUser(bEmail, PWD);
     expect((await b.from('households').select('id').eq('id', householdId)).data).toEqual([]);
@@ -98,10 +128,20 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
     expect((await b.from('transactions').select('id').eq('id', sharedTxId)).data).toEqual([]);
     // The shared category B created is now reassigned to the admin → B can't see/own it.
     expect((await b.from('categories').select('id').eq('id', bSharedCatId)).data).toEqual([]);
-    expect((await b.rpc('household_category_totals', { p_household_id: householdId })).data ?? []).toEqual([]);
-    expect((await b.rpc('household_contributions', { p_household_id: householdId })).data ?? []).toEqual([]);
     expect(
-      (await b.rpc('household_category_period_totals', { p_household_id: householdId, p_start: '2026-06-01', p_end: '2026-07-01' })).data ?? []
+      (await b.rpc('household_category_totals', { p_household_id: householdId })).data ?? []
+    ).toEqual([]);
+    expect(
+      (await b.rpc('household_contributions', { p_household_id: householdId })).data ?? []
+    ).toEqual([]);
+    expect(
+      (
+        await b.rpc('household_category_period_totals', {
+          p_household_id: householdId,
+          p_start: '2026-06-01',
+          p_end: '2026-07-01',
+        })
+      ).data ?? []
     ).toEqual([]);
   });
 
@@ -116,7 +156,11 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
     expect((await a.from('transactions').select('id').eq('id', sharedTxId)).data).toHaveLength(1);
     // The reassigned shared category B created stays in the household, now owned by A.
     const svc = createServiceClient();
-    const { data } = await svc.from('categories').select('user_id, household_id').eq('id', bSharedCatId).single();
+    const { data } = await svc
+      .from('categories')
+      .select('user_id, household_id')
+      .eq('id', bSharedCatId)
+      .single();
     expect(data?.user_id).toBe(aId);
     expect(data?.household_id).toBe(householdId);
   });
