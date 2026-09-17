@@ -120,6 +120,25 @@ export async function markGenerated(userId: string): Promise<void> {
 }
 
 /**
+ * Transactions since the last run that force a regeneration on volume alone.
+ *
+ * NOT A PRINCIPLED NUMBER. It comes from Story 6.5's acceptance criteria and has
+ * never been revisited. It is kept because changing it is a product decision,
+ * and because the staleness condition below is what actually makes low-volume
+ * accounts work — the count is no longer carrying that weight alone.
+ */
+const VOLUME_TRIGGER_TRANSACTIONS = 10;
+
+/**
+ * Days after which any new transaction is enough to regenerate.
+ *
+ * Three days means a user who logs a couple of expenses a week still sees
+ * insights refresh twice a week, rather than waiting for a tenth transaction
+ * that may be a month away.
+ */
+const STALENESS_TRIGGER_DAYS = 3;
+
+/**
  * Whether insights were generated within the TTL window.
  * @param cacheTTL - window in milliseconds (default: 1 hour)
  */
@@ -459,6 +478,13 @@ export async function shouldTriggerGeneration(userId: string): Promise<boolean> 
   // NULL now genuinely means "never generated", because the marker is durable.
   // Generating once for such a user is the right answer — the bug was that a
   // cold start made EVERY user look like this one.
+  //
+  // NULL MUST NOT REACH THE STALENESS CONDITION BELOW. Returning here is what
+  // guarantees that. "Null is very old" is the obvious reading and it is hp-8's
+  // bug in a new costume: a null timestamp compared as infinitely old makes
+  // every user permanently overdue, and generation fires on every transaction
+  // again. The count path already handles a genuinely new user safely, because
+  // this line returns true once and the run that follows writes the marker.
   if (!lastGenerated) return true;
 
   const supabase = await createClient();
@@ -472,7 +498,19 @@ export async function shouldTriggerGeneration(userId: string): Promise<boolean> 
 
   if (error) throw error;
 
-  return (count || 0) >= 10;
+  const newTransactions = count || 0;
+  if (newTransactions >= VOLUME_TRIGGER_TRANSACTIONS) return true;
+
+  // STALENESS, THE LOW-VOLUME PATH. A pure count can never serve someone who
+  // enters a few transactions a week: at five a week the volume trigger is two
+  // weeks apart, and at two a week it effectively never fires. Time is the only
+  // condition that scales DOWN.
+  //
+  // It still requires at least one new transaction, so a dormant account is not
+  // regenerated forever over data that has not changed.
+  if (newTransactions === 0) return false;
+  const ageMs = Date.now() - lastGenerated.getTime();
+  return ageMs >= STALENESS_TRIGGER_DAYS * 24 * 60 * 60 * 1000;
 }
 
 /**
@@ -506,10 +544,12 @@ export async function checkAndTriggerForTransactionCount(userId: string): Promis
         `User ${userId}: 10+ transactions detected, generating insights`
       );
 
-      // Trigger insight generation (non-blocking)
-      generateInsights(userId, false).catch((error) => {
-        logger.error('Insight Service', `Error generating insights for user ${userId}:`, error);
-      });
+      // AWAITED. This function is invoked from `after()`, which keeps the
+      // serverless function alive for exactly as long as the work it is given —
+      // so the work must be part of that promise. Detaching it here would
+      // restore the original defect one level down: `after()` would resolve
+      // immediately and the generation would be dropped exactly as before.
+      await generateInsights(userId, false);
     }
   } catch (error) {
     // Log error but don't throw - this is a background operation

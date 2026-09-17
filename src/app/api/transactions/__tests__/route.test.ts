@@ -11,6 +11,12 @@
 
 // Mock Next.js server before importing route
 jest.mock('next/server', () => ({
+  // The route schedules insight generation with `after()`. Running the
+  // callback here matches production: the work happens, just not before
+  // the response. A no-op stub would silently skip the trigger entirely.
+  after: (fn: () => unknown) => {
+    void fn();
+  },
   NextResponse: {
     json: jest.fn((data, init) => ({
       json: async () => data,

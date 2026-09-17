@@ -291,14 +291,44 @@ export function compareMonthlySpending(
  * that date is absent because NOTHING WAS RECORDING, not because nobody engaged.
  * Those two read identically in a query and mean opposite things.
  *
- * THE FIRST READING IS CONTAMINATED - DO NOT USE IT AS A BASELINE. The clock
- * starts at the hp-10 migration (2026-08-28), which cleared the table, so every
- * row created on that date is verification activity - confirmed by the user:
- * he dismissed all seven to check whether they would come back, and their content
- * was not a factor. The raw counter for that date reads 7 `unusual_expense` rows,
- * 7 dismissed. A 100% dismissal rate is the strongest over-flagging signal the
- * naive metric can produce, and here it means the opposite of what it appears to.
- * So the query below starts the clock the day after:
+ * VERIFICATION ROWS ARE EXCLUDED BY ID, NOT BY A DATE CUTOFF. This started as a
+ * cutoff and the cutoff was moved TWICE — first past the 2026-08-28 rows, then
+ * past 2026-09-17 — which is the proof it does not work. A cutoff has to be
+ * MAINTAINED, by someone who was not here, at the moment they are in a hurry.
+ * A list only has to be APPENDED to, and an entry nobody adds is visibly missing
+ * rather than silently swept in.
+ *
+ * VERIFICATION ACTIVITY WILL KEEP ACCUMULATING. Every future check of this
+ * feature produces more of it, because the only way to test "does dismissal
+ * survive regeneration" is to dismiss something and regenerate. That is a
+ * property to account for, not a flaw to fix — and it is an argument for the
+ * generation trigger's volume condition being generous rather than tight, since
+ * a tight one makes each verification cost proportionally more of the sample.
+ *
+ * APPEND HERE when you dismiss insights to test something. Date, who, why:
+ *
+ *   2026-08-28  dd9be3b3 (QA)   1 row  — hp-10 acceptance run, dismissed by us
+ *     8c763341-51f1-4f9c-8cd3-a3a9713471e9
+ *
+ *   2026-08-28  b11f65b7        13 rows — hp-10 verification. Confirmed by the
+ *     user: he dismissed them to check whether they would come back; the content
+ *     was not a factor. A 100% dismissal rate is the strongest over-flagging
+ *     signal the naive metric can produce, and here it means the opposite.
+ *     0d1ee7ce-4617-450a-952e-4d722cac0233  1bfcd5b8-f2c3-419c-81a5-0f396c67aa62
+ *     34786f13-04a2-4ba0-8b75-1ddf2249f610  48786c79-e379-4229-ad5c-eb5e1c237f85
+ *     72c18586-ded7-4303-abcf-23b07229a1e4  9b018649-79c8-425c-83af-95ebcff1dc9b
+ *     9d29ef48-e3f8-4262-8992-7254173f4d1d  a1f02850-3488-49e4-9789-e13d7ff7e199
+ *     a282abfa-2fef-4a87-a909-9692f118fe54  ac652ad9-c234-443e-90c9-6f87128ffe46
+ *     b4dedd29-d4da-4c65-ac10-7fec7f4aaadc  df1faed0-c0aa-4d9b-8a1a-7e6e99901473
+ *     df657a17-0e5e-4411-b756-dfab359b83ad
+ *
+ *   2026-09-17  b11f65b7        2 rows — the user re-ran the hp-10 check himself
+ *     (generate, dismiss both, generate again; they did not come back). Also the
+ *     first rows ever to carry real engagement data, and dismissed as a test.
+ *     02f3ea76-dbd3-4fdd-9193-923a53af89ef  fbd44c8d-a198-45db-ba41-69d3453cd0db
+ *
+ * Rows in a batch share `created_at` to the microsecond, so the grouping above
+ * can be re-derived if an id is ever in doubt.
  *
  *   SELECT type,
  *          count(*) AS total,
@@ -307,23 +337,22 @@ export function compareMonthlySpending(
  *          count(*) FILTER (WHERE is_dismissed
  *                             AND coalesce(metadata_expanded_count, 0) > 0) AS handled
  *   FROM public.insights
- *   WHERE created_at >= DATE '2026-09-17'  -- see the two cutoffs below
+ *   WHERE created_at >= DATE '2026-09-17'   -- engagement recorded from here
+ *     AND id NOT IN (                        -- verification rows, list above
+ *       '02f3ea76-dbd3-4fdd-9193-923a53af89ef',
+ *       'fbd44c8d-a198-45db-ba41-69d3453cd0db'
+ *     )
  *   GROUP BY type;
  *
- * TWO CUTOFFS, AND THE LATER ONE WINS. 2026-08-29 excludes the seven hp-10
- * verification dismissals. 2026-09-17 is when engagement tracking began
- * recording at all. Rows between those dates have honest DISMISSAL data and
- * structurally empty ENGAGEMENT data, so they would land in NOISE for the same
- * reason every row before them did - nothing was recording. Since this query
- * reads the engagement columns, it must use the later date.
+ * The date bound stays, but it is now a FACT rather than a maintained value:
+ * 2026-09-17 is when the engagement columns first became writable, so rows older
+ * than it read as NOISE because nothing was recording, not because nobody
+ * engaged. It never needs moving. The id list is what grows.
  *
  * `coalesce` is defensive rather than currently required - no NULLs exist today -
  * but the column is INTEGER DEFAULT 0 with no NOT NULL constraint, and a NULL
  * would fail `= 0` and drop the row out of the NOISE bucket, understating the
- * exact signal the query exists to find. The date filter is on `created_at`,
- * which the upsert preserves, so those seven rows stay excluded permanently even
- * after a later run refreshes their content. That is deliberate: their dismissal
- * state was set during testing and can never become clean evidence.
+ * exact signal the query exists to find.
  *
  * ALSO OBSERVED: MAD = 0 is not a hypothetical edge case. It occurred in 1 of the
  * 8 categories measured (Entertainment, n=27, over half the rows at EUR 20).

@@ -40,7 +40,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { checkAndTriggerForTransactionCount } from '@/lib/services/insightService';
 import { evaluateNudge } from '@/lib/ai/nudgeEngine';
@@ -374,11 +374,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create transaction' }, { status: 500 });
     }
 
-    // Async trigger: Check if 10+ transactions added and generate insights if needed
-    // Story 6.5: AC1 - Automatic Generation after 10+ transactions
-    // This is non-blocking - we don't wait for it to complete
-    checkAndTriggerForTransactionCount(user.id).catch((error) => {
-      logger.error('Transactions', 'Failed to check insight trigger:', error);
+    // Automatic insight generation (Story 6.5 AC1). Runs AFTER the response, via
+    // next/server's `after()`, which keeps the function alive for the work
+    // instead of freezing it underneath.
+    //
+    // THIS WAS A BARE FIRE-AND-FORGET AND IT NEVER WORKED IN PRODUCTION. The
+    // promise was created and not awaited, so on Vercel the function froze once
+    // the response was sent and the generation was usually dropped. Measured
+    // 2026-09-17: the 10-transaction threshold was crossed at 18:27 the previous
+    // evening and again at 05:54 that morning, and the run marker never moved —
+    // two opportunities, neither completed. The user saw an empty insights page
+    // and had to press Generate.
+    //
+    // The redundant paths hid it: the pre-hp-8 cold start regenerated on nearly
+    // every transaction, so nobody noticed the intended path never finished.
+    //
+    // This lesson was ALREADY in the repo — the push path learned it (see
+    // pushService: await best-effort work on Vercel) and this path never got it.
+    // `after()` is the framework's answer and costs the user nothing: the
+    // response is already sent, so a generation never lands on the critical path.
+    after(async () => {
+      try {
+        await checkAndTriggerForTransactionCount(user.id);
+      } catch (error) {
+        logger.error('Transactions', 'Failed to check insight trigger:', error);
+      }
     });
 
     // Story 15.1: Record logging activity for the streak — ALL transaction types
