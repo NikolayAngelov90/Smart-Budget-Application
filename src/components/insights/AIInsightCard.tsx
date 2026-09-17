@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, ReactNode } from 'react';
+import { useState, useRef, useEffect, ReactNode } from 'react';
 import {
   Card,
   CardBody,
@@ -28,6 +28,7 @@ import {
 import { useTranslations } from 'next-intl';
 import type { Insight } from '@/types/database.types';
 import { InsightErrorBoundary } from './InsightErrorBoundary';
+import { trackInsightEngagement } from '@/lib/services/insightEngagementService';
 import { trackInsightViewed } from '@/lib/services/analyticsService';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { getInsightToneTokens } from '@/lib/utils/insightGroups';
@@ -72,6 +73,13 @@ const priorityLabelKeys: Record<number, string> = {
   4: 'priorityHigh',
 };
 
+/**
+ * How long a card must stay on screen before it counts as viewed. A card flicked
+ * past during a fast scroll is not a view, and a `view_count` inflated by
+ * scrolling is worse than zero — zero is at least honestly empty.
+ */
+const VIEW_DWELL_MS = 1000;
+
 export function AIInsightCard({
   insight,
   onDismiss,
@@ -85,6 +93,7 @@ export function AIInsightCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const isMobile = useBreakpointValue({ base: true, md: false });
   const hasTrackedView = useRef(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const t = useTranslations('insights');
   const { preferences } = useUserPreferences();
   const currencyCode = preferences?.currency_format;
@@ -94,6 +103,41 @@ export function AIInsightCard({
     t,
     currencyCode
   );
+
+  // Engagement tracking (see insightEngagementService). Fires at most once per
+  // card per session; failures are swallowed by the service and never surface.
+  useEffect(() => {
+    // A DISMISSED card must not accrue engagement. The quality metric reads
+    // "dismissed AND never expanded" as noise, so expanding a card inside the
+    // dismissed filter would silently reclassify it as read-and-handled.
+    if (isDismissed) return;
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        if (entry.isIntersecting) {
+          timer = setTimeout(() => {
+            void trackInsightEngagement(insight.id, 'view');
+            observer.disconnect();
+          }, VIEW_DWELL_MS);
+        } else if (timer) {
+          // Scrolled away before the dwell elapsed — not a view.
+          clearTimeout(timer);
+          timer = undefined;
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => {
+      if (timer) clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [insight.id, isDismissed]);
 
   // Story 16.4: colour comes from the shared taxonomy (semantic tokens), not a
   // per-component Chakra colour scheme.
@@ -119,6 +163,13 @@ export function AIInsightCard({
       trackInsightViewed(insight.id, insight.type);
     }
 
+    // The engagement column the sigma-masking revisit trigger reads. Separate
+    // from trackInsightViewed above, which writes analytics_events — a different
+    // table for a different question.
+    if (!isDismissed) {
+      void trackInsightEngagement(insight.id, 'metadata_expand');
+    }
+
     if (isMobile && onOpenModal) {
       // On mobile, trigger modal
       onOpenModal();
@@ -130,6 +181,7 @@ export function AIInsightCard({
 
   return (
     <Card
+      ref={cardRef}
       // borderLeftWidth, NOT the `borderLeft` shorthand: `borderLeft="4px"` sets
       // border-left-STYLE to its initial `none`, and Chakra's reset only supplies
       // `border-style: solid` via a zero-specificity `:where()` rule — so the
