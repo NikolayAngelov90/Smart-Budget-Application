@@ -1,5 +1,8 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"],
+  "extends": [
+    "next/core-web-vitals",
+    "next/typescript"
+  ],
   "rules": {
     "react/no-unescaped-entities": "off",
     "@next/next/no-page-custom-font": "off"
@@ -24,12 +27,39 @@
             "message": "Hardcoded currency code detected. Accept currency_format as a parameter from user preferences (e.g. prefs.currency_format ?? DEFAULT_CURRENCY) instead of hardcoding."
           },
           {
-            "selector": "Literal[value=/[$€£]/]:not([regex])",
-            "message": "Hardcoded currency symbol in a string. User-facing amounts must be formatted with formatAmount(amount, currency) using the user's currency_format, never a literal $/€/£."
+            "selector": "Literal[value=/[$\u20ac\u00a3]/]:not([regex])",
+            "message": "Hardcoded currency symbol in a string. User-facing amounts must be formatted with formatAmount(amount, currency) using the user's currency_format, never a literal $/\u20ac/\u00a3."
           },
           {
-            "selector": "TemplateElement[value.raw=/[$€£]/]",
-            "message": "Hardcoded currency symbol in a template literal. User-facing amounts must be formatted with formatAmount(amount, currency) using the user's currency_format, never a literal $/€/£."
+            "selector": "TemplateElement[value.raw=/[$\u20ac\u00a3]/]",
+            "message": "Hardcoded currency symbol in a template literal. User-facing amounts must be formatted with formatAmount(amount, currency) using the user's currency_format, never a literal $/\u20ac/\u00a3."
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/app/api/**/*.ts",
+        "src/lib/services/**/*.ts",
+        "src/lib/ai/**/*.ts"
+      ],
+      "excludedFiles": [
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.spec.ts"
+      ],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": {
+        "project": "./tsconfig.json"
+      },
+      "plugins": [
+        "@typescript-eslint"
+      ],
+      "rules": {
+        "@typescript-eslint/no-floating-promises": [
+          "error",
+          {
+            "ignoreVoid": true
           }
         ]
       }
