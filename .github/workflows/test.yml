@@ -42,6 +42,13 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      # Its OWN step, deliberately not folded into lint. Prettier and ESLint
+      # fail for different reasons and a reader needs to see which one spoke.
+      # Nothing enforced this until 2026-09-17, and 402 of ~530 files had drifted
+      # while CI stayed green the whole time.
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Run tests
         run: npm run test:coverage
 
