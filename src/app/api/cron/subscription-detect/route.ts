@@ -3,6 +3,23 @@
  *
  * GET /api/cron/subscription-detect
  *
+ * SCHEDULED DAILY (`0 2 * * *`), NOT WEEKLY, AND DELIBERATELY WITHOUT A DAY GATE.
+ * It was `0 2 * * 0` and produced nothing, ever. The controlled comparison: on
+ * 2026-09-21, same plan, same config file, same deployment, same CRON_SECRET,
+ * `weekly-digest` (`0 9 * * *`, daily) fired at 09:00:13 while this job left no
+ * trace at 02:00 - with only two crons declared, so the Hobby cap was not the
+ * cause. A non-daily cron expression appears not to fire on this plan.
+ *
+ * No internal gate, unlike generate-insights: this handler is idempotent (it
+ * upserts on user_id + merchant_pattern and leaves dismissed rows alone), and
+ * flagUnusedSubscriptions in the same handler is strictly BETTER run daily,
+ * because "overdue by more than 1.5x the interval" is a time-based transition. A
+ * gate here would only add the failure mode that hid generate-insights' death:
+ * 29 days in 30 of "skipped" logs look identical to a job that has stopped
+ * firing.
+ *
+ * See docs/cron-schedule.md for the full evidence.
+ *
  * Scheduled to run weekly (Sunday 02:00 UTC, configured in vercel.json)
  * Scans all eligible users' transactions for recurring subscription patterns.
  *
