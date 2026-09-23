@@ -1066,7 +1066,7 @@ gates.
 | Situation | Correct | Wrong | Precedent |
 |---|---|---|---|
 | The job is cheap and idempotent | Run it **every** scheduled tick, no gate. Its output is then evidence that it ran. | A period gate whose "skipped" path is indistinguishable from a dead job | `subscription-detect`, 2026-09-23 |
-| The job is genuinely expensive or churns state | Gate it, but the gate must leave a **distinguishable trace** — a marker row, a timestamp, a counter — so "ran and skipped" can be told from "never ran" | `return { skipped: true }` and nothing else | `generate-insights`, whose marker only advances on a real run |
+| The job is genuinely expensive or churns state | Gate it, but the gate must leave a **distinguishable trace** — a marker row, a timestamp, a counter — AND the spec must name **what reads that trace**, or state that nothing does and that this is the gap | Emitting a trace and stopping there. A trace nobody reads is a log, not observability | `generate-insights`: hp-8's marker did distinguish "ran" from "never ran", and nothing read it for months |
 | The schedule is longer than daily | Use a **daily** expression and derive the period inside the route. Non-daily cron expressions have not been observed to fire on this plan (see `docs/cron-schedule.md`) | A weekly/monthly cron expression | `weekly-digest` computes an ISO-week key internally and works; `subscription-detect` used `0 2 * * 0` and never fired |
 
 **Corollary — verify by effect, and check whether the check consumes its
@@ -1080,6 +1080,38 @@ their own evidence, and those need a read-only path built first.
 `subscription-detect` to daily did not only fix it; it changed the time to learn
 whether the fix worked from "wait until Sunday" to "tomorrow". When choosing a
 schedule, the diagnosis speed it buys is part of the decision, not a side effect.
+
+### A TRACE NOBODY READS IS A LOG, NOT OBSERVABILITY
+
+The middle row above is the one that will be satisfied cheaply and wrongly, so it
+is worth being explicit about how.
+
+`generate-insights` already had a distinguishable trace. hp-8's
+`insights_last_generated_at` advances only on a real run, so "ran and skipped"
+was always tellable from "never ran" — the information existed in the database
+for months while the job was dead. Nobody read it. It took a user reporting an
+empty page, and then a deliberate query, to surface what the marker had been
+recording all along.
+
+So emitting a marker does not discharge this convention. **Name the reader.** One
+of:
+
+- an alert or check that fails when the trace goes stale (nothing in this repo
+  does this today);
+- a scheduled review with a stated cadence and owner;
+- or an explicit admission in the spec that nothing reads it, and that the job's
+  death will therefore be found by a user rather than by us.
+
+**THIS REPO IS CURRENTLY IN THE THIRD CATEGORY, FOR EVERY SCHEDULED JOB.** There
+is no staleness alerting on `insights_last_generated_at`, on `weekly_digests`, or
+on `detected_subscriptions`. Both cron failures this project has found were found
+by hand, after a user noticed, weeks late. That is the honest state and it is
+written here rather than left implied, because a convention that stops short of
+naming a reader produces exactly the failure it was written about — with a trace,
+and with the convention honoured.
+
+Filed as follow-up work, not solved here. The gate audit (every gate asked "can
+this fail, and has it") is the natural place for it.
 
 ---
 
