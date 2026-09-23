@@ -19,6 +19,7 @@ Standardized API routing, naming patterns, request/response formats, and authent
 5. [Status Code Guidelines](#status-code-guidelines)
 6. [Authentication Requirements](#authentication-requirements)
 7. [Error Handling](#error-handling)
+8. [Scheduled Work (cron) - Observability](#scheduled-work-cron--observability)
 
 ---
 
@@ -1035,6 +1036,50 @@ export async function POST(request: Request) {
 3. **RLS Enabled:** Supabase Row Level Security enforces access control
 4. **No Secrets in Responses:** Never return passwords, API keys, etc.
 5. **CORS Configured:** Only allow requests from your domain
+
+---
+
+---
+
+## Scheduled Work (cron) — Observability
+
+> Adopted 2026-09-23, after `generate-insights` and `subscription-detect` were
+> BOTH found to have been dead in production for months without anyone noticing.
+> New scheduled work should cite this section instead of re-deriving it.
+
+**The rule: a job whose healthy state produces the same signal as its dead state
+cannot be monitored.**
+
+This is stronger than "the gate might be wrong". A conditional early return in
+scheduled work does not merely risk a bug — it destroys the observability of the
+job it guards. `generate-insights` was scheduled daily and returned
+`{ skipped: true }` unless `getUTCDate() === 1`, so 29 days in 30 its healthy
+output was "did nothing". When it stopped firing altogether, the logs, the
+database and the response were **identical to healthy operation**. That is why it
+went unnoticed for months, and it is why the absence of rows in
+`detected_subscriptions` was ambiguous for a week rather than a finding on day
+one.
+
+Applies to any conditional early return in scheduled work, not just cron date
+gates.
+
+| Situation | Correct | Wrong | Precedent |
+|---|---|---|---|
+| The job is cheap and idempotent | Run it **every** scheduled tick, no gate. Its output is then evidence that it ran. | A period gate whose "skipped" path is indistinguishable from a dead job | `subscription-detect`, 2026-09-23 |
+| The job is genuinely expensive or churns state | Gate it, but the gate must leave a **distinguishable trace** — a marker row, a timestamp, a counter — so "ran and skipped" can be told from "never ran" | `return { skipped: true }` and nothing else | `generate-insights`, whose marker only advances on a real run |
+| The schedule is longer than daily | Use a **daily** expression and derive the period inside the route. Non-daily cron expressions have not been observed to fire on this plan (see `docs/cron-schedule.md`) | A weekly/monthly cron expression | `weekly-digest` computes an ISO-week key internally and works; `subscription-detect` used `0 2 * * 0` and never fired |
+
+**Corollary — verify by effect, and check whether the check consumes its
+evidence.** A scheduled job is verified by the rows it writes, never by a green
+deploy. And before running such a check, confirm it is read-only: the natural way
+to test `subscription-detect` was to call `detectSubscriptions`, which upserts
+into the very table whose emptiness was the evidence. Some verifications consume
+their own evidence, and those need a read-only path built first.
+
+**Corollary — a shorter period is a shorter feedback loop.** Dropping
+`subscription-detect` to daily did not only fix it; it changed the time to learn
+whether the fix worked from "wait until Sunday" to "tomorrow". When choosing a
+schedule, the diagnosis speed it buys is part of the decision, not a side effect.
 
 ---
 

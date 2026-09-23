@@ -146,10 +146,11 @@ reason:
   means a subscription can be up to seven days late being flagged.
 - **It is cheap.** Three users, and the largest 6-month window is 143 expense
   rows.
-- **A gate is a defect surface, and this codebase has already paid for that.**
-  `generate-insights` spent 29 days in 30 logging "skipped", so when it stopped
-  firing altogether the logs looked exactly the same as healthy operation. The
-  gate is what made its death invisible.
+- **A gate would destroy this job's observability.** A job whose healthy state
+  produces the same signal as its dead state cannot be monitored - that rule and
+  its full argument now live in `docs/api-conventions.md`, under Scheduled Work
+  (cron) - Observability, because it applies to any conditional early return in
+  scheduled work and not just to this job.
 - Nothing depends on "weekly" semantics. There is no per-period dedup for
   subscriptions the way `notification_deliveries` period keys exist for digests.
 
