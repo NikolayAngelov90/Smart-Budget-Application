@@ -42,7 +42,15 @@
       "mutation that would have passed against the wrong database, and a clock",
       "parameter no caller passed.",
       "Floors are set below current values so ordinary growth does not trip them,",
-      "and far enough above zero that an empty or half-read catalog cannot pass."
+      "and far enough above zero that an empty or half-read catalog cannot pass.",
+      "",
+      "FLOORS MUST BE DERIVED FROM THE QUERY THAT ACTUALLY RUNS. column_grant_entries",
+      "was first set to 1200 from information_schema.column_privileges, which counts",
+      "privileges IMPLIED by table grants. The check reads pg_attribute.attacl, which",
+      "holds only EXPLICIT column grants - 12 of them here (hp-8's user_profiles",
+      "re-grant and the insights engagement columns). The floor was carried over from",
+      "a different measurement, and the first real run correctly refused to proceed.",
+      "That is the floors working, not the floors being wrong to have."
     ],
     "tables": 20,
     "columns": 180,
@@ -50,7 +58,7 @@
     "functions": 20,
     "triggers": 10,
     "table_grant_entries": 300,
-    "column_grant_entries": 1200
+    "column_grant_entries": 8
   },
   "allowed_drift": [
     {
