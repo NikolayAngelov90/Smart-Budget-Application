@@ -109,17 +109,6 @@
       ]
     },
     {
-      "id": "migration-ledger-divergence",
-      "object": "supabase_migrations.schema_migrations - 20260924100000 is NOT recorded although its effects are present in production",
-      "direction": "effect applied, ledger not updated",
-      "why_tolerated": "The security fix was applied as raw SQL rather than through the migration pipeline, so production has the change without the record. Harmless for correctness here because every statement in it is idempotent (DROP POLICY IF EXISTS, CREATE OR REPLACE FUNCTION, DROP+CREATE TRIGGER), so a later push re-applying it is a no-op.",
-      "resolves_when": "The version is inserted into schema_migrations, or the migration is applied through the pipeline so it records itself. Then delete this entry.",
-      "$note": "Recorded here because it means 'which migrations has production applied' is unreliable in a SECOND way, independent of schema drift. 012 is recorded and did nothing; 20260924100000 did something and is not recorded. The ledger cannot be trusted in either direction, which is an argument for the drift check comparing CATALOGS rather than consulting the ledger at all.",
-      "match": [
-        "schema_migrations"
-      ]
-    },
-    {
       "id": "uuid-ossp-extension-schema",
       "object": "column default on every table's `id`: production renders extensions.uuid_generate_v4(), the migrations render uuid_generate_v4()",
       "match": [
@@ -153,6 +142,25 @@
         "object": "column public.detected_subscriptions.currency, and the 8 column-grant entries consequent on it",
         "outcome": "RESOLVED 2026-09-24 - migration 20260924110000 applied. Verified: character varying(3), NOT NULL, default 'EUR'; table at 10 columns; column-grant entries 72 -> 80 as predicted.",
         "note": "Deleted from allowed_drift the same day it was applied, per the rule that a resolved item left in an allowlist becomes permanent noise."
+      }
+    ]
+  },
+  "known_conditions_not_checked": {
+    "$comment": [
+      "Conditions the check deliberately does NOT cover, recorded so they are not",
+      "mistaken for things it watches. These are NOT in allowed_drift, because every",
+      "entry there must be matchable against a catalog record - an unmatchable entry",
+      "would sit permanently in the 'unmatched' hygiene report and make that report",
+      "meaningless, which is how a signal becomes noise."
+    ],
+    "entries": [
+      {
+        "id": "migration-ledger-divergence",
+        "object": "supabase_migrations.schema_migrations - 20260924100000 is NOT recorded although its effects are present in production",
+        "direction": "effect applied, ledger not updated",
+        "why_tolerated": "The security fix was applied as raw SQL rather than through the migration pipeline, so production has the change without the record. Harmless for correctness here because every statement in it is idempotent (DROP POLICY IF EXISTS, CREATE OR REPLACE FUNCTION, DROP+CREATE TRIGGER), so a later push re-applying it is a no-op.",
+        "resolves_when": "The version is inserted into schema_migrations, or the migration is applied through the pipeline so it records itself. Then delete this entry.",
+        "$note": "Recorded here because it means 'which migrations has production applied' is unreliable in a SECOND way, independent of schema drift. 012 is recorded and did nothing; 20260924100000 did something and is not recorded. The ledger cannot be trusted in either direction, which is an argument for the drift check comparing CATALOGS rather than consulting the ledger at all."
       }
     ]
   }
