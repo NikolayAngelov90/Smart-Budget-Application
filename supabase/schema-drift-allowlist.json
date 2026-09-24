@@ -163,5 +163,75 @@
         "$note": "Recorded here because it means 'which migrations has production applied' is unreliable in a SECOND way, independent of schema drift. 012 is recorded and did nothing; 20260924100000 did something and is not recorded. The ledger cannot be trusted in either direction, which is an argument for the drift check comparing CATALOGS rather than consulting the ledger at all."
       }
     ]
+  },
+  "divergence_axes": {
+    "$comment": [
+      "THE AXES ON WHICH THE LOCAL STACK CAN DIFFER FROM PRODUCTION, enumerated once",
+      "on 2026-09-24 so the class stops being discovered one instance at a time.",
+      "",
+      "'The RLS suite tests a different database from production' had by then been",
+      "true THREE times for three unrelated causes - a missing policy, a missing",
+      "trigger, and a different Postgres major version. Each was found separately and",
+      "each by accident, and accident is not a control.",
+      "",
+      "affects_rls_suite says whether the axis can change what the isolation tests",
+      "PROVE, which is the only question that matters about it."
+    ],
+    "axes": [
+      {
+        "axis": "postgres major version",
+        "status": "IDENTICAL (17.6 / 170006 both sides)",
+        "affects_rls_suite": "YES. Privilege sets, catalog view shapes and behaviour all change between majors - PG17 adding MAINTAIN is what exposed the original mismatch.",
+        "checked": "HARD ASSERTION. Mismatch or absence fails the build, with both versions named."
+      },
+      {
+        "axis": "row_security",
+        "status": "IDENTICAL (on)",
+        "affects_rls_suite": "YES, totally. RLS off makes every policy decorative.",
+        "checked": "reported as an environment axis; a difference would be visible immediately. Per-table relrowsecurity is ALSO compared as an RLS record and hard-fails."
+      },
+      {
+        "axis": "collation / ctype / locale provider",
+        "status": "IDENTICAL (en_US.UTF-8, ICU on both)",
+        "affects_rls_suite": "POSSIBLY. Text ordering and comparison differ between ICU and libc, and comparisons appear in policy predicates - though this schema's predicates compare uuid and boolean, not text.",
+        "checked": "reported as DBPROPS. Not a hard failure because it has never differed and a change would be deliberate."
+      },
+      {
+        "axis": "server encoding / TimeZone / DateStyle",
+        "status": "IDENTICAL (UTF8, UTC, ISO MDY)",
+        "affects_rls_suite": "TimeZone could, via date bucketing in a predicate. Encoding and DateStyle do not.",
+        "checked": "reported as SETTING."
+      },
+      {
+        "axis": "per-role settings (search_path, statement_timeout)",
+        "status": "DIFFER: authenticator session_preload_libraries is 'safeupdate' in production and 'supautils, safeupdate' locally; the local stack sets app.settings.jwt_secret and production does not.",
+        "affects_rls_suite": "search_path YES in principle - a SECURITY DEFINER function without a pinned search_path resolves differently. Migration 038 pinned every one, which is what makes this currently harmless. The two observed differences do not.",
+        "checked": "reported as ROLESETTING, read from pg_db_role_setting. NOT from pg_settings: that reflects the CONNECTING ROLE, and comparing production-as-schema_reader against local-as-superuser produced two differences that said nothing about either database. Secret-shaped values are redacted to an md5 so a change is still detected without publishing the value."
+      },
+      {
+        "axis": "installed extensions and versions",
+        "status": "DIFFER: hypopg 1.4.1 and index_advisor 0.2.0 exist in production only.",
+        "affects_rls_suite": "NO. Both are Supabase diagnostic extensions with no policy or data involvement. A version difference in pgcrypto or uuid-ossp WOULD matter, because it changes generated values - and that had never been checked before this.",
+        "checked": "reported as EXTENSION, with version and schema."
+      },
+      {
+        "axis": "extension schema placement",
+        "status": "DIFFERS: uuid-ossp is in `extensions` in production and in `public` locally.",
+        "affects_rls_suite": "NO. Same function, same generated value; only the rendered default qualification differs.",
+        "checked": "allowlisted as uuid-ossp-extension-schema, with a resolves_when."
+      },
+      {
+        "axis": "data",
+        "status": "DIFFERS ENTIRELY, by design.",
+        "affects_rls_suite": "NO - the suite seeds its own users and rows, which is why it can run against an empty stack at all.",
+        "checked": "NOT CHECKED, and must not be. The production reader is a grantless role that cannot read a single row, which is the property that makes putting its credential in CI acceptable."
+      },
+      {
+        "axis": "the migration ledger",
+        "status": "DIVERGES in both directions - 012 recorded and inert, 20260924100000 effective and unrecorded.",
+        "affects_rls_suite": "NO.",
+        "checked": "DELIBERATELY NOT. See known_conditions_not_checked; the check compares catalogs precisely because the ledger cannot be trusted either way."
+      }
+    ]
   }
 }

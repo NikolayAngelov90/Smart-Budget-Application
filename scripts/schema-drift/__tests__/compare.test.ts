@@ -64,6 +64,17 @@ function baseline(): string[] {
   for (let g = 0; g < 12; g++) {
     lines.push(`TRIGGER\tt00\ttrg${g}\ttrgmd5${g}`);
   }
+  // Environment records. server_version_num is REQUIRED — the comparator treats
+  // its absence as a hard failure, because an assertion that cannot run is not an
+  // assertion. Values are production's real ones as of 2026-09-24.
+  lines.push('SETTING\tserver_version_num\t170006');
+  lines.push('SETTING\tserver_version\t17.6');
+  lines.push('SETTING\tsearch_path\t"$user", public, extensions');
+  lines.push('SETTING\tTimeZone\tUTC');
+  lines.push('SETTING\trow_security\ton');
+  lines.push('DBPROPS\tcollation\tencoding=UTF8 collate=en_US.UTF-8 ctype=en_US.UTF-8 locale_provider=i');
+  lines.push('EXTENSION\tuuid-ossp\t1.1 schema=extensions');
+  lines.push('EXTENSION\tpgcrypto\t1.3 schema=extensions');
   return lines;
 }
 
@@ -89,6 +100,51 @@ function run(prodLines: string[], migLines: string[]): { code: number; out: stri
     return { code: e.status, out: `${e.stdout ?? ''}${e.stderr ?? ''}` };
   }
 }
+
+describe('schema drift check — server version', () => {
+  it('HARD FAILS on a Postgres major-version mismatch, naming both versions', () => {
+    // THE ASSERTION THAT EXISTS BECAUSE THE FIRST MISMATCH WAS FOUND BY ACCIDENT.
+    // Local 15 against production 17 surfaced only as 52 phantom grant
+    // differences, because PG17 happened to add the MAINTAIN privilege and
+    // aclexplode happened to show it. A version difference that changed behaviour
+    // without changing the catalog's shape would have been invisible.
+    const mig = baseline().map((l) =>
+      l === 'SETTING\tserver_version_num\t170006' ? 'SETTING\tserver_version_num\t150008' : l
+    );
+    const { code, out } = run(baseline(), mig);
+    expect(out).toContain('Postgres version mismatch');
+    // Both values named: "local 15, production 17" is actionable, "versions
+    // differ" sends someone hunting.
+    expect(out).toContain('local 15');
+    expect(out).toContain('production 17');
+    expect(code).toBe(1);
+  });
+
+  it('HARD FAILS when the version record is missing, rather than skipping the check', () => {
+    // Absence is as fatal as a mismatch. An assertion that silently does not run
+    // is the failure mode this project hit three times in one week.
+    const prod = baseline().filter((l) => !l.startsWith('SETTING\tserver_version_num'));
+    const { code, out } = run(prod, baseline());
+    expect(out).toContain('version assertion did not run');
+    expect(code).toBe(1);
+  });
+
+  it('reports other environment differences without failing', () => {
+    // Classification, not remediation. Most of these cannot affect what the RLS
+    // suite proves; the ones that can should be named rather than found by
+    // accident a fourth time.
+    const mig = baseline().map((l) =>
+      l.startsWith('DBPROPS\tcollation')
+        ? 'DBPROPS\tcollation\tencoding=UTF8 collate=C ctype=C locale_provider=c'
+        : l
+    );
+    const { code, out } = run(baseline(), mig);
+    expect(out).toContain('ENVIRONMENT AXES THAT DIFFER');
+    expect(out).toContain('locale_provider');
+    expect(out).toContain('DRIFT CHECK PASSED');
+    expect(code).toBe(0);
+  });
+});
 
 describe('schema drift check', () => {
   it('passes when the two catalogs agree', () => {

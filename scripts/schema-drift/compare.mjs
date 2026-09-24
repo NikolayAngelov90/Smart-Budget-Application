@@ -104,7 +104,7 @@ function parse(path) {
     if (!byKind.has(kind)) byKind.set(kind, new Map());
     // Key = everything that IDENTIFIES the object; value = the whole record, so a
     // same-key different-value pair is a MODIFIED rather than a pair of adds.
-    const keyLen = { TABLE: 1, COLUMN: 1, RLS: 1, POLICY: 3, TGRANT: 3, 'TGRANT-DEFAULT': 1, CGRANT: 4, FUNCTION: 1, TRIGGER: 2 }[kind];
+    const keyLen = { TABLE: 1, COLUMN: 1, RLS: 1, POLICY: 3, TGRANT: 3, 'TGRANT-DEFAULT': 1, CGRANT: 4, FUNCTION: 1, TRIGGER: 2, SETTING: 1, DBPROPS: 1, EXTENSION: 1, ROLESETTING: 1 }[kind];
     const key = parts.slice(1, 1 + (keyLen ?? parts.length - 1)).join('\t');
     byKind.get(kind).set(key, parts.slice(1).join('\t'));
   }
@@ -157,6 +157,53 @@ if (vacuous) {
 }
 
 // ============================================================================
+// SERVER VERSION — AN EXPLICIT ASSERTION, NOT AN INFERENCE
+// ============================================================================
+// This exists because the FIRST version mismatch was found by accident. Local 15
+// against production 17 surfaced as 52 phantom grant differences, because PG17
+// happened to add the MAINTAIN privilege and aclexplode happened to show it. A
+// version difference that changed BEHAVIOUR without changing the catalog's shape
+// would have been invisible to the same check — and "the RLS suite tests a
+// different database from production" has now been true three times, for three
+// unrelated causes, each found separately and each by accident.
+//
+// Absence is as fatal as a mismatch: if the version record is missing from either
+// dump, the assertion did not run, and an assertion that cannot fail is not one.
+function versionOf(side) {
+  return side.byKind.get('SETTING')?.get('server_version_num')?.split('\t')[1];
+}
+const prodVer = versionOf(prod);
+const migVer = versionOf(mig);
+
+console.log('');
+console.log('=== server version');
+if (!prodVer || !migVer) {
+  console.error(`  production=${prodVer ?? 'MISSING'}  migrations=${migVer ?? 'MISSING'}`);
+  console.error('');
+  console.error('HARD FAILURE: server_version_num is missing from a dump, so the');
+  console.error('version assertion did not run. An assertion that cannot fail is not');
+  console.error('an assertion — fix the dump rather than proceeding.');
+  process.exit(1);
+}
+const pretty = (n) => `${Math.floor(Number(n) / 10000)} (${n})`;
+console.log(`  production  ${pretty(prodVer)}`);
+console.log(`  migrations  ${pretty(migVer)}`);
+if (prodVer !== migVer) {
+  console.error('');
+  console.error(`HARD FAILURE: Postgres version mismatch — local ${pretty(migVer)}, production ${pretty(prodVer)}.`);
+  console.error('');
+  console.error('Every catalog comparison below is unreliable while this holds: privilege');
+  console.error('sets, default rendering and system views all change between majors.');
+  console.error('More importantly the RLS suite raises this same stack, so it would be');
+  console.error('proving isolation against a different major version from the one serving');
+  console.error('users.');
+  console.error('');
+  console.error('Fix: set major_version in supabase/config.toml to match production.');
+  process.exit(1);
+}
+console.log('  match');
+
+// ============================================================================
 // THE COMPARISON
 // ============================================================================
 const allowed = new Map((allowlist.allowed_drift ?? []).map((e) => [e.id, e]));
@@ -184,8 +231,13 @@ function findAllowance(kind, key, record) {
 
 const findings = { PRODUCTION_ONLY: [], MIGRATIONS_ONLY: [], MODIFIED: [], COSMETIC: [] };
 
+// Environment kinds are owned by the ENVIRONMENT AXES section below and by the
+// version assertion above. Leaving them in the generic loop would ALSO fail them
+// as MODIFIED, so a reported-not-failed axis would be reported and failed.
+const ENV_KINDS = new Set(['SETTING', 'DBPROPS', 'EXTENSION', 'ROLESETTING']);
 const kinds = new Set([...prod.byKind.keys(), ...mig.byKind.keys()]);
 for (const kind of [...kinds].sort()) {
+  if (ENV_KINDS.has(kind)) continue;
   const p = prod.byKind.get(kind) ?? new Map();
   const m = mig.byKind.get(kind) ?? new Map();
   for (const [key, rec] of p) {
@@ -242,6 +294,34 @@ function emit(bucket, label, fatalByDefault) {
       console.log(`  PENDING  ${f.kind} ${f.key}`);
       console.log(`           in the migrations, not yet in production`);
     }
+  }
+}
+
+// ENVIRONMENT AXES — reported, not failed. The deliverable here is the
+// classification: most of these cannot affect what the RLS suite proves, one or
+// two can, and the ones that can should be NAMED rather than discovered by
+// accident a fourth time. server_version_num is excluded because it is already a
+// hard assertion above.
+{
+  const envKinds = ['SETTING', 'DBPROPS', 'EXTENSION', 'ROLESETTING'];
+  const rows = [];
+  for (const kind of envKinds) {
+    const p = prod.byKind.get(kind) ?? new Map();
+    const m = mig.byKind.get(kind) ?? new Map();
+    for (const key of new Set([...p.keys(), ...m.keys()])) {
+      if (kind === 'SETTING' && (key === 'server_version_num' || key === 'server_version')) continue;
+      const pv = p.get(key);
+      const mv = m.get(key);
+      if (pv !== mv) rows.push({ kind, key, pv: pv ?? '(absent)', mv: mv ?? '(absent)' });
+    }
+  }
+  console.log('');
+  console.log(`=== ENVIRONMENT AXES THAT DIFFER (${rows.length}) — reported, not failed`);
+  if (!rows.length) console.log('  none');
+  for (const r of rows) {
+    console.log(`  ${r.kind} ${r.key}`);
+    console.log(`    production : ${r.pv}`);
+    console.log(`    migrations : ${r.mv}`);
   }
 }
 

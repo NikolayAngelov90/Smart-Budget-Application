@@ -142,3 +142,79 @@ JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public' AND NOT t.tgisinternal
 ORDER BY c.relname, t.tgname;
+
+-- ---------------------------------------------------------------- ENVIRONMENT
+-- WHY THESE ARE HERE. The schema comparison found a Postgres MAJOR VERSION
+-- mismatch (local 15, production 17) by accident: PG17 added the MAINTAIN
+-- privilege, which happened to show up in aclexplode as 52 phantom grant
+-- differences. A version difference that changed BEHAVIOUR without changing the
+-- catalog's shape would have been invisible to the same check.
+--
+-- So the environment is compared explicitly rather than inferred from artefacts.
+-- server_version_num is a HARD assertion in the comparator; the rest are reported
+-- as classification, because most are irrelevant to what the RLS suite proves and
+-- the ones that matter should be named rather than guessed at.
+
+-- SESSION-VISIBLE settings. Deliberately NARROW: search_path and
+-- statement_timeout are NOT here, because they are properties of the connecting
+-- ROLE rather than of the database. Including them compared the production
+-- reader's session against the local superuser's and reported two differences
+-- that said nothing about either database — production shows
+-- '"$user", public, extensions' when read as `postgres` and '"$user", public'
+-- when read as `schema_reader`. Per-role settings are dumped separately below,
+-- from pg_db_role_setting, which IS database state.
+SELECT 'SETTING', name, setting
+FROM pg_catalog.pg_settings
+WHERE name IN (
+  'server_version', 'server_version_num', 'server_encoding',
+  'TimeZone', 'DateStyle', 'IntervalStyle', 'standard_conforming_strings',
+  'row_security', 'default_transaction_isolation',
+  'transform_null_equals', 'array_nulls', 'backslash_quote',
+  'default_text_search_config', 'bytea_output'
+)
+ORDER BY name;
+
+-- PER-ROLE / PER-DATABASE settings, from the catalog rather than from whatever
+-- session happens to be reading. This is where Supabase pins statement_timeout
+-- and search_path per role, and it is the form that matters: a SECURITY DEFINER
+-- function WITHOUT a pinned search_path resolves differently if the role's
+-- search_path differs, which is precisely what migration 038 hardened against.
+-- Restricted to the roles the application actually uses.
+-- VALUES OF SECRET-SHAPED SETTINGS ARE REDACTED, replaced by an md5 of the value.
+-- pg_db_role_setting can hold credentials — app.settings.jwt_secret is set here on
+-- a local Supabase stack — and this dump is printed into CI logs and uploaded as
+-- an artifact on failure. The md5 keeps the comparison working: a value that
+-- CHANGES still shows as drift, without the value itself ever being published.
+-- (The local stack's jwt_secret is Supabase's public documented dev value, but
+-- the check must not depend on the secret being harmless.)
+SELECT 'ROLESETTING',
+       coalesce(r.rolname, '(all roles)') || '|' || split_part(cfg, '=', 1),
+       CASE
+         WHEN split_part(cfg, '=', 1) ~* '(secret|password|passwd|key|token|credential|dsn)'
+           THEN split_part(cfg, '=', 1) || '=<redacted md5:' || md5(cfg) || '>'
+         ELSE cfg
+       END
+FROM pg_catalog.pg_db_role_setting drs
+LEFT JOIN pg_catalog.pg_roles r ON r.oid = drs.setrole
+CROSS JOIN LATERAL unnest(drs.setconfig) AS cfg
+WHERE r.rolname IS NULL OR r.rolname IN ('anon', 'authenticated', 'service_role', 'authenticator')
+ORDER BY 2;
+
+-- Collation and the locale PROVIDER. Provider matters on its own: ICU and libc
+-- order and compare text differently, and text comparison appears inside policy
+-- predicates. Production uses ICU (datlocprovider = 'i').
+SELECT 'DBPROPS', 'collation',
+       'encoding=' || pg_encoding_to_char(encoding)
+       || ' collate=' || datcollate
+       || ' ctype=' || datctype
+       || ' locale_provider=' || datlocprovider::text
+FROM pg_catalog.pg_database
+WHERE datname = current_database();
+
+-- Extension NAME, VERSION and SCHEMA. The uuid-ossp schema difference is already
+-- an allowlisted finding; a version difference in pgcrypto or uuid-ossp would
+-- change generated values and has never been checked at all.
+SELECT 'EXTENSION', e.extname, e.extversion || ' schema=' || n.nspname
+FROM pg_catalog.pg_extension e
+JOIN pg_catalog.pg_namespace n ON n.oid = e.extnamespace
+ORDER BY e.extname;
