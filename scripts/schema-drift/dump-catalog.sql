@@ -180,9 +180,20 @@ ORDER BY name;
 -- function WITHOUT a pinned search_path resolves differently if the role's
 -- search_path differs, which is precisely what migration 038 hardened against.
 -- Restricted to the roles the application actually uses.
+-- VALUES OF SECRET-SHAPED SETTINGS ARE REDACTED, replaced by an md5 of the value.
+-- pg_db_role_setting can hold credentials — app.settings.jwt_secret is set here on
+-- a local Supabase stack — and this dump is printed into CI logs and uploaded as
+-- an artifact on failure. The md5 keeps the comparison working: a value that
+-- CHANGES still shows as drift, without the value itself ever being published.
+-- (The local stack's jwt_secret is Supabase's public documented dev value, but
+-- the check must not depend on the secret being harmless.)
 SELECT 'ROLESETTING',
        coalesce(r.rolname, '(all roles)') || '|' || split_part(cfg, '=', 1),
-       cfg
+       CASE
+         WHEN split_part(cfg, '=', 1) ~* '(secret|password|passwd|key|token|credential|dsn)'
+           THEN split_part(cfg, '=', 1) || '=<redacted md5:' || md5(cfg) || '>'
+         ELSE cfg
+       END
 FROM pg_catalog.pg_db_role_setting drs
 LEFT JOIN pg_catalog.pg_roles r ON r.oid = drs.setrole
 CROSS JOIN LATERAL unnest(drs.setconfig) AS cfg
