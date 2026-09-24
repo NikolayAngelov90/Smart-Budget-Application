@@ -104,7 +104,7 @@ function parse(path) {
     if (!byKind.has(kind)) byKind.set(kind, new Map());
     // Key = everything that IDENTIFIES the object; value = the whole record, so a
     // same-key different-value pair is a MODIFIED rather than a pair of adds.
-    const keyLen = { TABLE: 1, COLUMN: 1, RLS: 1, POLICY: 3, TGRANT: 3, 'TGRANT-DEFAULT': 1, CGRANT: 4, FUNCTION: 1, TRIGGER: 2, SETTING: 1, DBPROPS: 1, EXTENSION: 1 }[kind];
+    const keyLen = { TABLE: 1, COLUMN: 1, RLS: 1, POLICY: 3, TGRANT: 3, 'TGRANT-DEFAULT': 1, CGRANT: 4, FUNCTION: 1, TRIGGER: 2, SETTING: 1, DBPROPS: 1, EXTENSION: 1, ROLESETTING: 1 }[kind];
     const key = parts.slice(1, 1 + (keyLen ?? parts.length - 1)).join('\t');
     byKind.get(kind).set(key, parts.slice(1).join('\t'));
   }
@@ -234,7 +234,7 @@ const findings = { PRODUCTION_ONLY: [], MIGRATIONS_ONLY: [], MODIFIED: [], COSME
 // Environment kinds are owned by the ENVIRONMENT AXES section below and by the
 // version assertion above. Leaving them in the generic loop would ALSO fail them
 // as MODIFIED, so a reported-not-failed axis would be reported and failed.
-const ENV_KINDS = new Set(['SETTING', 'DBPROPS', 'EXTENSION']);
+const ENV_KINDS = new Set(['SETTING', 'DBPROPS', 'EXTENSION', 'ROLESETTING']);
 const kinds = new Set([...prod.byKind.keys(), ...mig.byKind.keys()]);
 for (const kind of [...kinds].sort()) {
   if (ENV_KINDS.has(kind)) continue;
@@ -303,7 +303,7 @@ function emit(bucket, label, fatalByDefault) {
 // accident a fourth time. server_version_num is excluded because it is already a
 // hard assertion above.
 {
-  const envKinds = ['SETTING', 'DBPROPS', 'EXTENSION'];
+  const envKinds = ['SETTING', 'DBPROPS', 'EXTENSION', 'ROLESETTING'];
   const rows = [];
   for (const kind of envKinds) {
     const p = prod.byKind.get(kind) ?? new Map();

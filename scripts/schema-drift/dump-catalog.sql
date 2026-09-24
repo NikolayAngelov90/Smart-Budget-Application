@@ -155,17 +155,39 @@ ORDER BY c.relname, t.tgname;
 -- as classification, because most are irrelevant to what the RLS suite proves and
 -- the ones that matter should be named rather than guessed at.
 
+-- SESSION-VISIBLE settings. Deliberately NARROW: search_path and
+-- statement_timeout are NOT here, because they are properties of the connecting
+-- ROLE rather than of the database. Including them compared the production
+-- reader's session against the local superuser's and reported two differences
+-- that said nothing about either database — production shows
+-- '"$user", public, extensions' when read as `postgres` and '"$user", public'
+-- when read as `schema_reader`. Per-role settings are dumped separately below,
+-- from pg_db_role_setting, which IS database state.
 SELECT 'SETTING', name, setting
 FROM pg_catalog.pg_settings
 WHERE name IN (
-  'server_version', 'server_version_num', 'server_encoding', 'client_encoding',
+  'server_version', 'server_version_num', 'server_encoding',
   'TimeZone', 'DateStyle', 'IntervalStyle', 'standard_conforming_strings',
-  'search_path', 'row_security', 'statement_timeout',
-  'default_transaction_isolation', 'default_transaction_read_only',
+  'row_security', 'default_transaction_isolation',
   'transform_null_equals', 'array_nulls', 'backslash_quote',
-  'default_text_search_config', 'bytea_output', 'extra_float_digits'
+  'default_text_search_config', 'bytea_output'
 )
 ORDER BY name;
+
+-- PER-ROLE / PER-DATABASE settings, from the catalog rather than from whatever
+-- session happens to be reading. This is where Supabase pins statement_timeout
+-- and search_path per role, and it is the form that matters: a SECURITY DEFINER
+-- function WITHOUT a pinned search_path resolves differently if the role's
+-- search_path differs, which is precisely what migration 038 hardened against.
+-- Restricted to the roles the application actually uses.
+SELECT 'ROLESETTING',
+       coalesce(r.rolname, '(all roles)') || '|' || split_part(cfg, '=', 1),
+       cfg
+FROM pg_catalog.pg_db_role_setting drs
+LEFT JOIN pg_catalog.pg_roles r ON r.oid = drs.setrole
+CROSS JOIN LATERAL unnest(drs.setconfig) AS cfg
+WHERE r.rolname IS NULL OR r.rolname IN ('anon', 'authenticated', 'service_role', 'authenticator')
+ORDER BY 2;
 
 -- Collation and the locale PROVIDER. Provider matters on its own: ICU and libc
 -- order and compare text differently, and text comparison appears inside policy
