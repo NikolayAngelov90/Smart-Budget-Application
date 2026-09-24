@@ -1,0 +1,88 @@
+-- Adds detected_subscriptions.currency, which 012 has always defined and
+-- production has never had.
+--
+-- ============================================================================
+-- THE MECHANISM — A STATEMENT THAT SUCCEEDED WITHOUT DOING WHAT IT SAYS
+-- ============================================================================
+-- 012_detected_subscriptions.sql line 20 opens with:
+--
+--     CREATE TABLE IF NOT EXISTS public.detected_subscriptions (
+--       ...
+--       currency VARCHAR(3) NOT NULL DEFAULT 'EUR',
+--
+-- The table already existed in production when 012 ran. `IF NOT EXISTS` made the
+-- ENTIRE CREATE a no-op, so NONE of its column definitions landed — and the
+-- migration was recorded as applied. `012 detected_subscriptions` is present in
+-- supabase_migrations.schema_migrations today. Nothing failed, nothing warned.
+--
+-- The file has one commit (853b7d0, 2026-03-26) and `currency` was in it from the
+-- first line of its history, so this is not a file edited after being applied.
+--
+-- WORTH RECORDING BECAUSE IT GENERALISES: 19 migrations use
+-- `CREATE TABLE IF NOT EXISTS`, covering 22 tables. Any `IF NOT EXISTS` against a
+-- pre-existing object has this failure mode — silently doing nothing while
+-- reporting success. It is the same family as `REVOKE UPDATE (col)` against a
+-- table-level grant (hp-8) and a bare `ON CONFLICT` that cannot infer a partial
+-- index (hp-10): statements that succeed without having the effect they describe.
+--
+-- IT DID NOT HAPPEN ANYWHERE ELSE. The 2026-09-24 catalog diff compared every
+-- column of all 26 public tables between production and a stack CI raised from
+-- these migrations. Exactly ONE difference existed: this column. Table lists were
+-- identical and table-level grants were identical on every table. Nobody needs to
+-- re-derive that.
+--
+-- ============================================================================
+-- WHY THIS IS A FREE CHANGE
+-- ============================================================================
+-- `detected_subscriptions` has ZERO rows in production, measured 2026-09-24.
+-- So `NOT NULL DEFAULT 'EUR'` needs no backfill, rewrites nothing, and cannot
+-- affect existing data because there is none.
+--
+-- WHY THE TABLE IS EMPTY, PROBABLY. detectSubscriptions() writes `currency` in
+-- both branches — `insert(sub)` where sub carries it, and an update that sets
+-- `currency: sub.currency`. Against a table without the column, PostgREST returns
+-- 42703 undefined_column. If that is what has been happening, every
+-- subscription-detection write has failed for the life of the feature, on every
+-- cron schedule, which explains an empty table across every era. That makes the
+-- 2026-09-23 schedule fix (#62) UNNECESSARY rather than wrong: a weekly cron
+-- expression genuinely did not fire, and the feature could not have produced a
+-- row on a day it did.
+--
+-- Not asserted as proven. The next 02:00 UTC run is the test.
+
+ALTER TABLE public.detected_subscriptions
+  ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'EUR';
+
+-- Verbatim from 012 line 36, so production carries what the file has always said.
+COMMENT ON COLUMN public.detected_subscriptions.currency
+  IS 'ISO 4217 currency code from the source transactions';
+
+-- ============================================================================
+-- VERIFICATION — run after applying
+-- ============================================================================
+--
+--   -- (1) the column exists, with the right type and default
+--   SELECT column_name, data_type, character_maximum_length,
+--          is_nullable, column_default
+--   FROM information_schema.columns
+--   WHERE table_schema='public' AND table_name='detected_subscriptions'
+--     AND column_name='currency';
+--   -- expect: character varying, 3, NO, 'EUR'::character varying
+--
+--   -- (2) the table now has 10 columns, matching a fresh apply of the migrations
+--   SELECT count(*) FROM information_schema.columns
+--   WHERE table_schema='public' AND table_name='detected_subscriptions';
+--   -- expect: 10
+--
+-- THEN VERIFY BY EFFECT, which is the only check that settles it. After the next
+-- 02:00 UTC subscription-detect run, detected_subscriptions must contain:
+--
+--   monthly rent           ~EUR 900.00   monthly
+--   electricity & water    ~EUR 116.70   monthly
+--   internet i televiziya  ~EUR 33.00    monthly
+--
+-- Those three come from driving the REAL classifyFrequency / normalizeMerchant /
+-- amountsMatch over the real 6-month window behind the real hasEnoughHistory
+-- gate, so the algorithm is known to produce exactly them. If the table is still
+-- empty with the column present and the cron firing daily, the 42703 theory is
+-- ALSO wrong and the route itself is next. Check the table; do not assume.
