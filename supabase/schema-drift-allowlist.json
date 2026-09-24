@@ -1,0 +1,139 @@
+{
+  "$comment": [
+    "ACKNOWLEDGED SCHEMA DRIFT between production and what supabase/migrations/ produces.",
+    "",
+    "The build reads this file. Anything NOT listed here fails the drift check.",
+    "That is the point: it turns the drift inventory from a document nobody reads",
+    "into a list the build reads.",
+    "",
+    "Every entry carries four things and an entry missing any of them is incomplete:",
+    "  object        what differs, precisely enough to match a catalog row",
+    "  direction     which side is which, because it decides who has to change",
+    "  why_tolerated why this is not a red today",
+    "  resolves_when what would let the entry be DELETED. An entry with no exit is",
+    "                a permanent exemption pretending to be a temporary one.",
+    "",
+    "Established by catalog diff on 2026-09-24: production read via the management",
+    "API, the migration side read from a stack CI raised from these files. Compared",
+    "as two catalogs, never as a catalog against a reading of SQL.",
+    "",
+    "ALREADY RESOLVED and deliberately absent, so nobody re-adds them:",
+    "  household_members 'Users can join as themselves'  - dropped in production",
+    "  households 'Users can create a household they own' - dropped in production",
+    "  categories trg_category_visibility_owner + its function - added to production",
+    "  (verified by hash against the migration-built catalog, not by presence)",
+    "",
+    "FUNCTION COMPARISON MUST BE DONE TWICE, AND THE CHECK DOES BOTH:",
+    "  raw        md5(pg_get_functiondef) - exact, but flags comment-only edits",
+    "  normalised comments stripped + whitespace collapsed - flags BEHAVIOUR",
+    "A mismatch is classified from the pair: raw differs + normalised matches is",
+    "COSMETIC; normalised differs is BEHAVIOURAL and is never allowlisted without",
+    "a stated reason. Stripping `--` is not free - a string literal containing `--`",
+    "would be corrupted by it, so the normalised form is used only to CLASSIFY a",
+    "mismatch, never as the sole basis for calling two functions equal."
+  ],
+  "non_vacuity_floors": {
+    "$comment": [
+      "FIRST-CLASS, NOT A TEST OF THE CHECK. If either catalog returns fewer",
+      "objects than these floors, the check FAILS HARD rather than reporting",
+      "'no drift'. A diff over two empty catalogs is silent agreement, which is",
+      "the exact failure mode hit three times in the week this file was written:",
+      "no-floating-promises reporting 0 because nothing invoked it, an RLS",
+      "mutation that would have passed against the wrong database, and a clock",
+      "parameter no caller passed.",
+      "Floors are set below current values so ordinary growth does not trip them,",
+      "and far enough above zero that an empty or half-read catalog cannot pass."
+    ],
+    "tables": 20,
+    "columns": 180,
+    "policies": 60,
+    "functions": 20,
+    "triggers": 10,
+    "table_grant_entries": 300,
+    "column_grant_entries": 1200
+  },
+  "allowed_drift": [
+    {
+      "id": "insights-insert-policy",
+      "object": "policy public.insights \"Service can insert insights for users\" (INSERT)",
+      "direction": "in migrations, ABSENT in production",
+      "why_tolerated": "Production is STRICTER and correct. The migration's policy is WITH CHECK (true), which would let any authenticated user insert an arbitrary insight row for anyone. Removing it from production was right; the migration is what is wrong.",
+      "resolves_when": "A migration drops this policy, bringing the file up to production. Then delete this entry.",
+      "match": [
+        "policy",
+        "insights",
+        "service can insert insights for users"
+      ]
+    },
+    {
+      "id": "insights-delete-policy",
+      "object": "policy public.insights \"Users and services can delete insights\" (DELETE)",
+      "direction": "in migrations, ABSENT in production",
+      "why_tolerated": "Production is STRICTER. The migration's USING clause is (auth.uid() = user_id OR auth.uid() IS NULL), and the IS NULL arm makes it permissive for any unauthenticated context. Insights are deleted by the service role, which bypasses RLS and needs no policy.",
+      "resolves_when": "A migration drops this policy. Then delete this entry.",
+      "match": [
+        "policy",
+        "insights",
+        "users and services can delete insights"
+      ]
+    },
+    {
+      "id": "wishlist-update-with-check",
+      "object": "policy public.wishlist_items \"Users can update their own wishlist items\" (UPDATE) - WITH CHECK predicate differs",
+      "direction": "production STRICTER than migrations",
+      "why_tolerated": "Production's WITH CHECK also validates that category_id belongs to the user and is an expense category; the migration's checks only (auth.uid() = user_id). Production prevents pointing a wishlist item at someone else's category.",
+      "resolves_when": "A migration updates the policy to match production's predicate. Then delete this entry.",
+      "match": [
+        "policy",
+        "wishlist_items",
+        "users can update their own wishlist items"
+      ]
+    },
+    {
+      "id": "seed-user-categories-search-path",
+      "object": "function public.seed_user_categories(uuid) - body AND proconfig differ",
+      "direction": "production HARDENED, migrations NOT",
+      "why_tolerated": "NOT ORDINARY DRIFT, and must not sit here as though it were. Production has search_path pinned to public; the migrations leave it UNPINNED. So applying the migrations forward would REGRESS part of migration 038's security-advisor hardening pass. This single entry disqualifies the obvious reconciliation plan - 'just apply the migrations forward' - and it is the first thing anyone will reach for.",
+      "resolves_when": "A migration recreates seed_user_categories WITH `SET search_path = public`, bringing the file up to production rather than the reverse. Only then delete this entry. Never resolve it by applying the migration version to production.",
+      "match": [
+        "function",
+        "seed_user_categories"
+      ]
+    },
+    {
+      "id": "migration-ledger-divergence",
+      "object": "supabase_migrations.schema_migrations - 20260924100000 is NOT recorded although its effects are present in production",
+      "direction": "effect applied, ledger not updated",
+      "why_tolerated": "The security fix was applied as raw SQL rather than through the migration pipeline, so production has the change without the record. Harmless for correctness here because every statement in it is idempotent (DROP POLICY IF EXISTS, CREATE OR REPLACE FUNCTION, DROP+CREATE TRIGGER), so a later push re-applying it is a no-op.",
+      "resolves_when": "The version is inserted into schema_migrations, or the migration is applied through the pipeline so it records itself. Then delete this entry.",
+      "$note": "Recorded here because it means 'which migrations has production applied' is unreliable in a SECOND way, independent of schema drift. 012 is recorded and did nothing; 20260924100000 did something and is not recorded. The ledger cannot be trusted in either direction, which is an argument for the drift check comparing CATALOGS rather than consulting the ledger at all.",
+      "match": [
+        "schema_migrations"
+      ]
+    }
+  ],
+  "resolved_findings": {
+    "$comment": [
+      "NOT SUPPRESSIONS. allowed_drift holds only entries that stop a HARD FAILURE.",
+      "These are investigated findings needing no suppression - kept so the",
+      "investigation is not repeated, and separated so 'anything not on the list",
+      "fails' stays true of allowed_drift alone."
+    ],
+    "entries": [
+      {
+        "id": "function-bodies-comment-only",
+        "object": "functions public.patch_user_preferences(jsonb) and public.record_feature_activity(date) - pg_get_functiondef hashes differ",
+        "direction": "COSMETIC ONLY - production's stored body lacks inline `--` comments that the migration files contain. Logic identical.",
+        "why_tolerated": "INVESTIGATED AND RESOLVED AS BENIGN, not deferred. Normalising both bodies the same way - strip `--` comments, collapse whitespace, lowercase - yields byte-identical text on both sides: patch_user_preferences 0e69c328b720497ff948a4cffa7650e8 (464 chars) and record_feature_activity 4982299f0a6ec3308ce23415b55b0e15 (492 chars), matching production exactly. Both also agree on search_path and on SECURITY INVOKER. There is no behavioural difference; production was created from a comment-free version of the same text.",
+        "resolves_when": "Re-running each migration's CREATE OR REPLACE against production converges the stored text. Idempotent and behaviour-neutral, so it can ride along with any future migration. Then delete this entry.",
+        "$note": "A FIRST ATTEMPT AT THIS COMPARISON REPORTED 'BODIES GENUINELY DIFFER' AND WAS WRONG. The Python side called .strip() and the SQL side did not, so leading/trailing newlines collapsed to spaces on one side only - both functions came out off by exactly 2 characters, which is what gave it away. A uniform tiny delta across independent objects is a signature of the comparison being broken, not the objects differing."
+      },
+      {
+        "id": "detected-subscriptions-currency",
+        "object": "column public.detected_subscriptions.currency, and the 8 column-grant entries consequent on it",
+        "outcome": "RESOLVED 2026-09-24 - migration 20260924110000 applied. Verified: character varying(3), NOT NULL, default 'EUR'; table at 10 columns; column-grant entries 72 -> 80 as predicted.",
+        "note": "Deleted from allowed_drift the same day it was applied, per the rule that a resolved item left in an allowlist becomes permanent noise."
+      }
+    ]
+  }
+}

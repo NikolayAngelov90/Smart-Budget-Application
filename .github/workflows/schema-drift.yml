@@ -1,0 +1,159 @@
+name: Schema Drift
+
+# Compares PRODUCTION's catalog against the catalog supabase/migrations/ produces.
+# Nothing compared these two before, which is how both vulnerabilities found on
+# 2026-09-24 stayed invisible — one for six months. See
+# scripts/schema-drift/compare.mjs for the full reasoning.
+#
+# ===========================================================================
+# WHY THIS DOES NOT RUN ON PULL REQUESTS
+# ===========================================================================
+# Two reasons, and the second is the decisive one.
+#
+# 1. A PR author has not caused production drift and cannot fix it. Blocking them
+#    on it creates exactly the pressure that gets a check disabled.
+#
+# 2. CREDENTIAL EXPOSURE. This workflow holds a production database credential.
+#    For a same-repo branch, `pull_request` runs the workflow definition FROM THE
+#    BRANCH — so a branch could edit this file to print the secret, and any PR
+#    would be a credential exfiltration path. Restricting to `push: main`,
+#    `schedule` and `workflow_dispatch` means the definition that runs is one that
+#    has already been reviewed and merged.
+#
+# The cost is that a migration PR does not show its own pending state until after
+# merge. That is acceptable: pending state is a statement about production versus
+# main, which is where it becomes actionable anyway.
+#
+# ===========================================================================
+# THE CREDENTIAL
+# ===========================================================================
+# `schema_reader` is a purpose-built Postgres role:
+#   LOGIN, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOBYPASSRLS, NOINHERIT,
+#   zero role memberships, zero table grants.
+# It reads pg_catalog (which carries PUBLIC SELECT) and CANNOT read a single row
+# of user data — verified over a real authenticated connection: 78 policies, 26
+# tables, 350 columns, 26 functions and 22 triggers readable; `transactions` and
+# `user_profiles` both 42501.
+#
+# It is deliberately NOT the service-role key and NOT `supabase_read_only_user`.
+# That second one looks like the right answer and is not: it is a member of
+# pg_read_all_data with BYPASSRLS, so it reads every row in the database.
+#
+# HOST: aws-1, NOT aws-0. Verified by probe on 2026-09-24 — aws-0 rejects this
+# project's role with `XX000 tenant/user not found`, which reads as a credentials
+# problem and is not one. The pooler cluster is project-specific and MUST NOT be
+# constructed from the region or copied from documentation. Do not "fix" this to
+# aws-0.
+#
+# Direct (db.<ref>.supabase.co) is deliberately unused: it is IPv6-ONLY, and
+# GitHub runners are IPv4-only, so it can never work here whatever the role.
+#
+# Session mode on 5432 rather than transaction mode on 6543. Both authenticate;
+# session mode has no prepared-statement or transaction-scope caveats and the
+# check is a handful of catalog SELECTs where pooling efficiency is irrelevant.
+
+on:
+  schedule:
+    # 06:00 UTC daily — after the 02:00 cron window, so a schema change made by a
+    # scheduled job is visible on the same day's run.
+    - cron: '0 6 * * *'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: schema-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    name: Production vs migrations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase (applies supabase/migrations/*)
+        run: supabase start
+
+      - name: Resolve local DB URL
+        run: |
+          echo "LOCAL_DB_URL=$(supabase status -o env | grep '^DB_URL' | cut -d= -f2- | tr -d '\"')" >> "$GITHUB_ENV"
+
+      - name: Verify local DB URL resolved (fail loud — never dump nothing)
+        run: |
+          if [ -z "$LOCAL_DB_URL" ]; then
+            echo "::error::LOCAL_DB_URL is empty — the migration-side dump would be silently empty and the comparison meaningless."
+            exit 1
+          fi
+          echo "LOCAL_DB_URL resolved (value not printed)"
+
+      - name: Dump the migration-built catalog
+        run: |
+          psql "$LOCAL_DB_URL" -v ON_ERROR_STOP=1 -f scripts/schema-drift/dump-catalog.sql > migrations.tsv
+          echo "migration-side records: $(wc -l < migrations.tsv)"
+
+      - name: Dump production's catalog
+        env:
+          # The ONLY use of this secret. Never echoed, never interpolated into a
+          # connection string that could appear in an error.
+          PGPASSWORD: ${{ secrets.SCHEMA_READER_PASSWORD }}
+        run: |
+          if [ -z "$PGPASSWORD" ]; then
+            echo "::error::SCHEMA_READER_PASSWORD is not set — production's catalog would be unreadable and the check would compare against nothing."
+            exit 1
+          fi
+          psql \
+            --host=aws-1-eu-north-1.pooler.supabase.com \
+            --port=5432 \
+            --username=schema_reader.rlcgqvqpuqkkxtczalpi \
+            --dbname=postgres \
+            --set=sslmode=require \
+            -v ON_ERROR_STOP=1 \
+            -f scripts/schema-drift/dump-catalog.sql > production.tsv
+          echo "production-side records: $(wc -l < production.tsv)"
+
+      - name: Newest migration file's commit time (for the pending age gate)
+        run: |
+          # Pending objects are routine; pending and FORGOTTEN is a finding. A
+          # catalog object cannot be traced back to the migration that defines it,
+          # so the gate uses the NEWEST migration file's commit time: if the most
+          # recent migration is over a week old and production still lacks objects
+          # the migrations define, that is not a deploy in flight.
+          NEWEST=0
+          for f in supabase/migrations/*.sql; do
+            T=$(git log -1 --format=%ct -- "$f" || echo 0)
+            [ -n "$T" ] && [ "$T" -gt "$NEWEST" ] && NEWEST=$T
+          done
+          echo "NEWEST_MIGRATION_EPOCH=$NEWEST" >> "$GITHUB_ENV"
+          echo "newest migration commit epoch: $NEWEST"
+
+      - name: Compare
+        run: node scripts/schema-drift/compare.mjs production.tsv migrations.tsv "$NEWEST_MIGRATION_EPOCH"
+
+      - name: Upload both catalogs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-catalogs
+          # Catalog metadata only — object names, types, policy predicates,
+          # grants. No user data: the role that produced production.tsv cannot
+          # read any.
+          path: |
+            production.tsv
+            migrations.tsv
+          retention-days: 7
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
