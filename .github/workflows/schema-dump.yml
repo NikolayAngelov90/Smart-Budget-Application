@@ -1,0 +1,87 @@
+name: Schema Dump (throwaway probe)
+
+# TEMPORARY. Builds the local stack from supabase/migrations and dumps its
+# catalog, so it can be diffed against production's catalog. This exists because
+# production's detected_subscriptions lacks a `currency` column that
+# 012_detected_subscriptions.sql defines in its CREATE TABLE — so the migrations
+# do not describe production, and we need to know how far that goes.
+#
+# NOT TO BE MERGED. Delete the branch once the diff is recorded.
+
+on:
+  push:
+    branches: [chore/schema-diff-probe]
+  workflow_dispatch:
+
+jobs:
+  dump:
+    name: Dump migration-built catalog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase (applies supabase/migrations/*)
+        run: supabase start
+
+      - name: Resolve DB URL
+        run: |
+          echo "DB_URL=$(supabase status -o env | grep '^DB_URL' | cut -d= -f2- | tr -d '\"')" >> "$GITHUB_ENV"
+
+      - name: Verify DB URL resolved
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::DB_URL empty — the dump would be silently empty."
+            exit 1
+          fi
+          echo "DB_URL resolved (value not printed)"
+
+      - name: TABLES
+        run: |
+          psql "$DB_URL" -At -F$'\t' -c "
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema='public' AND table_type='BASE TABLE'
+            ORDER BY table_name;"
+
+      - name: COLUMNS
+        run: |
+          psql "$DB_URL" -At -F$'\t' -c "
+            SELECT table_name || '.' || column_name || ':' || data_type
+            FROM information_schema.columns
+            WHERE table_schema='public'
+            ORDER BY table_name, column_name;"
+
+      - name: POLICIES
+        run: |
+          psql "$DB_URL" -At -F$'\t' -c "
+            SELECT tablename || '|' || policyname || '|' || cmd || '|' ||
+                   coalesce(roles::text,'') || '|' ||
+                   coalesce(regexp_replace(qual, '\s+', ' ', 'g'),'NULL') || '|' ||
+                   coalesce(regexp_replace(with_check, '\s+', ' ', 'g'),'NULL')
+            FROM pg_policies WHERE schemaname='public'
+            ORDER BY tablename, policyname, cmd;"
+
+      - name: TABLE GRANTS (anon, authenticated)
+        run: |
+          psql "$DB_URL" -At -F$'\t' -c "
+            SELECT table_name || '|' || grantee || '|' || privilege_type
+            FROM information_schema.table_privileges
+            WHERE table_schema='public' AND grantee IN ('anon','authenticated')
+            ORDER BY table_name, grantee, privilege_type;"
+
+      - name: COLUMN GRANTS (anon, authenticated)
+        run: |
+          psql "$DB_URL" -At -F$'\t' -c "
+            SELECT table_name || '|' || grantee || '|' || privilege_type || '|' || column_name
+            FROM information_schema.column_privileges
+            WHERE table_schema='public' AND grantee IN ('anon','authenticated')
+            ORDER BY table_name, grantee, privilege_type, column_name;"
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
