@@ -71,7 +71,50 @@ const CATEGORY_PREFS: Record<PushCategory, { flag: string; defaultEnabled: boole
  * the two together is what made a mild preference read as a permanent opt-out,
  * and it also made the telemetry lie about why nothing arrived.
  */
-export type PushDispatchOutcome = 'sent' | 'suppressed' | 'deferred' | 'failed';
+export type PushDispatchOutcome =
+  | 'sent'
+  | 'suppressed'
+  | 'deferred'
+  | 'failed'
+  | 'no_subscription'
+  | 'not_configured';
+
+/**
+ * What actually happened when we handed the message to the push service.
+ *
+ * "GENUINE DELIVERY" IS NOT AVAILABLE TO US. A 2xx from a push service means the
+ * SERVICE ACCEPTED the message — not that the device received it, not that the
+ * user saw it. `accepted` is therefore the strongest thing this code can know,
+ * and it is named that way so nothing downstream implies more.
+ */
+export type PushSendResult =
+  /** At least one subscription was accepted (2xx) by the push service. */
+  | 'accepted'
+  /** Network error, 5xx, timeout. Worth retrying — nothing is known to be wrong. */
+  | 'transient'
+  /** Every endpoint returned 404/410 and has been PRUNED. Nothing to retry. */
+  | 'permanent'
+  /** The user has no push subscription. Nothing to deliver, nothing to retry. */
+  | 'none'
+  /** The subscription lookup itself failed — treat as transient. */
+  | 'lookup_failed'
+  /** VAPID keys are absent, so push cannot work for ANYONE. */
+  | 'unconfigured';
+
+/**
+ * Whether push is configured at all. Cheap, and callers that process a COHORT
+ * should check it ONCE before the loop rather than discovering it per user.
+ *
+ * This exists because of the failure it prevents: with VAPID absent,
+ * `sendPushToUser` used to return silently and `dispatchCategorizedPush` returned
+ * 'sent', so every user in the cohort was written a delivery marker, permanently
+ * suppressing a notification nobody ever received. A job whose healthy state
+ * produces the same signal as its dead state cannot be monitored — see
+ * docs/api-conventions.md, Scheduled Work (cron) — Observability.
+ */
+export function isPushConfigured(): boolean {
+  return Boolean(process.env.VAPID_PRIVATE_KEY && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
+}
 
 /**
  * Story 15.5: THE single dispatch gate (AC5) — every push in the app goes
@@ -136,8 +179,28 @@ export async function dispatchCategorizedPush(
       return 'deferred';
     }
 
-    await sendPushToUser(supabase, userId, payload);
-    return 'sent';
+    const result = await sendPushToUser(supabase, userId, payload);
+    switch (result) {
+      case 'accepted':
+        // The ONLY outcome that writes a delivery marker.
+        return 'sent';
+      case 'none':
+        // Nothing to deliver and nothing to retry. Deliberately NOT recorded:
+        // the ABSENCE of a delivery row already means "not delivered", which is
+        // true, so no status column is needed to say it.
+        return 'no_subscription';
+      case 'permanent':
+        // Every endpoint was dead and has been pruned. Not retryable, and not a
+        // delivery — so no marker, and next run finds no subscription at all.
+        return 'failed';
+      case 'unconfigured':
+        return 'not_configured';
+      case 'transient':
+      case 'lookup_failed':
+      default:
+        // Retried on the next run. THIS is the case the fix exists for.
+        return 'failed';
+    }
   } catch (err) {
     logger.warn('PushService', `dispatch failed for ${userId} (non-fatal):`, err);
     return 'failed';
@@ -193,18 +256,33 @@ export function localHourIn(timeZone: string | undefined, now: Date = new Date()
 }
 
 /**
- * Sends a push notification to all devices subscribed for the given user.
- * Uses best-effort delivery: errors per device are logged but not re-thrown.
- * Stale subscriptions (410 Gone or 404 Not Found) are deleted automatically.
+ * Sends a push notification to all devices subscribed for the given user, and
+ * REPORTS WHAT HAPPENED.
+ *
+ * IT USED TO RETURN `void` AND SWALLOW EVERY FAILURE MODE — missing VAPID keys, a
+ * failed subscription lookup, zero subscriptions, and a rejected send were all
+ * indistinguishable from success. `dispatchCategorizedPush` then returned 'sent'
+ * in all of them, and the cron routes write a delivery marker on 'sent'. Since
+ * the marker is what `getAlreadyDelivered` consults to SKIP a user, and no code
+ * path ever deletes one, a single false 'sent' permanently suppressed that
+ * period's notification: the user never received it and never got another chance.
+ *
+ * Measured 2026-09-24: 24 weekly_digest markers across 3 users while only ONE push
+ * subscription existed in the whole system.
+ *
+ * Stale subscriptions (410 Gone / 404 Not Found) are still pruned — and that is
+ * what makes "do not mark on failure" safe rather than merely correct. Without
+ * pruning, a dead endpoint would be retried on every run forever, erroring each
+ * time and never resolving, which is a worse steady state than the bug.
  */
 export async function sendPushToUser(
   supabase: SupabaseClient,
   userId: string,
   payload: PushPayload
-): Promise<void> {
-  if (!process.env.VAPID_PRIVATE_KEY || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+): Promise<PushSendResult> {
+  if (!isPushConfigured()) {
     logger.error('PushService', 'VAPID keys not configured — push disabled');
-    return;
+    return 'unconfigured';
   }
 
   const { data: subscriptions, error } = await supabase
@@ -214,12 +292,16 @@ export async function sendPushToUser(
 
   if (error) {
     logger.error('PushService', 'Failed to fetch push subscriptions:', error);
-    return;
+    return 'lookup_failed';
   }
 
-  if (!subscriptions || subscriptions.length === 0) return;
+  if (!subscriptions || subscriptions.length === 0) return 'none';
 
   const body = JSON.stringify(payload);
+
+  let accepted = 0;
+  let transient = 0;
+  let permanent = 0;
 
   await Promise.allSettled(
     subscriptions.map(async (sub) => {
@@ -228,10 +310,13 @@ export async function sendPushToUser(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           body
         );
+        accepted++;
       } catch (err: unknown) {
         const status = (err as { statusCode?: number }).statusCode;
         if (status === 410 || status === 404) {
-          // Subscription is stale — remove it
+          permanent++;
+          // Subscription is stale — remove it. 410 Gone is the push protocol
+          // saying this endpoint is dead; keeping it means retrying a corpse.
           const { error: deleteError } = await supabase
             .from('push_subscriptions')
             .delete()
@@ -246,9 +331,19 @@ export async function sendPushToUser(
             logger.info('PushService', `Deleted stale subscription ${sub.id} (${status})`);
           }
         } else {
+          transient++;
           logger.error('PushService', `Push failed for endpoint ${sub.endpoint}:`, err);
         }
       }
     })
   );
+
+  // ONE acceptance is enough to call the notification delivered: the user has it
+  // on at least one device, and re-sending would duplicate it there.
+  if (accepted > 0) return 'accepted';
+  // A transient failure anywhere outranks a permanent one, because the transient
+  // endpoint is still worth retrying and the permanent ones are already pruned.
+  if (transient > 0) return 'transient';
+  if (permanent > 0) return 'permanent';
+  return 'none';
 }
