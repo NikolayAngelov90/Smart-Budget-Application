@@ -118,6 +118,18 @@
       "match": [
         "schema_migrations"
       ]
+    },
+    {
+      "id": "uuid-ossp-extension-schema",
+      "object": "column default on every table's `id`: production renders extensions.uuid_generate_v4(), the migrations render uuid_generate_v4()",
+      "match": [
+        "column",
+        "uuid",
+        "uuid_generate_v4"
+      ],
+      "direction": "ENVIRONMENT DIFFERENCE, not application schema. Same function, different schema qualification.",
+      "why_tolerated": "23 findings from ONE cause, and a uniform delta across independent objects is the signature of a systematic difference rather than 23 independent ones. 001_initial_schema.sql says `CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";` with no schema, so locally it lands in public and pg_get_expr renders the default unqualified. Supabase-managed projects place extensions in the `extensions` schema, so production renders it qualified. The generated value is identical; only the rendered qualification differs. Deliberately NOT normalised away in the comparator: stripping a schema prefix from a default expression would also mask a genuine change of default, and this is narrow enough to state as an exception instead.",
+      "resolves_when": "001 is changed to `CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" WITH SCHEMA extensions;` so the local stack matches production — which needs the extensions schema to exist locally first, so it is a real change rather than a one-liner. Then delete this entry. Note the match tokens are specific to uuid_generate_v4, so a default changed to anything else still fails."
     }
   ],
   "resolved_findings": {
