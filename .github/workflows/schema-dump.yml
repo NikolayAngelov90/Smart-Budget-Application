@@ -102,7 +102,7 @@ jobs:
             JOIN pg_class c ON c.oid = t.tgrelid
             JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname='public' AND NOT t.tgisinternal
-            ORDER BY 1, 2;"
+            ORDER BY c.relname, t.tgname;"
 
       - name: Stop Supabase
         if: always()

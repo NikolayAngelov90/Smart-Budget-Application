@@ -1,0 +1,82 @@
+-- SECURITY FIX — cross-household self-join was reachable in production.
+--
+-- WHY THIS MIGRATION LOOKS LIKE DEAD CODE AND IS NOT. It drops two policies that
+-- NO migration in this repository creates. They exist only in PRODUCTION, which
+-- means a `DROP POLICY IF EXISTS` here reads as a no-op against the migration
+-- history. It is not a no-op against the live database.
+--
+-- HOW THE DRIFT WAS FOUND (2026-09-24). Production's `detected_subscriptions`
+-- was missing a `currency` column that 012's CREATE TABLE defines, which proved
+-- `supabase/migrations/` does not describe production. A full catalog diff
+-- followed — production read via the management API, the migration-built schema
+-- read from a stack raised by CI from these files, both compared as CATALOGS
+-- rather than as a reading of SQL. Result:
+--
+--   tables        identical (26 = 26)
+--   columns       one difference (detected_subscriptions.currency)
+--   table grants  identical on every table
+--   column grants one difference, a consequence of the missing column
+--   policies      FOUR tables differ, and every SELECT policy matches
+--
+-- Two of those four are the subject of this migration.
+--
+-- THE VULNERABILITY. `020_households.sql` drops
+-- "Users can join as themselves" ON household_members and states the reason in
+-- the file itself:
+--
+--     NO anon INSERT policy by design. A blanket `WITH CHECK (user_id =
+--     auth.uid())` would let any authenticated user insert THEMSELVES into ANY
+--     household_id (a cross-household breach — they could self-join as admin and
+--     read all its data).
+--
+-- Production carried that policy anyway, as
+--     INSERT, WITH CHECK (user_id = ( SELECT auth.uid() ))
+-- with RLS enabled, `authenticated` (and `anon`) holding INSERT on the table, and
+-- NOTHING constraining `household_id` or `role`. So an authenticated user could
+-- insert (household_id = any household, user_id = self, role = 'admin'), after
+-- which private.is_household_member() returns true for them and every
+-- household-scoped SELECT on households, household_members, categories and
+-- transactions resolves in their favour. Signup is open in production, so this
+-- was reachable by a stranger, not only by an existing member.
+--
+-- FORENSICS, BEFORE THE FIX. All three membership rows in production had
+-- legitimate provenance — two creators and one accepted invitation, cross-checked
+-- against household_invitations. No unexplained row, so the path is not known to
+-- have been used.
+--
+-- SAFE TO DROP — CHECKED, NOT ASSUMED. Every INSERT into household_members and
+-- households goes through createServiceRoleClient(), which bypasses RLS:
+--   householdService.createHousehold   (admin client, lines ~87-126)
+--   invitationService.acceptInvitation (admin client, lines ~380-401)
+-- There are no client-side writes to either table, and the only other references
+-- in routes are SELECTs. Neither policy is load-bearing for any feature, so this
+-- does not break joining or creating a household. That mattered to check: a
+-- security fix that breaks a feature gets reverted, and then the hole is open
+-- again with everyone tired and less careful.
+
+-- ============================================================================
+-- THE FIX
+-- ============================================================================
+
+-- Cross-household self-join. This is the dangerous one.
+DROP POLICY IF EXISTS "Users can join as themselves" ON public.household_members;
+
+-- Same class, benign: self-owned only. 020 removed it to stop direct-client
+-- creation of orphan households, and creation runs through the service role.
+DROP POLICY IF EXISTS "Users can create a household they own" ON public.households;
+
+-- ============================================================================
+-- VERIFICATION — run this after applying. Expect ZERO rows.
+-- ============================================================================
+--
+--   SELECT tablename, policyname, cmd
+--   FROM pg_policies
+--   WHERE schemaname = 'public'
+--     AND policyname IN ('Users can join as themselves',
+--                        'Users can create a household they own');
+--
+-- Afterwards household_members should have exactly ONE policy (the co-member
+-- SELECT) and households exactly THREE (member SELECT, admin UPDATE, admin
+-- DELETE) — which is what applying these migrations to an empty database
+-- produces, so production and the migrations agree on these two tables for the
+-- first time.
