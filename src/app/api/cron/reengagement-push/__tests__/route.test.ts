@@ -20,6 +20,11 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/services/pushService', () => ({
   dispatchCategorizedPush: jest.fn(),
+  // The route now aborts the whole cohort when push is unconfigured, rather than
+  // marking every user as delivered. A mock without this returns undefined, the
+  // route aborts, and every test fails — which is the shape-blind stub failing
+  // LOUDLY rather than silently skipping the work.
+  isPushConfigured: jest.fn(() => true),
 }));
 
 jest.mock('@/lib/utils/logger', () => ({

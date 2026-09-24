@@ -29,6 +29,9 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/services/pushService', () => ({
   dispatchCategorizedPush: jest.fn().mockResolvedValue(undefined),
+  // See the reengagement route test: without this the cohort abort fires and
+  // every test in the file fails.
+  isPushConfigured: jest.fn(() => true),
 }));
 jest.mock('@/lib/services/digestService', () => ({
   generateDigestForUser: jest.fn(),
