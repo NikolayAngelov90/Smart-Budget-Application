@@ -58,11 +58,7 @@ on:
     # scheduled job is visible on the same day's run.
     - cron: '0 6 * * *'
   push:
-    # TEMPORARY: feat/schema-drift-check is here for ONE verification run, so the
-    # check is proven green against current production BEFORE it lands. Removed in
-    # the next commit. Leaving a feature branch here would reopen the credential
-    # exposure this workflow is restricted to main to avoid.
-    branches: [main, feat/schema-drift-check]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
