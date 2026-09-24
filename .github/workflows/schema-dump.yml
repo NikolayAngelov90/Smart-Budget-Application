@@ -82,6 +82,28 @@ jobs:
             WHERE table_schema='public' AND grantee IN ('anon','authenticated')
             ORDER BY table_name, grantee, privilege_type, column_name;"
 
+      - name: FUNCTIONS
+        run: |
+          psql "$DB_URL" -At -F$'	' -c "
+            SELECT n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')'
+                   || '|' || md5(regexp_replace(pg_get_functiondef(p.oid), '\s+', ' ', 'g'))
+                   || '|' || p.prosecdef::text
+                   || '|' || coalesce(array_to_string(p.proconfig, ','), '(none)')
+            FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname IN ('public','private')
+            ORDER BY 1;"
+
+      - name: TRIGGERS
+        run: |
+          psql "$DB_URL" -At -F$'	' -c "
+            SELECT c.relname || '|' || t.tgname || '|' ||
+                   md5(regexp_replace(pg_get_triggerdef(t.oid), '\s+', ' ', 'g'))
+            FROM pg_trigger t
+            JOIN pg_class c ON c.oid = t.tgrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname='public' AND NOT t.tgisinternal
+            ORDER BY 1, 2;"
+
       - name: Stop Supabase
         if: always()
         run: supabase stop
