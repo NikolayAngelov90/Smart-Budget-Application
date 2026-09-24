@@ -119,6 +119,9 @@ export async function markGenerated(userId: string): Promise<void> {
   }
 }
 
+/** Regeneration rate limit: skip if insights were generated within this window. */
+const CACHE_TTL_MS = 3600000;
+
 /**
  * Transactions since the last run that force a regeneration on volume alone.
  *
@@ -146,7 +149,7 @@ const STALENESS_TRIGGER_DAYS = 3;
  */
 async function isCacheValid(
   userId: string,
-  cacheTTL: number = 3600000,
+  cacheTTL: number = CACHE_TTL_MS,
   now: Date = new Date()
 ): Promise<boolean> {
   const lastGenerated = await readLastGeneratedAt(userId);
@@ -550,17 +553,29 @@ export async function shouldTriggerGeneration(
  * Rate limiting: Only triggers if at least 1 hour has passed since last generation
  *
  * @param userId - User ID to check and potentially trigger generation for
+ * @param now - the clock, threaded to BOTH checks below.
+ *
+ * ONE CLOCK PER REQUEST, AND IT HAS TO BE PASSED. An earlier version of this
+ * change added `now` to isCacheValid and shouldTriggerGeneration and then called
+ * both WITHOUT it, so every call used the default and the parameter was
+ * unreachable by injection — the shape of clock injection with none of the
+ * effect. codecov flagged the three uncovered lines and that is what they were.
+ * Threading it here also means the TTL check and the staleness check cannot
+ * disagree about what time it is within a single request.
  */
-export async function checkAndTriggerForTransactionCount(userId: string): Promise<void> {
+export async function checkAndTriggerForTransactionCount(
+  userId: string,
+  now: Date = new Date()
+): Promise<void> {
   try {
     // Check if cache is still valid (1-hour TTL)
-    if (await isCacheValid(userId)) {
+    if (await isCacheValid(userId, CACHE_TTL_MS, now)) {
       // Don't trigger if insights were generated less than 1 hour ago
       return;
     }
 
     // Check if transaction count threshold is met
-    const shouldTrigger = await shouldTriggerGeneration(userId);
+    const shouldTrigger = await shouldTriggerGeneration(userId, now);
 
     if (shouldTrigger) {
       logger.info(

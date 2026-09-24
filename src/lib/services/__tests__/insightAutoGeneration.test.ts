@@ -28,6 +28,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/utils/logger';
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
@@ -86,6 +87,82 @@ function mockEnvironment(lastGenerated: string | null, newTransactionCount: numb
 
 beforeEach(() => {
   jest.clearAllMocks();
+});
+
+describe('checkAndTriggerForTransactionCount — the 1-hour rate limit', () => {
+  it('does NOT even look at the transaction count when a run is within the TTL', async () => {
+    // THE RATE LIMIT, and the reason the injected clock has to be PASSED rather
+    // than merely accepted. A marker 10 minutes old must stop the whole check
+    // before it queries anything — asserted by the transaction query never being
+    // reached, which is the only observable difference between "rate-limited" and
+    // "ran and decided not to".
+    const tenMinutesBefore = new Date(NOW.getTime() - 10 * 60 * 1000).toISOString();
+    const { txChain } = mockEnvironment(tenMinutesBefore, 50);
+    const svc = await import('@/lib/services/insightService');
+
+    await svc.checkAndTriggerForTransactionCount(USER, NOW);
+
+    expect(txChain.gte).not.toHaveBeenCalled();
+  });
+
+  it('proceeds past the TTL once the last run is older than an hour', async () => {
+    // Same 50 transactions, marker two hours old: the rate limit no longer
+    // applies, so the count query MUST be reached. Together with the test above
+    // this pins the boundary rather than one side of it.
+    const twoHoursBefore = new Date(NOW.getTime() - 2 * 60 * 60 * 1000).toISOString();
+    const { txChain } = mockEnvironment(twoHoursBefore, 50);
+    const svc = await import('@/lib/services/insightService');
+
+    await svc.checkAndTriggerForTransactionCount(USER, NOW);
+
+    expect(txChain.gte).toHaveBeenCalled();
+  });
+});
+
+describe('the clock must REACH shouldTriggerGeneration, not just be accepted', () => {
+  it('does not generate when the injected clock says the run is recent, even though the real clock says it is ancient', async () => {
+    // THE TEST THAT CATCHES AN UNPASSED PARAMETER. Mutation testing found that
+    // dropping `now` from the shouldTriggerGeneration call left every other test
+    // green: they either call it directly with a clock, or assert something the
+    // clock cannot change.
+    //
+    // This one cannot pass by accident. The marker is 2 HOURS before the injected
+    // NOW — past the 1-hour rate limit, but well inside the 3-day staleness
+    // window — with a single new transaction. So:
+    //
+    //   clock threaded   -> age 2h  < 3 days, 1 tx < 10  -> DOES NOT fire
+    //   clock not passed -> age ~6 MONTHS of real time    -> staleness FIRES
+    //
+    // NOW being a fixed date in the past is what creates that gap, and the gap
+    // widens every day this test survives.
+    const twoHoursBefore = new Date(NOW.getTime() - 2 * 60 * 60 * 1000).toISOString();
+    mockEnvironment(twoHoursBefore, 1);
+    const svc = await import('@/lib/services/insightService');
+
+    await svc.checkAndTriggerForTransactionCount(USER, NOW);
+
+    // The log line immediately precedes the generation call, so it is the
+    // observable for the branch decision.
+    expect(logger.info).not.toHaveBeenCalledWith(
+      'Insight Service',
+      expect.stringContaining('generating insights')
+    );
+  });
+
+  it('does generate when the injected clock says the run is stale', async () => {
+    // The other side of the same boundary, so the assertion above is not passing
+    // because the log line is never emitted at all.
+    const fiveDaysBefore = new Date(NOW.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString();
+    mockEnvironment(fiveDaysBefore, 1);
+    const svc = await import('@/lib/services/insightService');
+
+    await svc.checkAndTriggerForTransactionCount(USER, NOW);
+
+    expect(logger.info).toHaveBeenCalledWith(
+      'Insight Service',
+      expect.stringContaining('generating insights')
+    );
+  });
 });
 
 describe('shouldTriggerGeneration — when insights are due', () => {
