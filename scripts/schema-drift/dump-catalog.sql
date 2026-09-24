@@ -142,3 +142,46 @@ JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public' AND NOT t.tgisinternal
 ORDER BY c.relname, t.tgname;
+
+-- ---------------------------------------------------------------- ENVIRONMENT
+-- WHY THESE ARE HERE. The schema comparison found a Postgres MAJOR VERSION
+-- mismatch (local 15, production 17) by accident: PG17 added the MAINTAIN
+-- privilege, which happened to show up in aclexplode as 52 phantom grant
+-- differences. A version difference that changed BEHAVIOUR without changing the
+-- catalog's shape would have been invisible to the same check.
+--
+-- So the environment is compared explicitly rather than inferred from artefacts.
+-- server_version_num is a HARD assertion in the comparator; the rest are reported
+-- as classification, because most are irrelevant to what the RLS suite proves and
+-- the ones that matter should be named rather than guessed at.
+
+SELECT 'SETTING', name, setting
+FROM pg_catalog.pg_settings
+WHERE name IN (
+  'server_version', 'server_version_num', 'server_encoding', 'client_encoding',
+  'TimeZone', 'DateStyle', 'IntervalStyle', 'standard_conforming_strings',
+  'search_path', 'row_security', 'statement_timeout',
+  'default_transaction_isolation', 'default_transaction_read_only',
+  'transform_null_equals', 'array_nulls', 'backslash_quote',
+  'default_text_search_config', 'bytea_output', 'extra_float_digits'
+)
+ORDER BY name;
+
+-- Collation and the locale PROVIDER. Provider matters on its own: ICU and libc
+-- order and compare text differently, and text comparison appears inside policy
+-- predicates. Production uses ICU (datlocprovider = 'i').
+SELECT 'DBPROPS', 'collation',
+       'encoding=' || pg_encoding_to_char(encoding)
+       || ' collate=' || datcollate
+       || ' ctype=' || datctype
+       || ' locale_provider=' || datlocprovider::text
+FROM pg_catalog.pg_database
+WHERE datname = current_database();
+
+-- Extension NAME, VERSION and SCHEMA. The uuid-ossp schema difference is already
+-- an allowlisted finding; a version difference in pgcrypto or uuid-ossp would
+-- change generated values and has never been checked at all.
+SELECT 'EXTENSION', e.extname, e.extversion || ' schema=' || n.nspname
+FROM pg_catalog.pg_extension e
+JOIN pg_catalog.pg_namespace n ON n.oid = e.extnamespace
+ORDER BY e.extname;

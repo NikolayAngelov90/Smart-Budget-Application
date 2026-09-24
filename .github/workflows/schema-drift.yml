@@ -58,7 +58,10 @@ on:
     # scheduled job is visible on the same day's run.
     - cron: '0 6 * * *'
   push:
-    branches: [main]
+    # TEMPORARY: this branch is here for ONE verification run, to capture the
+    # LOCAL side of the environment axes and prove the version assertion passes
+    # against current production. Removed before merge.
+    branches: [main, feat/drift-version-and-env-axes]
   workflow_dispatch:
 
 concurrency:
