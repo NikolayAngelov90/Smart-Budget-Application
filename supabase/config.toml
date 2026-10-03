@@ -15,7 +15,15 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+# 17 to MATCH PRODUCTION (17.6). It was 15, and the mismatch was invisible until
+# the schema drift check compared grant enumeration between the two and found 52
+# phantom differences: PG17 added the MAINTAIN privilege, so aclexplode returns one
+# extra entry per table per role on production and none locally.
+#
+# The consequence was larger than the drift check. THE RLS SUITE RUNS AGAINST THIS
+# STACK, so every isolation test had been validating against a different major
+# version from the one serving users. The tests were sound; the layer was wrong.
+major_version = 17
 
 [studio]
 enabled = true

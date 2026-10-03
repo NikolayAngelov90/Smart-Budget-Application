@@ -217,6 +217,17 @@ describe('dispatchCategorizedPush', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // RESET, NOT JUST CLEAR. `jest.clearAllMocks()` clears recorded CALLS but
+    // leaves mock IMPLEMENTATIONS in place, and the sendPushToUser tests above set
+    // `mockSendNotification.mockRejectedValue({ statusCode: 410 | 404 | 500 })`.
+    // Those rejections leaked into every dispatch test that ran after them.
+    //
+    // It was invisible until 2026-09-24 because dispatchCategorizedPush returned
+    // 'sent' whether the send succeeded or failed — so a test asserting 'sent'
+    // passed against a fixture where nothing could have been sent. Making the
+    // outcome honest made the leak fail loudly, which is the only reason it was
+    // ever found.
+    mockSendNotification.mockReset();
     process.env = {
       ...OLD_ENV,
       VAPID_SUBJECT: 'mailto:test@test.dev',

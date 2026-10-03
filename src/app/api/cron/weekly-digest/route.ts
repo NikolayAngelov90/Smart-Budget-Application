@@ -19,7 +19,7 @@ import { timingSafeEqual } from 'crypto';
 import { startOfWeek, subWeeks } from 'date-fns';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { generateDigestForUser } from '@/lib/services/digestService';
-import { dispatchCategorizedPush } from '@/lib/services/pushService';
+import { dispatchCategorizedPush, isPushConfigured } from '@/lib/services/pushService';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   getAlreadyDelivered,
@@ -49,6 +49,24 @@ export async function GET(request: NextRequest) {
     }
 
     logger.info('WeeklyDigestCron', 'Starting weekly digest generation');
+
+    // ABORT BEFORE THE COHORT IF PUSH CANNOT WORK AT ALL.
+    // With VAPID absent, sendPushToUser used to return silently, the dispatcher
+    // returned 'sent', and EVERY user in the cohort got a delivery marker —
+    // permanently suppressing a notification nobody ever received. Checked once
+    // here rather than discovered per user, because the per-user version writes
+    // the damage before it reports it.
+    if (!isPushConfigured()) {
+      logger.error(
+        'WeeklyDigestCron',
+        'VAPID keys are not configured — aborting before any user is processed. ' +
+          'Continuing would mark the whole cohort as delivered.'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Push is not configured' },
+        { status: 500 }
+      );
+    }
 
     // 2. Compute the previous week's Monday (week_start)
     const now = new Date();
