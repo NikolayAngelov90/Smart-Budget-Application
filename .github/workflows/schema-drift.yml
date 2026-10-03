@@ -112,20 +112,26 @@ jobs:
           version: 2.105.0
 
       # Docker Hub's anonymous pull limit is per IP, and GitHub's runner IPs are
-      # shared, so `supabase start` hits `toomanyrequests` while pulling the stack
-      # and retries: 18 occurrences on 2026-10-01, 19 on 10-02, 16 on 10-03. The
-      # stack came up every time. A limit survived three times will eventually not
-      # be, and that failure will read as an infrastructure flake — which is how
-      # it gets re-run instead of fixed.
+      # shared, so `supabase start` hit `toomanyrequests` while pulling the stack
+      # and retried: 9 failed pulls on 2026-10-01, 14 on 10-02, 9 on 10-03,
+      # counting `Error response from daemon: toomanyrequests` lines. The stack
+      # came up every time, and a limit survived three times will eventually not
+      # be — and that failure reads as an infrastructure flake, which is how it
+      # gets re-run instead of fixed.
       #
-      # Authenticating moves the limit from per-IP-anonymous to per-account, which
-      # is the actual remedy. It needs a Docker Hub account and a read-only access
-      # token, so this step is INERT until those two secrets exist. It says so
-      # when inert rather than passing quietly, because an unmitigated state that
-      # looks identical to a mitigated one is the exact shape of defect this
-      # repository keeps finding. See docs/schema-drift-check.md for why the two
-      # credential-free alternatives were not taken.
-      - name: Authenticate Docker Hub pulls (inert until the secrets exist)
+      # Authenticating moves the limit from per-IP-anonymous to per-account.
+      # MEASURED BY EFFECT on 2026-10-03 with the secrets in place: `Login
+      # Succeeded`, the step printed AUTHENTICATED, and the count of real
+      # `Error response from daemon: toomanyrequests` lines went to ZERO. Both
+      # halves were checked, because `docker login` writing a config the CLI's
+      # pulls do not consult would print AUTHENTICATED and change nothing.
+      #
+      # The step stays conditional: without the secrets it prints ANONYMOUS
+      # rather than passing quietly, because an unmitigated state that looks
+      # identical to a mitigated one is the exact shape of defect this repository
+      # keeps finding. See docs/schema-drift-check.md for the alternatives that
+      # were rejected.
+      - name: Authenticate Docker Hub pulls (per-account limit; ANONYMOUS without secrets)
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

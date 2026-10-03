@@ -58,17 +58,30 @@ over the information.
 It cannot be settled offline: it needs a real run with both databases. Resolve it
 by reading the output of a `workflow_dispatch` run, not by reasoning about it.
 
-## Known and unmitigated: the Docker Hub anonymous pull limit
+## The Docker Hub pull limit: measured, then fixed
 
-`supabase start` pulls the local stack from Docker Hub. The anonymous pull limit
-is **per IP**, and GitHub's runner IPs are shared, so the pull hits
-`toomanyrequests` and retries:
+`supabase start` pulls the local stack from Docker Hub. The **anonymous** pull
+limit is per IP, and GitHub's runner IPs are shared, so the pull hit
+`toomanyrequests` and retried:
 
-| run | date | `toomanyrequests` occurrences | stack came up |
-| --- | --- | --- | --- |
-| 36862540428 | 2026-10-01 | 18 | yes |
-| 37003980887 | 2026-10-02 | 19 | yes |
-| 37118890489 | 2026-10-03 | 16 | yes |
+| run | date | failed pulls | authenticated | stack came up |
+| --- | --- | --- | --- | --- |
+| 36862540428 | 2026-10-01 | 9 | no | yes |
+| 37003980887 | 2026-10-02 | 14 | no | yes |
+| 37118890489 | 2026-10-03 | 9 | no | yes |
+| **37129917430** | **2026-10-03** | **0** | **yes** | **yes** |
+
+The count is of `Error response from daemon: toomanyrequests` lines. Docker emits
+two log lines per failed pull, so a grep for the bare string `toomanyrequests`
+double-counts; an earlier version of this table said 18/19/16 for that reason.
+The string also appears in this workflow's own error message, so a naive count of
+the whole log is self-polluting — worth knowing before trusting a number from it.
+
+**The fix was verified by effect, in two parts, because the first can hold while
+the second fails.** `docker login` writing a config the Supabase CLI's pulls do
+not consult would print `AUTHENTICATED` and change nothing. Both were checked:
+the step printed `Login Succeeded` and `AUTHENTICATED`, **and** the failed-pull
+count went to zero.
 
 Survived three times is not survivable. When it does stop the stack, the failure
 will read as an infrastructure flake — which is how it gets re-run instead of
@@ -81,12 +94,11 @@ readable before the day it matters.
 not have.** Three options were considered:
 
 1. **Authenticate the pull** — moves the limit from per-IP-anonymous to
-   per-account, which is the actual fix. It needs a Docker Hub account and a
-   read-only access token as `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`. The
-   workflow step exists and is **inert until those secrets are set**; it prints
-   which state it is in rather than passing quietly, because an unmitigated state
-   that looks identical to a mitigated one is the shape of defect this repository
-   keeps finding. **This is the chosen option, pending the credential.**
+   per-account. **This is what is in place**, via `DOCKERHUB_USERNAME` /
+   `DOCKERHUB_TOKEN` (a read-only access token). The step stays conditional and
+   prints `ANONYMOUS` if the secrets are ever absent rather than passing quietly,
+   because an unmitigated state that looks identical to a mitigated one is the
+   shape of defect this repository keeps finding.
 2. **A read-through registry mirror** (`registry-mirrors` in the runner's Docker
    daemon) — credential-free, and rejected on honesty grounds: the obvious
    candidate is tied to Google Container Registry, which has been deprecated,
@@ -98,4 +110,30 @@ not have.** Three options were considered:
    is several GB, which would consume most of the repository's 10 GB cache
    budget, and restoring it is not obviously faster than the pull it replaces.
 
-So: filed, counted, named when it bites, and honestly unfixed.
+So: counted, fixed, and verified by the count rather than by the absence of
+noticed errors — a count is a measurement, an absence of noticed errors is an
+impression.
+
+## Six defects, in the tool built to catch defects
+
+In its first two weeks this check has contained:
+
+1. an allowlist matcher that derived its required tokens from a prose field, so
+   every entry matched nothing;
+2. a test for that allowlist that could not have failed — it put the difference
+   on the PENDING side, which exits 0 regardless, so it would have passed with
+   the allowlist empty;
+3. a layer error: `search_path` and `statement_timeout` reported as environment
+   drift when they are role properties, because production was read as
+   `schema_reader` and the local stack as superuser — the exact class of mistake
+   this check exists to catch, committed inside the check;
+4. a printed secret: `app.settings.jwt_secret` went into the CI log in clear;
+5. `COSMETIC` counted as `pending`, so an object present on both sides with an
+   identical normalised body was reported as absent from production;
+6. an age gate reading the wrong commit, because `actions/checkout` is shallow by
+   default and `git log -1 -- <file>` then returns the tip commit for every file.
+
+**All six were found by mutation-testing a guard or by reading output. None was
+found by review**, including by the review that read the same files looking for
+exactly this. A tool that catches defects is not thereby free of them, and the
+practice that found these is the one most easily described as overhead.
