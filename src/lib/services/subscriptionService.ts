@@ -225,7 +225,18 @@ export async function detectSubscriptions(userId: string): Promise<DetectedSubsc
       .maybeSingle();
 
     if (existing) {
-      // Only update if not dismissed or kept by user
+      // Only update if not dismissed or kept by user.
+      //
+      // DEMONSTRATED IN PRODUCTION, not merely intended. Measured 2026-10-03:
+      // a row this user marked `kept` on 2026-09-26 09:13 UTC still carried that
+      // exact updated_at after EIGHT subsequent daily runs, while the two `unused`
+      // rows beside it were touched by every one of them. This predicate is why.
+      //
+      // It is the same class of risk as the insights-dismissal bug — a scheduled
+      // regeneration overwriting a user's decision — and as far as this codebase
+      // goes it is the only place where surviving it has been shown with
+      // production data rather than argued from the code. Do not widen the
+      // predicate without replacing that evidence.
       if (existing.status === 'active' || existing.status === 'unused') {
         await supabase
           .from('detected_subscriptions')

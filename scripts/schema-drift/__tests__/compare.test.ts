@@ -87,13 +87,19 @@ afterEach(() => {
 });
 
 /** Run the comparator; returns { code, out }. Never throws on non-zero. */
-function run(prodLines: string[], migLines: string[]): { code: number; out: string } {
+function run(
+  prodLines: string[],
+  migLines: string[],
+  newestMigrationEpoch?: number
+): { code: number; out: string } {
   const p = join(dir, 'production.tsv');
   const m = join(dir, 'migrations.tsv');
   writeFileSync(p, prodLines.join('\n') + '\n');
   writeFileSync(m, migLines.join('\n') + '\n');
+  const args = [SCRIPT, p, m];
+  if (newestMigrationEpoch !== undefined) args.push(String(newestMigrationEpoch));
   try {
-    const out = execFileSync('node', [SCRIPT, p, m], { encoding: 'utf8' });
+    const out = execFileSync('node', args, { encoding: 'utf8' });
     return { code: 0, out };
   } catch (err) {
     const e = err as { status: number; stdout?: string; stderr?: string };
@@ -126,6 +132,92 @@ describe('schema drift check — server version', () => {
     const prod = baseline().filter((l) => !l.startsWith('SETTING\tserver_version_num'));
     const { code, out } = run(prod, baseline());
     expect(out).toContain('version assertion did not run');
+    expect(code).toBe(1);
+  });
+
+  /**
+   * Replace the version records on one side. The assertion reads ONLY the numeric
+   * form, so `dotted` exists for fidelity with a real dump rather than for the
+   * comparison — see the note on `pretty` in compare.mjs.
+   */
+  function withVersion(lines: string[], num: string, dotted: string): string[] {
+    return lines.map((l) => {
+      if (l === 'SETTING\tserver_version_num\t170006') return `SETTING\tserver_version_num\t${num}`;
+      if (l === 'SETTING\tserver_version\t17.6') return `SETTING\tserver_version\t${dotted}`;
+      return l;
+    });
+  }
+
+  it('a MINOR mismatch still RUNS the comparison and reports what it found', () => {
+    // THE REGRESSION THAT COST THREE DAYS. On 2026-10-01 the CLI's Postgres image
+    // moved 17.6 -> 17.11 while production stayed on 17.6. The assertion sat
+    // BEFORE the comparison and aborted, so three consecutive daily runs failed
+    // without comparing a single catalog object: production could have grown an
+    // open policy on every one of those days and the check would have said
+    // nothing. An assertion placed before the work converts any false positive on
+    // the assertion into total blindness.
+    //
+    // So the planted drift here is a PRODUCTION_ONLY policy — the dangerous
+    // direction, the one both 2026-09-24 vulnerabilities arrived by — and it must
+    // appear in the output DESPITE the version difference.
+    const prod = [
+      ...baseline(),
+      'POLICY\tt00\tdanger_open_to_all\tSELECT\tPUBLIC\ttrue\tNULL',
+    ];
+    const mig = withVersion(baseline(), '170011', '17.11');
+
+    const { code, out } = run(prod, mig);
+
+    // The comparison ran...
+    expect(out).toContain('================ RESULT ================');
+    // ...and found the thing that matters.
+    expect(out).toContain('danger_open_to_all');
+    expect(out).toContain('PRODUCTION HAS OBJECTS THE MIGRATIONS DO NOT');
+    expect(code).toBe(1);
+  });
+
+  it('BOTH results are stated when the schema and the version differ together', () => {
+    // "Fail at the end with both results stated." A run that reported only the
+    // first reason would get the version pinned, go green on the next run, and
+    // the policy would still be there — fixed one surprise into another.
+    const prod = [
+      ...baseline(),
+      'POLICY\tt00\tdanger_open_to_all\tSELECT\tPUBLIC\ttrue\tNULL',
+    ];
+    const mig = withVersion(baseline(), '170011', '17.11');
+
+    const { code, out } = run(prod, mig);
+
+    expect(out).toContain('unacknowledged difference(s)');
+    expect(out).toContain('Postgres minor-version mismatch');
+    expect(code).toBe(1);
+  });
+
+  it('a MINOR mismatch FAILS rather than passing with a warning', () => {
+    // Identical catalogs, versions one patch apart. A green run with a warning in
+    // it is a green run, and nobody reads one — this project's own rule about a
+    // job whose healthy state is indistinguishable from its dead state.
+    const { code, out } = run(baseline(), withVersion(baseline(), '170011', '17.11'));
+
+    expect(out).toContain('MINOR MISMATCH');
+    expect(out).toContain('local 17.11');
+    expect(out).toContain('production 17.6');
+    // Named consequence, not a bare mismatch: the reader must know which side to move.
+    expect(out).toContain('production moved');
+    expect(out).toContain('our pin moved');
+    expect(out).not.toContain('DRIFT CHECK PASSED');
+    expect(code).toBe(1);
+  });
+
+  it('a MAJOR mismatch aborts BEFORE the comparison, on purpose', () => {
+    // The other half of the split, and it has to be asserted rather than assumed:
+    // across majors the privilege sets and system views differ, so the comparison
+    // would be garbage, and printing garbage is worse than printing nothing. If
+    // this ever starts reaching the RESULT block, the abort has been lost.
+    const { code, out } = run(baseline(), withVersion(baseline(), '150008', '15.8'));
+
+    expect(out).toContain('Postgres version mismatch');
+    expect(out).not.toContain('================ RESULT ================');
     expect(code).toBe(1);
   });
 
@@ -270,6 +362,60 @@ describe('schema drift check', () => {
     mig.push(`${head}\tPUBLIC\t(uid = user_id)\t(loose)`);
     const { code, out } = run(prod, mig);
     expect(out).toContain('PRESENT ON BOTH SIDES AND DIFFERENT');
+    expect(code).toBe(1);
+  });
+
+  it('a COSMETIC difference is NOT counted as pending, so it cannot trip the age gate', () => {
+    // FOUND 2026-10-03, on the first run of the comparison the version abort had
+    // been skipping. COSMETIC shared the `pending` branch with MIGRATIONS_ONLY, so
+    // a function present on BOTH sides with an identical normalised body was
+    // counted as pending, printed as "not yet in production", and then reported by
+    // the age gate as "absent from production" — three false statements about an
+    // object that is fine. Real instances: patch_user_preferences and
+    // record_feature_activity.
+    //
+    // The epoch here is 60 days old, so if cosmetic still fed `pending` the age
+    // gate would fire and this run would be red.
+    const sixtyDaysAgo = Math.floor(Date.now() / 1000) - 60 * 86400;
+    const prod = baseline().map((l) =>
+      l.startsWith('FUNCTION\tpublic.fn0()')
+        ? 'FUNCTION\tpublic.fn0()\traw0-with-a-comment\tnorm0\tfalse\tsearch_path=public'
+        : l
+    );
+
+    const { code, out } = run(prod, baseline(), sixtyDaysAgo);
+
+    expect(out).toContain('FUNCTION TEXT DIFFERS, BEHAVIOUR DOES NOT');
+    expect(out).toContain('cosmetic      : 1');
+    expect(out).toContain('pending       : 0');
+    // The age gate must not have run at all: it is gated on pending > 0.
+    expect(out).not.toContain('=== pending age');
+    expect(out).not.toContain('OVERDUE');
+    expect(out).toContain('DRIFT CHECK PASSED');
+    expect(code).toBe(0);
+  });
+
+  it('a genuinely pending object DOES trip the age gate, and the gate names its date', () => {
+    // Non-vacuity for the test above: if nothing could trip the gate, "cosmetic
+    // does not trip it" would prove nothing. A migrations-only POLICY is the real
+    // pending shape.
+    //
+    // The date is asserted because the epoch itself was wrong in CI from the day
+    // this check shipped until 2026-10-03 — a shallow checkout made every
+    // `git log -1 -- <file>` return the tip commit — and an age in days alone
+    // looked plausible throughout. A printed date names the wrong commit on sight.
+    const sixtyDaysAgo = Math.floor(Date.now() / 1000) - 60 * 86400;
+    const mig = [
+      ...baseline(),
+      'POLICY\tt00\tnot_deployed_yet\tSELECT\tPUBLIC\t(uid = user_id)\tNULL',
+    ];
+
+    const { code, out } = run(baseline(), mig, sixtyDaysAgo);
+
+    expect(out).toContain('pending       : 1');
+    expect(out).toContain('=== pending age');
+    expect(out).toContain(`epoch given: ${sixtyDaysAgo}`);
+    expect(out).toContain('OVERDUE');
     expect(code).toBe(1);
   });
 

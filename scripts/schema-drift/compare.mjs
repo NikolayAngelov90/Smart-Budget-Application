@@ -169,6 +169,22 @@ if (vacuous) {
 //
 // Absence is as fatal as a mismatch: if the version record is missing from either
 // dump, the assertion did not run, and an assertion that cannot fail is not one.
+//
+// MAJOR AND MINOR ARE NOT THE SAME FINDING, AND THE DIFFERENCE IS WHERE THEY SIT.
+// This assertion originally aborted on ANY difference, before the comparison. On
+// 2026-10-01 the Supabase CLI's Postgres image moved 17.6 -> 17.11 while
+// production stayed on 17.6, and the check then failed three days running
+// WITHOUT COMPARING A SINGLE CATALOG OBJECT. An assertion placed before the work
+// converts any false positive on the assertion into total blindness.
+//
+// So:
+//   MAJOR mismatch -> abort HERE. Privilege sets, default rendering and system
+//     views change between majors, so the comparison below would be garbage, and
+//     printing garbage is worse than printing nothing.
+//   MINOR mismatch -> run the comparison, report its findings, and fail at the
+//     END. Minor releases do not change catalog structure, so the comparison is
+//     meaningful and must run. It still fails, because a green run with a
+//     warning in it is a green run and nobody reads one.
 function versionOf(side) {
   return side.byKind.get('SETTING')?.get('server_version_num')?.split('\t')[1];
 }
@@ -185,10 +201,19 @@ if (!prodVer || !migVer) {
   console.error('an assertion — fix the dump rather than proceeding.');
   process.exit(1);
 }
-const pretty = (n) => `${Math.floor(Number(n) / 10000)} (${n})`;
+const majorOf = (n) => Math.floor(Number(n) / 10000);
+// The dotted form is derived FROM the compared number rather than read from the
+// server_version string the dump also carries: a display that trusts a different
+// field from the one the assertion compares can tell a story the assertion
+// contradicts. (PG10+ numbering: major * 10000 + minor.)
+const pretty = (n) => `${majorOf(n)}.${Number(n) % 10000} (${n})`;
 console.log(`  production  ${pretty(prodVer)}`);
 console.log(`  migrations  ${pretty(migVer)}`);
-if (prodVer !== migVer) {
+
+/** Set when the majors agree and the minors do not; failed at the END, not here. */
+let minorMismatch = null;
+
+if (majorOf(prodVer) !== majorOf(migVer)) {
   console.error('');
   console.error(`HARD FAILURE: Postgres version mismatch — local ${pretty(migVer)}, production ${pretty(prodVer)}.`);
   console.error('');
@@ -200,8 +225,16 @@ if (prodVer !== migVer) {
   console.error('');
   console.error('Fix: set major_version in supabase/config.toml to match production.');
   process.exit(1);
+} else if (prodVer !== migVer) {
+  minorMismatch = `local ${pretty(migVer)}, production ${pretty(prodVer)}`;
+  console.log('');
+  console.log(`  MINOR MISMATCH — ${minorMismatch}`);
+  console.log('  The comparison below RUNS and its findings stand: minor Postgres');
+  console.log('  releases do not change catalog structure. This run fails at the END');
+  console.log('  rather than here, so a patch bump costs a red run and not a blind one.');
+} else {
+  console.log('  match');
 }
-console.log('  match');
 
 // ============================================================================
 // THE COMPARISON
@@ -266,8 +299,18 @@ for (const kind of [...kinds].sort()) {
 // ============================================================================
 let hardFailures = 0;
 let pending = 0;
+let cosmetic = 0;
 
-function emit(bucket, label, fatalByDefault) {
+// `mode` decides which counter a non-allowlisted item feeds, and the counters are
+// NOT interchangeable. COSMETIC previously shared the `pending` branch with
+// MIGRATIONS_ONLY, so a function whose raw text differed while its normalised
+// body matched was counted as pending, described as "not yet in production", and
+// then reported by the age gate as "absent from production" — three false
+// statements about an object that is present on both sides and behaves
+// identically. Found 2026-10-03, on the first run of the comparison the version
+// abort had been skipping: patch_user_preferences and record_feature_activity,
+// both present in both catalogs.
+function emit(bucket, label, mode) {
   const items = findings[bucket];
   console.log('');
   console.log(`=== ${label} (${items.length})`);
@@ -283,16 +326,21 @@ function emit(bucket, label, fatalByDefault) {
       console.log(`           resolves when: ${a.resolves_when}`);
       continue;
     }
-    if (fatalByDefault) {
+    if (mode === 'fatal') {
       hardFailures++;
       console.log(`  FAIL     ${f.kind} ${f.key}`);
       console.log(`           production : ${f.rec}`);
       if (f.other !== undefined) console.log(`           migrations : ${f.other}`);
       console.log(`           DIRECTION  : ${bucket}`);
-    } else {
+    } else if (mode === 'pending') {
       pending++;
       console.log(`  PENDING  ${f.kind} ${f.key}`);
       console.log(`           in the migrations, not yet in production`);
+    } else {
+      cosmetic++;
+      console.log(`  COSMETIC ${f.kind} ${f.key}`);
+      console.log(`           raw text differs; normalised body and security`);
+      console.log(`           attributes are identical, so behaviour does not.`);
     }
   }
 }
@@ -325,10 +373,10 @@ function emit(bucket, label, fatalByDefault) {
   }
 }
 
-emit('PRODUCTION_ONLY', 'PRODUCTION HAS OBJECTS THE MIGRATIONS DO NOT — hard fail', true);
-emit('MODIFIED', 'PRESENT ON BOTH SIDES AND DIFFERENT — hard fail', true);
-emit('MIGRATIONS_ONLY', 'IN THE MIGRATIONS, NOT YET IN PRODUCTION — pending', false);
-emit('COSMETIC', 'FUNCTION TEXT DIFFERS, BEHAVIOUR DOES NOT — cosmetic', false);
+emit('PRODUCTION_ONLY', 'PRODUCTION HAS OBJECTS THE MIGRATIONS DO NOT — hard fail', 'fatal');
+emit('MODIFIED', 'PRESENT ON BOTH SIDES AND DIFFERENT — hard fail', 'fatal');
+emit('MIGRATIONS_ONLY', 'IN THE MIGRATIONS, NOT YET IN PRODUCTION — pending', 'pending');
+emit('COSMETIC', 'FUNCTION TEXT DIFFERS, BEHAVIOUR DOES NOT — cosmetic', 'cosmetic');
 
 // Stale allowlist entries: an entry that no longer matches anything is resolved
 // drift left behind, and a resolved item in an allowlist becomes permanent noise.
@@ -356,6 +404,13 @@ if (pending > 0 && newestMigrationEpoch) {
   const ageDays = (Date.now() / 1000 - Number(newestMigrationEpoch)) / 86400;
   console.log('');
   console.log('=== pending age');
+  // The DATE is printed, not only the age. The epoch is computed by the caller,
+  // and on 2026-10-03 it was found to be the tip commit's timestamp rather than
+  // any migration's: under a shallow checkout `git log -1 -- <file>` has only one
+  // commit to attribute every file to. An age in days alone looked plausible
+  // throughout; the date would have named the wrong commit on sight.
+  const asOf = new Date(Number(newestMigrationEpoch) * 1000).toISOString().slice(0, 19);
+  console.log(`  epoch given: ${newestMigrationEpoch} (${asOf}Z)`);
   console.log(`  newest migration file is ${ageDays.toFixed(1)} days old; threshold ${PENDING_MAX_DAYS}`);
   if (ageDays > PENDING_MAX_DAYS) {
     pendingOverdue = true;
@@ -371,19 +426,51 @@ console.log('');
 console.log('================ RESULT ================');
 console.log(`hard failures : ${hardFailures}`);
 console.log(`pending       : ${pending}   (fail once older than ${PENDING_MAX_DAYS} days — see PENDING_MAX_DAYS)`);
+console.log(`cosmetic      : ${cosmetic}   (reported, never failed, never counted as pending)`);
 console.log(`unmatched allowlist entries: ${stale.length}`);
+console.log(`postgres      : ${minorMismatch ? `MINOR MISMATCH — ${minorMismatch}` : 'match'}`);
+
+// EVERY reason is stated before exiting. The previous shape returned on the
+// first one, so a run that was both overdue AND drifted reported only the
+// earlier of the two — and whichever got fixed first, the second arrived as a
+// fresh surprise. Reporting is the cheap half of a check, and also the half
+// that decides whether the expensive half gets read.
+const reasons = [];
 
 if (pendingOverdue) {
-  console.error('');
-  console.error(`DRIFT CHECK FAILED: pending objects are overdue (> ${PENDING_MAX_DAYS} days).`);
-  process.exit(1);
+  reasons.push(`DRIFT CHECK FAILED: pending objects are overdue (> ${PENDING_MAX_DAYS} days).`);
 }
+
 if (hardFailures > 0) {
-  console.error('');
-  console.error(`DRIFT CHECK FAILED: ${hardFailures} unacknowledged difference(s).`);
-  console.error('Either fix the difference, or add it to supabase/schema-drift-allowlist.json');
-  console.error('WITH a resolves_when — an entry with no exit is a permanent exemption');
-  console.error('pretending to be a temporary one.');
+  reasons.push(
+    `DRIFT CHECK FAILED: ${hardFailures} unacknowledged difference(s).\n` +
+      'Either fix the difference, or add it to supabase/schema-drift-allowlist.json\n' +
+      'WITH a resolves_when — an entry with no exit is a permanent exemption\n' +
+      'pretending to be a temporary one.'
+  );
+}
+
+if (minorMismatch) {
+  reasons.push(
+    `DRIFT CHECK FAILED: Postgres minor-version mismatch — ${minorMismatch}.\n` +
+      'The comparison above RAN and its findings stand; this failure is about the\n' +
+      'PAIR, not about the schema. Both sides are pinned, so only two things cause\n' +
+      'it:\n' +
+      '  production moved -> update the pin in BOTH .github/workflows/schema-drift.yml\n' +
+      '                      and .github/workflows/rls.yml, to the Supabase CLI release\n' +
+      '                      carrying that minor — the RLS suite raises this same stack\n' +
+      '                      and must not validate against a different one.\n' +
+      '  our pin moved    -> someone changed it, or left it as `latest`. Put it back.\n' +
+      'It fails rather than warning because a green run with a warning in it is a\n' +
+      'green run, and nobody reads one.'
+  );
+}
+
+if (reasons.length > 0) {
+  for (const reason of reasons) {
+    console.error('');
+    console.error(reason);
+  }
   process.exit(1);
 }
 console.log('');

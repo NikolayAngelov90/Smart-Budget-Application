@@ -171,3 +171,28 @@ The read-only checks ran through the project's own `SUPABASE_SECRET_KEY` from
 connection and it BYPASSES RLS.** It is the same mechanism the RLS suite uses, so
 the precedent exists - but it should not be reached for casually, and this
 sentence belongs next to any future use of it rather than in a separate document.
+
+## Did the weekly expression ever fire? UNDETERMINED, and recorded as undetermined
+
+`detected_subscriptions` was empty for the entire life of the feature. Two causes
+were available, and they were applied within a day of each other:
+
+- the table was missing the `currency` column the writer inserts, so every run
+  raised `42703` (fixed by hand on 2026-09-24, migration
+  `20260924110000_add_missing_detected_subscriptions_currency.sql`);
+- the cron expression was weekly, and non-daily expressions appear not to fire on
+  this plan (changed to daily in #62, merged 2026-09-24).
+
+The first row appeared **2026-09-25 02:26:15 UTC**, on the first daily run after
+both changes. Three rows now exist and match the three recurring charges their
+owners predicted, so the feature works.
+
+**Which cause was load-bearing cannot be established.** A run that raised `42703`
+wrote nothing, and a run that never fired also wrote nothing — in the database
+the two are indistinguishable. The only source that separates them is Vercel's
+invocation log from before 2026-09-24, which is past retention on this plan.
+
+So: `42703` is confirmed as **a** cause, sufficient on its own to explain an empty
+table. Whether the weekly expression was also broken is **open**, and is recorded
+here as open rather than resolved, because a satisfying story was available in
+both directions and neither has evidence behind it.
