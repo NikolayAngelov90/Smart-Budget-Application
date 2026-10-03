@@ -73,6 +73,14 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
 
+      # CATASTROPHE CANARY, NOT A DRIFT GATE. This fails below 30% on Math.min
+      # across the four metrics; the real figure is 57.29% (branches), so no
+      # incremental change moves it and it cannot fail on ordinary work. It fires
+      # if someone deletes the test suite, which is worth catching.
+      #
+      # The DRIFT gate is codecov.yml's `target: auto` + 1% threshold, which
+      # compares against the base commit - it caught EmptyInsightsState at 0%
+      # patch on PR #59. Do not read a green step here as coverage being fine.
       - name: Check coverage threshold
         run: |
           COVERAGE=$(node -p "

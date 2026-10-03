@@ -36,7 +36,7 @@ import type { NextRequest } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceRoleClient } from '@/lib/supabase/server';
-import { dispatchCategorizedPush } from '@/lib/services/pushService';
+import { dispatchCategorizedPush, isPushConfigured } from '@/lib/services/pushService';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import { logger } from '@/lib/utils/logger';
 import {
@@ -106,6 +106,24 @@ export async function GET(request: NextRequest) {
     const windowNewest = dayKeyOffset(REENGAGEMENT_WINDOW_START_DAYS);
 
     const supabase = createServiceRoleClient() as unknown as SupabaseClient;
+
+    // ABORT BEFORE THE COHORT IF PUSH CANNOT WORK AT ALL.
+    // With VAPID absent, sendPushToUser used to return silently, the dispatcher
+    // returned 'sent', and EVERY user in the cohort got a delivery marker —
+    // permanently suppressing a notification nobody ever received. Checked once
+    // here rather than discovered per user, because the per-user version writes
+    // the damage before it reports it.
+    if (!isPushConfigured()) {
+      logger.error(
+        'ReengagementCron',
+        'VAPID keys are not configured — aborting before any user is processed. ' +
+          'Continuing would mark the whole cohort as delivered.'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Push is not configured' },
+        { status: 500 }
+      );
+    }
     const users: Array<{ user_id: string; last_log_date: string }> = [];
     for (let from = 0; from < MAX_USERS; from += PAGE_SIZE) {
       const { data: rows, error } = await supabase
