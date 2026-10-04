@@ -19,7 +19,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:rls": "jest --runInBand \"\\.rls\\.test\\.ts$\"",
+    "test:rls": "node scripts/rls-preflight.mjs && jest --runInBand \"\\.rls\\.test\\.ts$\"",
     "benchmark": "node --import tsx scripts/benchmark.ts",
     "pre-deploy": "node scripts/pre-deployment-check.js",
     "pre-deploy:quick": "node scripts/pre-deployment-check.js --skip-build",

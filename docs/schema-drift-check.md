@@ -137,3 +137,14 @@ In its first two weeks this check has contained:
 found by review**, including by the review that read the same files looking for
 exactly this. A tool that catches defects is not thereby free of them, and the
 practice that found these is the one most easily described as overhead.
+
+Two rules follow, and they are a pair:
+
+- **A guard is not done until it has been mutation-tested.** A guard with no
+  recorded red state is not evidence that anything is checked — four of the six
+  above were guards that could not fail.
+- **READING THE OUTPUT *IS* THE CHECK.** A green badge says a process exited 0.
+  It does not say what the process compared, how many rows it read, or whether it
+  compared anything at all. Defects 1, 2, 5 and 6 all sat behind a green or a red
+  that nobody had read the body of — and #6 was found only because the version
+  abort forced someone to look at what the comparison actually printed.
