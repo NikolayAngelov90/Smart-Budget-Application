@@ -238,7 +238,19 @@ the next change to that form, as the original entry says.
 
 ---
 
-## hp-14 — `npm run test:rls` green-skips instead of failing loud (filed 2026-08-26)
+## hp-14 — CLOSED 2026-10-04 — `npm run test:rls` green-skips instead of failing loud (filed 2026-08-26)
+
+**Closed by #70 (the preflight) and the mutation pass recorded in
+`hp-14-rls-isolation-mutations-and-grant-matrix.md`.** The local green-skip is
+gone — measured before/after: `exit 0` with `65 skipped` became `exit 1` naming
+each missing variable. The isolation guarantees now have recorded red states:
+mutation (a) reddens exactly `referenceIsolation › other user (user B) CANNOT
+write into user A’s scope`, mutation (b) exactly `transparency › a member CANNOT
+change another owner’s category visibility`, each reverted and confirmed green
+again. The grant/policy matrix is in the same story.
+
+The original filing, for the record:
+
 
 **Found during 17-1.** `npm run test:rls` exited 0 having run **0 of 11 suites**.
 Every RLS suite skipped, because the local Supabase stack was not running, and
@@ -335,6 +347,32 @@ privileges being untestable locally.
 
 **Deliberately not scheduled ahead of hp-10.** The live issue is closed; what
 remains requires a future policy change to become real.
+
+### NEW — `anon` holds table-wide INSERT/UPDATE on 24 of 26 tables (filed 2026-10-04)
+
+Found by the hp-14 matrix. Supabase's default privileges grant table-wide rights
+to `anon` as well as `authenticated`, and grants are additive, so a REVOKE naming
+one role leaves the other intact. **Including on the two tables the matrix note
+above cites as having been done correctly:**
+
+```sql
+REVOKE UPDATE, DELETE ON user_achievements FROM authenticated;      -- 036
+REVOKE INSERT, UPDATE, DELETE ON comeback_challenges FROM authenticated;  -- 037
+```
+
+Measured in production: `user_achievements` — `anon` still holds `INSERT, UPDATE`;
+`comeback_challenges` — the same. Both are server-derived lifecycle tables whose
+entire point is that they must not be forgeable through PostgREST.
+
+**Not exploitable today.** Both have RLS on with no INSERT/UPDATE policy, so
+writes are denied whatever the grant says — which is exactly the pattern named
+above: safe by a single layer, with the second absent. Now found on the exemplars.
+
+**The decision, not a cleanup:** a `REVOKE ... FROM anon` sweep completes the
+second layer everywhere. Live risk today is zero; the benefit is that a future
+permissive policy cannot silently become exploitable; the cost is a production
+migration touching privileges on every table. Needs a yes/no rather than a
+scheduling slot.
 
 ### Also in this batch — mean/sigma outlier detection MASKS multiple outliers
 
