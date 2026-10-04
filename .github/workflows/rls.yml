@@ -11,6 +11,12 @@ on:
     branches: [main, develop]
   push:
     branches: [main]
+  # Dispatchable so the isolation guarantees can be MUTATION-TESTED on a branch
+  # without opening a pull request for each mutation. The standing rule is that a
+  # guard with no recorded red state is not evidence, and for RLS the only honest
+  # red state is a real policy deliberately broken against a real Postgres — which
+  # needs a way to run this suite on an arbitrary ref.
+  workflow_dispatch:
 
 jobs:
   rls:

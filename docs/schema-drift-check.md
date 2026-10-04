@@ -137,12 +137,23 @@ In its first two weeks this check has contained:
    entirely left both green: `BELOW FLOOR` is printed whether or not it fails the
    run, and a truncated fixture also drops its version rows, so the version
    assertion supplied the `HARD FAILURE` string and the exit code;
-8. **security attributes not compared in the one case that needs them.** Replacing
-   `secDiffers` with `false` left all 22 tests passing, because the one fixture
-   that touched `proconfig` left the raw hash equal, so the cosmetic branch was
-   unreachable. A function whose text changed, whose normalised body is identical
-   and whose `SECURITY DEFINER` or `search_path` moved would have been classified
-   COSMETIC and passed — a privilege change arriving disguised as a reformat.
+8. **security attributes not compared in the one case that needs them — so this
+   check would have missed a recurrence of a drift it had already catalogued.**
+   Replacing `secDiffers` with `false` left all 22 tests passing, because the one
+   fixture that touched `proconfig` left the raw hash equal, so the cosmetic
+   branch was unreachable. A function whose text changed, whose normalised body
+   is identical and whose `SECURITY DEFINER` or `search_path` moved would have
+   been classified COSMETIC and passed.
+
+   **The instance is not hypothetical and it is in this check's own allowlist.**
+   `seed-user-categories-search-path`: production pins `search_path` on
+   `seed_user_categories`, the migration does not, and that pin is part of 038's
+   hardening — a `SECURITY DEFINER` function without one resolves through
+   whatever the calling role's `search_path` says. That entry was found BY HAND.
+   The mechanism built to catch its successor could not have: reformat the
+   function while dropping the pin and the row is classified cosmetic and the run
+   stays green. A catalogued example of a drift class, sitting beside a blind
+   spot for the same class.
 
 7 and 8 were found on 2026-10-04 by a mutation sweep run *because a verdict had
 been recorded without a measurement*: #64 said "13 guards, mutation-tested both
