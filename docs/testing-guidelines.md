@@ -753,6 +753,51 @@ it('hides edit button for other users transactions', () => {
 
 ---
 
+## Test order dependence — measured 2026-10-03/04, fix pending
+
+`jest --randomize` shuffles test order within a file. The suite passes in
+declaration order and does not pass under shuffling, which means some tests pass
+because of the order they are written in rather than because of what they assert.
+
+**Measured over 15 seeds.** The cumulative union plateaus: 25 of 27 tests and 7
+of 8 suites appeared by seed 4, and seeds 5-12 added nothing at all. So the
+population is a handful of files, not an open-ended audit.
+
+| suite                                                              | tests  |
+| ------------------------------------------------------------------ | ------ |
+| BalanceFlowHero period selector                                    | 10     |
+| readAppearance / isAppearance / resolveAppearance                  | 6      |
+| exchangeRateService                                                | 4      |
+| OfflineBanner                                                      | 3      |
+| TransactionEntryModal composer · generate-insights cron · GoalCard | 1 each |
+
+`BalanceFlowHero.period.test.tsx` is the clearest case: **10/10 pass in
+declaration order and 10/10 fail under shuffling**, with
+`TypeError: Cannot set property focus of #<HTMLElement> which has only a getter`
+— a one-time stub that only the first test to run can install.
+
+### One of them is a timing flake, not an order dependency
+
+A fixed seed is otherwise reproducible: seed 3 run five times on the same commit
+gave byte-identical failure sets four times out of five. The one test that varied
+is `empty-state-affordance.test.tsx › RefreshInsightsButton › does NOT revalidate
+when the refresh request fails`. It passes 6/6 in declaration order and 8/8 alone
+under shuffling, and fails intermittently **only in a full-suite run**.
+`--runInBand` does not stabilise it, so it is not cross-worker scheduling either.
+
+Two consequences:
+
+- It is the sole reason the suite union reads 8 rather than 7 — it appeared in
+  exactly one of fifteen seeds. **The deterministic population is 7 suites.**
+- **A pinned `--randomize --seed=N` gate must wait for this one test.** Pin the
+  seed first and the gate goes intermittently red, which is the flake pattern
+  that gets checks disabled — the remedy would inherit the disease, for exactly
+  one test.
+
+The composer flake that was tracked separately is in this population
+(`renders one-tap category chips`, seeds 4, 8 and 14), so it is not a timing
+problem and does not need its own investigation.
+
 ## Additional Resources
 
 - [Jest Documentation](https://jestjs.io/docs/getting-started)

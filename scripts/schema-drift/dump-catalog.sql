@@ -163,6 +163,12 @@ ORDER BY c.relname, t.tgname;
 -- '"$user", public, extensions' when read as `postgres` and '"$user", public'
 -- when read as `schema_reader`. Per-role settings are dumped separately below,
 -- from pg_db_role_setting, which IS database state.
+--
+-- THE DISTINCTION IN ONE LINE: pg_settings and SHOW return a SESSION-SCOPED
+-- ANSWER — what this connection sees, which depends on who connected — whereas
+-- pg_db_role_setting returns STATE. Comparing two session-scoped answers from
+-- differently-authenticated sessions produces differences that belong to neither
+-- database.
 SELECT 'SETTING', name, setting
 FROM pg_catalog.pg_settings
 WHERE name IN (
