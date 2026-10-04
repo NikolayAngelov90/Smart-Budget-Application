@@ -17,9 +17,48 @@
  *   2. fail on an acknowledged difference (which gets the check disabled)
  *   3. pass while comparing nothing (a truncated or unauthenticated read)
  *
- * MUTATION RECORD — each planted, run, observed, reverted. These are not
- * hypothetical: every case below is produced by editing a fixture and asserting
- * the exit code, so a regression in the comparator turns this suite red.
+ * MUTATION RECORD. #64 claimed "13 guards, mutation-tested both directions" and
+ * gave a count of guards with no result per guard. That is a verdict, not a
+ * measurement, so on 2026-10-04 it was re-run properly: one mutation per guard,
+ * through `scripts/mutation-harness.py` with `../mutations.json`, verdict derived
+ * from the tally. Reproduce with:
+ *
+ *   python scripts/mutation-harness.py scripts/schema-drift \
+ *          scripts/schema-drift/mutations.json
+ *
+ *   G1  floors: a below-floor catalog is never vacuous        1 of 26
+ *   G2  version: a missing version record is skipped          1 of 26
+ *   G3  version: drop the MAJOR abort                         2 of 26
+ *   G4  version: ANY mismatch aborts before the comparison    3 of 26
+ *   G5  version: a MINOR mismatch warns but does not fail     2 of 26
+ *   G6  PRODUCTION_ONLY is pending rather than fatal          2 of 26
+ *   G7  MODIFIED is pending rather than fatal                 7 of 26
+ *   G8  COSMETIC classification removed                       3 of 26
+ *   G9  security attributes ignored when classifying          2 of 26
+ *   G10 COSMETIC counted as pending again                     1 of 26
+ *   G11 allowlist matches EVERYTHING (tokens ignored)        11 of 26
+ *   G12 allowlist matches NOTHING                             1 of 26
+ *   G13 environment kinds fall into the generic diff          1 of 26
+ *   G14 age gate: drop the epoch's resolved date              1 of 26
+ *   G15 age gate: never overdue                               1 of 26
+ *
+ * THE RE-RUN FOUND TWO GUARDS NO TEST COVERED. Both passed through a different
+ * code path than the one they named — the same defect as #64's own allowlist
+ * test, in the suite that was written to fix it:
+ *
+ *   G1 was GREEN. The two floor tests assert `BELOW FLOOR` and `HARD FAILURE`,
+ *   but `BELOW FLOOR` is pushed into the report whether or not it fails the run,
+ *   and a truncated fixture also loses its trailing SETTING rows so the VERSION
+ *   assertion supplied both the `HARD FAILURE` string and the exit of 1. The
+ *   non-vacuity floors — this check's own anti-vacuity mechanism — were
+ *   themselves not covered by a discriminating test.
+ *
+ *   G9 was GREEN. `secDiffers` could be replaced with `false` with all 22 tests
+ *   still passing, because the search_path fixture leaves the raw hash equal, so
+ *   the cosmetic branch is unreachable and the row lands in MODIFIED regardless.
+ *   The case that needs it — raw text changed, normalised body identical,
+ *   SECURITY DEFINER or search_path moved — was untested, and would have been
+ *   classified COSMETIC and passed. Four tests were added; both now redden.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -314,6 +353,67 @@ describe('schema drift check', () => {
     expect(code).toBe(1);
   });
 
+  it('FAILS when a reformatted function also flips SECURITY DEFINER', () => {
+    // FOUND BY AUDIT 2026-10-04. `secDiffers` was not covered by any test:
+    // replacing it with `false` left all 22 green.
+    //
+    // The "search_path pinned on one side only" test below cannot cover it,
+    // because its fixture leaves the raw hash equal — so `rawDiffers` is false,
+    // the cosmetic branch is unreachable, and the row lands in MODIFIED whether
+    // or not security attributes are compared at all.
+    //
+    // THE CASE THAT NEEDS IT is a function whose raw text changed, whose
+    // NORMALISED body is identical, and whose security attributes moved. Without
+    // `secDiffers` that is classified COSMETIC and the run stays GREEN — a
+    // SECURITY DEFINER flip arriving disguised as a reformat.
+    const mig = baseline().map((l) =>
+      l.startsWith('FUNCTION\tpublic.fn0()')
+        ? 'FUNCTION\tpublic.fn0()\traw0-reformatted\tnorm0\ttrue\tsearch_path=public'
+        : l
+    );
+
+    const { code, out } = run(baseline(), mig);
+
+    expect(out).toContain('PRESENT ON BOTH SIDES AND DIFFERENT');
+    expect(out).not.toContain('DRIFT CHECK PASSED');
+    expect(code).toBe(1);
+  });
+
+  it('FAILS when a reformatted function also drops its search_path pin', () => {
+    // The proconfig half of the same hole: raw differs, normalised body matches,
+    // and the search_path pin is gone. 038 hardened every SECURITY DEFINER
+    // function with a pinned search_path; losing one behind a cosmetic-looking
+    // diff is precisely the drift this check exists to refuse.
+    const mig = baseline().map((l) =>
+      l.startsWith('FUNCTION\tpublic.fn0()')
+        ? 'FUNCTION\tpublic.fn0()\traw0-reformatted\tnorm0\tfalse\t(none)'
+        : l
+    );
+
+    const { code, out } = run(baseline(), mig);
+
+    expect(out).toContain('PRESENT ON BOTH SIDES AND DIFFERENT');
+    expect(code).toBe(1);
+  });
+
+  it('a pure reformat with identical security attributes is STILL cosmetic', () => {
+    // Non-vacuity for the two above: if everything with a changed raw hash hard
+    // failed, they would prove nothing about security attributes. This is the
+    // same shape with prosecdef and proconfig untouched, and it must stay
+    // cosmetic and green.
+    const mig = baseline().map((l) =>
+      l.startsWith('FUNCTION\tpublic.fn0()')
+        ? 'FUNCTION\tpublic.fn0()\traw0-reformatted\tnorm0\tfalse\tsearch_path=public'
+        : l
+    );
+
+    const { code, out } = run(baseline(), mig);
+
+    expect(out).toContain('FUNCTION TEXT DIFFERS, BEHAVIOUR DOES NOT');
+    expect(out).toContain('DRIFT CHECK PASSED');
+    expect(code).toBe(0);
+  });
+
   it('FAILS when search_path is pinned on one side only', () => {
     // seed_user_categories' actual drift: production pins search_path, the
     // migrations do not, so applying forward would REGRESS 038's hardening. Same
@@ -429,6 +529,38 @@ describe('schema drift check', () => {
     expect(out).toContain('HARD FAILURE');
     expect(out).not.toContain('DRIFT CHECK PASSED');
     expect(code).toBe(1);
+  });
+
+  it('the FLOORS are what fails a below-floor catalog — not another guard', () => {
+    // FOUND BY AUDIT 2026-10-04, and it is the floors' own vacuity problem.
+    //
+    // The two tests either side of this one assert `BELOW FLOOR` and
+    // `HARD FAILURE` and an exit of 1. Disabling the floors entirely —
+    // `if (bad) vacuous = true` -> `if (false)` — left BOTH of them GREEN:
+    //   * `BELOW FLOOR` is pushed into floorReport whether or not it fails the
+    //     run, so the label proves the label, not the behaviour;
+    //   * a truncated fixture also loses the trailing SETTING rows, so the
+    //     version assertion supplies `HARD FAILURE` and the exit of 1.
+    // They passed through a different code path. This one cannot.
+    //
+    // The fixture is below floor while KEEPING both version records, so the
+    // version assertion is satisfied and the floors are the only guard left that
+    // can fail the run.
+    const env = baseline().filter(
+      (l) => l.startsWith('SETTING') || l.startsWith('DBPROPS') || l.startsWith('EXTENSION')
+    );
+    const thin = [...env, 'TABLE\tt00', 'RLS\tt00\ttrue\tfalse', 'COLUMN\tt00.c0\tuuid\tfalse\t-'];
+
+    const { code, out } = run(thin, baseline());
+
+    // The floors' OWN message, which no other guard emits.
+    expect(out).toContain('a catalog returned fewer objects than its floor');
+    expect(out).toContain('BELOW FLOOR');
+    // And it must be fatal. Without the floors this comparison exits 0: a
+    // production side missing almost everything reads as MIGRATIONS_ONLY, which
+    // is pending, which passes.
+    expect(code).toBe(1);
+    expect(out).not.toContain('DRIFT CHECK PASSED');
   });
 
   it('HARD FAILS when BOTH catalogs are empty', () => {

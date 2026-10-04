@@ -1,0 +1,92 @@
+[
+  {
+    "name": "G1  floors: a below-floor catalog is never vacuous",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "  if (bad) vacuous = true;",
+    "new": "  if (false) vacuous = true;"
+  },
+  {
+    "name": "G2  version: a missing version record is skipped",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "if (!prodVer || !migVer) {",
+    "new": "if (false && (!prodVer || !migVer)) {"
+  },
+  {
+    "name": "G3  version: drop the MAJOR abort",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "if (majorOf(prodVer) !== majorOf(migVer)) {",
+    "new": "if (false) {"
+  },
+  {
+    "name": "G4  version: ANY mismatch aborts before the comparison",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "if (majorOf(prodVer) !== majorOf(migVer)) {\n  console.error('');",
+    "new": "if (prodVer !== migVer) {\n  console.error('');"
+  },
+  {
+    "name": "G5  version: a MINOR mismatch warns but does not fail",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "if (minorMismatch) {\n  reasons.push(",
+    "new": "if (false && minorMismatch) {\n  reasons.push("
+  },
+  {
+    "name": "G6  PRODUCTION_ONLY is pending rather than fatal",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "emit('PRODUCTION_ONLY', 'PRODUCTION HAS OBJECTS THE MIGRATIONS DO NOT — hard fail', 'fatal');",
+    "new": "emit('PRODUCTION_ONLY', 'PRODUCTION HAS OBJECTS THE MIGRATIONS DO NOT — hard fail', 'pending');"
+  },
+  {
+    "name": "G7  MODIFIED is pending rather than fatal",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "emit('MODIFIED', 'PRESENT ON BOTH SIDES AND DIFFERENT — hard fail', 'fatal');",
+    "new": "emit('MODIFIED', 'PRESENT ON BOTH SIDES AND DIFFERENT — hard fail', 'pending');"
+  },
+  {
+    "name": "G8  COSMETIC classification removed (all text diffs are MODIFIED)",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "        if (rawDiffers && !normDiffers && !secDiffers) {",
+    "new": "        if (false) {"
+  },
+  {
+    "name": "G9  security attributes ignored when classifying a function",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "        const secDiffers = pf[3] !== mf[3] || pf[4] !== mf[4];",
+    "new": "        const secDiffers = false;"
+  },
+  {
+    "name": "G10 COSMETIC counted as pending again",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "emit('COSMETIC', 'FUNCTION TEXT DIFFERS, BEHAVIOUR DOES NOT — cosmetic', 'cosmetic');",
+    "new": "emit('COSMETIC', 'FUNCTION TEXT DIFFERS, BEHAVIOUR DOES NOT — cosmetic', 'pending');"
+  },
+  {
+    "name": "G11 allowlist matches EVERYTHING (tokens ignored)",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "    if (needles.every((t) => hay.includes(String(t).toLowerCase()))) {",
+    "new": "    if (true) {"
+  },
+  {
+    "name": "G12 allowlist matches NOTHING",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "    if (needles.every((t) => hay.includes(String(t).toLowerCase()))) {\n      matchedAllowlistIds.add(e.id);",
+    "new": "    if (false) {\n      matchedAllowlistIds.add(e.id);"
+  },
+  {
+    "name": "G13 environment kinds fall through into the generic diff",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "  if (ENV_KINDS.has(kind)) continue;",
+    "new": "  if (false) continue;"
+  },
+  {
+    "name": "G14 age gate: drop the epoch's resolved date from the output",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "  console.log(`  epoch given: ${newestMigrationEpoch} (${asOf}Z)`);\n",
+    "new": ""
+  },
+  {
+    "name": "G15 age gate: never overdue",
+    "file": "scripts/schema-drift/compare.mjs",
+    "old": "  if (ageDays > PENDING_MAX_DAYS) {",
+    "new": "  if (false) {"
+  }
+]

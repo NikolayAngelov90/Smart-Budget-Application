@@ -114,7 +114,7 @@ So: counted, fixed, and verified by the count rather than by the absence of
 noticed errors — a count is a measurement, an absence of noticed errors is an
 impression.
 
-## Six defects, in the tool built to catch defects
+## Eight defects, in the tool built to catch defects
 
 In its first two weeks this check has contained:
 
@@ -131,14 +131,36 @@ In its first two weeks this check has contained:
 5. `COSMETIC` counted as `pending`, so an object present on both sides with an
    identical normalised body was reported as absent from production;
 6. an age gate reading the wrong commit, because `actions/checkout` is shallow by
-   default and `git log -1 -- <file>` then returns the tip commit for every file.
+   default and `git log -1 -- <file>` then returns the tip commit for every file;
+7. the **non-vacuity floors** — this check's own anti-vacuity mechanism — covered
+   by two tests that passed through a different code path. Disabling the floors
+   entirely left both green: `BELOW FLOOR` is printed whether or not it fails the
+   run, and a truncated fixture also drops its version rows, so the version
+   assertion supplied the `HARD FAILURE` string and the exit code;
+8. **security attributes not compared in the one case that needs them.** Replacing
+   `secDiffers` with `false` left all 22 tests passing, because the one fixture
+   that touched `proconfig` left the raw hash equal, so the cosmetic branch was
+   unreachable. A function whose text changed, whose normalised body is identical
+   and whose `SECURITY DEFINER` or `search_path` moved would have been classified
+   COSMETIC and passed — a privilege change arriving disguised as a reformat.
 
-**All six were found by mutation-testing a guard or by reading output. None was
+7 and 8 were found on 2026-10-04 by a mutation sweep run *because a verdict had
+been recorded without a measurement*: #64 said "13 guards, mutation-tested both
+directions" and gave no result per guard. Re-running it properly is what surfaced
+them. Reproduce the sweep with:
+
+```
+python scripts/mutation-harness.py scripts/schema-drift \
+       scripts/schema-drift/mutations.json
+```
+
+**All eight were found by mutation-testing a guard or by reading output. None was
 found by review**, including by the review that read the same files looking for
 exactly this. A tool that catches defects is not thereby free of them, and the
 practice that found these is the one most easily described as overhead.
 
-Two rules follow, and they are a pair:
+Three rules follow. The first two are a pair; the third generalises past this
+check entirely:
 
 - **A guard is not done until it has been mutation-tested.** A guard with no
   recorded red state is not evidence that anything is checked — four of the six
@@ -148,3 +170,20 @@ Two rules follow, and they are a pair:
   compared anything at all. Defects 1, 2, 5 and 6 all sat behind a green or a red
   that nobody had read the body of — and #6 was found only because the version
   abort forced someone to look at what the comparison actually printed.
+- **A REDUNDANT CHECK IS NOT FREE THE WAY REDUNDANT STORAGE IS.** Two guards
+  asserting the same precondition do not give you two chances to catch it: **the
+  first one to speak defines the diagnosis, and nobody reads the second.** The CI
+  copy of the RLS credentials check ran before the preflight and checked less —
+  no variable names, no host check — so its weaker message is the one anybody
+  would ever have seen, and the better one was unreachable in practice. When a
+  check is duplicated, either delete the copy or make it *call* the original.
+
+A corollary for any tool that reports on other tools, learned by breaking one:
+**a summary must be computed from the data it summarises, never parsed out of it
+a second, independent way.** The mutation harness derived its verdict from a
+regex while printing a tally parsed separately, and printed `NO TEST WENT RED`
+beneath `2 failed, 10 passed` three times in a row. A summary that *can* disagree
+with its own data is a second source of truth about one fact. And a
+*known*-broken instrument is worse than an unknown-broken one: the surprise is
+already spent, so the next wrong reading does not startle anybody — that harness
+was used twice more after it was first seen misreporting.
