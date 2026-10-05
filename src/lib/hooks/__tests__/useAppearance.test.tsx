@@ -8,18 +8,17 @@
  *  - corrupted/absent storage falls back to 'system' instead of throwing;
  *  - 'system' resolves against the OS and follows live changes;
  *  - a missing matchMedia (old browsers / jsdom) must not crash.
+ *
+ * The pure functions live in useAppearance.pure.test.tsx, in their own file so
+ * they get their own module registry: `sessionPreference` is module-level state
+ * that `localStorage.clear()` cannot reset, and this file sets it. See that
+ * file's header for the measurements.
  */
 
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
-import {
-  useAppearance,
-  readAppearance,
-  resolveAppearance,
-  isAppearance,
-  APPEARANCE_KEY,
-} from '@/lib/hooks/useAppearance';
+import { useAppearance, readAppearance, APPEARANCE_KEY } from '@/lib/hooks/useAppearance';
 
 const mockSetColorMode = jest.fn();
 jest.mock('@chakra-ui/react', () => ({
@@ -71,40 +70,6 @@ beforeEach(() => {
   mockMatchMedia(false);
 });
 
-describe('readAppearance / isAppearance / resolveAppearance', () => {
-  it('defaults to system when nothing is stored', () => {
-    expect(readAppearance()).toBe('system');
-  });
-
-  it.each(['DARK', 'true', '{}', '', 'Light'])('falls back to system for garbage: %s', (v) => {
-    localStorage.setItem(APPEARANCE_KEY, v);
-    expect(readAppearance()).toBe('system');
-  });
-
-  it('accepts the three valid values', () => {
-    for (const v of ['light', 'dark', 'system']) {
-      localStorage.setItem(APPEARANCE_KEY, v);
-      expect(readAppearance()).toBe(v);
-      expect(isAppearance(v)).toBe(true);
-    }
-  });
-
-  it('resolves system against the OS, and explicit choices as-is', () => {
-    mockMatchMedia(true);
-    expect(resolveAppearance('system')).toBe('dark');
-    mockMatchMedia(false);
-    expect(resolveAppearance('system')).toBe('light');
-    expect(resolveAppearance('dark')).toBe('dark');
-    expect(resolveAppearance('light')).toBe('light');
-  });
-
-  it('does not crash without matchMedia', () => {
-    (window as unknown as { matchMedia: unknown }).matchMedia = undefined;
-    expect(() => resolveAppearance('system')).not.toThrow();
-    expect(resolveAppearance('system')).toBe('light');
-  });
-});
-
 describe('useAppearance', () => {
   it('APPLIES a stored dark preference on mount (does not revert to system)', () => {
     localStorage.setItem(APPEARANCE_KEY, 'dark');
@@ -138,6 +103,43 @@ describe('useAppearance', () => {
 
     act(() => media.fire(true));
     expect(mockSetColorMode).toHaveBeenLastCalledWith('dark');
+  });
+
+  it('invalid storage falls back to the SESSION choice, not to system', async () => {
+    // THE PATH THAT WAS NOT COVERED. `useAppearance.storage.test.tsx` already
+    // covers the session fallback when storage THROWS (private mode, blocked
+    // site data) — and its comment notes the fresh-module-registry point. What
+    // nothing covered is storage that reads fine and holds an INVALID value,
+    // which is the case the old pure-function tests claimed to be about.
+    //
+    // `readAppearance()` is:
+    //
+    //   valid stored value  ->  it
+    //   otherwise           ->  sessionPreference ?? 'system'
+    //
+    // The old `falls back to system for garbage: X` tests asserted the
+    // unconditional claim and passed only because they were declared before any
+    // setPreference call, so `sessionPreference` was still null. Under
+    // --randomize they failed with Expected "system", Received "dark" — the
+    // session value leaking in, exactly as the code says it should.
+    //
+    // This is deliberate product behaviour, documented at the declaration: when
+    // localStorage is unavailable (private mode, quota) the user's click must
+    // still take effect for the session. So the fallback is right and the old
+    // test name was wrong, which is the sort of thing a green does not reveal.
+    renderProbe();
+
+    await act(async () => {
+      screen.getByText('go-dark').click();
+    });
+
+    // Storage now holds a VALID value, so corrupt it and re-read.
+    localStorage.setItem(APPEARANCE_KEY, 'not-an-appearance');
+    expect(readAppearance()).toBe('dark');
+
+    // And with storage empty rather than corrupt, the session still wins.
+    localStorage.clear();
+    expect(readAppearance()).toBe('dark');
   });
 
   it('does NOT follow the OS once an explicit choice is made', () => {
