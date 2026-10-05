@@ -854,6 +854,43 @@ open, and saying so is better than offering a third untested mechanism.
 An earlier version of this section said they were the whole population. They are
 the whole of what this instrument found.
 
+## A test can be TRUE and UNUSABLE, and the suite reports only the first
+
+Two axes, and CI measures one of them:
+
+| axis | question | who notices |
+| --- | --- | --- |
+| **what the result means** | does this pass establish the property it names? | CI, if the test ever goes red |
+| **what the test is usable for** | can this test be run on its own? | nobody, until someone tries |
+
+`jest -t "<one test>"` is what you run while working on that test. CI never does
+it, so CI is **structurally blind** to the second axis: a test can be correct,
+assert exactly what it claims, pass in the suite forever, and be impossible to
+run by itself.
+
+Found in `BalanceFlowHero.period.test.tsx`: five of its ten tests failed when run
+individually, with a hard `TypeError`, while the file passed 10/10 as a whole.
+They were true and unusable. See that file's header for the mechanism.
+
+### The running count, gathered free
+
+Checking this costs nothing on a file already open, so every order-dependence
+diagnosis records it. One file is an anecdote; six would say whether the class is
+endemic or a singleton.
+
+| file | tests runnable individually |
+| --- | --- |
+| `BalanceFlowHero.period.test.tsx` | **5 of 10** — the five calling `userEvent.setup()` before rendering |
+| `useAppearance.test.tsx` + `.pure` | **9 of 9** groups — none affected |
+
+Four files to go: `exchangeRateService`, `OfflineBanner`,
+`generate-insights` cron, `GoalCard`.
+
+**This is also why a file-level isolation sweep would not have found it.**
+BalanceFlowHero passes as a whole file; only `-t` on a single test fails. A
+60-invocation file-level sample returned 0 findings, which was the right answer
+to the wrong question.
+
 ## Two rules for writing an async test
 
 ### What did I await, and is what I am asserting guaranteed by it?
