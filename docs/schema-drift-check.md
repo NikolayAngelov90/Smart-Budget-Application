@@ -219,8 +219,8 @@ found by review**, including by the review that read the same files looking for
 exactly this. A tool that catches defects is not thereby free of them, and the
 practice that found these is the one most easily described as overhead.
 
-Four rules follow. The first two are a pair; the third and fourth generalise
-past this check entirely:
+Five rules follow. The first two are a pair; the rest generalise past this
+check entirely:
 
 - **A guard is not done until it has been mutation-tested.** A guard with no
   recorded red state is not evidence that anything is checked — four of the six
@@ -230,6 +230,31 @@ past this check entirely:
   compared anything at all. Defects 1, 2, 5 and 6 all sat behind a green or a red
   that nobody had read the body of — and #6 was found only because the version
   abort forced someone to look at what the comparison actually printed.
+
+  **Corollary: echo before the thing that can fail.** The output has to exist
+  before it can be read, and the information most needed on a failure is
+  precisely the information that failure hides. The shared `local-supabase`
+  action prints its pinned CLI version in its own FIRST step rather than only as
+  a composite output, because an output is readable by the caller only once the
+  whole composite SUCCEEDS — so a failure two steps later would leave no record
+  of which definition the job had read. Diagnostic output belongs before the
+  operation it describes, not after it.
+- **A CHECK SATISFIED VACUOUSLY BY THE ABSENCE OF THE THING IT CHECKS FOR.**
+  Four instances, four costumes, one sentence — and it is phrased this way
+  because a reader can apply it to a check they are *writing*, rather than
+  recognise it afterwards:
+
+  | the check | what made it vacuous |
+  | --- | --- |
+  | the non-vacuity floors (defect 7) | `BELOW FLOOR` is printed whether or not it fails the run, and a truncated fixture also dropped its version rows, so another guard supplied the exit code |
+  | "stays GREEN for an allowlisted difference" | put the difference on the PENDING side, which exits 0 whatever the allowlist says — it would have passed with the allowlist empty |
+  | `git status --porcelain \| wc -l` as an idempotence check | returns 402 whether or not the second pass changed anything |
+  | a CI wait loop polling "are any runs still in progress?" | ran before the runs existed, saw only older completed ones, and declared success |
+
+  The last one is worth its own note: it was caught because the printed
+  conclusions contradicted the loop — **rule 4 catching a violation of rule 4,
+  one day after rule 4 was written down.**
+
 - **A REDUNDANT CHECK IS NOT FREE THE WAY REDUNDANT STORAGE IS.** Two guards
   asserting the same precondition do not give you two chances to catch it: **the
   first one to speak defines the diagnosis, and nobody reads the second.** The CI

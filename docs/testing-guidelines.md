@@ -753,6 +753,70 @@ it('hides edit button for other users transactions', () => {
 
 ---
 
+## Where the tests are, and how to count them
+
+**For any question of the form "how many test files do X", the domain is
+`jest --listTests`, not a glob with a path in it.** When the tool has its own
+notion of the domain, that notion is authoritative and ours is a guess that
+happens to be checkable.
+
+**A scoped search that returns RESULTS gives no signal that its scope was
+wrong.** An empty result prompts you to widen; a non-empty one suppresses the
+instinct. That is the vacuity problem in the *search* direction rather than the
+assertion direction, and it is how the figures below were wrong for a week.
+
+### The measurement, 2026-10-05
+
+`jest --listTests` collects **263** files from **four** top-level roots:
+
+| root | files |
+| --- | --- |
+| `src/**/__tests__/` | 242 |
+| `__tests__/` (repo root) | 15 |
+| `scripts/**/__tests__/` | 5 |
+| `docs/sprint-artifacts/__tests__/` | 1 |
+
+An earlier note in this file said "two places". It was itself short, by the same
+mechanism it was describing.
+
+Corrected counts over jest's domain, where `src/`-scoped greps had reported
+`158 / 0 / 148`:
+
+| | over jest's 263 |
+| --- | --- |
+| files calling `clearAllMocks` | **166** |
+| files calling `resetAllMocks` | **0** |
+| `clearAllMocks` **and** setting a mock implementation | **155** |
+
+155, not 148. It does not change the decision — 155 and 148 rank identically —
+but it was wrong in a known direction and only a file-location correction
+surfaced it.
+
+### A `.test.tsx` that has never run
+
+`src/lib/test-utils/__examples__/ExampleComponent.test.tsx` is **not collected**.
+`testMatch` is `**/__tests__/**/*.test.ts(x)`, and `__examples__` is not
+`__tests__`:
+
+```
+$ npx jest ExampleComponent
+Pattern: ExampleComponent - 0 matches
+```
+
+It contains **2 `describe` blocks, 9 `it` blocks and 18 `expect()` calls**, none
+of which has ever executed. Its header presents it as documentation of the test
+utilities, so the exclusion may well be deliberate — but a file that looks like a
+test, is named like a test and contains eighteen assertions is one somebody will
+eventually add a real assertion to without noticing it does not run. Either move
+it into a `__tests__/` directory or drop the `.test` from its name; both make its
+status legible, and the current state does not.
+
+### One population that is NOT short
+
+The `--randomize` order-dependence sweep used `jest` itself, so its domain was
+always the full 263. **The seven suites it found are the whole population** — no
+re-sweep needed. Only the hand-rolled greps were scoped.
+
 ## Test order dependence — measured 2026-10-03/04, fix pending
 
 `jest --randomize` shuffles test order within a file. The suite passes in
