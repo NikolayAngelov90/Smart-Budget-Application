@@ -776,23 +776,53 @@ declaration order and 10/10 fail under shuffling**, with
 `TypeError: Cannot set property focus of #<HTMLElement> which has only a getter`
 — a one-time stub that only the first test to run can install.
 
-### One of them is a timing flake, not an order dependency
+### One of them was a timing flake, not an order dependency — FIXED 2026-10-05
 
-A fixed seed is otherwise reproducible: seed 3 run five times on the same commit
+A fixed seed was otherwise reproducible: seed 3 run five times on the same commit
 gave byte-identical failure sets four times out of five. The one test that varied
-is `empty-state-affordance.test.tsx › RefreshInsightsButton › does NOT revalidate
-when the refresh request fails`. It passes 6/6 in declaration order and 8/8 alone
-under shuffling, and fails intermittently **only in a full-suite run**.
-`--runInBand` does not stabilise it, so it is not cross-worker scheduling either.
+was **`__tests__/components/insights/RefreshInsightsButton.test.tsx › does NOT
+revalidate when the refresh request fails`** — `Expected 0, Received 1`.
 
-Two consequences:
+**Two corrections to an earlier version of this section.** It named
+`empty-state-affordance.test.tsx`, which merely *mocks* `RefreshInsightsButton`
+and does not contain that test; the real suite lives in the root `__tests__/`
+tree, which a `src/`-scoped search misses. And it claimed the test "passes 8/8
+alone under shuffling and fails only in a full-suite run". Both measurements were
+taken against the wrong file. Measured correctly: **12/12 in declaration order,
+and roughly 1 run in 6 failing when that file is shuffled on its own.** It
+reproduces in isolation, which is what made it diagnosable.
 
-- It is the sole reason the suite union reads 8 rather than 7 — it appeared in
-  exactly one of fifteen seeds. **The deterministic population is 7 suites.**
-- **A pinned `--randomize --seed=N` gate must wait for this one test.** Pin the
-  seed first and the gate goes intermittently red, which is the flake pattern
-  that gets checks disabled — the remedy would inherit the disease, for exactly
-  one test.
+**The mechanism.** `should disable button during API call` mocks `fetch` with a
+promise that resolves `ok: true` after a **100ms `setTimeout`**, clicks, asserts
+the button is disabled — and ends. The timer then fires inside the *next* test,
+the handler sees `ok: true` and calls `mutate()`, and the next test's
+`beforeEach` has already run `clearAllMocks()`. So a call belonging to one test
+is attributed to the next one. It only bites when the shuffle places
+`does NOT revalidate...` immediately after it. **A test must not outlive
+itself.**
+
+Two more defects in the same file, both of the same family:
+
+- the negative assertion waited only for `expect(fetch).toHaveBeenCalled()`,
+  which resolves while the response is still being handled — so it asserted
+  "mutate has not been called *yet*", which is also true of a version that calls
+  it a microtask later. It now waits for the failure path to settle (the error
+  toast, then the button re-enabling);
+- `beforeEach` used `mockClear()`, which clears recorded calls and **leaves the
+  implementation**, so the 100ms delayed-resolve `mockImplementation` survived
+  into every later test. Masked only because each test queues its own
+  `mockResolvedValueOnce`. Now `mockReset()`. Same gotcha as #66's pushService
+  leak.
+
+**After the fix, a pinned seed IS a stable gate** — the precondition for the
+remedy. Seed 3, five full-suite runs: `14 failed` every time, and **one distinct
+failure-set hash** where there had been two. The fix was also mutation-tested:
+making a failed response skip its `throw` so the handler reaches `mutate()`
+reddens the test 4 runs out of 4, deterministically, where the old version caught
+it 1 in 6.
+
+**The suite union therefore reads 7, not 8** — the eighth entered in exactly one
+of fifteen seeds and was this flake.
 
 The composer flake that was tracked separately is in this population
 (`renders one-tap category chips`, seeds 4, 8 and 14), so it is not a timing
