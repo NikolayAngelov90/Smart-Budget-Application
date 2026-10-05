@@ -76,7 +76,7 @@ runs:
       id: pin
       shell: bash
       run: |
-        VERSION=2.105.0
+        VERSION=2.104.0
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         # Echoed HERE, in the action's own first step, not only as an output.
         # An output is readable by the caller only once the whole composite
