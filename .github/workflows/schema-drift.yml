@@ -89,92 +89,24 @@ jobs:
         with:
           node-version: 22.x
 
-      # The CLI ships the local Postgres image, so `latest` means the LOCAL
-      # Postgres MINOR version floats with whichever CLI released most recently.
-      # On 2026-10-01 it moved 17.6 -> 17.11 while production stayed on 17.6, and
-      # this check then failed three days running without comparing a single
-      # catalog object — the assertion sat before the work.
-      #
-      # Pinned to the SAME version as .github/workflows/rls.yml, deliberately:
-      # this check's entire claim is that it compares the stack the RLS suite
-      # validates against with the stack serving users. Two different local
-      # Postgres versions would make that claim false, and nothing would surface
-      # it — the comparison would still run and still look authoritative.
-      #
-      # THE PIN IS A MAINTAINED VALUE, NOT A FROZEN ONE. When production's minor
-      # moves, the comparator reports it (red, with both versions named), and
-      # bumping this pin — HERE AND IN rls.yml TOGETHER — is the deliberate
-      # response. Leaving it behind is a decision too, and it is the one that
-      # makes the RLS suite test something production is not.
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+      # THE SHARED STACK DEFINITION. Everything about raising the local stack —
+      # the pinned CLI, the authenticated pull, the start, the exported
+      # credentials — lives in .github/actions/local-supabase/action.yml and
+      # nowhere else. Three times a fix landed in one of these two workflows and
+      # not the other; the extraction makes that impossible rather than
+      # discouraged. Read that file for the pin's rationale.
+      - name: Local Supabase stack (shared definition)
+        id: stack
+        uses: ./.github/actions/local-supabase
         with:
-          version: 2.105.0
+          dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Docker Hub's anonymous pull limit is per IP, and GitHub's runner IPs are
-      # shared, so `supabase start` hit `toomanyrequests` while pulling the stack
-      # and retried: 9 failed pulls on 2026-10-01, 14 on 10-02, 9 on 10-03,
-      # counting `Error response from daemon: toomanyrequests` lines. The stack
-      # came up every time, and a limit survived three times will eventually not
-      # be — and that failure reads as an infrastructure flake, which is how it
-      # gets re-run instead of fixed.
-      #
-      # Authenticating moves the limit from per-IP-anonymous to per-account.
-      # MEASURED BY EFFECT on 2026-10-03 with the secrets in place: `Login
-      # Succeeded`, the step printed AUTHENTICATED, and the count of real
-      # `Error response from daemon: toomanyrequests` lines went to ZERO. Both
-      # halves were checked, because `docker login` writing a config the CLI's
-      # pulls do not consult would print AUTHENTICATED and change nothing.
-      #
-      # The step stays conditional: without the secrets it prints ANONYMOUS
-      # rather than passing quietly, because an unmitigated state that looks
-      # identical to a mitigated one is the exact shape of defect this repository
-      # keeps finding. See docs/schema-drift-check.md for the alternatives that
-      # were rejected.
-      - name: Authenticate Docker Hub pulls (per-account limit; ANONYMOUS without secrets)
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: |
-          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
-            printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
-            echo "Docker Hub: AUTHENTICATED - the pull limit is now per-account."
-          else
-            echo "Docker Hub: ANONYMOUS - the pull limit is per-IP and GitHub's runner IPs are shared."
-            echo "Set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (read-only token) to raise it."
-            echo "::warning::Docker Hub pulls are anonymous; the rate limit is unmitigated. See docs/schema-drift-check.md"
-          fi
-
-      # The output is captured so the rate limit can be NAMED when it bites.
-      # Without this the step fails with a pull error buried in stack startup
-      # noise, which looks like a flake and gets re-run.
-      - name: Start Supabase (applies supabase/migrations/*)
-        run: |
-          set -o pipefail
-          if ! supabase start 2>&1 | tee /tmp/supabase-start.log; then
-            if grep -q 'toomanyrequests' /tmp/supabase-start.log; then
-              echo "::error::Docker Hub rate limit (toomanyrequests) stopped the local stack coming up. This is NOT a flake and re-running will not fix it: the anonymous pull limit is per-IP and GitHub's runners share IPs. Set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (read-only) to move the limit to per-account."
-            fi
-            exit 1
-          fi
-          HITS=$(grep -c 'toomanyrequests' /tmp/supabase-start.log || true)
-          if [ "$HITS" -gt 0 ]; then
-            # Visible on a green run too, so the trend is readable rather than
-            # discovered on the day it stops being survivable.
-            echo "Docker Hub rate limit was hit ${HITS}x during the pull; the stack came up anyway."
-          fi
-
-      - name: Resolve local DB URL
-        run: |
-          echo "LOCAL_DB_URL=$(supabase status -o env | grep '^DB_URL' | cut -d= -f2- | tr -d '\"')" >> "$GITHUB_ENV"
-
-      - name: Verify local DB URL resolved (fail loud — never dump nothing)
-        run: |
-          if [ -z "$LOCAL_DB_URL" ]; then
-            echo "::error::LOCAL_DB_URL is empty — the migration-side dump would be silently empty and the comparison meaningless."
-            exit 1
-          fi
-          echo "LOCAL_DB_URL resolved (value not printed)"
+      # Printed so the sharing is OBSERVABLE, not merely structural. Two
+      # workflows that import the same action but read a stale copy would pass
+      # every structural inspection; this is the value to compare between them.
+      - name: Report the shared stack definition this job used
+        run: 'echo "shared-action CLI pin = ${{ steps.stack.outputs.cli-version }}"'
 
       - name: Dump the migration-built catalog
         run: |
