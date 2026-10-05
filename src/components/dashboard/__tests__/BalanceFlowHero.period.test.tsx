@@ -57,6 +57,42 @@ beforeEach(() => {
 const renderHero = () => render(<BalanceFlowHero />, { wrapper: ChakraProvider });
 const periodOf = (call: unknown[]) => call[2];
 
+// RENDER BEFORE `userEvent.setup()`, IN EVERY TEST THAT USES BOTH. The order is
+// load-bearing and the failure is a hard TypeError, not a wrong assertion.
+//
+// `@testing-library/user-event@14.6.1` patchFocus redefines
+// HTMLElement.prototype.focus as an accessor with a GETTER AND NO SETTER:
+//
+//   Object.defineProperties(HTMLElement.prototype, {
+//     focus: { configurable: true, get: () => patchedFocus },
+//   })
+//
+// Chakra's radio mounts `@zag-js/focus-visible`, whose setupGlobalFocusEvents
+// ASSIGNS to that same property:
+//
+//   HTMLElement.prototype.focus = function focusElement(...)
+//
+// Assigning to a getter-only property throws in strict mode, so whichever runs
+// second loses. zag guards itself with a module-level `hasSetup`, so it only
+// ever tries once per file — which is why rendering first is enough: the first
+// render patches successfully, and every later userEvent.setup() is harmless.
+//
+// MEASURED 2026-10-05. Before this change, run alone, every test in this file
+// that called userEvent.setup() first FAILED and every test that did not PASSED:
+//
+//   re-queries with the chosen period                    1 failed
+//   relabels the primary figure and the comparison       1 failed
+//   uses period-specific caption wording                 1 failed
+//   labels by the FETCHED period                         1 failed
+//   keeps the selection exposed to assistive tech        1 failed
+//   defaults to month                                    1 passed
+//   offers all four periods as a single-choice group     1 passed
+//   keeps the selector reachable when a period fails     1 passed
+//
+// So those five passed in CI only because two tests that render WITHOUT
+// user-event happen to be declared first. That is a FALSE GREEN: the suite's
+// green did not establish the properties those five name, and reordering the
+// file — or running one of them on its own — revealed it.
 describe('BalanceFlowHero period selector', () => {
   it('defaults to month', () => {
     renderHero();
@@ -71,8 +107,8 @@ describe('BalanceFlowHero period selector', () => {
   });
 
   it('re-queries with the chosen period', async () => {
-    const user = userEvent.setup();
     renderHero();
+    const user = userEvent.setup();
 
     await user.click(screen.getByRole('radio', { name: 'periodYear' }));
 
@@ -83,8 +119,8 @@ describe('BalanceFlowHero period selector', () => {
   });
 
   it('relabels the primary figure and the comparison for the chosen period', async () => {
-    const user = userEvent.setup();
     renderHero();
+    const user = userEvent.setup();
 
     expect(screen.getByText('netThisMonth')).toBeInTheDocument();
     expect(screen.getByText('vsLastMonth')).toBeInTheDocument();
@@ -98,8 +134,8 @@ describe('BalanceFlowHero period selector', () => {
   });
 
   it('uses period-specific caption wording rather than month wording', async () => {
-    const user = userEvent.setup();
     renderHero();
+    const user = userEvent.setup();
 
     expect(screen.getByText(/^keptShare:/)).toBeInTheDocument();
 
@@ -112,7 +148,6 @@ describe('BalanceFlowHero period selector', () => {
     // `keepPreviousData` keeps the old figures on screen while the new period
     // loads, and `isLoading` stays false because data is present. Labelling by
     // selection would print "This year" over last month's money.
-    const user = userEvent.setup();
     mockUseDashboardStats.mockImplementation(() => ({
       data: statsFor('month'), // server has not answered for 'year' yet
       error: undefined,
@@ -120,6 +155,7 @@ describe('BalanceFlowHero period selector', () => {
       mutate: jest.fn(),
     }));
     renderHero();
+    const user = userEvent.setup();
 
     await user.click(screen.getByRole('radio', { name: 'periodYear' }));
 
@@ -182,8 +218,8 @@ describe('BalanceFlowHero period selector', () => {
   });
 
   it('keeps the selection exposed to assistive tech', async () => {
-    const user = userEvent.setup();
     renderHero();
+    const user = userEvent.setup();
 
     await user.click(screen.getByRole('radio', { name: 'periodQuarter' }));
 
