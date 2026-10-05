@@ -36,26 +36,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+      # THE SHARED STACK DEFINITION. Everything about raising the local stack —
+      # the pinned CLI, the authenticated pull, the start, the exported
+      # credentials — lives in .github/actions/local-supabase/action.yml and
+      # nowhere else. Three times a fix landed in one of these two workflows and
+      # not the other; the extraction makes that impossible rather than
+      # discouraged. Read that file for the pin's rationale.
+      - name: Local Supabase stack (shared definition)
+        id: stack
+        uses: ./.github/actions/local-supabase
         with:
-          # Pinned (do NOT use `latest`). Supabase CLI v2.106.0 (2026-06-11) shipped a
-          # breaking change: new public-schema objects are no longer auto-exposed to the
-          # Data API / auto-granted to roles by default. Under that default, PostgREST
-          # writes — even as service_role — return no rows, so every *.rls.test.ts seed
-          # (`insert().select().single()`) yields null and the suites fail. v2.105.0 is the
-          # last release before that change. Revisit when migrations add explicit grants
-          # (or config.toml opts back into auto-exposure) for the new behavior.
-          version: 2.105.0
+          dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Start Supabase (applies supabase/migrations/*)
-        run: supabase start
-
-      - name: Export local Supabase credentials
-        run: |
-          echo "RLS_TEST_SUPABASE_URL=$(supabase status -o env | grep API_URL | cut -d= -f2- | tr -d '\"')" >> "$GITHUB_ENV"
-          echo "RLS_TEST_SUPABASE_ANON_KEY=$(supabase status -o env | grep ANON_KEY | cut -d= -f2- | tr -d '\"')" >> "$GITHUB_ENV"
-          echo "RLS_TEST_SUPABASE_SERVICE_KEY=$(supabase status -o env | grep SERVICE_ROLE_KEY | cut -d= -f2- | tr -d '\"')" >> "$GITHUB_ENV"
+      # Printed so the sharing is OBSERVABLE, not merely structural. Two
+      # workflows that import the same action but read a stale copy would pass
+      # every structural inspection; this is the value to compare between them.
+      - name: Report the shared stack definition this job used
+        run: 'echo "shared-action CLI pin = ${{ steps.stack.outputs.cli-version }}"'
 
       # ONE IMPLEMENTATION, TWO CALL SITES. This step used to carry its own copy of
       # the credentials check. It now runs the SAME script that `npm run test:rls`

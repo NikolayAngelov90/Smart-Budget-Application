@@ -1,0 +1,184 @@
+name: Raise the local Supabase stack
+description: >
+  The ONE definition of the local Supabase stack. Both rls.yml and
+  schema-drift.yml raise it, and they must raise the SAME one.
+
+# WHY THIS EXISTS, AND WHY IT IS AN EXTRACTION RATHER THAN A THIRD FIX.
+#
+# Three times a fix landed in one of those two workflows and not the adjacent
+# one, and each time the lesson was already written down in the file next door:
+#
+#   1. 2026-10-01  schema-drift.yml used `version: latest` while rls.yml pinned
+#      2.105.0 under a comment opening "Pinned (do NOT use latest)". The local
+#      Postgres moved 17.6 -> 17.11 and the drift check failed three days running
+#      without comparing a single catalog object.
+#   2. 2026-10-04  rls.yml carried its own copy of the RLS credentials check,
+#      weaker than the preflight and running first, so its message was the only
+#      one anybody would ever have read.
+#   3. 2026-10-05  the Docker Hub login was added to schema-drift.yml only.
+#      rls.yml kept pulling the same multi-GB stack anonymously, exposed to the
+#      same per-IP rate limit.
+#
+# Keeping two files in sync by remembering has failed three times out of three.
+# Documentation does not transfer; enforcement does. So the sequence lives here
+# once, and a change to any part of it is PHYSICALLY INCAPABLE of landing in one
+# workflow and not the other.
+#
+# The boundary is the whole stack-raising sequence, because that is exactly what
+# both callers need and nothing more: the pinned CLI, an authenticated pull, the
+# start, and the credentials the stack prints. What each caller does afterwards
+# differs and stays in the caller.
+
+inputs:
+  dockerhub-username:
+    description: >
+      Docker Hub username. Composite actions cannot read secrets, so the caller
+      passes it. Absent is a supported state: the pull falls back to anonymous
+      and says so.
+    required: false
+    default: ''
+  dockerhub-token:
+    description: Docker Hub read-only access token. See dockerhub-username.
+    required: false
+    default: ''
+
+outputs:
+  cli-version:
+    description: >
+      The pinned CLI version this action used. Exposed so a caller can PROVE it
+      is reading this file rather than a stale copy — two workflows that import
+      the same action but observe different values would pass every structural
+      inspection while sharing nothing.
+    value: ${{ steps.pin.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    # THE PIN, IN ONE PLACE.
+    #
+    # Pinned, and never `latest`. Supabase CLI v2.106.0 (2026-06-11) shipped a
+    # breaking change: new public-schema objects are no longer auto-exposed to
+    # the Data API / auto-granted to roles by default. Under that default,
+    # PostgREST writes — even as service_role — return no rows, so every
+    # *.rls.test.ts seed (`insert().select().single()`) yields null and the
+    # suites fail. 2.105.0 is the last release before that change.
+    #
+    # The CLI also ships the local Postgres image, so `latest` would make the
+    # local Postgres MINOR version float with whichever CLI released most
+    # recently — which is defect 1 above.
+    #
+    # IT IS A MAINTAINED VALUE, NOT A FROZEN ONE. When production's minor moves,
+    # the drift comparator reports it in red with both versions named, and
+    # bumping this line is the deliberate response. Leaving it behind is also a
+    # decision, and it is the one that makes the RLS suite prove isolation
+    # against a database production is not running.
+    - name: Resolve the pinned CLI version
+      id: pin
+      shell: bash
+      run: |
+        VERSION=2.105.0
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        # Echoed HERE, in the action's own first step, not only as an output.
+        # An output is readable by the caller only once the whole composite
+        # succeeds, so a failure further down would leave no record of which
+        # definition the job read — which is precisely the value needed to prove
+        # both workflows share this file rather than a stale copy of it.
+        echo "shared local-supabase action: pinned CLI version $VERSION"
+
+    - name: Setup Supabase CLI (pinned)
+      uses: supabase/setup-cli@v1
+      with:
+        version: ${{ steps.pin.outputs.version }}
+
+    # Docker Hub's anonymous pull limit is per IP and GitHub's runner IPs are
+    # shared, so `supabase start` hit `toomanyrequests` while pulling the stack
+    # and retried: 9 failed pulls on 2026-10-01, 14 on 10-02, 9 on 10-03,
+    # counting `Error response from daemon: toomanyrequests` lines.
+    #
+    # Authenticating moves the limit from per-IP-anonymous to per-account.
+    # MEASURED BY EFFECT on 2026-10-03 with the secrets in place: `Login
+    # Succeeded`, the step printed AUTHENTICATED, and the count of real
+    # `Error response from daemon: toomanyrequests` lines went to ZERO. Both
+    # halves were checked, because `docker login` writing a config the CLI's
+    # pulls do not consult would print AUTHENTICATED and change nothing.
+    #
+    # Conditional, and it SAYS which state it is in rather than passing quietly:
+    # an unmitigated state that looks identical to a mitigated one is the exact
+    # shape of defect this repository keeps finding.
+    - name: Authenticate Docker Hub pulls (ANONYMOUS without secrets)
+      shell: bash
+      env:
+        DOCKERHUB_USERNAME: ${{ inputs.dockerhub-username }}
+        DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
+      run: |
+        if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+          printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          echo "Docker Hub: AUTHENTICATED - the pull limit is now per-account."
+        else
+          echo "Docker Hub: ANONYMOUS - the pull limit is per-IP and GitHub's runner IPs are shared."
+          echo "Set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (read-only token) to raise it."
+          echo "::warning::Docker Hub pulls are anonymous; the rate limit is unmitigated. See docs/schema-drift-check.md"
+        fi
+
+    # The output is captured so the rate limit can be NAMED when it bites.
+    # Without this the step fails with a pull error buried in stack startup
+    # noise, which looks like a flake and gets re-run instead of fixed.
+    - name: Start Supabase (applies supabase/migrations/*)
+      shell: bash
+      run: |
+        set -o pipefail
+        if ! supabase start 2>&1 | tee /tmp/supabase-start.log; then
+          if grep -q 'toomanyrequests' /tmp/supabase-start.log; then
+            echo "::error::Docker Hub rate limit (toomanyrequests) stopped the local stack coming up. This is NOT a flake and re-running will not fix it: the anonymous pull limit is per-IP and GitHub's runners share IPs. Set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (read-only) to move the limit to per-account."
+          fi
+          if grep -qE 'i/o timeout|failed to connect to postgres' /tmp/supabase-start.log; then
+            echo "::error::The local stack did not become reachable before the CLI timed out. Observed once on 2026-10-05 (run 37291187950) and it passed on re-run, so it is COUNTED rather than diagnosed. If this is the third occurrence, stop re-running and diagnose it — see docs/schema-drift-check.md."
+          fi
+          exit 1
+        fi
+        HITS=$(grep -c 'toomanyrequests' /tmp/supabase-start.log || true)
+        if [ "$HITS" -gt 0 ]; then
+          # Visible on a green run too, so the trend is readable before the day
+          # it stops being survivable.
+          echo "Docker Hub rate limit was hit ${HITS}x during the pull; the stack came up anyway."
+        fi
+
+    # Everything the stack prints that either caller needs, exported once.
+    # schema-drift.yml uses LOCAL_DB_URL; rls.yml uses the RLS_TEST_* trio. Both
+    # are exported regardless, because the alternative is an input flag whose
+    # only effect is to let one caller silently miss a variable.
+    #
+    # These are the LOCAL stack's well-known ephemeral keys, not secrets.
+    - name: Export the local stack's credentials
+      shell: bash
+      run: |
+        ENV_OUT=$(supabase status -o env)
+        get() { echo "$ENV_OUT" | grep "^$1=" | cut -d= -f2- | tr -d '"'; }
+
+        DB_URL=$(get DB_URL)
+        API_URL=$(get API_URL)
+        ANON=$(get ANON_KEY)
+        SERVICE=$(get SERVICE_ROLE_KEY)
+
+        # Fail loud rather than exporting nothing. An empty value here does not
+        # stop a job; it makes the job compare against an empty catalog or skip
+        # every isolation suite, and report success either way.
+        MISSING=""
+        [ -z "$DB_URL" ]  && MISSING="$MISSING DB_URL"
+        [ -z "$API_URL" ] && MISSING="$MISSING API_URL"
+        [ -z "$ANON" ]    && MISSING="$MISSING ANON_KEY"
+        [ -z "$SERVICE" ] && MISSING="$MISSING SERVICE_ROLE_KEY"
+        if [ -n "$MISSING" ]; then
+          echo "::error::\`supabase status -o env\` did not report:$MISSING. Downstream steps would dump an empty catalog or skip every RLS suite and still exit 0, so this fails here instead."
+          exit 1
+        fi
+
+        {
+          echo "LOCAL_DB_URL=$DB_URL"
+          echo "RLS_TEST_SUPABASE_URL=$API_URL"
+          echo "RLS_TEST_SUPABASE_ANON_KEY=$ANON"
+          echo "RLS_TEST_SUPABASE_SERVICE_KEY=$SERVICE"
+        } >> "$GITHUB_ENV"
+
+        echo "local stack up; credentials exported (values not printed)"
+        echo "pinned CLI version: ${{ steps.pin.outputs.version }}"

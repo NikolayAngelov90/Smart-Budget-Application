@@ -14,6 +14,34 @@ vulnerabilities arrived by. The migrations having something production does not
 is **pending**, and fails only once the newest migration file is more than seven
 days old, because a deploy in flight looks exactly like that.
 
+## The check CONSTRAINS THE ORDER OF WORK: apply privileges first, then merge
+
+This did not exist before the check did, and it will surprise whoever writes the
+next privileges migration.
+
+A migration that **removes** a grant must be applied to production **before** the
+file is merged. Merge it first and the local stack builds without the grant while
+production still has it, so production holds grant entries the migrations do not
+— `PRODUCTION_ONLY`, which is a **hard fail on the very first run**, not a
+pending item that ages out over a week.
+
+That is the opposite of the familiar direction. A migration that **adds** an
+object is safe to merge first: the object is missing from production, which is
+`MIGRATIONS_ONLY`, which is pending and has seven days to be applied.
+
+| the migration | merge first? | why |
+| --- | --- | --- |
+| adds an object (table, column, policy, grant) | yes | absent from production → `MIGRATIONS_ONLY` → pending, 7-day grace |
+| **removes** one (`REVOKE`, `DROP POLICY`, `DROP COLUMN`) | **no** | present in production → `PRODUCTION_ONLY` → hard fail immediately |
+
+So for a removal the sequence is: **apply, verify, then merge the file to record
+it** — the same order used for the two hand-applied migrations in #68, and the
+reason PR #75 (`REVOKE ... FROM anon` across 24 tables) is held open rather than
+merged.
+
+The check is doing its job in both cases. It is worth stating because "merge the
+migration, then apply it" is the habit, and for removals the habit is now wrong.
+
 ## The Postgres version pin is a maintained value, not a frozen one
 
 Both this workflow and [`rls.yml`](../.github/workflows/rls.yml) pin
@@ -113,6 +141,27 @@ not have.** Three options were considered:
 So: counted, fixed, and verified by the count rather than by the absence of
 noticed errors — a count is a measurement, an absence of noticed errors is an
 impression.
+
+## Counted, not diagnosed: local stack startup timeouts
+
+A flake nobody is counting is a flake that gets re-run forever. These are
+occurrences of `supabase start` failing because the local Postgres never became
+reachable — **not** the Docker Hub rate limit, which is a different failure with
+its own naming.
+
+| # | date | run | workflow | re-run outcome |
+| --- | --- | --- | --- | --- |
+| 1 | 2026-10-05 | 37291187950 | RLS Integration Tests | passed |
+
+```
+failed to connect to postgres: failed to connect to
+`host=127.0.0.1 user=postgres database=postgres`:
+dial error (timeout: dial tcp 127.0.0.1:54322: i/o timeout)
+```
+
+**Re-running was the right call at n=1 and is the wrong one at n=3.** The shared
+`local-supabase` action names this signature explicitly when it fires, with a
+pointer here, so the third occurrence cannot be re-run by reflex.
 
 ## Eight defects, in the tool built to catch defects
 

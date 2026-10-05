@@ -792,6 +792,16 @@ taken against the wrong file. Measured correctly: **12/12 in declaration order,
 and roughly 1 run in 6 failing when that file is shuffled on its own.** It
 reproduces in isolation, which is what made it diagnosable.
 
+**The conclusion drawn from the wrong measurements happened to survive, and that
+is the problem.** "Fix or quarantine this test before pinning a seed" was right,
+and it was reached from three false premises — passes alone, fails only in a full
+suite, `--runInBand` does not stabilise it — every one of them measured against a
+file that merely mocks the component under test. Being right by luck is not being
+right by method, and the next time the luck will not hold. The `src/`-scoped
+search that produced the wrong file is the mechanical cause: this repository has
+test trees in **two** places, `src/**/__tests__/` and a root `__tests__/`, and a
+search of one silently answers for both.
+
 **The mechanism.** `should disable button during API call` mocks `fetch` with a
 promise that resolves `ok: true` after a **100ms `setTimeout`**, clicks, asserts
 the button is disabled — and ends. The timer then fires inside the *next* test,
