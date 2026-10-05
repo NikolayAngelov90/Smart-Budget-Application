@@ -811,11 +811,98 @@ eventually add a real assertion to without noticing it does not run. Either move
 it into a `__tests__/` directory or drop the `.test` from its name; both make its
 status legible, and the current state does not.
 
-### One population that is NOT short
+### The sweep's DOMAIN is complete; its SENSITIVITY is not
 
 The `--randomize` order-dependence sweep used `jest` itself, so its domain was
-always the full 263. **The seven suites it found are the whole population** — no
-re-sweep needed. Only the hand-rolled greps were scoped.
+always the full 263 — unlike the hand-rolled greps, it was never path-scoped.
+
+**But a complete domain is not a complete population.** The sweep detects a
+load-sensitive race only on the runs where the race is actually lost, and running
+the whole suite makes losing *less* likely: under contention each test takes
+roughly two to three times as long (614ms vs 276ms, measured on the same test),
+which is time the race needs to settle.
+
+The evidence is one test measured twice, with **its own code unchanged between
+the two measurements** (`git log` over the file and its component: nothing; the
+only source change in the window was a different file):
+
+| instrument | `TransactionEntryModal composer › renders one-tap category chips` |
+| --- | --- |
+| full-suite sweep, 15 seeds, 2026-10-04 | present at **3** of 15 |
+| full-suite sweep, 15 seeds, 2026-10-05 | present at **0** of 15 |
+| that file alone, `--randomize --seed=4` | **5 to 9 of 10** |
+
+The full-suite instrument's own detection of this test moved from 3/15 to 0/15
+for reasons outside the code. So the figure to quote is not "0 against 9" but
+"3-of-15-or-0-of-15, depending on the day, against 6-to-9-of-10" — and the
+conclusion is the same but stronger: **the seven suites are a LOWER BOUND on the
+population, not the population.**
+
+**TWO EXPLANATIONS FOR THE DISAGREEMENT WERE OFFERED AND BOTH ARE REFUTED.** The
+observation is reproducible; the mechanism is not known.
+
+| hypothesis | test | result |
+| --- | --- | --- |
+| contention — the full suite is slower, so the race settles | full suite with `--maxWorkers=1`, seed 4 | finds the **identical** 22 tests as the parallel run, 0 difference in either direction; the composer file **PASSES**. 51s serial vs ~40s parallel, so contention was modest anyway |
+| a single-file run executes **in-band** rather than in a worker, a different environment | composer alone, default vs `--maxWorkers=2`, 10 runs each | 7/10 vs 6/10 — inside the ±1-in-8 resolution |
+
+So: isolated runs of that file fail 6–9 times in 10, and every full-suite
+configuration tried — parallel across 15 seeds, serial at one — passes it. The
+`Tests` workflow is 25 for 25 green. What the disagreement is *caused* by is
+open, and saying so is better than offering a third untested mechanism.
+
+An earlier version of this section said they were the whole population. They are
+the whole of what this instrument found.
+
+## Two rules for writing an async test
+
+### What did I await, and is what I am asserting guaranteed by it?
+
+Both order-dependence defects found so far had **different causes and the same
+shape: awaited one signal, asserted on another.** Unlike either fix, the shape is
+usable *before* the bug exists, so it belongs in the author's head rather than in
+a post-mortem.
+
+| what was awaited | what it actually tells you | what was asserted |
+| --- | --- | --- |
+| `expect(fetch).toHaveBeenCalled()` | the request went out | that `mutate` had **not** been called — i.e. that the *handler* had already decided not to |
+| `findByRole(...)` resolved | the node existed **at that moment** | that the same node is still in the document now |
+
+Neither second column follows from the first. In the first case the assertion was
+true of a version that calls `mutate` one microtask later; in the second the node
+was legitimately replaced by a re-render between the await and the assertion, and
+the error says so exactly — *"element could not be found in the document"*, not
+"could not find an element".
+
+So while writing an async assertion, ask the three questions in order: **what did
+I await, what am I asserting, and is the second guaranteed by the first?** If it
+is not, await the thing you are actually asserting about — and prefer re-querying
+inside `waitFor` over holding a node across an await, because `waitFor` retries
+the lookup and a held reference cannot survive a remount.
+
+### A before/after comparison is only valid if both halves saw the same conditions
+
+And on a **load-sensitive** rate, "the same conditions" excludes *"I ran a full
+test suite in between"*.
+
+Measured on `TransactionEntryModal.composer.test.tsx`, under
+`--randomize --seed=4`, with the file **byte-identical to HEAD** throughout:
+
+| measurement | result |
+| --- | --- |
+| baseline, early in the session | 5 of 10 failing |
+| baseline again, after several full-suite runs | **9 of 10 failing** |
+| two interleaved arms, same code, same batch | 6 of 8 and 7 of 8 |
+
+The first two are the same code and differ by nearly a factor of two. A
+conclusion of the form "my fix made it worse", drawn by comparing a candidate
+against the earlier baseline, was therefore **withdrawn for invalid design** —
+not disproven, which is a different and weaker reason to drop a claim.
+
+Interleaving the arms **is** valid: both see the same load. Its resolution is
+about **±1 in 8**, from the identical-code pair above, and that is the precision
+any claim about such a rate has to live inside. A fix that takes 7/8 to 0/8 is
+believable; one that takes 7/8 to 5/8 is not distinguishable from noise.
 
 ## Test order dependence — measured 2026-10-03/04, fix pending
 
