@@ -33,7 +33,17 @@ global.fetch = jest.fn();
 describe('RefreshInsightsButton', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (global.fetch as jest.Mock).mockClear();
+    // mockRESET, not mockClear. `clearAllMocks` and `mockClear` clear recorded
+    // CALLS and leave the IMPLEMENTATION in place, so the delayed-resolve
+    // `mockImplementation` set by "should disable button during API call"
+    // survives into every later test. It is masked today only because each test
+    // queues its own `mockResolvedValueOnce`, which takes precedence — a test
+    // that forgot to would silently inherit a 100ms ok:true response.
+    //
+    // Same gotcha as #66's pushService leak, where a leaked
+    // mockRejectedValue({statusCode:410}) made five tests assert 'sent' against
+    // a fixture in which nothing could be sent.
+    (global.fetch as jest.Mock).mockReset();
   });
 
   it('should render refresh button', () => {
@@ -69,6 +79,20 @@ describe('RefreshInsightsButton', () => {
     // Button should be disabled during API call
     await waitFor(() => {
       expect(button).toBeDisabled();
+    });
+
+    // AND THEN WAIT FOR IT TO FINISH. Without this the test ends with a pending
+    // 100ms timer and an in-flight handler: the timer fires inside the NEXT
+    // test, the handler sees ok:true and calls mutate(), and the next test's
+    // beforeEach has already run clearAllMocks — so a call belonging to this
+    // test is attributed to that one.
+    //
+    // That is the whole of the intermittent failure in "does NOT revalidate when
+    // the refresh request fails": `Expected 0, Received 1`, roughly one run in
+    // six, only when the shuffle puts that test immediately after this one. A
+    // test must not outlive itself.
+    await waitFor(() => {
+      expect(button).toBeEnabled();
     });
   });
 
@@ -242,9 +266,17 @@ describe('RefreshInsightsButton', () => {
     });
 
     render(<RefreshInsightsButton />);
-    await user.click(screen.getByRole('button'));
+    const button = screen.getByRole('button');
+    await user.click(button);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    // Wait for the failure path to SETTLE, not merely for fetch to have been
+    // called. `expect(fetch).toHaveBeenCalled()` resolves while the response is
+    // still being handled, so the assertion below was a snapshot taken
+    // mid-flight: it said "mutate has not been called YET", which is true of a
+    // version that calls it a microtask later.
+    await waitFor(() => expect(mockToast).toHaveBeenCalled());
+    await waitFor(() => expect(button).toBeEnabled());
+
     expect(mockMutate).not.toHaveBeenCalled();
   });
 
