@@ -170,8 +170,8 @@ found by review**, including by the review that read the same files looking for
 exactly this. A tool that catches defects is not thereby free of them, and the
 practice that found these is the one most easily described as overhead.
 
-Three rules follow. The first two are a pair; the third generalises past this
-check entirely:
+Four rules follow. The first two are a pair; the third and fourth generalise
+past this check entirely:
 
 - **A guard is not done until it has been mutation-tested.** A guard with no
   recorded red state is not evidence that anything is checked — four of the six
@@ -189,12 +189,35 @@ check entirely:
   would ever have seen, and the better one was unreachable in practice. When a
   check is duplicated, either delete the copy or make it *call* the original.
 
-A corollary for any tool that reports on other tools, learned by breaking one:
-**a summary must be computed from the data it summarises, never parsed out of it
-a second, independent way.** The mutation harness derived its verdict from a
-regex while printing a tally parsed separately, and printed `NO TEST WENT RED`
-beneath `2 failed, 10 passed` three times in a row. A summary that *can* disagree
-with its own data is a second source of truth about one fact. And a
+- **NEVER STATE A CONCLUSION BESIDE THE DATA THAT WOULD CONTRADICT IT — COMPUTE
+  IT FROM THE DATA.** This holds in Python, in shell, in a PR body and in a
+  report to a human. Three instances in one day, 2026-10-03/04:
+
+  | what was asserted | what the same output showed |
+  | --- | --- |
+  | `git status --porcelain \| wc -l` as an idempotence check | returns 402 whether or not the second pass changed anything |
+  | "HEAD was prettier-clean, so the reformat is mine" | measured on a copy outside the project with an explicit `--parser`, which resolves different config — it was never clean |
+  | `echo "(no '-' lines above = nothing was reformatted)"` | 13 deletion lines, printed immediately above |
+
+  The mutation harness was the same defect in Python: it derived its verdict from
+  a regex while printing a tally parsed separately, and printed `NO TEST WENT RED`
+  beneath `2 failed, 10 passed`, three times running. Fixing it there fixed one
+  *instance*; the class is the rule above.
+
+  **The proof that it matters is the `git revert` incident.** A tree-hash
+  comparison caught a revert that had silently not happened — because the
+  comparison was *computed*. An echoed "(reverted)" beside it would have hidden
+  it, and three CI runs were dispatched against un-reverted code before the
+  computed check disagreed.
+
+  One mechanical note from the same incident: **`cmd 2>&1 | tail -1` discards a
+  command's error.** `git revert --no-edit -q HEAD` exits 129 with a usage
+  message — there is no `-q` — and `tail -1` on the merged stream kept the last
+  line of something else, so a hard failure read as a quiet success. Check the
+  exit code, not the tail of the output.
+
+A corollary for any tool that reports on other tools: **a summary that *can*
+disagree with its own data is a second source of truth about one fact.** And a
 *known*-broken instrument is worse than an unknown-broken one: the surprise is
 already spent, so the next wrong reading does not startle anybody — that harness
 was used twice more after it was first seen misreporting.

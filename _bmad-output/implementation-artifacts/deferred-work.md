@@ -368,11 +368,54 @@ entire point is that they must not be forgeable through PostgREST.
 writes are denied whatever the grant says — which is exactly the pattern named
 above: safe by a single layer, with the second absent. Now found on the exemplars.
 
-**The decision, not a cleanup:** a `REVOKE ... FROM anon` sweep completes the
-second layer everywhere. Live risk today is zero; the benefit is that a future
-permissive policy cannot silently become exploitable; the cost is a production
-migration touching privileges on every table. Needs a yes/no rather than a
-scheduling slot.
+**DECIDED YES, 2026-10-05, gated on two verification checks — both now done.**
+
+**Check 1 — does anything write as `anon`? No.**
+- Both client factories (`lib/supabase/client.ts`, `lib/supabase/server.ts`) use
+  the publishable key, but `@supabase/ssr` attaches the user's JWT, so the role
+  is `authenticated` after login and `anon` only before it.
+- The `(auth)` route group — the only pre-login UI — makes **zero** PostgREST
+  table writes. It calls `supabase.auth.*` only, which is GoTrue, not PostgREST.
+- **Signup, the case to look at hardest:** `user_profiles` rows are created by
+  `on_auth_user_created`, an `AFTER INSERT ON auth.users` trigger running
+  `handle_new_user()` (`004_user_profiles_table.sql:102-104`). That function is
+  `SECURITY DEFINER` and, since 038, has EXECUTE revoked from `anon` and
+  `authenticated` and granted only to `supabase_auth_admin`. **Registration does
+  not depend on an anon grant.**
+- `/api/analytics/track` returns 401 without a user, so its `analytics_events`
+  insert always runs as `authenticated`.
+- `exchange_rates_cache` has no application writer at all.
+
+**Check 2 — is it actually latent? Yes, confirmed behaviourally.** Probed
+production as `anon` with the publishable key, using a `user_id` absent from
+`auth.users` so the FK made a row impossible to create either way:
+
+| probe | result |
+| --- | --- |
+| `POST /rest/v1/user_achievements` | `42501` new row violates RLS policy |
+| `POST /rest/v1/comeback_challenges` | `42501` new row violates RLS policy |
+| `POST /rest/v1/transactions` | `42501` new row violates RLS policy |
+
+`42501` and not `23503` — the rows never reached the foreign key, so RLS refused
+them rather than the constraint. The key was confirmed live first (`GET` returned
+`200 []`), so a 401 could not masquerade as a denial.
+
+**The migration is written and HELD:**
+`supabase/migrations/20261005090000_revoke_anon_write_grants.sql` — one file, all
+tables, list derived from the catalog rather than typed, idempotent, plus
+`ALTER DEFAULT PRIVILEGES` so the next table created does not re-introduce the
+grant. It carries a per-table verification query, because it touches ~24 tables
+and a spot check would not be evidence.
+
+**SEQUENCING, and it is not the usual order.** Merging the file before it is
+applied turns the drift check RED in the dangerous direction: the local stack
+would build without these grants while production still has them, so production
+would hold grant entries the migrations do not — `PRODUCTION_ONLY`, a hard fail
+on the first run rather than a pending item that ages out. **Apply to production
+first, then merge the file to record it**, the same sequence as #68.
+
+Ranked after the order-dependent-tests item: a bounded item that finishes comes
+before a production change with zero live risk.
 
 ### Also in this batch — mean/sigma outlier detection MASKS multiple outliers
 
