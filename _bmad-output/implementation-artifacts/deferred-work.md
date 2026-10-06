@@ -438,3 +438,42 @@ dragged by the points they are meant to detect.
 PRE-EXISTING, not caused by hp-10, and it was not a reason to widen that story.
 It follows directly from the argument that justified leaving the emission
 uncapped, which is why it is filed rather than left as a footnote to good news.
+
+---
+
+## Test-order dependence — the classification has a TIME dimension
+
+Filed 2026-10-06, correcting a demotion made on 2026-10-05.
+
+The order-dependence work was split into **3a** (fix the seven suites, pin the
+seed) and **3b** (an isolation sweep for a larger population). 3b was demoted
+partly on this argument:
+
+> order-dependent but passing in CI = a FALSE GREEN, which can hide a defect;
+> isolation-only failing = a FALSE RED, which hides nothing.
+
+**"Hides nothing" is too strong. It hides nothing YET.** `exchangeRateService`
+is the counter-example: a latent false red today, because in declaration order
+every assertion genuinely establishes its property and only pure formatting
+tests follow the block that leaks. But the `convertCurrency` describe sets
+`mockFetch.mockResolvedValue(...)` persistently, so **the first test anyone
+appends to that file silently inherits a mocked successful fetch** — and they
+would have no reason to suspect it, because the file is green.
+
+So the classification is not a terminal state. It is a current state with a
+trajectory, and the useful form carries the arrow:
+
+| suite | classification |
+| --- | --- |
+| `exchangeRateService` | false red → **false green on append** |
+| `OfflineBanner` | false red → false green on append (same shape: a leaked implementation its tests rely on) |
+| `BalanceFlowHero` | false red, no trajectory — the collision is bounded and closed |
+
+**The remedy is the part that matters.** `mockReset()` does not merely fix
+today's symptom; it removes the trajectory. A fix that made the current tests
+pass without draining the queue and dropping the implementation would have left
+the file a false green waiting for its next commit.
+
+The demotion of 3b still stands — the cost argument and the one-file bound on the
+prototype collision are unchanged — but anyone re-weighing it should weigh "hides
+nothing yet", not "hides nothing".

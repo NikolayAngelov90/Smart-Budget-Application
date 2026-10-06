@@ -919,24 +919,37 @@ endemic or a singleton.
 | --- | --- | --- |
 | `BalanceFlowHero.period.test.tsx` | **5 of 10** | user-event / zag prototype collision |
 | `useAppearance.test.tsx` + `.pure` | **9 of 9** groups | module singleton |
-| `exchangeRateService.test.ts` | **21 of 21** | mock-state leak |
+| `exchangeRateService.test.ts` | **21 of 21** | mock-state leak (poisoning) |
+| `OfflineBanner.test.tsx` | **3 of 6** | mock-state leak (rescuing) |
 
-Three files to go: `OfflineBanner`, `generate-insights` cron, `GoalCard`.
+Two files to go: `generate-insights` cron, `GoalCard`.
 
-**AND THE COUNT MAY BE MEASURING MECHANISM RATHER THAN PREVALENCE.** Only the
-prototype collision produces the unusable-alone symptom; a module singleton or a
-leaked mock does not prevent running a test by itself at all. So four clean
-results would not establish that the class is rare — only that we diagnosed four
-files of the other kind.
+### The symptom has at least TWO mechanisms — a claim here was wrong
 
-The question that actually scopes it is one search, and it has been run: the
-collision needs **both** `userEvent.setup()` (which patches
-`HTMLElement.prototype.focus` as a getter) **and** a component mounting
-`@zag-js/focus-visible`, which in this tree is reachable only through Chakra's
-`use-radio` and `use-checkbox`. Measured 2026-10-06: **4 of 264 test files call
-`userEvent.setup()`**, and the other three render no radio, checkbox or switch at
-all. All four are clean across four seeds each. **The population is one file, and
-it is fixed.**
+An earlier version of this section said *"only the prototype collision produces
+the unusable-alone symptom; a module singleton or a leaked mock does not prevent
+running a test by itself at all."* **The second half is false, and `OfflineBanner`
+disproved it.**
+
+Three of its six tests rendered the component and *then* set
+`jest.spyOn(...).mockReturnValue(...)`. The file's factory is
+`useOnlineStatus: jest.fn()` — no implementation — so the first render
+destructured `undefined` and threw. They passed only because `clearAllMocks()`
+leaves implementations alive and an earlier test had set one. Run individually,
+**all three failed**. A leaked mock produces the symptom perfectly well, whenever
+a test renders before establishing its own mock.
+
+So the two mechanisms found so far are:
+
+| mechanism | bounded? |
+| --- | --- |
+| user-event / zag prototype collision | **yes, and closed.** It needs *both* `userEvent.setup()` (which patches `HTMLElement.prototype.focus` as a getter) *and* a component mounting `@zag-js/focus-visible`, reachable in this tree only via Chakra's `use-radio` and `use-checkbox`. Measured 2026-10-06: **4 of 264 files call `userEvent.setup()`**; the other three render no radio, checkbox or switch; all four clean over four seeds. **One file, fixed.** |
+| render-before-mock, rescued by a leaked implementation | **no.** Any file whose mock factory supplies no implementation can do this, and nothing bounds that by a one-line search. |
+
+**So the usable-alone count is not purely measuring mechanism, and the question
+is not closed.** The instrument that finds this second kind is per-file
+`--randomize`, which is also what found it — so the sweep worth sampling is that
+one, not file-level or test-level isolation.
 
 **This is also why a file-level isolation sweep would not have found it.**
 BalanceFlowHero passes as a whole file; only `-t` on a single test fails. A
