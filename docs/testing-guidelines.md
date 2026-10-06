@@ -921,15 +921,51 @@ endemic or a singleton.
 | `useAppearance.test.tsx` + `.pure` | **9 of 9** groups | module singleton |
 | `exchangeRateService.test.ts` | **21 of 21** | mock-state leak (poisoning) |
 | `OfflineBanner.test.tsx` | **3 of 6** | mock-state leak (rescuing) |
+| `insightService.generationMarker.test.ts` | **8 of 8** | unconsumed `...Once` queue |
 
 Two files to go: `generate-insights` cron, `GoalCard`.
 
-### The symptom has at least TWO mechanisms — a claim here was wrong
+### The determinant is not the mechanism — both earlier rules here were wrong
 
-An earlier version of this section said *"only the prototype collision produces
-the unusable-alone symptom; a module singleton or a leaked mock does not prevent
-running a test by itself at all."* **The second half is false, and `OfflineBanner`
-disproved it.**
+This section has carried two wrong rules in two days. First: *"only the prototype
+collision produces the unusable-alone symptom; a leaked mock does not prevent
+running a test by itself."* `OfflineBanner` disproved it. Then the correction
+implied a leaked mock *does* produce it — but `exchangeRateService` (21 of 21
+alone) and `OfflineBanner` (3 of 6) have the **same** mechanism and opposite
+profiles, so the mechanism is not the determinant either.
+
+**What separates them is whether the test establishes its own precondition.**
+
+| | |
+| --- | --- |
+| **poisoned** | the test establishes its precondition, and something else overrides it |
+| **unusable alone** | the test depends on a precondition it does not establish, **and the default state does not satisfy it** |
+
+One property, two failure modes. The second clause is load-bearing — without it
+`useAppearance` is misclassified: its pure-function tests depend on
+`sessionPreference` being `null`, which they cannot establish, and they pass
+alone anyway **because `null` is the default**. The precondition is unestablished
+either way; what decides the symptom is whether the default happens to satisfy
+it.
+
+All five diagnosed suites fall out of this:
+
+| suite | establishes its precondition? | default satisfies it? | symptom |
+| --- | --- | --- | --- |
+| `OfflineBanner` | no — renders before mocking | no — bare `jest.fn()` returns `undefined` | **3 of 6 alone** |
+| `BalanceFlowHero` | no — renders after `userEvent.setup()` has patched `focus` | no — zag then cannot patch | **5 of 10 alone** |
+| `useAppearance` (pure) | no — cannot reach the singleton | **yes** — it starts `null` | 9 of 9 alone |
+| `exchangeRateService` | yes | — | 21 of 21 alone, poisoned |
+| `insightService.generationMarker` | yes | — | 8 of 8 alone, poisoned |
+
+**Checkable while writing, which is the point:** does every act in this test
+follow the setup that act depends on, *within this test*? If an act depends on
+setup the test does not perform, it is relying on a default or on a neighbour —
+and only one of those is stable.
+
+### The mechanisms, for reference
+
+The prototype collision IS bounded and closed. Render-before-mock is not.
 
 Three of its six tests rendered the component and *then* set
 `jest.spyOn(...).mockReturnValue(...)`. The file's factory is
