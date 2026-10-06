@@ -78,17 +78,40 @@ describe('OfflineBanner', () => {
     });
   });
 
+  // MOCK BEFORE THE FIRST RENDER, in every test here. All three of these used to
+  // render and THEN call jest.spyOn(...).mockReturnValue(...), which only worked
+  // because of state left behind by an earlier test.
+  //
+  // The factory at the top of this file is `useOnlineStatus: jest.fn()` — a bare
+  // mock with NO implementation, so it returns `undefined` and the component's
+  // `const { isOnline } = useOnlineStatus()` throws:
+  //
+  //   TypeError: Cannot destructure property 'isOnline' of
+  //   '(0 , _useOnlineStatus.useOnlineStatus)(...)' as it is undefined.
+  //
+  // `jest.clearAllMocks()` in the outer beforeEach clears recorded CALLS and
+  // LEAVES the implementation, so once any AC-8.5.2 test has run its
+  // mockReturnValue survives into these — and in declaration order those three
+  // run first. The initial render here was therefore succeeding on borrowed
+  // state.
+  //
+  // MEASURED 2026-10-06: run individually, all three of these FAILED and all
+  // three AC-8.5.2 tests passed. Under --randomize the file failed at seeds 2
+  // and 4 (the orders that put these first) and passed at 1, 3, 5, 7.
+  //
+  // Note the polarity against exchangeRateService: there a leaked mock POISONED
+  // a later test; here a leaked mock RESCUED one. Same boundary, opposite sign.
   describe('AC-8.5.4: Reconnection Behavior', () => {
     it('should display "Back online! Syncing..." banner when reconnecting', async () => {
       // Start offline
-      const { rerender } = renderWithChakra(<OfflineBanner />);
-
       jest.spyOn(useOnlineStatusHook, 'useOnlineStatus').mockReturnValue({
         isOnline: false,
         lastSync: null,
         syncStatus: 'offline',
         cachedDataTimestamp: null,
       });
+
+      const { rerender } = renderWithChakra(<OfflineBanner />);
 
       rerender(
         <ChakraProvider>
@@ -117,8 +140,6 @@ describe('OfflineBanner', () => {
 
     it('should show synced message when sync completes', async () => {
       // Simulate reconnection with synced status
-      const { rerender } = renderWithChakra(<OfflineBanner />);
-
       // Start offline
       jest.spyOn(useOnlineStatusHook, 'useOnlineStatus').mockReturnValue({
         isOnline: false,
@@ -126,6 +147,8 @@ describe('OfflineBanner', () => {
         syncStatus: 'offline',
         cachedDataTimestamp: null,
       });
+
+      const { rerender } = renderWithChakra(<OfflineBanner />);
 
       rerender(
         <ChakraProvider>
@@ -160,8 +183,6 @@ describe('OfflineBanner', () => {
     it('should auto-hide reconnection banner after 3 seconds', async () => {
       jest.useFakeTimers();
 
-      const { rerender } = renderWithChakra(<OfflineBanner />);
-
       // Start offline
       jest.spyOn(useOnlineStatusHook, 'useOnlineStatus').mockReturnValue({
         isOnline: false,
@@ -169,6 +190,8 @@ describe('OfflineBanner', () => {
         syncStatus: 'offline',
         cachedDataTimestamp: null,
       });
+
+      const { rerender } = renderWithChakra(<OfflineBanner />);
 
       rerender(
         <ChakraProvider>
