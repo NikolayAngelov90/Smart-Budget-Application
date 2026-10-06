@@ -915,15 +915,49 @@ Checking this costs nothing on a file already open, so every order-dependence
 diagnosis records it. One file is an anecdote; six would say whether the class is
 endemic or a singleton.
 
-| file | tests runnable individually | mechanism |
-| --- | --- | --- |
-| `BalanceFlowHero.period.test.tsx` | **5 of 10** | user-event / zag prototype collision |
-| `useAppearance.test.tsx` + `.pure` | **9 of 9** groups | module singleton |
-| `exchangeRateService.test.ts` | **21 of 21** | mock-state leak (poisoning) |
-| `OfflineBanner.test.tsx` | **3 of 6** | mock-state leak (rescuing) |
-| `insightService.generationMarker.test.ts` | **8 of 8** | unconsumed `...Once` queue |
+**HOW THIS IS MEASURED, because the first version of it was broken twice over.**
+`jest -t <name>` takes a **regex**, and a test called
+`always mounts MilestoneOverlay (closed) so aria-live ...` has parentheses in it,
+so the raw name as a pattern **matched nothing**. A run that matches nothing exits
+0 and prints no pass/fail count, so a grep for "failed" found none and the file
+was recorded as fully passing. GoalCard was reported as 15 of 15 when it was 14
+of 15 — **the vacuity class, inside the measurement of order dependence.**
 
-Two files to go: `generate-insights` cron, `GoalCard`.
+The measurement now escapes the name and **requires evidence that exactly one
+test executed**; a run that cannot be shown to have run the test is reported as
+NOT MEASURED, never as a pass. The table below was taken with that version, and
+with zero NOT MEASURED results.
+
+| file | unusable alone, before its fix | mechanism | new or repeat? |
+| --- | --- | --- | --- |
+| `BalanceFlowHero.period.test.tsx` | **5 of 10** | user-event / zag prototype collision | new |
+| `useAppearance` (both files) | 0 of 10 | module singleton | new |
+| `exchangeRateService.test.ts` | 0 of 21 | unconsumed `...Once` queue **+** persistent implementation | new |
+| `OfflineBanner.test.tsx` | **3 of 6** | render before mock, rescued by a leak | new |
+| `insightService.generationMarker.test.ts` | 0 of 8 | unconsumed `...Once` queue | **REPEAT** of exchangeRateService |
+| `GoalCard.test.tsx` | **1 of 15** | `next/dynamic` component queried synchronously | new |
+
+Two of the earlier figures — exchangeRateService and generationMarker — were
+originally reached *vacuously*, because their names contain `(same currency)` and
+`(42703)`. Re-measured properly they give the same answer by a sound route.
+
+### The stopping rule is the repetition rate
+
+Diagnosing one file at a time was right **because the causes were distinct** — six
+causes, and no remedy transferable to another file. That argument expires the
+moment causes start repeating:
+
+- while each file yields a **new** mechanism, keep diagnosing individually; the
+  diagnosis is where the value is;
+- once mechanisms **repeat**, the value per diagnosis falls and a batch fix
+  becomes right for the repeating class.
+
+One repeat so far, in six files. The `...Once`-queue class is the one to watch,
+and unlike the others **it is greppable**: an unconsumed `mockResolvedValueOnce`
+or `mockRejectedValueOnce` in a test that short-circuits before consuming it. A
+third instance makes it a search-and-sweep rather than a seed-and-diagnose.
+
+One file to go: `generate-insights` cron.
 
 ### The determinant is not the mechanism — both earlier rules here were wrong
 

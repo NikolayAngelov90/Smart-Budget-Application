@@ -199,9 +199,24 @@ describe('GoalCard', () => {
   });
 
   // L4: always-mounted guard
-  it('always mounts MilestoneOverlay (closed) so aria-live region pre-exists in DOM', () => {
+  it('always mounts MilestoneOverlay (closed) so aria-live region pre-exists in DOM', async () => {
+    // AWAITED, because MilestoneOverlay is a `next/dynamic` import (GoalCard.tsx:40,
+    // `{ ssr: false }`). It resolves on a later tick, so a synchronous
+    // getByTestId here asserts on a DOM the component has not finished producing:
+    //
+    //   TestingLibraryElementError: Unable to find an element by:
+    //   [data-testid="milestone-overlay-container"]
+    //
+    // It passed in declaration order because an earlier test had already rendered
+    // a GoalCard and resolved the import, leaving the module cache warm. Run with
+    // this test first it failed 10 times out of 10.
+    //
+    // By the determinant: the test depended on a precondition it does not
+    // establish (the dynamic import resolved) and the default state — a cold
+    // module cache — does not satisfy it. `findByTestId` retries, so it
+    // establishes that precondition itself.
     renderWithChakra(<GoalCard goal={sampleGoal} currency="EUR" onMutate={onMutate} />);
-    const container = screen.getByTestId('milestone-overlay-container');
+    const container = await screen.findByTestId('milestone-overlay-container');
     expect(container).toBeInTheDocument();
     expect(container).toHaveAttribute('data-open', 'false');
   });
