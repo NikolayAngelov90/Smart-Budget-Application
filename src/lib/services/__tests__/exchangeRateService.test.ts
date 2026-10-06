@@ -33,6 +33,27 @@ global.fetch = mockFetch;
 describe('exchangeRateService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // mockRESET, not just clearAllMocks. `clearAllMocks` resets recorded CALLS
+    // and leaves two things alive that poison the next test:
+    //
+    //  1. THE UNCONSUMED `...Once` QUEUE. "uses in-memory cache when API fails
+    //     after successful fetch" queues `mockRejectedValueOnce(Error('API
+    //     down'))` for a second call that then hits the in-memory cache and
+    //     never fetches. That rejection survives into whichever test runs next,
+    //     which is why "includes rate date in result" got today's date (the
+    //     hardcoded fallback stamp) instead of the '2025-01-15' it had mocked.
+    //
+    //  2. A PERSISTENT IMPLEMENTATION. The `convertCurrency` describe's own
+    //     beforeEach calls `mockFetch.mockResolvedValue(...)` — not `...Once` —
+    //     so once that block has run, every later test in the file gets a
+    //     successful fetch. That is the only thing here that can supply a
+    //     RESOLVED value, and it is why "falls back to hardcoded rates when API
+    //     and cache are unavailable" saw `cached: false`.
+    //
+    // mockReset drains the queue AND drops the implementation. Measured: the
+    // file failed at seeds 1, 3, 4 and 7 and passes at all six seeds tried with
+    // this line. Same family as #66's pushService leak, different member.
+    mockFetch.mockReset();
     __clearCacheForTesting();
   });
 
