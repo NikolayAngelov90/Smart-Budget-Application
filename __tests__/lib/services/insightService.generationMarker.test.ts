@@ -59,7 +59,29 @@ function transactionCounter(count: number) {
   return { from, select, eq, gte };
 }
 
-beforeEach(() => jest.clearAllMocks());
+// resetAllMocks, not clearAllMocks. `clearAllMocks` resets recorded CALLS and
+// leaves the queued `...Once` values in place, and several tests here queue TWO:
+//
+//   (createClient as jest.Mock)
+//     .mockResolvedValueOnce({ from: profile.from })
+//     .mockResolvedValueOnce({ from: counter.from });
+//
+// A scenario that short-circuits after reading the marker never makes the second
+// call, so `{ from: counter.from }` stays queued and is served to the NEXT test.
+// The counter chain is `from -> select -> eq -> gte` with no `maybeSingle`, which
+// is exactly the failure:
+//
+//   TypeError: supabase.from(...).select(...).eq(...).maybeSingle is not a function
+//
+// resetAllMocks is safe HERE specifically because the module factory supplies no
+// implementations of its own — `createClient: jest.fn()` with nothing attached —
+// so there is nothing for the reset to destroy. In a file whose `jest.mock()`
+// factory provides behaviour, resetAllMocks would remove it and break every test;
+// that is the usual reason not to reach for it.
+//
+// Same mechanism as exchangeRateService, which is the FIRST repeated cause in
+// this batch: an unconsumed `...Once` queue crossing the clearAllMocks boundary.
+beforeEach(() => jest.resetAllMocks());
 
 /**
  * "Recent" as a RELATIVE value, because the assertions below depend on it.

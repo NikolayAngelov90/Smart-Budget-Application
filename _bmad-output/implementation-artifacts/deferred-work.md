@@ -477,3 +477,27 @@ the file a false green waiting for its next commit.
 The demotion of 3b still stands — the cost argument and the one-file bound on the
 prototype collision are unchanged — but anyone re-weighing it should weigh "hides
 nothing yet", not "hides nothing".
+
+### The size of this item is NOT KNOWN, and has grown every time the instrument improved
+
+"Bounded and finishable" was the stated reason for ranking 3a where it is. That
+claim has now been unsupported three times, each time by a better measurement
+rather than by new code:
+
+| when | instrument | what it said |
+| --- | --- | --- |
+| 2026-10-04 | full-suite `--randomize`, 15 seeds | 27 tests / 8 suites; **"plateau — eight consecutive seeds added nothing"** |
+| 2026-10-05 | per-file isolation, during diagnosis | the composer fails 6–9 of 10 alone while appearing in 0 of 15 full-suite seeds — **the sweep under-detects** |
+| 2026-10-06 | the same sweep, with a **fixed extractor** | the `●`-line regex truncated at the first parenthesis and had been silently dropping tests. An entire suite — `insightService.generationMarker` — was invisible for the whole item |
+| 2026-10-06 | 15 seeds re-measured with `×` lines | union **6**, where the 6-seed re-measurement had said 5 |
+
+**So the 2026-10-04 plateau was a plateau of the extractor's visibility, not of
+the population.** An estimate that moves in one direction every time the
+instrument improves is not converging, and that is information in itself.
+
+The seven suites found and fixed are real defects and fixing them was right. What
+is NOT established, and has been asserted twice, is that they are the whole of
+it. The honest statement is: **we do not know the size of this item.** The next
+measurement should be the per-file `--randomize` sample (twenty files, five
+seeds, chosen by something other than convenience), and until then no number here
+should be quoted as the population.
