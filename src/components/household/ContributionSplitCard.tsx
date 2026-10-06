@@ -1,5 +1,7 @@
 'use client';
 
+import { parseDecimalInput } from '@/lib/utils/parseDecimalInput';
+
 /**
  * ContributionSplitCard — Story 13.7
  *
@@ -52,8 +54,8 @@ export function ContributionSplitCard() {
   };
 
   const handleSave = async () => {
-    const pct = parseFloat(value);
-    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+    const pct = parseDecimalInput(value);
+    if (pct === null || pct < 0 || pct > 100) {
       toast({ title: t('invalidPercentage'), status: 'error', duration: 3000, isClosable: true });
       return;
     }

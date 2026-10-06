@@ -31,6 +31,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/lib/utils/currency';
 import type { BudgetSummary } from '@/types/database.types';
+import { parseDecimalInput } from '@/lib/utils/parseDecimalInput';
 
 interface BudgetEditorProps {
   categoryId: string;
@@ -73,13 +74,19 @@ export function BudgetEditor({
   const handleSave = async () => {
     if (isSaving) return; // Enter key has no isLoading guard — block double-submit
 
-    // Accept comma as decimal separator (bg locale keypads emit ','), reject any
-    // other stray characters parseFloat would silently truncate ("10abc" → 10).
-    const normalized = amount.trim().replace(',', '.');
-    const parsed = parseFloat(normalized);
+    // THIS FILE WAS THE ORIGINAL OF parseDecimalInput, and the reason it is now
+    // a function rather than a comment: the reasoning was written down here and
+    // in WishlistSection, and the PRIMARY amount input never received it. A
+    // comment does not travel.
+    //
+    // Behaviour change, deliberate: a pasted "1.234,56" used to fail the regex
+    // and show an error (the naive `.replace(',', '.')` made it "1.234.56"), and
+    // is now read as 1234.56. The 2-decimal and range limits are unchanged.
+    const parsed = parseDecimalInput(amount);
+    const decimals = amount.trim().split(/[.,]/).slice(1).pop();
     if (
-      !/^\d+(\.\d{1,2})?$/.test(normalized) ||
-      isNaN(parsed) ||
+      parsed === null ||
+      (decimals !== undefined && decimals.length > 2) ||
       parsed <= 0 ||
       parsed > 9_999_999_999.99
     ) {

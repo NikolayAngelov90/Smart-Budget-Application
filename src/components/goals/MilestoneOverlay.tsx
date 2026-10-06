@@ -49,6 +49,16 @@ function generateConfettiPieces() {
     id: i,
     left: `${Math.floor(Math.random() * 85 + 5)}%`,
     color: CONFETTI_COLORS[i % CONFETTI_COLORS.length]!,
+    /*
+     * Not user input: this parses the string Math.random().toFixed(2) just
+     * produced, so there is no locale, no comma and nothing to truncate. The
+     * no-restricted-syntax ban on bare parseFloat exists for values a person
+     * typed. The reason lives in this block comment and the directive sits
+     * directly above the code, because eslint-disable-next-line is POSITIONAL —
+     * putting the reason on continuation lines below it disables the comment
+     * instead of the statement, which is how this first attempt failed lint.
+     */
+    // eslint-disable-next-line no-restricted-syntax
     delay: parseFloat((Math.random() * 1.2).toFixed(2)),
   }));
 }

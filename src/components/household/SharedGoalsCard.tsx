@@ -1,5 +1,7 @@
 'use client';
 
+import { parseDecimalInput } from '@/lib/utils/parseDecimalInput';
+
 /**
  * SharedGoalsCard — Story 13.9 (fills the 13.8 seam)
  *
@@ -45,8 +47,8 @@ export function SharedGoalsCard() {
   const [amount, setAmount] = useState('');
 
   const handleCreate = async () => {
-    const targetNum = parseFloat(target);
-    if (!name.trim() || !Number.isFinite(targetNum) || targetNum <= 0) {
+    const targetNum = parseDecimalInput(target);
+    if (!name.trim() || targetNum === null || targetNum <= 0) {
       toast({ title: t('invalidGoal'), status: 'error', duration: 3000, isClosable: true });
       return;
     }
@@ -81,8 +83,8 @@ export function SharedGoalsCard() {
   };
 
   const handleContribute = async (goalId: string) => {
-    const amt = parseFloat(amount);
-    if (!Number.isFinite(amt) || amt <= 0) {
+    const amt = parseDecimalInput(amount);
+    if (amt === null || amt <= 0) {
       toast({ title: t('invalidAmount'), status: 'error', duration: 3000, isClosable: true });
       return;
     }
