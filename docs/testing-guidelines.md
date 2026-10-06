@@ -854,6 +854,43 @@ open, and saying so is better than offering a third untested mechanism.
 An earlier version of this section said they were the whole population. They are
 the whole of what this instrument found.
 
+## Does the NAME claim more than the assertions establish?
+
+Nothing in any toolchain checks a test's name against what it tests, and the name
+is what anyone greps when asking "is this covered?". So a name that overreaches
+lies in the direction of reassurance, to a reader who has no way to notice.
+
+`useAppearance.test.tsx` had six tests called **"falls back to system for
+garbage: X"**. The assertions were true. The code was right — `readAppearance()`
+falls back to the *session* preference and only then to `'system'`, which is
+deliberate and documented at its declaration, so a user with blocked storage
+still sees their click take effect. What was false was **the names**: they
+claimed an unconditional fallback while establishing "falls back to system
+*given this particular setup*", and the setup was supplied by declaration order.
+
+They now read "...(no session choice)", and the condition they do not cover —
+invalid storage **with** a session choice — is asserted separately.
+
+So, while naming a test: **does the name claim more than the assertions
+establish?** It is the same shape as every other defect in this session — a claim
+true at one scope, read as true at a broader one — arriving in the one place no
+tool looks.
+
+## TRAP: `jest.resetModules()` will not fix a module singleton under static imports
+
+It is the obvious reach when a module-level `let` leaks between tests, and the
+reason it fails is not obvious. `resetModules()` clears the registry so the *next*
+`require` builds a fresh module — but static `import` bindings already evaluated
+at the top of the test file keep pointing at the **old** instance. Re-import the
+functions dynamically and you now hold two copies: the hook rendered by your
+component comes from the stale module, the functions you assert on come from the
+fresh one, and they do not share the singleton you were trying to reset.
+
+What works instead: **put the tests that must not see the singleton in their own
+file.** Jest gives each test *file* its own registry, so the state starts clean
+and nothing in that file sets it. That is why `useAppearance.pure.test.tsx`
+exists.
+
 ## A test can be TRUE and UNUSABLE, and the suite reports only the first
 
 Two axes, and CI measures one of them:
@@ -878,13 +915,28 @@ Checking this costs nothing on a file already open, so every order-dependence
 diagnosis records it. One file is an anecdote; six would say whether the class is
 endemic or a singleton.
 
-| file | tests runnable individually |
-| --- | --- |
-| `BalanceFlowHero.period.test.tsx` | **5 of 10** — the five calling `userEvent.setup()` before rendering |
-| `useAppearance.test.tsx` + `.pure` | **9 of 9** groups — none affected |
+| file | tests runnable individually | mechanism |
+| --- | --- | --- |
+| `BalanceFlowHero.period.test.tsx` | **5 of 10** | user-event / zag prototype collision |
+| `useAppearance.test.tsx` + `.pure` | **9 of 9** groups | module singleton |
+| `exchangeRateService.test.ts` | **21 of 21** | mock-state leak |
 
-Four files to go: `exchangeRateService`, `OfflineBanner`,
-`generate-insights` cron, `GoalCard`.
+Three files to go: `OfflineBanner`, `generate-insights` cron, `GoalCard`.
+
+**AND THE COUNT MAY BE MEASURING MECHANISM RATHER THAN PREVALENCE.** Only the
+prototype collision produces the unusable-alone symptom; a module singleton or a
+leaked mock does not prevent running a test by itself at all. So four clean
+results would not establish that the class is rare — only that we diagnosed four
+files of the other kind.
+
+The question that actually scopes it is one search, and it has been run: the
+collision needs **both** `userEvent.setup()` (which patches
+`HTMLElement.prototype.focus` as a getter) **and** a component mounting
+`@zag-js/focus-visible`, which in this tree is reachable only through Chakra's
+`use-radio` and `use-checkbox`. Measured 2026-10-06: **4 of 264 test files call
+`userEvent.setup()`**, and the other three render no radio, checkbox or switch at
+all. All four are clean across four seeds each. **The population is one file, and
+it is fixed.**
 
 **This is also why a file-level isolation sweep would not have found it.**
 BalanceFlowHero passes as a whole file; only `-t` on a single test fails. A
