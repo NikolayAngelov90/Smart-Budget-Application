@@ -1,5 +1,7 @@
 'use client';
 
+import { parseDecimalInput } from '@/lib/utils/parseDecimalInput';
+
 /**
  * AllowanceCard — Story 13.6
  *
@@ -53,8 +55,8 @@ export function AllowanceCard() {
   };
 
   const handleSave = async () => {
-    const value = parseFloat(amount);
-    if (!Number.isFinite(value) || value < 0) {
+    const value = parseDecimalInput(amount);
+    if (value === null || value < 0) {
       toast({ title: t('invalidAmount'), status: 'error', duration: 3000, isClosable: true });
       return;
     }

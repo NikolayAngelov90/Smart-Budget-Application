@@ -37,6 +37,7 @@ import { logger } from '@/lib/utils/logger';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { WishlistItem } from './WishlistItem';
 import type { WishlistItemWithImpact, WishlistStatus } from '@/types/database.types';
+import { parseDecimalInput } from '@/lib/utils/parseDecimalInput';
 
 interface CategoryOption {
   id: string;
@@ -111,15 +112,19 @@ export function WishlistSection() {
     if (isSaving) return;
 
     const trimmedName = name.trim();
-    const normalizedPrice = price.trim().replace(',', '.');
-    const parsedPrice = parseFloat(normalizedPrice);
+    // The second of the two inline copies, replaced by the shared helper. This
+    // one had no live defect: PRICE_PATTERN already accepted both separators and
+    // gated the parse, so the `.replace(',', '.')` could not truncate. It is
+    // replaced anyway, because three implementations is how the next one
+    // diverges — and the one that diverged was the primary amount input.
+    const parsedPrice = parseDecimalInput(price);
     if (!trimmedName || trimmedName.length > 100) {
       setNameError(t('invalidName'));
       return;
     }
     if (
       !PRICE_PATTERN.test(price.trim()) ||
-      isNaN(parsedPrice) ||
+      parsedPrice === null ||
       parsedPrice <= 0 ||
       parsedPrice > 9_999_999_999.99 // mirror the server cap so the field-level hint shows
     ) {

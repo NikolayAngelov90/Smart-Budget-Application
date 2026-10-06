@@ -77,6 +77,7 @@ import { useSmartNudge } from '@/lib/hooks/useSmartNudge';
 import { SmartNudge } from '@/components/ai/SmartNudge';
 import { getEnabledCurrencies } from '@/lib/config/currencies';
 import { triggerHaptic } from '@/lib/utils/haptic';
+import { parseDecimalInput } from '@/lib/utils/parseDecimalInput';
 import { localDayKey } from '@/lib/ai/streakEngine';
 import { useAchievementToast } from '@/lib/hooks/useAchievementToast';
 import type { AchievementKey, NudgePayload } from '@/types/database.types';
@@ -102,14 +103,20 @@ const transactionSchema = z.object({
     .min(1, 'Amount is required')
     .refine(
       (val) => {
-        const num = parseFloat(val);
-        return !isNaN(num) && num > 0;
+        // parseDecimalInput, not parseFloat. A bg-locale iPhone keypad emits ','
+        // for the decimal key and `parseFloat("12,50")` is 12, so this check
+        // passed while the amount was ALREADY wrong — it never saw the defect.
+        const num = parseDecimalInput(val);
+        return num !== null && num > 0;
       },
       { message: 'Amount must be a positive number' }
     )
     .refine(
       (val) => {
-        const decimals = val.split('.')[1];
+        // EITHER separator. Splitting on '.' alone meant "12,505" had no
+        // fractional part as far as this rule was concerned, so the 2-decimal
+        // limit silently did not apply to comma input at all.
+        const decimals = val.split(/[.,]/).slice(1).pop();
         return !decimals || decimals.length <= 2;
       },
       { message: 'Amount can have maximum 2 decimal places' }
@@ -256,8 +263,8 @@ export default function TransactionEntryModal({
   // Auto-format amount to 2 decimal places on blur
   const handleAmountBlur = () => {
     if (amountValue) {
-      const parsed = parseFloat(amountValue);
-      if (!isNaN(parsed)) {
+      const parsed = parseDecimalInput(amountValue);
+      if (parsed !== null) {
         setValue('amount', parsed.toFixed(2), { shouldValidate: true });
       }
     }
@@ -402,7 +409,7 @@ export default function TransactionEntryModal({
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            amount: parseFloat(data.amount),
+            amount: parseDecimalInput(data.amount),
             type: data.type,
             category_id: data.category_id,
             date: data.date,
@@ -417,7 +424,7 @@ export default function TransactionEntryModal({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            amount: parseFloat(data.amount),
+            amount: parseDecimalInput(data.amount),
             type: data.type,
             category_id: data.category_id,
             date: data.date,
@@ -535,7 +542,13 @@ export default function TransactionEntryModal({
               id="amount"
               type="text"
               inputMode="decimal"
-              pattern="^\d+(\.\d{1,2})?$"
+              // Accepts BOTH separators. `^\d+(\.\d{1,2})?$` marked the field invalid
+              // the instant a comma was typed — the one decimal key a bg-locale keypad
+              // offers. Kept rather than dropped so the mobile keyboard stays numeric,
+              // and deliberately LOOSER than the zod schema: this attribute's job is the
+              // keyboard, zod owns correctness. One source of truth for validity, one
+              // for input mode.
+              pattern="^\d+([.,]\d{1,2})?$"
               placeholder="0.00"
               aria-label={t('amount')}
               autoComplete="off"

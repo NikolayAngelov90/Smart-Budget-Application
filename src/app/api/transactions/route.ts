@@ -160,9 +160,17 @@ export async function GET(request: NextRequest) {
     if (searchQuery) {
       const sanitized = sanitizeSearchQuery(searchQuery);
       if (sanitized) {
-        // Search in notes field (case-insensitive) and by exact amount
-        const numericAmount = parseFloat(searchQuery);
-        const amountFilter = !isNaN(numericAmount) ? `,amount.eq.${numericAmount}` : '';
+        // Search in notes field (case-insensitive) and by exact amount.
+        //
+        // parseDecimalInput, not parseFloat. This is a SEARCH query rather than a
+        // stored amount, and it was included in the comma fix deliberately
+        // because both of parseFloat's failures are user-visible here: searching
+        // "12,50" on a bg-locale keypad filtered on amount 12 and returned the
+        // wrong rows, and "12abc" parsed to 12 and built a nonsensical exact-
+        // amount filter. `null` means "not an amount", which is the right answer
+        // for text.
+        const numericAmount = parseDecimalInput(searchQuery);
+        const amountFilter = numericAmount !== null ? `,amount.eq.${numericAmount}` : '';
         query = query.or(`notes.ilike.%${sanitized}%${amountFilter}`);
       }
     }
@@ -186,7 +194,10 @@ export async function GET(request: NextRequest) {
     // If search query exists and includes text (not just numbers),
     // filter by category name as well (client-side)
     let filteredTransactions = transactions || [];
-    if (searchQuery && isNaN(parseFloat(searchQuery))) {
+    // Text search (category name) applies when the query is NOT an amount.
+    // parseFloat said "12abc" was 12, so an obviously textual query skipped
+    // category filtering entirely.
+    if (searchQuery && parseDecimalInput(searchQuery) === null) {
       filteredTransactions = filteredTransactions.filter((transaction) => {
         const category = transaction.category as { name?: string } | null;
         const categoryName = category?.name?.toLowerCase() || '';
@@ -564,6 +575,7 @@ import {
   getLatestChallenge,
 } from '@/lib/services/comebackService';
 import type { AchievementKey, StreakState } from '@/types/database.types';
+import { parseDecimalInput } from '@/lib/utils/parseDecimalInput';
 
 /**
  * Story 15.3: fetches the achievement-evaluation prerequisites (unlocked keys

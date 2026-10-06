@@ -39,6 +39,26 @@
     },
     {
       "files": [
+        "src/components/**/*.tsx",
+        "src/components/**/*.ts"
+      ],
+      "excludedFiles": [
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.tsx"
+      ],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "CallExpression[callee.name='parseFloat']",
+            "message": "Bare parseFloat on user input truncates silently: parseFloat(\"12,50\") is 12 (a bg-locale keypad's decimal key is a COMMA) and parseFloat(\"12abc\") is 12. Use parseDecimalInput from '@/lib/utils/parseDecimalInput', which returns null instead of a wrong number. Scoped to src/components because that is where user input is read; if the value is not user input, disable this rule on the line and say why."
+          }
+        ]
+      }
+    },
+    {
+      "files": [
         "src/app/api/**/*.ts",
         "src/lib/services/**/*.ts",
         "src/lib/ai/**/*.ts"
