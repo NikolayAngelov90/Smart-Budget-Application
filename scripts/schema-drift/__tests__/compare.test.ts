@@ -598,12 +598,16 @@ describe('schema drift check', () => {
     expect(counted.length).toBe(7);
 
     for (const [name, kind] of counted) {
-      const n = rows.filter((l) => l.startsWith(`${kind}	`)).length;
+      // `floors[name]` is `number | undefined` under noUncheckedIndexedAccess.
+      // `counted` already established it is a number, but a filter does not
+      // narrow the type, so it is read once into a local.
+      const floor = floors[name] as number;
+      const n = rows.filter((l) => l.startsWith(`${kind}\t`)).length;
       expect(n).toBeGreaterThan(0);
       // eslint-disable-next-line jest/no-conditional-in-test
-      if (n < floors[name]) {
+      if (n < floor) {
         throw new Error(
-          `baseline() has ${n} ${kind} rows but the floor is ${floors[name]}: ` +
+          `baseline() has ${n} ${kind} rows but the floor is ${floor}: ` +
             'every drift test in this file is now testing the floors instead.'
         );
       }
