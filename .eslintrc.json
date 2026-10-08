@@ -37,6 +37,29 @@
         ]
       }
     },
+    // ===================================================================
+    // COUNTING A HAZARD IS NOT PROTECTION FROM IT.
+    //
+    // Knowing a class does not prevent instances of it, and the only thing that
+    // has ever held is enforcement. This rule is what would have caught the
+    // comma-decimal data loss; a comment is what did not. The fix already
+    // existed inline in BudgetEditor and WishlistSection, with its reasoning
+    // written out, and the PRIMARY amount input never received it.
+    //
+    // The evidence is from the same day this rule was written, twice over:
+    //
+    //  - A metacharacter hazard in `jest -t` patterns was MEASURED at 14% of
+    //    test names. Hours later the grep scoping this very audit filtered on
+    //    `* ` and so hid MilestoneOverlay's parseFloat — the same family, in
+    //    the measurement used to decide what to fix. The count did not protect
+    //    the next use.
+    //
+    //  - The positional `eslint-disable-next-line` trap was a documented lesson
+    //    and was walked into anyway, in this pass, on this rule's own exemption.
+    //
+    // So the rule is the artifact, not this comment. If a new input site needs
+    // to read a number, it fails lint until it uses parseDecimalInput.
+    // ===================================================================
     {
       "files": [
         "src/components/**/*.tsx",
