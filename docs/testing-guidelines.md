@@ -936,6 +936,7 @@ with zero NOT MEASURED results.
 | `OfflineBanner.test.tsx` | **3 of 6** | render before mock, rescued by a leak | new |
 | `insightService.generationMarker.test.ts` | 0 of 8 | unconsumed `...Once` queue | **REPEAT** of exchangeRateService |
 | `GoalCard.test.tsx` | **1 of 15** | `next/dynamic` component queried synchronously | new |
+| `generate-insights.test.ts` (cron) | **7 of 7 — and that is the finding** | persistent implementation after `clearAllMocks`, over a test that establishes nothing | **REPEAT** of exchangeRateService |
 
 Two of the earlier figures — exchangeRateService and generationMarker — were
 originally reached *vacuously*, because their names contain `(same currency)` and
@@ -952,12 +953,23 @@ moment causes start repeating:
 - once mechanisms **repeat**, the value per diagnosis falls and a batch fix
   becomes right for the repeating class.
 
-One repeat so far, in six files. The `...Once`-queue class is the one to watch,
-and unlike the others **it is greppable**: an unconsumed `mockResolvedValueOnce`
-or `mockRejectedValueOnce` in a test that short-circuits before consuming it. A
-third instance makes it a search-and-sweep rather than a seed-and-diagnose.
+**Two repeats in seven files, and both trace to the same file.**
+`exchangeRateService` had *two* mechanisms — an unconsumed `...Once` queue and a
+persistent implementation — and each has since recurred once:
 
-One file to go: `generate-insights` cron.
+| class | occurrences | greppable? |
+| --- | --- | --- |
+| unconsumed `...Once` queue | exchangeRateService, `insightService.generationMarker` | **yes** — a `mockResolvedValueOnce` / `mockRejectedValueOnce` in a test that short-circuits before consuming it |
+| persistent implementation after `clearAllMocks` | exchangeRateService, `generate-insights` cron | **partly** — `mockResolvedValue`/`mockImplementation` inside an `it(` in a file whose `beforeEach` calls only `clearAllMocks`, with no restoration |
+
+A third instance of either makes it a search-and-sweep rather than a
+seed-and-diagnose. Neither has reached three.
+
+**The seven are done.** What they do *not* establish is that they are the whole
+population — see "The size of this item is NOT KNOWN" in
+`_bmad-output/implementation-artifacts/deferred-work.md`. The next measurement is
+the per-file `--randomize` sample, and the cron file below is the direct argument
+for running it.
 
 ### The determinant is not the mechanism — both earlier rules here were wrong
 
@@ -996,6 +1008,58 @@ All five diagnosed suites fall out of this:
 follow the setup that act depends on, *within this test*? If an act depends on
 setup the test does not perform, it is relying on a default or on a neighbour —
 and only one of those is stable.
+
+#### A THIRD ROW, found by the cron file — and this section has now been wrong three times
+
+The two-row table above is incomplete, and `generate-insights` is the case it
+cannot classify. `should process users if 1st of month` established nothing and
+the default satisfied it, which by the table makes it the `useAppearance` row:
+passes alone, fine. It passed alone — **and failed on three of eight randomized
+seeds.** The table was missing a third input.
+
+**The unified statement: a test is order-dependent exactly when something
+outside it can change what it relies on.** Whether the symptom is *fails alone*
+or *fails in some orders* then falls out of two further facts:
+
+| establishes what it relies on? | default satisfies it? | does a neighbour overwrite the default? | symptom | instance |
+| --- | --- | --- | --- | --- |
+| **yes** | — | yes | **poisoned**: passes alone, fails in some orders | `exchangeRateService`, `generationMarker` |
+| **yes** | — | no | immune | the goal |
+| no | **no** | — | **unusable alone**; passes only when a neighbour happens to supply it | `OfflineBanner`, `BalanceFlowHero`, `GoalCard` |
+| no | **yes** | no | passes alone AND in every order — a false green **waiting** for a neighbour | `useAppearance` (pure) |
+| no | **yes** | **yes** | passes alone, **fails in some orders** | **`generate-insights` cron** |
+
+**WHY THE LAST ROW MATTERS MORE THAN THE FIX.** Neither instrument used all week
+can see it:
+
+- the file run **in declaration order** is green, because the victim is declared
+  before the tests that overwrite the default;
+- the **usable-alone** check is green, and *correctly* green — the test does pass
+  by itself;
+- the **full-suite `--randomize` sweep** never surfaced it either, in fifteen
+  seeds, because whole-file ordering is coarser than within-file ordering.
+
+Only **per-file `--randomize`** finds it. That is one concrete suite that three
+measurements called clean and a fourth called broken, which is the argument for
+sampling with the fourth rather than concluding from the first three.
+
+#### A guard no mutation can redden should be made detectable or deleted
+
+Fixing the cron file produced two candidate guards, and only one of them was
+real. Deleting the `beforeEach` restoration of the default implementation came
+back **green** — in declaration order and across eight seeds — because by then
+every Supabase-touching test established its own client. So the restoration line
+was protecting a test that does not exist yet.
+
+That is a defensible thing to keep and an indefensible thing to keep *silently*:
+an assertion nothing can falsify is indistinguishable from one that has stopped
+working, which is the whole lesson of the mutation-testing rule above. So the
+line got a test of its own — one that sets up nothing and asserts it is handed
+the *shared* default client. With that test present, deleting the line reddens on
+seven of eight seeds. The guard and the guard's guard are now both falsifiable.
+
+**The general rule: if no mutation reddens it, it is not a guard yet. Either give
+it a test that can fail or take it out — do not leave it in as reassurance.**
 
 ### The mechanisms, for reference
 
