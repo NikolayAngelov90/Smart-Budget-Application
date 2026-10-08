@@ -62,7 +62,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -71,8 +71,14 @@ const SCRIPT = join(process.cwd(), 'scripts', 'schema-drift', 'compare.mjs');
 /**
  * A catalog large enough to clear the allowlist's non-vacuity floors, so a test
  * about DRIFT is never accidentally a test about the floors.
- * Floors: tables 20, columns 180, policies 60, functions 20, triggers 10,
- *         TGRANT 300, CGRANT 1200.
+ *
+ * The floor VALUES are deliberately not restated here. They were, and the
+ * restatement went stale twice without anything noticing: it still said
+ * `CGRANT 1200` long after that floor was corrected to 8 (it had been derived
+ * from a different query), and it said `TGRANT 300` after the anon-write revoke
+ * took the real count to 293 and the floor to 200. A comment asserting a number
+ * is not a check on that number. "baseline() clears EVERY non-vacuity floor"
+ * below reads the allowlist and asserts it instead.
  */
 function baseline(): string[] {
   const lines: string[] = [];
@@ -561,6 +567,51 @@ describe('schema drift check', () => {
     // is pending, which passes.
     expect(code).toBe(1);
     expect(out).not.toContain('DRIFT CHECK PASSED');
+  });
+
+  it('baseline() clears EVERY non-vacuity floor, read from the allowlist', () => {
+    // WHAT THIS PROTECTS. Every other test in this file uses `baseline()` and is
+    // about DRIFT. If the fixture ever slipped below a floor, all of them would
+    // fail on the floors instead and would still be green on the wrong grounds
+    // for the opposite reason — or, if a floor were LOWERED, a below-floor test
+    // would quietly stop being below floor. Both directions are covered by
+    // reading the real floors rather than a copy of them.
+    const allowlist = JSON.parse(
+      readFileSync(join(process.cwd(), 'supabase', 'schema-drift-allowlist.json'), 'utf8')
+    );
+    const floors: Record<string, number> = allowlist.non_vacuity_floors;
+    const kinds: Record<string, string> = {
+      tables: 'TABLE',
+      columns: 'COLUMN',
+      policies: 'POLICY',
+      functions: 'FUNCTION',
+      triggers: 'TRIGGER',
+      table_grant_entries: 'TGRANT',
+      column_grant_entries: 'CGRANT',
+    };
+
+    const rows = baseline();
+    // Non-vacuity of this test itself: if the mapping stopped matching the
+    // comparator's FLOOR_KINDS, every count would be 0 and the assertions would
+    // be about nothing.
+    const counted = Object.entries(kinds).filter(([name]) => typeof floors[name] === 'number');
+    expect(counted.length).toBe(7);
+
+    for (const [name, kind] of counted) {
+      // `floors[name]` is `number | undefined` under noUncheckedIndexedAccess.
+      // `counted` already established it is a number, but a filter does not
+      // narrow the type, so it is read once into a local.
+      const floor = floors[name] as number;
+      const n = rows.filter((l) => l.startsWith(`${kind}\t`)).length;
+      expect(n).toBeGreaterThan(0);
+      // eslint-disable-next-line jest/no-conditional-in-test
+      if (n < floor) {
+        throw new Error(
+          `baseline() has ${n} ${kind} rows but the floor is ${floor}: ` +
+            'every drift test in this file is now testing the floors instead.'
+        );
+      }
+    }
   });
 
   it('HARD FAILS when BOTH catalogs are empty', () => {
