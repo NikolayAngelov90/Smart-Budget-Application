@@ -77,8 +77,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const updateData: Record<string, unknown> = {};
 
     if (body.amount !== undefined) {
-      if (body.amount <= 0) {
+      // `null <= 0` is true in JavaScript, so this also rejects a null amount —
+      // which the client's parseDecimalInput can in principle return.
+      if (body.amount === null || body.amount <= 0) {
         return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 });
+      }
+      // The 2-decimal limit, which nothing enforced on the server. See the POST
+      // route for why the guard is a toFixed(2) round trip rather than an
+      // `amount * 100` comparison, and why fixing the comma parse is what made
+      // this reachable in the first place.
+      if (Number(body.amount.toFixed(2)) !== body.amount) {
+        return NextResponse.json(
+          { error: 'Amount can have maximum 2 decimal places' },
+          { status: 400 }
+        );
       }
       updateData.amount = body.amount;
     }
