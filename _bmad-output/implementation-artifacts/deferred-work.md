@@ -501,3 +501,47 @@ it. The honest statement is: **we do not know the size of this item.** The next
 measurement should be the per-file `--randomize` sample (twenty files, five
 seeds, chosen by something other than convenience), and until then no number here
 should be quoted as the population.
+
+---
+
+## Deferred: locale-aware DISPLAY of amounts (2026-10-08) — DECIDED, not open
+
+**Decision: DEFER.** Niki's call, recorded here so the estimate is not
+re-derived the next time someone notices a dot in a Bulgarian UI.
+
+**What was fixed instead, and why that was the whole of the harm.** A bg-locale
+iPhone keypad's decimal key is a COMMA, and `parseFloat("12,50")` is `12` — no
+NaN, no throw, and `.toFixed(2)` then renders `"12.00"`. A user entered
+twelve-fifty and the database stored twelve. That is now fixed at every input
+site by `parseDecimalInput` (`src/lib/utils/parseDecimalInput.ts`), with an
+ESLint rule behind it. **The silent data loss is gone.**
+
+**What is deferred is the other half: OUTPUT.** The app still renders amounts
+with a dot — `"12.50"` — to a user whose keyboard types a comma. So the entry
+field accepts `12,50` and the ledger shows `12.50`. That is an inconsistency, not
+a loss.
+
+**Estimate: a day's work, and its own PR.** It is not a one-line change:
+
+- every `.toFixed(2)` and every hand-built currency string becomes one
+  locale-aware formatter (`Intl.NumberFormat` against the `next-intl` locale);
+- the blur handler in `TransactionEntryModal` reformats the field itself, so it
+  has to agree with the formatter or the field will fight the user as they type;
+- CSV export is the opposite requirement — a comma decimal inside a
+  comma-separated file needs the delimiter or the quoting decided deliberately;
+- chart axis labels, the goal/wishlist progress strings and the household
+  allowance cards each format independently today;
+- the snapshot and text-matching tests assert dotted strings, so the test suite
+  moves with it.
+
+**The stated risk, which is the actual reason to wait:** a half-migrated state is
+WORSE than consistent dots. If the transaction list localises and the dashboard
+hero does not, the same number appears two ways on one screen, and a user cannot
+tell whether they are looking at a formatting difference or a different figure.
+That argues for one deliberate pass, not an opportunistic one riding on a bug fix.
+
+**Why it is not urgent:** three users, and no correctness consequence — polish.
+
+**Re-open it when** either the app takes a user outside the two current locales,
+or someone is already touching the formatting layer for another reason, so the
+all-at-once pass is not a standalone cost.

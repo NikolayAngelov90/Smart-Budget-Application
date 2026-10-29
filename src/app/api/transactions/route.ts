@@ -249,9 +249,41 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body: CreateTransactionRequest = await request.json();
 
-    // Validate required fields
+    // Validate required fields. `!body.amount` also catches null, which the
+    // client's `parseDecimalInput` can in principle return — it cannot in
+    // practice, because the form's zod refine uses the same function and so
+    // agrees with it, but JSON.stringify accepts null silently and TypeScript
+    // does not object, so the guard is here rather than assumed.
     if (!body.amount || body.amount <= 0) {
       return NextResponse.json({ error: 'Amount must be a positive number' }, { status: 400 });
+    }
+
+    // THE 2-DECIMAL LIMIT, WHICH THIS FILE'S OWN DOC COMMENT CLAIMED AND NOTHING
+    // ENFORCED. It lived only in the entry modal's zod refine — and that refine
+    // split on '.' alone, so it did not apply to comma input at all. For a
+    // bg-locale keypad the rule was absent on both sides.
+    //
+    // It was unreachable before: `parseFloat("12,505")` truncated to 12 long
+    // before any decimal rule could matter. Fixing the parse is what made this
+    // live, which is the same shape as the refine itself.
+    //
+    // The database does not catch it either — `amount DECIMAL(12, 2)` ROUNDS to
+    // two places rather than rejecting, so 12.505 is stored as a different
+    // number than the caller sent, with no error.
+    // A toFixed(2) ROUND TRIP, not `amount * 100 === Math.round(amount * 100)`.
+    // That multiplication is itself a float trap and the first version of this
+    // guard had it: 0.07 * 100 is 7.000000000000001 and 19.99 * 100 is
+    // 1998.9999999999998, so it rejected ordinary amounts. An absolute epsilon
+    // fails too, at magnitude — 1234567.89 * 100 is 123456788.99999999, off by
+    // more than any epsilon small enough to catch 12.505.
+    //
+    // Verified against 12.5, 0.07, 0.29, 19.99, 8.11, 1234567.89, 1000 and 12
+    // (all accepted) and 1.005, 12.505, 1e-7 (all rejected).
+    if (Number(body.amount.toFixed(2)) !== body.amount) {
+      return NextResponse.json(
+        { error: 'Amount can have maximum 2 decimal places' },
+        { status: 400 }
+      );
     }
 
     if (!body.type || !['income', 'expense'].includes(body.type)) {

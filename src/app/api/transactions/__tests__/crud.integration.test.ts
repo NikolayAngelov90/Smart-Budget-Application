@@ -157,6 +157,52 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
       expect(response.status).toBe(401);
     });
 
+    // THE 2-DECIMAL LIMIT, which this route's doc comment claimed and nothing
+    // enforced. It lived only in the entry modal's zod refine, and that refine
+    // split on '.' alone so it did not apply to comma input at all. It was
+    // unreachable before the comma fix, because parseFloat("12,505") truncated to
+    // 12 long before any decimal rule could matter — the broken parse was masking
+    // its own downstream validation.
+    //
+    // `DECIMAL(12, 2)` does not catch it either: Postgres ROUNDS to two places
+    // rather than rejecting, so the stored number differs from the one sent with
+    // no error raised.
+    test.each([1.005, 12.505, 0.0000001])(
+      'returns 400 for %p (more than 2 decimals)',
+      async (amount) => {
+        const request = createMockRequest('http://localhost:3000/api/transactions', 'POST', {
+          ...validBody,
+          amount,
+        });
+        const response = await POST(request);
+        const data = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(data.error).toMatch(/2 decimal places/);
+      }
+    );
+
+    // THE FLOAT TRAP, and the first version of that guard fell into it. Written as
+    // `amount * 100 === Math.round(amount * 100)` it rejected ordinary amounts:
+    // 0.07 * 100 is 7.000000000000001 and 19.99 * 100 is 1998.9999999999998. An
+    // absolute epsilon fails at magnitude instead — 1234567.89 * 100 is
+    // 123456788.99999999. These are the values that catch a regression to either
+    // form.
+    test.each([12.5, 0.07, 0.29, 19.99, 8.11, 1234567.89, 1000, 12])(
+      'accepts %p, which a naive *100 check rejects',
+      async (amount) => {
+        mockQuery.single.mockResolvedValue({ data: mockTransaction, error: null });
+
+        const request = createMockRequest('http://localhost:3000/api/transactions', 'POST', {
+          ...validBody,
+          amount,
+        });
+        const response = await POST(request);
+
+        expect(response.status).toBe(201);
+      }
+    );
+
     test('returns 400 for missing required amount field', async () => {
       const request = createMockRequest('http://localhost:3000/api/transactions', 'POST', {
         type: 'expense',
