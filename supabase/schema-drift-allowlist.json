@@ -87,7 +87,7 @@
     "policies": 60,
     "functions": 20,
     "triggers": 10,
-    "table_grant_entries": 200,
+    "table_grant_entries": 99999,
     "column_grant_entries": 8
   },
   "cross_side_agreement": {
