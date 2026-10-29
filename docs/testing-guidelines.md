@@ -936,6 +936,7 @@ with zero NOT MEASURED results.
 | `OfflineBanner.test.tsx` | **3 of 6** | render before mock, rescued by a leak | new |
 | `insightService.generationMarker.test.ts` | 0 of 8 | unconsumed `...Once` queue | **REPEAT** of exchangeRateService |
 | `GoalCard.test.tsx` | **1 of 15** | `next/dynamic` component queried synchronously | new |
+| `generate-insights.test.ts` (cron) | **7 of 7 — and that is the finding** | persistent implementation after `clearAllMocks`, over a test that establishes nothing | **REPEAT** of exchangeRateService |
 
 Two of the earlier figures — exchangeRateService and generationMarker — were
 originally reached *vacuously*, because their names contain `(same currency)` and
@@ -952,50 +953,138 @@ moment causes start repeating:
 - once mechanisms **repeat**, the value per diagnosis falls and a batch fix
   becomes right for the repeating class.
 
-One repeat so far, in six files. The `...Once`-queue class is the one to watch,
-and unlike the others **it is greppable**: an unconsumed `mockResolvedValueOnce`
-or `mockRejectedValueOnce` in a test that short-circuits before consuming it. A
-third instance makes it a search-and-sweep rather than a seed-and-diagnose.
+**Two repeats in seven files, and both trace to the same file.**
+`exchangeRateService` had *two* mechanisms — an unconsumed `...Once` queue and a
+persistent implementation — and each has since recurred once:
 
-One file to go: `generate-insights` cron.
+| class | occurrences | greppable? |
+| --- | --- | --- |
+| unconsumed `...Once` queue | exchangeRateService, `insightService.generationMarker` | **yes** — a `mockResolvedValueOnce` / `mockRejectedValueOnce` in a test that short-circuits before consuming it |
+| persistent implementation after `clearAllMocks` | exchangeRateService, `generate-insights` cron | **partly** — `mockResolvedValue`/`mockImplementation` inside an `it(` in a file whose `beforeEach` calls only `clearAllMocks`, with no restoration |
 
-### The determinant is not the mechanism — both earlier rules here were wrong
+A third instance of either makes it a search-and-sweep rather than a
+seed-and-diagnose. Neither has reached three.
 
-This section has carried two wrong rules in two days. First: *"only the prototype
-collision produces the unusable-alone symptom; a leaked mock does not prevent
-running a test by itself."* `OfflineBanner` disproved it. Then the correction
-implied a leaked mock *does* produce it — but `exchangeRateService` (21 of 21
-alone) and `OfflineBanner` (3 of 6) have the **same** mechanism and opposite
-profiles, so the mechanism is not the determinant either.
+**The seven are done.** What they do *not* establish is that they are the whole
+population — see "The size of this item is NOT KNOWN" in
+`_bmad-output/implementation-artifacts/deferred-work.md`. The next measurement is
+the per-file `--randomize` sample, and the cron file below is the direct argument
+for running it.
 
-**What separates them is whether the test establishes its own precondition.**
+### The determinant: three inputs, four outcomes — and this section has been wrong three times
 
-| | |
-| --- | --- |
-| **poisoned** | the test establishes its precondition, and something else overrides it |
-| **unusable alone** | the test depends on a precondition it does not establish, **and the default state does not satisfy it** |
+**A model corrected three times by its own data is worth more than one that was
+right first time and untested**, so the wrong versions are kept here rather than
+quietly replaced.
 
-One property, two failure modes. The second clause is load-bearing — without it
-`useAppearance` is misclassified: its pure-function tests depend on
-`sessionPreference` being `null`, which they cannot establish, and they pass
-alone anyway **because `null` is the default**. The precondition is unestablished
-either way; what decides the symptom is whether the default happens to satisfy
-it.
+1. *"Only the prototype collision produces the unusable-alone symptom; a leaked
+   mock does not prevent running a test by itself."* `OfflineBanner` disproved it
+   within a day.
+2. The correction implied a leaked mock **does** produce it — but
+   `exchangeRateService` (21 of 21 alone) and `OfflineBanner` (3 of 6) share the
+   **same** mechanism and have opposite profiles. So the mechanism is not the
+   determinant either, and whether the test establishes its own precondition is.
+3. That gave a two-input table, and `generate-insights` is the case it cannot
+   classify: it established nothing, the default satisfied it, and by the table
+   that was the benign `useAppearance` row — yet it failed on three of eight
+   randomized seeds. A third input was missing.
 
-All five diagnosed suites fall out of this:
+#### The statement
 
-| suite | establishes its precondition? | default satisfies it? | symptom |
+> **A test is order-dependent exactly when something outside it can change what
+> it relies on.**
+
+The *symptom* then follows from two further facts — whether the default satisfies
+it, and whether a neighbour overwrites the default. Three inputs, four outcomes,
+and it covers every case measured:
+
+| establishes what it relies on? | default satisfies it? | neighbour overwrites the default? | outcome |
 | --- | --- | --- | --- |
-| `OfflineBanner` | no — renders before mocking | no — bare `jest.fn()` returns `undefined` | **3 of 6 alone** |
-| `BalanceFlowHero` | no — renders after `userEvent.setup()` has patched `focus` | no — zag then cannot patch | **5 of 10 alone** |
-| `useAppearance` (pure) | no — cannot reach the singleton | **yes** — it starts `null` | 9 of 9 alone |
-| `exchangeRateService` | yes | — | 21 of 21 alone, poisoned |
-| `insightService.generationMarker` | yes | — | 8 of 8 alone, poisoned |
+| **yes** | — | **yes** | **poisoned** — passes alone, fails in some orders |
+| **yes** | — | no | **immune** — the goal |
+| no | **no** | — | **unusable alone** — passes only when a neighbour happens to supply it |
+| no | **yes** | no | **benign for now** — passes alone and in every order, a false green *waiting* for a neighbour |
+| no | **yes** | **yes** | **false green** — passes alone, fails in some orders |
+
+The fourth row is not a fifth outcome: it is the third row's precondition with
+nobody yet exercising it. Written as four outcomes because that is what a reader
+has to act on — and the "benign for now" row is the one to treat as debt rather
+than as fine.
+
+All seven diagnosed suites fall out of it:
+
+| suite | establishes it? | default satisfies it? | neighbour overwrites? | symptom |
+| --- | --- | --- | --- | --- |
+| `OfflineBanner` | no — renders before mocking | no — bare `jest.fn()` returns `undefined` | — | **3 of 6 alone** |
+| `BalanceFlowHero` | no — renders after `userEvent.setup()` patched `focus` | no — zag then cannot patch | — | **5 of 10 alone** |
+| `GoalCard` | no — queries a `next/dynamic` child synchronously | no — needs a warm module cache | — | **1 of 15 alone** |
+| `useAppearance` (pure) | no — cannot reach the singleton | **yes** — it starts `null` | **no** | 9 of 9 alone, benign for now |
+| `generate-insights` (cron) | no — sets up no Supabase mock | **yes** — the global `createClient` default | **YES** | **7 of 7 alone, RED on 3 of 8 seeds** |
+| `exchangeRateService` | yes | — | yes | 21 of 21 alone, poisoned |
+| `insightService.generationMarker` | yes | — | yes | 8 of 8 alone, poisoned |
 
 **Checkable while writing, which is the point:** does every act in this test
 follow the setup that act depends on, *within this test*? If an act depends on
 setup the test does not perform, it is relying on a default or on a neighbour —
-and only one of those is stable.
+and only one of those is stable. The three-input table is only for explaining a
+failure after the fact; the one-line question is what prevents it.
+
+#### WHY THE LAST ROW MATTERS — and a claim that was WRONG, withdrawn here
+
+Two of the three instruments genuinely miss it:
+
+- the file run **in declaration order** is green, because the victim is declared
+  before the tests that overwrite the default;
+- the **usable-alone** check is green, and *correctly* green — the test does pass
+  by itself.
+
+**The third claim was false and is withdrawn.** It said the full-suite
+`--randomize` sweep could not see this row, "because whole-file ordering is
+coarser than within-file ordering", and concluded that only per-file
+`--randomize` finds it. Measured directly — the pre-fix cron file restored into
+the working tree, full suite, same seeds that fail per-file:
+
+| seed | full-suite result |
+| --- | --- |
+| 3 | **1 failed** — names `should process users if 1st of month` |
+| 4 | **2 failed** — the cron test and the composer suite |
+| 5 | **1 failed** — names the cron test |
+
+`--randomize` shuffles tests *within* each file, so a full-suite run shuffles the
+cron file too. The explanation was invented, and the conclusion drawn from it
+does not hold: **per-file `--randomize` has no demonstrated unique catch.**
+
+**What the cron file actually demonstrates is worse.** It *should* have appeared
+in the earlier fifteen-seed sweep and did not. The extractor's
+truncate-at-the-first-parenthesis bug, which is how `insightService`
+`generationMarker` was hidden, does not explain this one — the cron test's name
+and describe path contain no parentheses. And the sweep **left no artifact**:
+there is no script in the repo, it was ad-hoc shell, so the "union of 6" figure
+cannot be reproduced or audited and its absences cannot be explained.
+
+So the honest reading is not "build a finer instrument". It is: **the instrument
+already in use was never trustworthy as run, and the first thing to build is a
+sweep that leaves a reproducible artifact** — the seed, the command, and the
+per-test outcome, written to a file a later run can be diffed against. Any
+population estimate before that is a number without a method.
+
+#### A guard no mutation can redden should be made detectable or deleted
+
+Fixing the cron file produced two candidate guards, and only one of them was
+real. Deleting the `beforeEach` restoration of the default implementation came
+back **green** — in declaration order and across eight seeds — because by then
+every Supabase-touching test established its own client. So the restoration line
+was protecting a test that does not exist yet.
+
+That is a defensible thing to keep and an indefensible thing to keep *silently*:
+an assertion nothing can falsify is indistinguishable from one that has stopped
+working, which is the whole lesson of the mutation-testing rule above. So the
+line got a test of its own — one that sets up nothing and asserts it is handed
+the *shared* default client. With that test present, deleting the line reddens on
+seven of eight seeds. The guard and the guard's guard are now both falsifiable.
+
+**The general rule: if no mutation reddens it, it is not a guard yet. Either give
+it a test that can fail or take it out — do not leave it in as reassurance.**
 
 ### The mechanisms, for reference
 
