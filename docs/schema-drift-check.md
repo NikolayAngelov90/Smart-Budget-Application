@@ -225,6 +225,61 @@ check entirely:
 - **A guard is not done until it has been mutation-tested.** A guard with no
   recorded red state is not evidence that anything is checked — four of the six
   above were guards that could not fail.
+- **VERIFY THAT THE STATE CHANGED — not that the command was issued, and not
+  its exit code alone.** This is the general form of the verify-by-effect rule
+  this file already applies to deploys and migrations, promoted because it keeps
+  biting somewhere else: a command whose purpose is to change state is not
+  evidence that state changed.
+
+  Three SILENT NON-EXECUTIONS in one session, all of them quoting or parsing,
+  and in all three the non-execution produced no visible complaint:
+
+  | what was run | what happened |
+  | --- | --- |
+  | `git revert --no-edit -q` | exit 129 on a flag that does not exist |
+  | `subprocess.run(['bash','-c',…])` | `bash` never resolved; every case exited 1 at launch, so four mutations "confirmed" while testing nothing |
+  | a heredoc carrying `git stash` | failed to PARSE, so bash ran **none** of the command — and the following `git add -A` then committed a tree believed to be clean |
+
+  Two of the three returned a status nobody read, which is the point: the exit
+  code is not the effect. The third was caught by noticing the working tree was
+  not clean — that is the effect check, and it should be the habit rather than
+  the recovery. After a command meant to change something, look at the thing.
+
+- **TESTABILITY IS A PROPERTY TO DESIGN FOR, NOT A CONSEQUENCE OF GOOD DESIGN.**
+  *A mechanism verified only where it is hardest to verify is barely verified.*
+
+  The scheduled-failure watchdog shelled out to `jq`, which is present on
+  GitHub's runners and not on the machine it was written on — so it could only
+  be exercised by pushing it and waiting for a nightly. Removing that dependency
+  (`gh` embeds jq as `--jq`) was not tidying: it made the action runnable
+  locally, and running it locally is what found the other two defects in it.
+
+  So when building the next mechanism, ask whether exercising it needs
+  conditions you can produce on demand. If it does not, it will be exercised
+  rarely — and rarely-exercised is where every finding in this session has
+  lived.
+
+- **A TOOL CAN CONTAIN THE DEFECT IT WAS BUILT TO CATCH, and this is now the
+  third occurrence.** The drift check itself held six defects, four of them
+  guards that could not fail. The mutation harness reported four confirmations
+  while testing nothing. And the watchdog, built to stop twenty-one notifications
+  accumulating, would have OPENED A SECOND ISSUE: a freshly created issue is not
+  returned by a label-filtered list for a few seconds, and acting on that empty
+  answer creates a duplicate — the accumulation failure, rebuilt inside the
+  mechanism preventing it.
+
+  The remedy is scoped deliberately: retry **only** on the path where an empty
+  answer is acted on destructively. Retrying everywhere would mask genuine
+  empties, which is a different defect of the same shape.
+
+- **WHEN A FILE MUST CONTAIN SPECIFIC BYTES, VERIFY THE BYTES RATHER THAN THE
+  RENDERING.** An edit intended to write a literal `U+25CF` into a workflow
+  landed as the six characters backslash-u-2-5-c-f instead, which in an ERE
+  matches nothing. The displayed file looked correct. It was caught by auditing
+  the file's code points, and the detail worth remembering is that the same
+  transcoding corrupted the COMMENT EXPLAINING THE TRAP, two lines above the
+  pattern it was warning about.
+
 - **A MUTATION RESULT IS A DELTA FROM A GREEN BASELINE.** Red alone is not
   evidence; it may be the harness reporting its own plumbing. This is part of
   the rule above and not an addendum to it, because the rule as previously

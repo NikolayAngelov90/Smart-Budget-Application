@@ -21,11 +21,17 @@ name: Test Order
 # that only manifests in some OTHER order. Finding those needs a random seed,
 # and a random seed needs somewhere for its failures to be heard.
 #
-# >>> DO NOT ADD A `schedule:` TRIGGER TO THIS FILE WITHOUT A NOTIFICATION. <<<
+# THE NIGHTLY ARM IS THE SECOND JOB BELOW, and it exists only because the
+# mechanism that makes a scheduled failure audible now exists too. The standing
+# rule that used to live here - do not add a `schedule:` trigger without a
+# notification - still holds for any FUTURE job in this file.
+#
 # The schema-drift check failed on 21 consecutive nights (8-28 October 2026) and
-# nobody saw a single one of them, because a red X on a scheduled workflow is an
-# alarm with nobody contracted to hear it. The nightly random-seed arm belongs
-# here only once that mechanism exists. See docs/schema-drift-check.md.
+# the whole three weeks passed unnoticed. The first diagnosis of that was wrong
+# in a way worth carrying: all 21 failure emails ARRIVED. The channel was never
+# missing, the SIGNAL was - twenty-one transient notifications say "a run
+# failed" twenty-one times and never once say "this has been broken for three
+# weeks". See .github/actions/scheduled-failure-watchdog.
 #
 # THE SEED: 20261029, the date it was pinned. It is not magic and it is not
 # special - it is one order, held still. Chosen after the full suite was
@@ -51,14 +57,27 @@ on:
     branches: [main, develop]
   push:
     branches: [main]
+  schedule:
+    # 05:00 UTC, an hour BEFORE the schema-drift run at 06:00, so the two
+    # scheduled jobs do not contend for a runner and a slow one cannot delay
+    # the other past its window.
+    - cron: '0 5 * * *'
   workflow_dispatch:
 
+# issues: write is for the nightly arm's watchdog. The blocking job needs only
+# read, but permissions are per-workflow, so it is granted here and used by one
+# job.
 permissions:
   contents: read
+  issues: write
 
 jobs:
   pinned-order:
     name: Pinned test order (seed 20261029)
+    # NOT on the schedule. A pinned order run nightly tells you nothing a PR run
+    # has not already told you - the whole value of the nightly arm is that its
+    # order is DIFFERENT each time.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
 
     steps:
@@ -122,3 +141,131 @@ jobs:
       - name: Assert the run happened, and in the pinned order
         if: always()
         run: bash scripts/ci/assert-test-run.sh jest-run.log 2000 20261029
+
+  # =========================================================================
+  # THE NIGHTLY ARM: A DIFFERENT ORDER EVERY NIGHT, AND AUDIBLE WHEN IT FAILS
+  # =========================================================================
+  # The pinned job above catches a REGRESSION against one order. It cannot find
+  # an order dependency that only manifests in some other order, and seven of
+  # those were found by hand in October. A random seed finds them; the price is
+  # that it is not reproducible from the seed alone, so this job's failure
+  # output always carries the seed and the exact command to replay it.
+  #
+  # WHY THIS IS NOT A BLOCKING CHECK. It runs on the schedule only, so there is
+  # no PR for it to block. Its failures are heard through the watchdog, which is
+  # a persistent issue rather than a transient notification - and that is the
+  # whole reason this arm could not ship with the pinned one.
+  random-order:
+    name: Nightly random test order
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The same anti-vacuity question as the pinned job, minus the seed: a
+      # dropped `--randomize` would make this job run declaration order every
+      # night and report nothing, forever, which is the most expensive possible
+      # version of this failure because nobody is watching it.
+      - name: Verify the order is actually randomized
+        run: |
+          npm run test:order:random -- --showConfig > jest-config.json 2>&1
+          RANDOMIZE=$(grep -oE '"randomize": *(true|false)' jest-config.json | head -1 | grep -oE 'true|false')
+          echo "resolved randomize = ${RANDOMIZE:-ABSENT}"
+          if [ "$RANDOMIZE" != "true" ]; then
+            echo "::error::npm run test:order:random resolves randomize=${RANDOMIZE:-ABSENT}. Without it this job runs declaration order nightly and finds nothing, and nobody is watching it closely enough to notice. Restore --randomize in package.json."
+            exit 1
+          fi
+          echo "ok: randomized"
+
+      - name: Run the suite in a random order
+        id: run
+        run: set -o pipefail && npm run test:order:random 2>&1 | tee jest-run.log
+
+      # No expected seed - that is the point of this arm. Everything else the
+      # script asserts still applies.
+      - name: Assert the run happened
+        if: always()
+        run: bash scripts/ci/assert-test-run.sh jest-run.log 2000
+
+      - name: Describe what failed, for the watchdog
+        id: sig
+        if: always()
+        run: |
+          set -euo pipefail
+
+          SEED=$(grep -E '^Seed:' jest-run.log | tail -1 | grep -oE '\-?[0-9]+' || true)
+          # THE BYTES JEST PRINTS, BUILT IN ASCII. Jest marks a failure with
+          # U+25CF and separates describe levels with U+203A. Two ways of
+          # writing that in a pattern DO NOT WORK here:
+          #
+          #   '\u25cf'  in an ERE is the two characters backslash and u, so it
+          #             matches NOTHING. That is exactly how this repo's
+          #             order-dependence sweep silently lost an entire suite
+          #             for a whole item, and the first draft of this line
+          #             had it.
+          #   grep -oP  with \x{25cf} is unavailable: this runner reports
+          #             "-P supports only unibyte and UTF-8 locales".
+          #
+          # So the bytes are built with ANSI-C quoting, which keeps this file
+          # ASCII while producing the right UTF-8 at runtime.
+          #
+          # PROVED NON-VACUOUS against a REAL failing jest log rather than a
+          # hand-written fixture: a deliberately failing test whose name
+          # carries parentheses - the family that broke the earlier extractor
+          # - produced a failure header that this pattern extracted 1 match
+          # from, while the backslash-u form extracted 0.
+          BULLET=$'\xe2\x97\x8f'
+          ARROW=$'\xe2\x80\xba'
+          FAILING=$(grep -oE "$BULLET .+ $ARROW .+" jest-run.log | sort -u || true)
+
+          # THE SIGNATURE IS THE SET OF FAILING TESTS, NOT THE SEED. A different
+          # seed surfacing the SAME test is the same problem and must keep one
+          # issue; a different TEST is a different problem and must not inherit
+          # a silence granted for the first. The seed changes nightly and would
+          # make every night look like a new cause.
+          if [ -z "$FAILING" ]; then
+            SIG=unclassified
+          else
+            SIG=$(printf '%s' "$FAILING" | sha256sum | cut -c1-12)
+          fi
+          echo "signature=$SIG" >> "$GITHUB_OUTPUT"
+          echo "seed: ${SEED:-unknown}  signature: $SIG"
+
+          {
+            echo 'details<<WATCHDOG_EOF'
+            echo "Seed: ${SEED:-unknown}"
+            echo ''
+            echo 'Reproduce exactly:'
+            echo "  npx jest --randomize --seed=${SEED:-<seed>}"
+            echo ''
+            echo 'Failing:'
+            if [ -n "$FAILING" ]; then printf '%s\n' "$FAILING"; else echo '  (no test names parsed - see the run log)'; fi
+            echo ''
+            grep -E '^Tests:' jest-run.log | tail -1 || true
+            echo 'WATCHDOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Scheduled-failure watchdog
+        if: always()
+        uses: ./.github/actions/scheduled-failure-watchdog
+        with:
+          check-name: Nightly random test order
+          label: watchdog/random-test-order
+          outcome: ${{ job.status }}
+          signature: ${{ steps.sig.outputs.signature }}
+          details: ${{ steps.sig.outputs.details }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          cadence: nights
+          token: ${{ secrets.GITHUB_TOKEN }}
