@@ -1029,20 +1029,44 @@ setup the test does not perform, it is relying on a default or on a neighbour �
 and only one of those is stable. The three-input table is only for explaining a
 failure after the fact; the one-line question is what prevents it.
 
-#### WHY THE LAST ROW MATTERS MORE THAN THE FIX
+#### WHY THE LAST ROW MATTERS — and a claim that was WRONG, withdrawn here
 
-Nothing used all week can see it:
+Two of the three instruments genuinely miss it:
 
 - the file run **in declaration order** is green, because the victim is declared
   before the tests that overwrite the default;
 - the **usable-alone** check is green, and *correctly* green — the test does pass
-  by itself;
-- the **full-suite `--randomize` sweep** never surfaced it either, in fifteen
-  seeds, because whole-file ordering is coarser than within-file ordering.
+  by itself.
 
-Only **per-file `--randomize`** finds it. That is one concrete suite that three
-measurements called clean and a fourth called broken, which is the argument for
-sampling with the fourth rather than concluding from the first three.
+**The third claim was false and is withdrawn.** It said the full-suite
+`--randomize` sweep could not see this row, "because whole-file ordering is
+coarser than within-file ordering", and concluded that only per-file
+`--randomize` finds it. Measured directly — the pre-fix cron file restored into
+the working tree, full suite, same seeds that fail per-file:
+
+| seed | full-suite result |
+| --- | --- |
+| 3 | **1 failed** — names `should process users if 1st of month` |
+| 4 | **2 failed** — the cron test and the composer suite |
+| 5 | **1 failed** — names the cron test |
+
+`--randomize` shuffles tests *within* each file, so a full-suite run shuffles the
+cron file too. The explanation was invented, and the conclusion drawn from it
+does not hold: **per-file `--randomize` has no demonstrated unique catch.**
+
+**What the cron file actually demonstrates is worse.** It *should* have appeared
+in the earlier fifteen-seed sweep and did not. The extractor's
+truncate-at-the-first-parenthesis bug, which is how `insightService`
+`generationMarker` was hidden, does not explain this one — the cron test's name
+and describe path contain no parentheses. And the sweep **left no artifact**:
+there is no script in the repo, it was ad-hoc shell, so the "union of 6" figure
+cannot be reproduced or audited and its absences cannot be explained.
+
+So the honest reading is not "build a finer instrument". It is: **the instrument
+already in use was never trustworthy as run, and the first thing to build is a
+sweep that leaves a reproducible artifact** — the seed, the command, and the
+per-test outcome, written to a file a later run can be diffed against. Any
+population estimate before that is a number without a method.
 
 #### A guard no mutation can redden should be made detectable or deleted
 
