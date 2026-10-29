@@ -295,3 +295,54 @@ disagree with its own data is a second source of truth about one fact.** And a
 *known*-broken instrument is worse than an unknown-broken one: the surprise is
 already spent, so the next wrong reading does not startle anybody — that harness
 was used twice more after it was first seen misreporting.
+
+## THE CHECK WAS DARK FOR 21 DAYS AND NOTHING SAID SO (2026-10-08 to 2026-10-29)
+
+The record, from `gh run list --workflow=schema-drift.yml`:
+
+| date | event | conclusion |
+| --- | --- | --- |
+| 2026-10-07 | schedule | success |
+| 2026-10-08 | push + schedule | **failure** |
+| 2026-10-09 … 2026-10-28 | schedule, one per day | **failure, 20 consecutive days** |
+| 2026-10-29 | push | success |
+
+**21 consecutive scheduled failures.** Every one failed on the same thing: the
+`table_grant_entries` non-vacuity floor was 300, a migration legitimately
+removed 97 grant entries, both catalogs read 293, and the floor refused to
+proceed. The check fired correctly by its own rule and wrongly by its purpose,
+and then kept doing so every night for three weeks.
+
+**What the backlog turned out to be:** nothing. The first working run reported 0
+hard failures, 0 pending, 25 allowlisted modifications all matched, allowlist
+hygiene 5 of 5, and `postgres: match`. No drift accumulated during the blackout.
+
+**That is luck, not a result.** For 21 days any genuine production drift would
+have been invisible, and the thing that made it invisible was not a subtle
+failure — it was a red X on a nightly workflow, 21 times, which nobody was
+contracted to see.
+
+### The gap, and it is not the floor
+
+The floor is fixed (two-part non-vacuity: a low absolute floor for total
+failure, plus cross-side agreement in magnitude for partial truncation — see
+`scripts/schema-drift/compare.mjs`). **The gap that remains is that a scheduled
+failure here notifies no one.**
+
+`.github/workflows/test.yml` already argues this case for a different check, in
+its own words: *"A red X on an already-deployed workflow is an alarm with nobody
+contracted to hear it. On a solo project 'one minute of exposure' silently means
+'until someone opens the tab'."* That reasoning applies verbatim to a nightly
+drift run, and the response there was made automatic. Here it was not.
+
+**Proposed remedy, not yet built:** on a `schedule` failure, open or update a
+single GitHub issue with the run URL and the failing section, and close it when a
+scheduled run next succeeds. One issue, reopened rather than duplicated, so three
+weeks of failures is one notification that stays visible instead of 21 that are
+not. This is the same move as the deploy job's automatic rollback: the alarm has
+to reach someone, or the check is decoration with a cron schedule.
+
+**Standing rule from this:** a check that can only be read by opening a tab is
+not a check. When adding a scheduled workflow, add its failure path to something
+that reaches a person in the same change — otherwise the first thing it measures
+is how long a silent failure can last.
