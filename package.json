@@ -19,6 +19,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:order": "jest --randomize --seed=20261029",
     "test:rls": "node scripts/rls-preflight.mjs && jest --runInBand \"\\.rls\\.test\\.ts$\"",
     "benchmark": "node --import tsx scripts/benchmark.ts",
     "pre-deploy": "node scripts/pre-deployment-check.js",
