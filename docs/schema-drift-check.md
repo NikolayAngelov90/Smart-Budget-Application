@@ -219,8 +219,42 @@ found by review**, including by the review that read the same files looking for
 exactly this. A tool that catches defects is not thereby free of them, and the
 practice that found these is the one most easily described as overhead.
 
-Five rules follow. The first two are a pair; the rest generalise past this
-check entirely:
+The rules below generalise past this check entirely, and the first one subsumes
+most of the rest.
+
+### PRESENCE ASSERTIONS FAIL SAFE. ABSENCE ASSERTIONS FAIL OPEN.
+
+A check for *"X is there"* **fails** when the check itself breaks. A check for
+*"X is **not** there"* **passes** when the check itself breaks. That is not a bug
+in any particular check; it is a property of the shape, and it explains nearly
+every defect this repository has found:
+
+| the absence assertion | how it failed open |
+| --- | --- |
+| `grep -c THROWAWAY` over a branch, wanting 0 | the `git show rev:path` was mangled by MSYS path conversion, so three "want 0" checks returned 0 **because the command errored** |
+| `jest -t <name>` with an unescaped name | matched nothing, exited 0, printed no tally — a suite reported 15 of 15 passing minutes before it reported 10 of 10 failing |
+| the allowlist matcher | derived its tokens from a prose field, so every entry matched nothing and nothing was ever flagged |
+| the TGRANT floor, and the test-count floor | a short or empty catalog reads as agreement; a run that matches nothing reports no passed count |
+| the CI-wait polling loop | found no incomplete runs because it polled before any existed |
+| an extractor using `'\u25cf'` in an ERE | two characters, backslash and u; matched nothing and silently dropped a whole suite from a sweep |
+
+**So: every absence assertion needs a PAIRED PRESENCE ASSERTION in the same
+run** — something the same code path, the same file read, the same query must
+find, or the zeros mean nothing.
+
+This is a pairing *requirement*, not a tip. When `#97`'s override removal was
+verified, `Scheduled-failure watchdog -> 1` was not an extra check alongside the
+four zeros: **it is what made the four zeros admissible.** Without it the four
+were indistinguishable from a grep that never read the file — which, on the
+first attempt, is exactly what they were.
+
+The corollary is about you rather than the code: **when a paired check disagrees
+with your expectation, correct the expectation first.** Verifying that same
+override produced 1 schedule-gate where 2 was expected, and the code was right —
+`pinned-order` gates on `!=` and `random-order` on `==`, so one `==` is correct.
+A check disagreeing with you is not evidence the code is wrong.
+
+### The rest
 
 - **A guard is not done until it has been mutation-tested.** A guard with no
   recorded red state is not evidence that anything is checked — four of the six
