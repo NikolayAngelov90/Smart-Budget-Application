@@ -971,66 +971,67 @@ population — see "The size of this item is NOT KNOWN" in
 the per-file `--randomize` sample, and the cron file below is the direct argument
 for running it.
 
-### The determinant is not the mechanism — both earlier rules here were wrong
+### The determinant: three inputs, four outcomes — and this section has been wrong three times
 
-This section has carried two wrong rules in two days. First: *"only the prototype
-collision produces the unusable-alone symptom; a leaked mock does not prevent
-running a test by itself."* `OfflineBanner` disproved it. Then the correction
-implied a leaked mock *does* produce it — but `exchangeRateService` (21 of 21
-alone) and `OfflineBanner` (3 of 6) have the **same** mechanism and opposite
-profiles, so the mechanism is not the determinant either.
+**A model corrected three times by its own data is worth more than one that was
+right first time and untested**, so the wrong versions are kept here rather than
+quietly replaced.
 
-**What separates them is whether the test establishes its own precondition.**
+1. *"Only the prototype collision produces the unusable-alone symptom; a leaked
+   mock does not prevent running a test by itself."* `OfflineBanner` disproved it
+   within a day.
+2. The correction implied a leaked mock **does** produce it — but
+   `exchangeRateService` (21 of 21 alone) and `OfflineBanner` (3 of 6) share the
+   **same** mechanism and have opposite profiles. So the mechanism is not the
+   determinant either, and whether the test establishes its own precondition is.
+3. That gave a two-input table, and `generate-insights` is the case it cannot
+   classify: it established nothing, the default satisfied it, and by the table
+   that was the benign `useAppearance` row — yet it failed on three of eight
+   randomized seeds. A third input was missing.
 
-| | |
-| --- | --- |
-| **poisoned** | the test establishes its precondition, and something else overrides it |
-| **unusable alone** | the test depends on a precondition it does not establish, **and the default state does not satisfy it** |
+#### The statement
 
-One property, two failure modes. The second clause is load-bearing — without it
-`useAppearance` is misclassified: its pure-function tests depend on
-`sessionPreference` being `null`, which they cannot establish, and they pass
-alone anyway **because `null` is the default**. The precondition is unestablished
-either way; what decides the symptom is whether the default happens to satisfy
-it.
+> **A test is order-dependent exactly when something outside it can change what
+> it relies on.**
 
-All five diagnosed suites fall out of this:
+The *symptom* then follows from two further facts — whether the default satisfies
+it, and whether a neighbour overwrites the default. Three inputs, four outcomes,
+and it covers every case measured:
 
-| suite | establishes its precondition? | default satisfies it? | symptom |
+| establishes what it relies on? | default satisfies it? | neighbour overwrites the default? | outcome |
 | --- | --- | --- | --- |
-| `OfflineBanner` | no — renders before mocking | no — bare `jest.fn()` returns `undefined` | **3 of 6 alone** |
-| `BalanceFlowHero` | no — renders after `userEvent.setup()` has patched `focus` | no — zag then cannot patch | **5 of 10 alone** |
-| `useAppearance` (pure) | no — cannot reach the singleton | **yes** — it starts `null` | 9 of 9 alone |
-| `exchangeRateService` | yes | — | 21 of 21 alone, poisoned |
-| `insightService.generationMarker` | yes | — | 8 of 8 alone, poisoned |
+| **yes** | — | **yes** | **poisoned** — passes alone, fails in some orders |
+| **yes** | — | no | **immune** — the goal |
+| no | **no** | — | **unusable alone** — passes only when a neighbour happens to supply it |
+| no | **yes** | no | **benign for now** — passes alone and in every order, a false green *waiting* for a neighbour |
+| no | **yes** | **yes** | **false green** — passes alone, fails in some orders |
+
+The fourth row is not a fifth outcome: it is the third row's precondition with
+nobody yet exercising it. Written as four outcomes because that is what a reader
+has to act on — and the "benign for now" row is the one to treat as debt rather
+than as fine.
+
+All seven diagnosed suites fall out of it:
+
+| suite | establishes it? | default satisfies it? | neighbour overwrites? | symptom |
+| --- | --- | --- | --- | --- |
+| `OfflineBanner` | no — renders before mocking | no — bare `jest.fn()` returns `undefined` | — | **3 of 6 alone** |
+| `BalanceFlowHero` | no — renders after `userEvent.setup()` patched `focus` | no — zag then cannot patch | — | **5 of 10 alone** |
+| `GoalCard` | no — queries a `next/dynamic` child synchronously | no — needs a warm module cache | — | **1 of 15 alone** |
+| `useAppearance` (pure) | no — cannot reach the singleton | **yes** — it starts `null` | **no** | 9 of 9 alone, benign for now |
+| `generate-insights` (cron) | no — sets up no Supabase mock | **yes** — the global `createClient` default | **YES** | **7 of 7 alone, RED on 3 of 8 seeds** |
+| `exchangeRateService` | yes | — | yes | 21 of 21 alone, poisoned |
+| `insightService.generationMarker` | yes | — | yes | 8 of 8 alone, poisoned |
 
 **Checkable while writing, which is the point:** does every act in this test
 follow the setup that act depends on, *within this test*? If an act depends on
 setup the test does not perform, it is relying on a default or on a neighbour —
-and only one of those is stable.
+and only one of those is stable. The three-input table is only for explaining a
+failure after the fact; the one-line question is what prevents it.
 
-#### A THIRD ROW, found by the cron file — and this section has now been wrong three times
+#### WHY THE LAST ROW MATTERS MORE THAN THE FIX
 
-The two-row table above is incomplete, and `generate-insights` is the case it
-cannot classify. `should process users if 1st of month` established nothing and
-the default satisfied it, which by the table makes it the `useAppearance` row:
-passes alone, fine. It passed alone — **and failed on three of eight randomized
-seeds.** The table was missing a third input.
-
-**The unified statement: a test is order-dependent exactly when something
-outside it can change what it relies on.** Whether the symptom is *fails alone*
-or *fails in some orders* then falls out of two further facts:
-
-| establishes what it relies on? | default satisfies it? | does a neighbour overwrite the default? | symptom | instance |
-| --- | --- | --- | --- | --- |
-| **yes** | — | yes | **poisoned**: passes alone, fails in some orders | `exchangeRateService`, `generationMarker` |
-| **yes** | — | no | immune | the goal |
-| no | **no** | — | **unusable alone**; passes only when a neighbour happens to supply it | `OfflineBanner`, `BalanceFlowHero`, `GoalCard` |
-| no | **yes** | no | passes alone AND in every order — a false green **waiting** for a neighbour | `useAppearance` (pure) |
-| no | **yes** | **yes** | passes alone, **fails in some orders** | **`generate-insights` cron** |
-
-**WHY THE LAST ROW MATTERS MORE THAN THE FIX.** Neither instrument used all week
-can see it:
+Nothing used all week can see it:
 
 - the file run **in declaration order** is green, because the victim is declared
   before the tests that overwrite the default;
