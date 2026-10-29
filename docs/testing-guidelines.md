@@ -1049,6 +1049,7 @@ the working tree, full suite, same seeds that fail per-file:
 | 3 | **1 failed** — names `should process users if 1st of month` |
 | 4 | **2 failed** — the cron test and the composer suite |
 | 5 | **1 failed** — names the cron test |
+| 9 | **1 failed** — names the cron test (a fourth confirmation, found later while verifying the composer fix on a branch that lacked the cron fix) |
 
 `--randomize` shuffles tests *within* each file, so a full-suite run shuffles the
 cron file too. The explanation was invented, and the conclusion drawn from it
@@ -1067,6 +1068,62 @@ already in use was never trustworthy as run, and the first thing to build is a
 sweep that leaves a reproducible artifact** — the seed, the command, and the
 per-test outcome, written to a file a later run can be diffed against. Any
 population estimate before that is a number without a method.
+
+#### A SIXTH CATEGORY: the mock created a pathology production does not have
+
+The determinant above classifies a test by its preconditions and its neighbours.
+`TransactionEntryModal.composer` belongs to none of its rows, and the difference
+is not a detail — **the test was never unstable because of the code.**
+
+`useTranslations: () => (key) => ...` returns a **fresh function on every
+render**. The real hook does not: `use-intl` wraps the translator in `useMemo`
+keyed on the Intl context
+(`node_modules/use-intl/dist/esm/development/react.js`), so production's `t` is
+referentially stable. The component's
+`useCallback(..., [transactionType, toast, t])` and its effect keyed on that
+callback are correct against the real hook and pathological against the mock.
+Combined with a fetch mock returning a fresh `{ data, recent }` per call — a new
+`recent` identity forcing another render — the two made a self-sustaining
+re-fetch loop: 7 → 9 → 18 → 35 calls in a second, against 4 → 4 → 4 → 4 with one
+stable object.
+
+**The remedy is different from every other row.** You do not fix the test's
+setup or its ordering. You make the **mock faithful to what it replaces.** The
+check an author can actually run, in these words:
+
+> **Does this mock reproduce production's REFERENTIAL behaviour — its
+> memoisation, its caching, and its object identity across calls?**
+
+A mock may return different *values* than production; that is what mocks are
+for. It must not return different *identities*, because identity is what hook
+dependency arrays, `React.memo`, `useMemo` and SWR key comparisons are built on.
+
+**Unfaithful mocks are the NORM here, and latent by default.** 49 of the 50
+files that mock `next-intl` return a fresh `t`, and 49 of them are harmless —
+because harm needs the second factor. That is the same shape as the
+metacharacter-in-a-test-name class: **the population is large, the harmful
+subset is small, and only a conjunction makes it bite.** Which means counting
+the population tells you almost nothing about the risk, and the only tractable
+move is to find the conjunction.
+
+**The conjunction proof is stronger than an ordinary mutation**, and worth
+copying as a form. Reverting each factor alone came back 3/3 green; reverting
+both came back red with `expected 9, received 21`. A single mutation confirms a
+story. Two single-factor mutations plus the pair **rule out both single-factor
+explanations**, which is what makes the claim a finding rather than a plausible
+account.
+
+#### Search by known shape beats sampling by seed, and this is the receipt
+
+Having the mechanism, the second instance was found by **grep**: files with both
+factors. The search returned exactly two, and the second —
+`TransactionEntryModal.mobile.test.tsx` — had the guard added with its mocks
+**untouched first**, so the instance was confirmed (`expected 8, received 21`)
+rather than inferred from looking similar. No seeds, no sampling, deterministic.
+
+That is the bet the chain sweep makes too, and the reason to prefer it: a search
+over a known shape finishes and reports a count; a sample over unknown orders
+reports a lower bound it cannot close.
 
 #### A guard no mutation can redden should be made detectable or deleted
 
@@ -1114,6 +1171,153 @@ one, not file-level or test-level isolation.
 BalanceFlowHero passes as a whole file; only `-t` on a single test fails. A
 60-invocation file-level sample returned 0 findings, which was the right answer
 to the wrong question.
+
+## The malformed-chain class: swept by search, 2026-10-29
+
+A chain mock that stops short of a method the production code calls makes that
+call throw `TypeError: <chain> is not a function`. Five occurrences before this
+sweep, which is past the threshold set for the `...Once` class at three, so it
+was swept by **search over the known shape** rather than by further seeds.
+
+### The counts, reported before anything was fixed
+
+| | |
+| --- | --- |
+| files using `mockReturnThis` | 35 (263 occurrences) |
+| of those, supabase-style chain mocks | 23 |
+| chain-mock files with testable chains | 18 |
+| tests in them | 259 |
+| **confirmed** instances, measured | **1** |
+
+The one confirmed instance came from the dynamic detector: capture every
+`TypeError: ... is not a function` emitted during a **passing** full-suite run.
+It is the instrument that found the cron case too, and it converts suspicion
+into a list.
+
+### MY STATIC NARROWING WAS WRONG, AND ITS OWN SINGLE INSTANCE REFUTED IT
+
+I argued that a missing-method TypeError can only hide where a test asserts an
+**error** outcome, because a TypeError is also an error — and narrowed 259 tests
+to 61 on that basis. It was wrong in both directions.
+
+**Wrong direction 1 — it missed the category the only instance is in.**
+`goalService.test.ts` `buildAddContribMock` is **positional**: `fromCallCount`
+1 → contributions insert, 2 → goals select, 3+ → goals update. The real
+`addContribution` makes a *fourth* call,
+`from('user_profiles').select('preferences').eq('id', userId).maybeSingle()`,
+which falls through to the update chain and has no `maybeSingle`. The TypeError
+is then absorbed by a deliberate non-fatal `catch` in the PRODUCTION code
+(`goalService.ts`, "Savings expense logging failed (non-fatal)"), so it never
+reaches any assertion — and the test that emits it is
+`inserts contribution and returns goal with updated current_amount`, which
+asserts **success**.
+
+What that masks is a whole feature: the throw happens *before*
+`logSavingsContribution`, so Story 13.9's savings-expense logging — what makes a
+goal contribution show as money leaving the budget — **never executes in any
+test**. Production swallowing it means a real breakage there is silent too, and
+the suite is the only place it would surface.
+
+**Wrong direction 2 — it was too broad inside the category it did name.** A
+TypeError only satisfies an error assertion that does not inspect the error.
+Measured: **zero** of the 18 chain-mock files use a bare `.toThrow()`, and
+across the whole suite there are 12 bare ones against 33 with a message or
+matcher. A test asserting `data.error` equals a specific string is not at risk.
+A test asserting only a **status code** is, because a route's own `catch` turns
+a TypeError into the same 500 — which is exactly the cron case.
+
+### The corrected rule
+
+> A missing-method TypeError hides wherever it **cannot reach the assertion**.
+> That is a disjunction, not a single case:
+>
+> **(a)** the test asserts something a TypeError also satisfies — a status code
+> or a generic flag, *not* a specific error message; or
+> **(b)** the throw lands in a **swallowing `catch` in the production code**, so
+> the test never sees it at all.
+
+Both arms are measurable, and arm (b) is the larger one:
+
+| | |
+| --- | --- |
+| `catch` blocks in `src` (excluding tests) | 198 |
+| of those, rethrow | 10 |
+| **swallow** — arm (b)'s surface | **188**, across 130 files |
+| swallowing catches that LOG — the detector can see these | 156 |
+| swallowing catches that are SILENT — **invisible to the detector** | 32, across 25 files |
+| status-code-only assertions in chain-mock files — arm (a)'s surface | 61 across 14 files |
+
+So the dynamic detector's coverage is **156 of 188** swallowing paths plus arm
+(a)'s route-level catches. The 32 silent swallows are a genuine blind spot, and
+"1 confirmed" is a lower bound for that reason, stated rather than implied.
+
+### THE FIX ALREADY EXISTS AND HAS TWO ADOPTERS
+
+`src/test-utils/supabaseChain.ts` is a Proxy where **any** method is chainable,
+so a production call to an unmocked method can no longer throw. Its own header
+records that it was "carried as an action item through Epics 14, 15 and 16" and
+that Epic 16 "measured the cost: three separate test failures caused by
+hand-rolled chain stubs".
+
+It is used by **two** test files, out of 18 that hand-roll a chain.
+
+That is the same shape as the comma-decimal fix: **the solution existed, its
+reasoning was written down in the file, and it did not travel.** A utility with
+2 of 20 adopters is a comment with a type signature. The class closes by
+migration plus a lint rule banning hand-rolled `from: jest.fn()` chain stubs in
+tests — enforcement, not another note.
+
+## Measuring a flake: two rules bought at a high price
+
+### Prefer a deterministic assertion over a sampled one wherever the cause can be asserted directly
+
+**The rate varied more between measurement sessions than between the two code
+versions.** That sentence is the epitaph for rate-chasing, and these are the
+numbers behind it — the same suite, the same seed, four attempts to establish
+one failure rate:
+
+| measurement | result |
+| --- | --- |
+| pre-fix, foreground | 4 failures / 20 |
+| post-fix, **background while other commands ran** | 7 / 20 |
+| post-fix, foreground | 0 / 8 |
+| interleaved A/B, same conditions | OLD 0 / 15, NEW 1 / 15 |
+
+A rate that cannot be reproduced cannot tell you whether a fix worked. What
+settled it in minutes was asserting the **cause** instead: a probe that counted
+`fetch` calls, which became the permanent test `SETTLES: the categories fetch
+stops firing`. It needs **no sampling at all** and reddens on either factor.
+
+So: when the cause can be asserted directly, assert it. Reach for a rate only
+when it cannot — and then interleave the arms, because the second row above is
+an invalid comparison that this document already forbids (see
+"A before/after comparison is only valid if both halves saw the same
+conditions"), written anyway.
+
+### A pre-commitment must specify the SAMPLE SIZE the effect requires, not only the threshold
+
+This is a correction to a rule this document has been treating as complete.
+Pre-committing to a verdict before running the measurement is necessary and is
+**not sufficient**. The interleaved run above was launched with a rule fixed in
+advance — `n >= o` means the fix did not help — and it returned **"THE FIX DID
+NOT HELP"** from `OLD 0/15, NEW 1/15`. The rule was followed exactly and the
+verdict was wrong, because at a 4-in-20 base rate fifteen runs per arm have
+almost no power to distinguish the arms at all.
+
+An underpowered measurement with a pre-committed threshold does not become
+reliable; it becomes **a wrong answer that feels disciplined.** So a
+pre-commitment states both:
+
+- the **threshold** — what result means what, decided before looking; and
+- the **sample size** — how many observations the expected effect needs before
+  either verdict is admissible, with "not enough data" as a legitimate third
+  outcome.
+
+For a base rate `p` and a fix expected to reach zero, `n` runs of a clean arm
+only argue for the fix when `(1-p)^n` is small. At `p = 0.2`, `n = 15` leaves a
+3.5% chance of seeing zero failures by luck — borderline; `n = 8` leaves 17%,
+which is no evidence. Write the `n` down with the threshold or do not quote the
+verdict.
 
 ## Two rules for writing an async test
 
