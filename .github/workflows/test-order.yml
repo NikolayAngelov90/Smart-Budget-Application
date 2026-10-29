@@ -159,15 +159,51 @@ jobs:
       # check spent 21 days red. A low floor catches catastrophe, never needs
       # touching, and makes no claim to catch small regressions. Coverage is
       # codecov's job; this is a canary.
+      # TWO DISTINCT REDS, and the distinction is the point. "The summary could
+      # not be parsed" is not the same claim as "zero tests passed", and a
+      # parser that defaults to zero on a parse failure conflates them: both
+      # trip the floor today and they diverge the first time jest changes its
+      # summary format, at which point the floor silently becomes a format
+      # check that always fails - or worse, always passes.
+      #
+      # This is the same distinction this repo already draws for its mutation
+      # harness, where NOT MEASURED is deliberately kept separate from "nothing
+      # went red". It was missing here on the first attempt.
+      #
+      # The parse ANCHOR is the `total` count, not the `passed` count. Jest
+      # OMITS the passed clause when it is zero - `Tests: 2776 skipped, 2776
+      # total` is a well-formed summary meaning zero passed - but it always
+      # prints a total. So:
+      #
+      #   no `Tests:` line, or no `N total` in it  ->  NOT MEASURED, its own red
+      #   `N total` present, `N passed` absent     ->  genuinely zero passed
+      #   `N passed` present                       ->  that number, floored
       - name: Floor on the number of tests that actually ran
         if: always()
         run: |
           TALLY=$(grep -E '^Tests:' jest-run.log | tail -1)
+
+          if [ -z "$TALLY" ]; then
+            echo '::error::NOT MEASURED - no `Tests:` summary line in the run output at all. The floor cannot be evaluated, which is not the same as a floor of zero. Last 20 lines of the log:'
+            tail -20 jest-run.log
+            exit 1
+          fi
+
+          TOTAL=$(printf '%s' "$TALLY" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+')
+          if [ -z "$TOTAL" ]; then
+            echo "tally : $TALLY"
+            echo '::error::NOT MEASURED - the `Tests:` line carries no `N total`, so jest has changed its summary format and this parser no longer reads it. Fix the parser; do NOT lower the floor.'
+            exit 1
+          fi
+
+          # Only now is absence of a passed count meaningful: jest omits that
+          # clause at zero, and the well-formed total above proves the line was
+          # read rather than guessed.
           PASSED=$(printf '%s' "$TALLY" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
           PASSED=${PASSED:-0}
 
-          echo "tally : ${TALLY:-<no Tests: line at all>}"
-          echo "passed: $PASSED  (floor 2000)"
+          echo "tally : $TALLY"
+          echo "parsed: $PASSED passed of $TOTAL total  (floor 2000)"
 
           if [ "$PASSED" -lt 2000 ]; then
             echo '::error::Only '"$PASSED"' tests passed, against a floor of 2000. This is NOT a pass: a jest run that matches nothing exits 0 and reports no passed count, so a green check here would mean the suite never ran. Check for a stray -t, a narrowed testMatch, or a testPathIgnorePatterns change.'
