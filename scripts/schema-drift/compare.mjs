@@ -85,9 +85,15 @@ if (!prodPath || !migPath) {
   process.exit(2);
 }
 
-const allowlist = JSON.parse(
-  readFileSync(new URL('../../supabase/schema-drift-allowlist.json', import.meta.url), 'utf8')
-);
+// SCHEMA_DRIFT_ALLOWLIST exists so this script's own tests can exercise
+// allowlist-dependent paths (an expected_skew, a raised floor) without editing
+// the real file every other test depends on. The workflow never sets it; if it
+// ever appears in a workflow, that is a permissive allowlist smuggled past
+// review and should be read as one.
+const allowlistPath = process.env.SCHEMA_DRIFT_ALLOWLIST
+  ? new URL(`file://${process.env.SCHEMA_DRIFT_ALLOWLIST.replace(/\\/g, '/')}`)
+  : new URL('../../supabase/schema-drift-allowlist.json', import.meta.url);
+const allowlist = JSON.parse(readFileSync(allowlistPath, 'utf8'));
 
 /** Parse a dump into kind -> Map(key -> full record line). */
 function parse(path) {
@@ -115,14 +121,44 @@ const prod = parse(prodPath);
 const mig = parse(migPath);
 
 // ============================================================================
-// NON-VACUITY — FIRST-CLASS, CHECKED BEFORE ANY COMPARISON
+// NON-VACUITY — FIRST-CLASS, CHECKED BEFORE ANY COMPARISON, AND IN TWO PARTS
 // ============================================================================
 // A diff over two empty catalogs reports "no drift". That is the exact failure
 // mode this project hit three times in one week: a lint rule reporting 0
 // violations because nothing invoked it, an RLS mutation that would have passed
-// against the wrong database, and a clock parameter no caller passed. So the
-// floors are data in the allowlist, and falling below one is a HARD RED — never
-// a pass, and never merely a warning.
+// against the wrong database, and a clock parameter no caller passed.
+//
+// WHY TWO PARTS, AND NOT JUST FLOORS. On 2026-10-08 the TGRANT floor fired on a
+// run with NO drift: revoking anon's write grants removed 97 grant entries, both
+// catalogs read 293, and a floor of 300 refused to proceed. It fired correctly by
+// its own rule and wrongly by its purpose, because
+//
+//   AN ABSOLUTE FLOOR CANNOT TELL A TRUNCATED READ FROM A LEGITIMATE SHRINKAGE.
+//
+// Re-deriving the number works once and leaves a maintenance step behind that
+// nobody will remember, so the floor goes stale upward until the next revoke
+// trips it again. The better signal was already sitting in the output: THE TWO
+// SIDES AGREED. Production read 293 and the migrations read 293, and a truncated
+// read on one side would have to be truncated identically on the other to pass
+// that check — which a partial failure cannot do.
+//
+// So:
+//   PART 1  a LOW absolute floor, which catches TOTAL failure — both sides
+//           return nothing and agree trivially.
+//   PART 2  CROSS-SIDE AGREEMENT IN MAGNITUDE, which catches PARTIAL truncation
+//           on one side — the case an absolute floor was never able to see.
+//
+// That turns a number requiring maintenance into a property that holds however
+// the catalog grows or shrinks.
+//
+// WHAT PART 1 STILL EARNS ITS HEIGHT FOR, stated rather than left implied: a
+// SYMMETRIC truncation — the same bug shortening BOTH reads by the same amount,
+// e.g. a stray LIMIT in dump-catalog.sql — agrees perfectly and is invisible to
+// part 2. Only an absolute floor can see it, and only if the floor is high
+// enough to be above the truncated value. That is the deliberate reason the
+// TGRANT floor is left at 200 against a true 293 rather than dropped to 50: the
+// remaining maintenance tail is bought knowingly, for the one failure mode
+// agreement cannot cover.
 const FLOOR_KINDS = {
   tables: 'TABLE',
   columns: 'COLUMN',
@@ -133,19 +169,24 @@ const FLOOR_KINDS = {
   column_grant_entries: 'CGRANT',
 };
 const floors = allowlist.non_vacuity_floors ?? {};
+const counts = Object.fromEntries(
+  Object.entries(FLOOR_KINDS).map(([name, kind]) => [
+    name,
+    { kind, p: prod.byKind.get(kind)?.size ?? 0, m: mig.byKind.get(kind)?.size ?? 0 },
+  ])
+);
+
 let vacuous = false;
 const floorReport = [];
-for (const [name, kind] of Object.entries(FLOOR_KINDS)) {
+for (const [name, { kind, p, m }] of Object.entries(counts)) {
   const min = floors[name];
   if (typeof min !== 'number') continue;
-  const p = prod.byKind.get(kind)?.size ?? 0;
-  const m = mig.byKind.get(kind)?.size ?? 0;
   const bad = p < min || m < min;
   if (bad) vacuous = true;
   floorReport.push(`  ${bad ? 'BELOW FLOOR' : 'ok         '} ${kind.padEnd(16)} floor=${String(min).padEnd(5)} production=${String(p).padEnd(5)} migrations=${m}`);
 }
 
-console.log('=== non-vacuity floors ===');
+console.log('=== non-vacuity part 1: absolute floors (total failure) ===');
 console.log(floorReport.join('\n'));
 if (vacuous) {
   console.error('');
@@ -153,6 +194,62 @@ if (vacuous) {
   console.error('This is NOT "no drift" — it means one side was read incompletely');
   console.error('(bad credentials, a truncated dump, a stack that did not finish');
   console.error('migrating) and any comparison over it is meaningless.');
+  console.error('');
+  console.error('BEFORE RE-DERIVING THE FLOOR: check whether the count dropped');
+  console.error('because a migration legitimately removed objects. Verify the new');
+  console.error('count against the live catalog with the query in dump-catalog.sql,');
+  console.error('and only then change the number — see the allowlist for the rule.');
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
+// PART 2 — cross-side agreement in magnitude.
+// ---------------------------------------------------------------------------
+// The allowance is `max(slack_abs, slack_relative * larger side)`. Both terms
+// are needed: a purely relative allowance is hair-triggered on small kinds
+// (TRIGGER is 13, so one pending trigger is 7.7%), and a purely absolute one is
+// far too loose on COLUMN at 212.
+//
+// A legitimately LARGE pending migration can trip this, and that is intended:
+// at that point a human confirms the shortfall is a migration rather than a
+// short read. It is cleared the way every other known difference here is — an
+// `expected_skew` entry in the allowlist, which carries a reason and an exit.
+const agreement = allowlist.cross_side_agreement ?? {};
+const slackAbs = typeof agreement.slack_abs === 'number' ? agreement.slack_abs : 10;
+const slackRel = typeof agreement.slack_relative === 'number' ? agreement.slack_relative : 0.1;
+const expectedSkew = agreement.expected_skew ?? {};
+
+let disagrees = false;
+const agreementReport = [];
+for (const [name, { kind, p, m }] of Object.entries(counts)) {
+  const diff = Math.abs(p - m);
+  const allowed = Math.max(slackAbs, Math.round(slackRel * Math.max(p, m)));
+  const waiver = expectedSkew[name];
+  const waived = typeof waiver === 'number' && diff <= waiver;
+  const bad = diff > allowed && !waived;
+  if (bad) disagrees = true;
+  const label = bad ? 'DISAGREE   ' : waived ? 'WAIVED     ' : 'ok         ';
+  agreementReport.push(
+    `  ${label} ${kind.padEnd(16)} production=${String(p).padEnd(5)} migrations=${String(m).padEnd(5)} diff=${String(diff).padEnd(4)} allowed=${allowed}${waived ? ` (waived up to ${waiver})` : ''}`
+  );
+}
+
+console.log('');
+console.log('=== non-vacuity part 2: cross-side agreement (partial truncation) ===');
+console.log(agreementReport.join('\n'));
+if (disagrees) {
+  console.error('');
+  console.error('HARD FAILURE: the two catalogs disagree in MAGNITUDE, not just in');
+  console.error('content. One side is missing a large share of a kind, which is what');
+  console.error('a partially truncated read looks like — and unlike a total failure,');
+  console.error('it passes every absolute floor.');
+  console.error('');
+  console.error('A truncated PRODUCTION read is the dangerous direction: every missing');
+  console.error('object reads as MIGRATIONS_ONLY, which is "pending", which passes.');
+  console.error('');
+  console.error('If the gap is a real migration rather than a short read, record it as');
+  console.error('`cross_side_agreement.expected_skew` in the allowlist, with a reason');
+  console.error('and a resolves_when, and delete the entry once it is applied.');
   process.exit(1);
 }
 

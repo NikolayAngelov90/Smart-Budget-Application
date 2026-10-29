@@ -62,7 +62,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -71,8 +71,14 @@ const SCRIPT = join(process.cwd(), 'scripts', 'schema-drift', 'compare.mjs');
 /**
  * A catalog large enough to clear the allowlist's non-vacuity floors, so a test
  * about DRIFT is never accidentally a test about the floors.
- * Floors: tables 20, columns 180, policies 60, functions 20, triggers 10,
- *         TGRANT 300, CGRANT 1200.
+ *
+ * The floor VALUES are deliberately not restated here. They were, and the
+ * restatement went stale twice without anything noticing: it still said
+ * `CGRANT 1200` long after that floor was corrected to 8 (it had been derived
+ * from a different query), and it said `TGRANT 300` after the anon-write revoke
+ * took the real count to 293 and the floor to 200. A comment asserting a number
+ * is not a check on that number. "baseline() clears EVERY non-vacuity floor"
+ * below reads the allowlist and asserts it instead.
  */
 function baseline(): string[] {
   const lines: string[] = [];
@@ -125,11 +131,18 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-/** Run the comparator; returns { code, out }. Never throws on non-zero. */
+/**
+ * Run the comparator; returns { code, out }. Never throws on non-zero.
+ *
+ * `allowlistPatch` shallow-merges into the REAL allowlist and runs against the
+ * merged copy, so a test can add an `expected_skew` or raise a floor without
+ * editing the file every other test here depends on.
+ */
 function run(
   prodLines: string[],
   migLines: string[],
-  newestMigrationEpoch?: number
+  newestMigrationEpoch?: number,
+  allowlistPatch?: Record<string, unknown>
 ): { code: number; out: string } {
   const p = join(dir, 'production.tsv');
   const m = join(dir, 'migrations.tsv');
@@ -137,8 +150,19 @@ function run(
   writeFileSync(m, migLines.join('\n') + '\n');
   const args = [SCRIPT, p, m];
   if (newestMigrationEpoch !== undefined) args.push(String(newestMigrationEpoch));
+
+  const env = { ...process.env };
+  if (allowlistPatch) {
+    const real = JSON.parse(
+      readFileSync(join(process.cwd(), 'supabase', 'schema-drift-allowlist.json'), 'utf8')
+    );
+    const patched = join(dir, 'allowlist.json');
+    writeFileSync(patched, JSON.stringify({ ...real, ...allowlistPatch }));
+    env.SCHEMA_DRIFT_ALLOWLIST = patched;
+  }
+
   try {
-    const out = execFileSync('node', args, { encoding: 'utf8' });
+    const out = execFileSync('node', args, { encoding: 'utf8', env });
     return { code: 0, out };
   } catch (err) {
     const e = err as { status: number; stdout?: string; stderr?: string };
@@ -561,6 +585,163 @@ describe('schema drift check', () => {
     // is pending, which passes.
     expect(code).toBe(1);
     expect(out).not.toContain('DRIFT CHECK PASSED');
+  });
+
+  it('baseline() clears EVERY non-vacuity floor, read from the allowlist', () => {
+    // WHAT THIS PROTECTS. Every other test in this file uses `baseline()` and is
+    // about DRIFT. If the fixture ever slipped below a floor, all of them would
+    // fail on the floors instead and would still be green on the wrong grounds
+    // for the opposite reason — or, if a floor were LOWERED, a below-floor test
+    // would quietly stop being below floor. Both directions are covered by
+    // reading the real floors rather than a copy of them.
+    const allowlist = JSON.parse(
+      readFileSync(join(process.cwd(), 'supabase', 'schema-drift-allowlist.json'), 'utf8')
+    );
+    const floors: Record<string, number> = allowlist.non_vacuity_floors;
+    const kinds: Record<string, string> = {
+      tables: 'TABLE',
+      columns: 'COLUMN',
+      policies: 'POLICY',
+      functions: 'FUNCTION',
+      triggers: 'TRIGGER',
+      table_grant_entries: 'TGRANT',
+      column_grant_entries: 'CGRANT',
+    };
+
+    const rows = baseline();
+    // Non-vacuity of this test itself: if the mapping stopped matching the
+    // comparator's FLOOR_KINDS, every count would be 0 and the assertions would
+    // be about nothing.
+    const counted = Object.entries(kinds).filter(([name]) => typeof floors[name] === 'number');
+    expect(counted.length).toBe(7);
+
+    for (const [name, kind] of counted) {
+      // `floors[name]` is `number | undefined` under noUncheckedIndexedAccess.
+      // `counted` already established it is a number, but a filter does not
+      // narrow the type, so it is read once into a local.
+      const floor = floors[name] as number;
+      const n = rows.filter((l) => l.startsWith(`${kind}\t`)).length;
+      expect(n).toBeGreaterThan(0);
+      // eslint-disable-next-line jest/no-conditional-in-test
+      if (n < floor) {
+        throw new Error(
+          `baseline() has ${n} ${kind} rows but the floor is ${floor}: ` +
+            'every drift test in this file is now testing the floors instead.'
+        );
+      }
+    }
+  });
+
+  it('HARD FAILS on a ONE-SIDED PARTIAL truncation that clears every floor', () => {
+    // PART 2 OF NON-VACUITY, and the case part 1 provably cannot see.
+    //
+    // A short PRODUCTION read is the dangerous direction: every object missing
+    // from production reads as MIGRATIONS_ONLY, which is classified pending,
+    // which passes the gate until it ages out. So a truncated read looks exactly
+    // like a big unapplied migration, and before this check nothing could tell
+    // them apart.
+    //
+    // The fixture drops production's TGRANT rows from 364 to 250 - still ABOVE
+    // the floor of 200, so part 1 reports `ok` for every kind - and leaves every
+    // other kind and both version records intact, so neither the floors nor the
+    // version assertion can be what fails the run.
+    const full = baseline();
+    const tgrants = full.filter((l) => l.startsWith('TGRANT\t'));
+    const keep = new Set(tgrants.slice(0, 250));
+    const shortProd = full.filter((l) => !l.startsWith('TGRANT\t') || keep.has(l));
+
+    const { code, out } = run(shortProd, full);
+
+    // Part 1 passed: this is not a floor failure wearing an agreement label.
+    expect(out).not.toContain('BELOW FLOOR');
+    expect(out).not.toContain('fewer objects than its floor');
+
+    // Part 2's own words, which no other guard emits.
+    expect(out).toContain('DISAGREE');
+    expect(out).toContain('disagree in MAGNITUDE');
+    expect(code).toBe(1);
+    expect(out).not.toContain('DRIFT CHECK PASSED');
+  });
+
+  it('a SMALL legitimate difference does not trip the agreement check', () => {
+    // The real observed skew, which must stay green or the check is useless:
+    // production has 74 policies and the migrations 76, because two insights
+    // policies are allowlisted as pending.
+    const full = baseline();
+    const policies = full.filter((l) => l.startsWith('POLICY\t'));
+    const dropped = new Set(policies.slice(0, 2));
+    const prodSide = full.filter((l) => !dropped.has(l));
+
+    const { out } = run(prodSide, full);
+
+    expect(out).not.toContain('DISAGREE');
+    expect(out).not.toContain('disagree in MAGNITUDE');
+  });
+
+  it('the ABSOLUTE term in the allowance is what keeps a SMALL kind usable', () => {
+    // WHY THIS EXISTS: the test above does not discriminate. Deleting slackAbs
+    // from the allowance left the whole file green, because 2 policies out of 78
+    // is inside the 10% relative term as well. An assertion that passes either
+    // way is not testing the thing it names.
+    //
+    // TRIGGER is the kind that separates them. baseline has 12; dropping 2 gives
+    // a difference of 2 against a relative allowance of round(0.1 * 12) = 1 —
+    // which a relative-only allowance FAILS and max(10, 1) tolerates. Two
+    // pending triggers is an ordinary migration, so failing on it would make the
+    // check unusable on exactly the kinds that are small.
+    const full = baseline();
+    const triggers = full.filter((l) => l.startsWith('TRIGGER\t'));
+    expect(triggers.length).toBe(12); // non-vacuity: the arithmetic above depends on it
+    const dropped = new Set(triggers.slice(0, 2));
+    const prodSide = full.filter((l) => !dropped.has(l));
+
+    const { out, code } = run(prodSide, full);
+
+    expect(out).not.toContain('DISAGREE');
+    expect(code).toBe(0);
+  });
+
+  it('expected_skew waives a large difference, and it is NOT automatic', () => {
+    // A genuinely large pending migration SHOULD trip part 2 - a human then
+    // confirms the shortfall is a migration and not a short read. It is cleared
+    // by an allowlist entry, the same mechanism every other known difference
+    // here uses, carrying a reason and an exit.
+    //
+    // Asserted in BOTH directions, because an escape hatch that always opens is
+    // not an escape hatch: the identical fixture with no waiver must fail.
+    //
+    // 25 columns, not 60: the columns floor is 180 and baseline has 208, so a
+    // drop of 60 would land at 148 and part 1 would fire first - the test would
+    // then be about the floors again. 183 clears the floor, and 25 still exceeds
+    // the allowance of max(10, 21).
+    const full = baseline();
+    const columns = full.filter((l) => l.startsWith('COLUMN\t'));
+    const dropped = new Set(columns.slice(0, 25));
+    const prodSide = full.filter((l) => !dropped.has(l));
+
+    const withoutWaiver = run(prodSide, full);
+    expect(withoutWaiver.out).not.toContain('BELOW FLOOR');
+    expect(withoutWaiver.out).toContain('DISAGREE');
+    expect(withoutWaiver.code).toBe(1);
+
+    const withWaiver = run(prodSide, full, undefined, {
+      cross_side_agreement: { slack_abs: 10, slack_relative: 0.1, expected_skew: { columns: 25 } },
+    });
+    expect(withWaiver.out).toContain('WAIVED');
+    expect(withWaiver.out).not.toContain('DISAGREE');
+
+    // AND THE WAIVER IS A CEILING, NOT A SWITCH. Without this case, dropping the
+    // `diff <= waiver` comparison — so any waiver at all opens the gate — left
+    // the file green: the case above sets the waiver EQUAL to the difference, so
+    // it cannot tell a ceiling from a switch. A waiver of 5 against a difference
+    // of 25 must still fail, or an entry written for last month's migration
+    // silently covers this month's truncated read.
+    const tooSmall = run(prodSide, full, undefined, {
+      cross_side_agreement: { slack_abs: 10, slack_relative: 0.1, expected_skew: { columns: 5 } },
+    });
+    expect(tooSmall.out).toContain('DISAGREE');
+    expect(tooSmall.out).not.toContain('WAIVED');
+    expect(tooSmall.code).toBe(1);
   });
 
   it('HARD FAILS when BOTH catalogs are empty', () => {
