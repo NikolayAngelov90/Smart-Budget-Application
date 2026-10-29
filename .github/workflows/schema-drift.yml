@@ -61,6 +61,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# issues: write is for the scheduled-failure watchdog at the end of the job.
+# contents: read is the default this would otherwise lose by naming the block.
+permissions:
+  contents: read
+  issues: write
+
 concurrency:
   group: schema-drift
   cancel-in-progress: false
@@ -164,8 +170,14 @@ jobs:
           echo "newest migration: $NEWEST_FILE"
           echo "  committed: $NEWEST ($(date -u -d "@$NEWEST" '+%Y-%m-%dT%H:%M:%SZ'))"
 
+      # Tee'd to a file so the watchdog at the end of this job can derive a
+      # SIGNATURE from what actually failed, rather than reporting "the run
+      # failed". `set -o pipefail` keeps the exit status node's rather than
+      # tee's — without it this step passes whatever the comparison says.
       - name: Compare
-        run: node scripts/schema-drift/compare.mjs production.tsv migrations.tsv "$NEWEST_MIGRATION_EPOCH"
+        run: |
+          set -o pipefail
+          node scripts/schema-drift/compare.mjs production.tsv migrations.tsv "$NEWEST_MIGRATION_EPOCH" 2>&1 | tee compare.log
 
       - name: Upload both catalogs on failure
         if: failure()
@@ -183,3 +195,70 @@ jobs:
       - name: Stop Supabase
         if: always()
         run: supabase stop
+
+      # =====================================================================
+      # THE SCHEDULED-FAILURE WATCHDOG
+      # =====================================================================
+      # SCHEDULED RUNS ONLY. A failure on `push` or `workflow_dispatch` is
+      # already attributable to whoever caused it and lands on their PR or in
+      # their own run — those need no persistent artefact. The 21 unnoticed
+      # failures were all scheduled, which is the case with nobody attached to
+      # it.
+      - name: Describe what failed, for the watchdog
+        id: sig
+        if: always() && github.event_name == 'schedule'
+        run: |
+          set -euo pipefail
+
+          if [ ! -f compare.log ]; then
+            # The job died BEFORE comparing — a stack that never came up, a bad
+            # credential, the Docker Hub rate limit. This is its own signature,
+            # because it is a different problem from drift and must not inherit
+            # a silence granted for drift.
+            echo 'signature=pre-compare-failure' >> "$GITHUB_OUTPUT"
+            {
+              echo 'details<<WATCHDOG_EOF'
+              echo 'The job failed BEFORE the comparison ran, so there is no drift verdict.'
+              echo 'Likely causes: the local Supabase stack did not become reachable, a'
+              echo 'credential is wrong, or the anonymous Docker Hub pull limit was hit.'
+              echo 'See the run log.'
+              echo 'WATCHDOG_EOF'
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # The lines that CAUSE a failure, sorted and de-duplicated, are the
+          # cause's fingerprint. For the 21-night outage every night would have
+          # produced the same one line - `BELOW FLOOR TGRANT` - and so the same
+          # signature, which is exactly what makes a scoped silence possible.
+          CAUSE=$(grep -E '^(HARD FAILURE|DRIFT CHECK FAILED)|^  (BELOW FLOOR|DISAGREE)' compare.log | sort -u || true)
+
+          if [ -z "$CAUSE" ]; then
+            SIG=unclassified
+          else
+            SIG=$(printf '%s' "$CAUSE" | sha256sum | cut -c1-12)
+          fi
+          echo "signature=$SIG" >> "$GITHUB_OUTPUT"
+          echo "cause fingerprint: $SIG"
+          printf '%s\n' "$CAUSE"
+
+          # The detail a reader needs: what failed, and the verdict block.
+          {
+            echo 'details<<WATCHDOG_EOF'
+            if [ -n "$CAUSE" ]; then printf '%s\n\n' "$CAUSE"; fi
+            sed -n '/================ RESULT ================/,$p' compare.log | head -20
+            echo 'WATCHDOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Scheduled-failure watchdog
+        if: always() && github.event_name == 'schedule'
+        uses: ./.github/actions/scheduled-failure-watchdog
+        with:
+          check-name: Schema Drift
+          label: watchdog/schema-drift
+          outcome: ${{ job.status }}
+          signature: ${{ steps.sig.outputs.signature }}
+          details: ${{ steps.sig.outputs.details }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          cadence: nights
+          token: ${{ secrets.GITHUB_TOKEN }}
