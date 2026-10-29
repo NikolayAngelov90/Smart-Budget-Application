@@ -105,108 +105,20 @@ jobs:
           fi
           echo "ok: randomized, and pinned to 20261029"
 
-      # The run itself, plus a SECOND and INDEPENDENT confirmation: the step
-      # above asserts the RESOLVED CONFIG, this one asserts what the RUN
-      # ACTUALLY REPORTED. Jest prints a `Seed:` line whenever a seed is in
-      # effect, in CI as well as a terminal.
-      #
-      # NOTE ON A FLAG THAT IS NOT HERE: this script carried `--showSeed` for
-      # about an hour. Mutation-testing it showed the `Seed:` line prints
-      # without it under CI=true, so dropping the flag changed nothing and no
-      # mutation could redden it. By this repo's own rule - if no mutation
-      # reddens it, it is not a guard yet, so give it a test that can fail or
-      # take it out - it was taken out. Leaving it would have implied the check
-      # depends on it, which is worse than useless: it is misleading.
-      #
-      # The guard below IS load-bearing, verified by the mutations that redden
-      # it: seed changed to 1 -> `Seed: 1`, red; `--seed` dropped entirely ->
-      # a random seed each run, red.
       - name: Run the suite in the pinned order
         run: set -o pipefail && npm run test:order 2>&1 | tee jest-run.log
 
-      - name: Confirm the run reported the pinned seed
+      # ONE SCRIPT, TWO JOBS. scripts/ci/assert-test-run.sh holds every
+      # assertion about the RUN - that tests ran at all, that the summary was
+      # read rather than guessed, and that the order was the pinned one - and
+      # the nightly random-seed arm calls the same script WITHOUT a seed
+      # argument. Thirty lines of parse logic duplicated across two jobs in one
+      # file is how the two drift apart, which is the argument this repo already
+      # made for the shared local-supabase action and for parseDecimalInput.
+      #
+      # Read that script before changing anything here: it carries the measured
+      # reasons for the `total` parse anchor, the deliberately low floor, and
+      # why a run that happened and FAILED passes these checks on purpose.
+      - name: Assert the run happened, and in the pinned order
         if: always()
-        run: |
-          if ! grep -qE '^Seed: +20261029$' jest-run.log; then
-            echo "::error::The run did not report Seed: 20261029 - so the suite did not run in the pinned order, whatever the config said. What it printed instead:"
-            grep -iE '^Seed:' jest-run.log || echo "  (no Seed line at all)"
-            exit 1
-          fi
-          echo "ok: the suite ran in order 20261029"
-
-      # THE THIRD CHECK, and the one the other two cannot make. --showConfig
-      # asserts what RESOLVED; the Seed line asserts what the run REPORTED.
-      # Neither asserts THAT TESTS RAN.
-      #
-      # A jest invocation matching nothing EXITS 0. Measured, not assumed:
-      #
-      #   `-t` with a pattern that matches no test name
-      #       exit 0,  "Tests: 2776 skipped, 2776 total"  - and NO passed count
-      #   a path pattern matching one file
-      #       exit 0,  "Tests: 24 passed, 24 total"       - 24 of 2711
-      #   a path pattern matching nothing
-      #       exit 1 - this one jest already protects
-      #
-      # The first is the `jest -t` class this repo has already been bitten by: a
-      # run that matches nothing is green and silent. The second is the shape of
-      # an over-narrow config or testPathIgnorePatterns. Both pass every check
-      # above.
-      #
-      # THE FLOOR IS DELIBERATELY LOW. 2000 against a current 2711, and the
-      # reason is what the TGRANT floor taught: a tight floor needs maintenance
-      # every time the count legitimately moves, goes stale upward, and
-      # eventually fires on a legitimate change - which is exactly how the drift
-      # check spent 21 days red. A low floor catches catastrophe, never needs
-      # touching, and makes no claim to catch small regressions. Coverage is
-      # codecov's job; this is a canary.
-      # TWO DISTINCT REDS, and the distinction is the point. "The summary could
-      # not be parsed" is not the same claim as "zero tests passed", and a
-      # parser that defaults to zero on a parse failure conflates them: both
-      # trip the floor today and they diverge the first time jest changes its
-      # summary format, at which point the floor silently becomes a format
-      # check that always fails - or worse, always passes.
-      #
-      # This is the same distinction this repo already draws for its mutation
-      # harness, where NOT MEASURED is deliberately kept separate from "nothing
-      # went red". It was missing here on the first attempt.
-      #
-      # The parse ANCHOR is the `total` count, not the `passed` count. Jest
-      # OMITS the passed clause when it is zero - `Tests: 2776 skipped, 2776
-      # total` is a well-formed summary meaning zero passed - but it always
-      # prints a total. So:
-      #
-      #   no `Tests:` line, or no `N total` in it  ->  NOT MEASURED, its own red
-      #   `N total` present, `N passed` absent     ->  genuinely zero passed
-      #   `N passed` present                       ->  that number, floored
-      - name: Floor on the number of tests that actually ran
-        if: always()
-        run: |
-          TALLY=$(grep -E '^Tests:' jest-run.log | tail -1)
-
-          if [ -z "$TALLY" ]; then
-            echo '::error::NOT MEASURED - no `Tests:` summary line in the run output at all. The floor cannot be evaluated, which is not the same as a floor of zero. Last 20 lines of the log:'
-            tail -20 jest-run.log
-            exit 1
-          fi
-
-          TOTAL=$(printf '%s' "$TALLY" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+')
-          if [ -z "$TOTAL" ]; then
-            echo "tally : $TALLY"
-            echo '::error::NOT MEASURED - the `Tests:` line carries no `N total`, so jest has changed its summary format and this parser no longer reads it. Fix the parser; do NOT lower the floor.'
-            exit 1
-          fi
-
-          # Only now is absence of a passed count meaningful: jest omits that
-          # clause at zero, and the well-formed total above proves the line was
-          # read rather than guessed.
-          PASSED=$(printf '%s' "$TALLY" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
-          PASSED=${PASSED:-0}
-
-          echo "tally : $TALLY"
-          echo "parsed: $PASSED passed of $TOTAL total  (floor 2000)"
-
-          if [ "$PASSED" -lt 2000 ]; then
-            echo '::error::Only '"$PASSED"' tests passed, against a floor of 2000. This is NOT a pass: a jest run that matches nothing exits 0 and reports no passed count, so a green check here would mean the suite never ran. Check for a stray -t, a narrowed testMatch, or a testPathIgnorePatterns change.'
-            exit 1
-          fi
-          echo "ok: $PASSED tests ran"
+        run: bash scripts/ci/assert-test-run.sh jest-run.log 2000 20261029

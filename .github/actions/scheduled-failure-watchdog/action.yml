@@ -1,0 +1,290 @@
+name: Scheduled failure watchdog
+description: >
+  Turns a scheduled check's repeated failures into ONE persistent, self-dating
+  GitHub issue, and closes it when a scheduled run next succeeds.
+
+# ===========================================================================
+# WHY THIS EXISTS, AND WHAT IT IS ACTUALLY FIXING
+# ===========================================================================
+# The schema-drift check failed on 21 consecutive nights (2026-10-08 to 10-28)
+# and the whole three weeks passed unnoticed.
+#
+# THE FIRST DIAGNOSIS WAS WRONG, AND THE CORRECTION IS THIS ACTION'S WHOLE
+# DESIGN. "A red X nobody was contracted to see" implies no channel existed.
+# Asked directly, the answer was that all twenty-one failure notifications
+# ARRIVED. The channel was never missing. THE SIGNAL WAS.
+#
+# So an issue is not a new channel - it lands in the same notification stream
+# and would be dismissed the same way if that is all it were. Three things
+# actually differ, and this action is built on them rather than on "somewhere
+# else to send it":
+#
+#   1. ONE PERSISTENT ARTEFACT instead of twenty-one transient ones. Twenty-one
+#      emails say "a run failed" twenty-one times and never once say "this has
+#      been broken for three weeks".
+#   2. IT LIVES IN THE ISSUES TAB, which is somewhere you go when you open the
+#      repo, rather than only in a stream you are trained to dismiss.
+#   3. IT CAN STATE ITS OWN DURATION. An email cannot. So the TITLE carries the
+#      consecutive count and the first-failure date, and is rewritten on every
+#      failure - because the title is the part that competes for attention in a
+#      notification list, and
+#
+#        "Schema Drift failing for 21 consecutive nights (since 2026-10-08)"
+#
+#      is a different object from "Run failed", read without opening anything.
+#
+# AND VOLUME CANNOT BE REDUCED, which is why distinguishability is the only
+# lever. GitHub's Actions notification settings offer email/web and failed-only
+# and nothing else - no filter by branch or by event. The stream cannot be
+# thinned, so the job here is to be DISTINGUISHABLE inside a stream that cannot
+# be cleaned.
+#
+# ===========================================================================
+# THE STATE MACHINE, AND WHY EACH AWKWARD CASE RESOLVES THE WAY IT DOES
+# ===========================================================================
+# IDENTIFIED BY LABEL, NOT BY TITLE OR A BODY MARKER. Titles are rewritten here
+# on every failure and can be edited by anyone, so matching on them is matching
+# on a moving target. A hidden HTML comment in the body was the first design and
+# is worse: it depends on GitHub's search indexing HTML comments, which is not
+# guaranteed. A label is exact, listable, and cheap.
+#
+# REPEATED FAILURES UPDATE, THEY NEVER ACCUMULATE. Twenty-one issues is the
+# original problem with extra steps - and so is twenty-one comments. One issue,
+# retitled each time, with at most `max-comments` appended; after that the newest
+# is EDITED in place. The edited comment carries the consecutive count and the
+# first-failure date, so a bounded thread still conveys a month: capping without
+# that would bound the noise and erase the duration, which is the single most
+# useful fact about a recurring alarm.
+#
+# A MANUAL CLOSE WHILE THE FAILURE PERSISTS REOPENS THE SAME ISSUE. Closing is a
+# signal that someone looked, not that anything is fixed, so the next failure
+# reopens that issue rather than opening a second thread. If the intent was to
+# tolerate it, that is a label, not a close - see the next paragraph.
+#
+# SILENCE IS SCOPED TO THE CAUSE, NOT TO THE CHANNEL. The `silence-label`
+# suppresses reopening only while the failure's SIGNATURE is unchanged. An
+# unscoped silence would hide a DIFFERENT failure arriving underneath it, and
+# outlive the thing it was granted for - which is how a channel dies quietly for
+# the second time. When the signature differs the issue reopens and says the
+# cause changed, so the silence cannot be inherited by a failure nobody agreed
+# to tolerate.
+#
+# AND SUPPRESSION IS ANNOUNCED IN THE JOB OUTPUT. A silenced alarm that does not
+# say it is silenced is indistinguishable from a broken one.
+#
+# A SUCCESS CLOSES THE ISSUE ONLY IF THIS MECHANISM OWNS IT - the label is the
+# check - and the caller is expected to gate closing on the SCHEDULED event.
+# A manual dispatch succeeding does not prove the nightly passes.
+#
+# ===========================================================================
+# THIS ACTION IS LOUD ABOUT ITS OWN FAILURE
+# ===========================================================================
+# Every step runs under `set -euo pipefail` and NOTHING here is
+# `continue-on-error`. If creating, retitling, commenting or closing fails, this
+# action fails and takes the job with it. A notifier that can fail silently has
+# rebuilt the original problem one layer up, which is the one outcome this must
+# not have.
+
+inputs:
+  check-name:
+    description: 'Human name of the check, used in the title. e.g. "Schema Drift"'
+    required: true
+  label:
+    description: 'The label that EXACTLY identifies this check''s issue. e.g. watchdog/schema-drift'
+    required: true
+  outcome:
+    description: '"failure" or "success" — usually job.status or a step outcome'
+    required: true
+  signature:
+    description: >
+      A short fingerprint of WHAT failed. Silence applies only while this is
+      unchanged. Omit it and silence degrades to channel-wide, which this action
+      will say in its output.
+    required: false
+    default: ''
+  details:
+    description: 'Markdown shown in the issue body and comments — the failing output'
+    required: false
+    default: ''
+  run-url:
+    description: 'URL of the failing run'
+    required: true
+  cadence:
+    description: 'Word used in the title for one occurrence. e.g. "nights", "runs"'
+    required: false
+    default: 'runs'
+  silence-label:
+    description: 'Applying this label suppresses reopening while the signature is unchanged'
+    required: false
+    default: 'watchdog-silenced'
+  max-comments:
+    description: 'Append at most this many comments, then edit the newest in place'
+    required: false
+    default: '3'
+  token:
+    description: 'A token with issues: write'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Watchdog
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME: ${{ inputs.check-name }}
+        WD_LABEL: ${{ inputs.label }}
+        OUTCOME: ${{ inputs.outcome }}
+        SIGNATURE: ${{ inputs.signature }}
+        DETAILS: ${{ inputs.details }}
+        RUN_URL: ${{ inputs.run-url }}
+        CADENCE: ${{ inputs.cadence }}
+        SILENCE_LABEL: ${{ inputs.silence-label }}
+        MAX_COMMENTS: ${{ inputs.max-comments }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+
+        TODAY=$(date -u '+%Y-%m-%d')
+        COMMENT_MARKER='<!-- watchdog-failure-comment -->'
+
+        # ---------------------------------------------------------------- find
+        # By label, exactly. --state all so a manually closed issue is found and
+        # reopened rather than duplicated.
+        gh label create "$WD_LABEL" --color ededed \
+          --description "Tracks consecutive scheduled failures of $CHECK_NAME" \
+          --force >/dev/null
+
+        FOUND=$(gh issue list --repo "$REPO" --label "$WD_LABEL" --state all \
+                  --limit 1 --json number,state,body,labels)
+        NUMBER=$(printf '%s' "$FOUND" | jq -r '.[0].number // empty')
+
+        if [ -n "$NUMBER" ]; then
+          STATE=$(printf '%s' "$FOUND" | jq -r '.[0].state')
+          BODY=$(printf '%s' "$FOUND" | jq -r '.[0].body // ""')
+          SILENCED=$(printf '%s' "$FOUND" | jq -r --arg l "$SILENCE_LABEL" \
+                      '[.[0].labels[].name] | index($l) != null')
+          PREV_FIRST=$(printf '%s' "$BODY" | sed -n 's/^- first failure: *//p' | head -1)
+          PREV_COUNT=$(printf '%s' "$BODY" | sed -n 's/^- consecutive failures: *//p' | head -1)
+          PREV_SIG=$(printf '%s' "$BODY" | sed -n 's/^- signature: *//p' | head -1)
+        else
+          STATE=''; BODY=''; SILENCED=false
+          PREV_FIRST=''; PREV_COUNT=''; PREV_SIG=''
+        fi
+
+        echo "check      : $CHECK_NAME"
+        echo "outcome    : $OUTCOME"
+        echo "issue      : ${NUMBER:-<none>} ${STATE:-}"
+        echo "signature  : ${SIGNATURE:-<none supplied>}"
+        echo "recorded   : ${PREV_SIG:-<none>}"
+        echo "silenced   : $SILENCED"
+
+        # ------------------------------------------------------------- SUCCESS
+        if [ "$OUTCOME" != "failure" ]; then
+          if [ -z "$NUMBER" ]; then
+            echo "ok: success, and no watchdog issue exists. Nothing to do."
+            exit 0
+          fi
+          if [ "$STATE" != "OPEN" ]; then
+            echo "ok: success, and the watchdog issue is already closed."
+            exit 0
+          fi
+          gh issue comment "$NUMBER" --repo "$REPO" --body "$(printf '%s\n\n%s\n' \
+            "$COMMENT_MARKER✅ **$CHECK_NAME passed on $TODAY.**" \
+            "It had been failing since ${PREV_FIRST:-an unrecorded date} (${PREV_COUNT:-?} consecutive $CADENCE). Closing. Run: $RUN_URL")"
+          gh issue close "$NUMBER" --repo "$REPO" \
+            --comment "" --reason completed 2>/dev/null \
+            || gh issue close "$NUMBER" --repo "$REPO"
+          echo "ok: closed issue #$NUMBER after a passing run."
+          exit 0
+        fi
+
+        # ------------------------------------------------------------- FAILURE
+        if [ -z "$SIGNATURE" ]; then
+          echo "::warning::No signature supplied, so silence (if applied) cannot be scoped to a cause and would suppress ANY failure. Pass a signature."
+        fi
+
+        FIRST=${PREV_FIRST:-$TODAY}
+        case "$PREV_COUNT" in
+          ''|*[!0-9]*) COUNT=1 ;;
+          *) COUNT=$((PREV_COUNT + 1)) ;;
+        esac
+        [ -z "$NUMBER" ] && COUNT=1
+
+        if [ "$COUNT" -eq 1 ]; then
+          TITLE="$CHECK_NAME failing (since $FIRST)"
+        else
+          TITLE="$CHECK_NAME failing for $COUNT consecutive $CADENCE (since $FIRST)"
+        fi
+
+        NEW_BODY=$(printf '%s\n' \
+          "**$CHECK_NAME has been failing since $FIRST.**" \
+          "" \
+          "- first failure: $FIRST" \
+          "- consecutive failures: $COUNT" \
+          "- signature: ${SIGNATURE:-none}" \
+          "- latest run: $RUN_URL" \
+          "" \
+          "<details><summary>What is failing</summary>" \
+          "" \
+          '```' \
+          "${DETAILS:-(no detail supplied)}" \
+          '```' \
+          "" \
+          "</details>" \
+          "" \
+          "---" \
+          "This issue is maintained by \`.github/actions/scheduled-failure-watchdog\`." \
+          "It is retitled on each consecutive failure so the duration is visible without opening it," \
+          "and it closes itself when a scheduled run next succeeds." \
+          "Closing it by hand does not stop it: the next failure reopens it." \
+          "To tolerate a KNOWN failure, add the \`$SILENCE_LABEL\` label — that suppresses reopening" \
+          "only while the signature above is unchanged, so a DIFFERENT failure still surfaces.")
+
+        # ---- no issue yet: create one
+        if [ -z "$NUMBER" ]; then
+          URL=$(gh issue create --repo "$REPO" --title "$TITLE" --body "$NEW_BODY" --label "$WD_LABEL")
+          echo "ok: opened $URL"
+          exit 0
+        fi
+
+        # ---- silenced, and the cause is the one that was silenced
+        if [ "$SILENCED" = "true" ] && [ -n "$SIGNATURE" ] && [ "$SIGNATURE" = "$PREV_SIG" ]; then
+          echo "::notice::$CHECK_NAME is still failing (consecutive: $COUNT, since $FIRST) and issue #$NUMBER carries the $SILENCE_LABEL label for THIS signature ($SIGNATURE). Not reopening. Remove the label to hear it again."
+          gh issue edit "$NUMBER" --repo "$REPO" --title "$TITLE" --body "$NEW_BODY" >/dev/null
+          echo "ok: issue #$NUMBER updated in place and left closed (silenced for this cause)."
+          exit 0
+        fi
+
+        # ---- silenced, but the cause CHANGED: the silence does not carry over
+        if [ "$SILENCED" = "true" ]; then
+          gh issue edit "$NUMBER" --repo "$REPO" --remove-label "$SILENCE_LABEL" >/dev/null
+          echo "::warning::Issue #$NUMBER was silenced for signature ${PREV_SIG:-none}, but this failure's signature is ${SIGNATURE:-none}. The cause changed, so the silence does not apply. Reopening and removing the label."
+        fi
+
+        gh issue edit "$NUMBER" --repo "$REPO" --title "$TITLE" --body "$NEW_BODY" >/dev/null
+        if [ "$STATE" != "OPEN" ]; then
+          gh issue reopen "$NUMBER" --repo "$REPO" >/dev/null
+          echo "ok: reopened issue #$NUMBER (it was closed while the failure persisted)."
+        fi
+
+        # ---- comment: append up to MAX_COMMENTS, then edit the newest
+        IDS=$(gh api "repos/$REPO/issues/$NUMBER/comments" --paginate \
+                --jq '.[] | select(.body | contains("watchdog-failure-comment")) | .id')
+        N=$(printf '%s' "$IDS" | grep -c . || true)
+
+        LINE1="$COMMENT_MARKER❌ **Still failing on $TODAY.**"
+        LINE2="Consecutive $CADENCE: **$COUNT**, first failure **$FIRST**. Signature \`${SIGNATURE:-none}\`. Run: $RUN_URL"
+
+        if [ "$N" -lt "$MAX_COMMENTS" ]; then
+          gh issue comment "$NUMBER" --repo "$REPO" \
+            --body "$(printf '%s\n\n%s\n' "$LINE1" "$LINE2")"
+          echo "ok: appended failure comment ($((N + 1)) of $MAX_COMMENTS)."
+        else
+          LAST=$(printf '%s' "$IDS" | tail -1)
+          EDITED=$(printf '%s\n\n%s\n\n%s\n' "$LINE1" "$LINE2" \
+            "_This comment is edited in place rather than appended, so the thread stays readable. It has now failed **$COUNT** consecutive $CADENCE, every one since **$FIRST**._")
+          jq -n --arg b "$EDITED" '{body: $b}' > /tmp/wd-comment.json
+          gh api "repos/$REPO/issues/comments/$LAST" -X PATCH --input /tmp/wd-comment.json >/dev/null
+          echo "ok: edited comment $LAST in place (cap of $MAX_COMMENTS reached); it carries count $COUNT since $FIRST."
+        fi
