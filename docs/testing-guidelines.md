@@ -1143,6 +1143,31 @@ seven of eight seeds. The guard and the guard's guard are now both falsifiable.
 **The general rule: if no mutation reddens it, it is not a guard yet. Either give
 it a test that can fail or take it out — do not leave it in as reassurance.**
 
+#### And it is stronger than "fails to protect": it makes a FALSE CLAIM
+
+`--showSeed` sat in the pinned-seed script (#92) for about an hour. Jest prints
+the `Seed:` line whenever a seed is in effect, so no mutation could redden the
+flag, and removing it changed nothing.
+
+The reason to remove it is not that it failed to protect anything. It is that
+**keeping it would imply the check depends on it.** Someone later reads the flag
+as load-bearing and preserves it through a refactor that should have dropped it,
+or — worse — trusts the check because the flag is there. A component no mutation
+can redden does not merely fail to guard; it misstates what the guard rests on,
+and that misstatement outlives whoever could have corrected it.
+
+So the disposal is not optional tidying. An unfalsifiable component is a claim,
+and an unverified claim in a guard is the thing this document exists about.
+
+#### A mutation result is a delta from a GREEN BASELINE
+
+Stated in full in `docs/schema-drift-check.md` beside the mutation rule, because
+it is part of that rule rather than a note next to it: *mutate, confirm red,
+restore* is satisfied exactly by a harness that fails identically in every
+state. The pinned-seed gate's first harness did, and reported four mutations as
+confirmed while testing nothing. Run the baseline first; a red baseline is an
+abort, not a result.
+
 ### The mechanisms, for reference
 
 The prototype collision IS bounded and closed. Render-before-mock is not.

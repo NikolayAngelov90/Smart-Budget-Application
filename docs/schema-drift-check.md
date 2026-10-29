@@ -225,6 +225,20 @@ check entirely:
 - **A guard is not done until it has been mutation-tested.** A guard with no
   recorded red state is not evidence that anything is checked — four of the six
   above were guards that could not fail.
+- **A MUTATION RESULT IS A DELTA FROM A GREEN BASELINE.** Red alone is not
+  evidence; it may be the harness reporting its own plumbing. This is part of
+  the rule above and not an addendum to it, because the rule as previously
+  written — mutate, confirm red, restore — is satisfied exactly by a harness
+  that fails identically in every state.
+
+  Found on 2026-10-29 while mutation-testing the pinned-seed gate (#92). The
+  harness invoked `subprocess.run(['bash', '-c', ...])` with no shell, `bash`
+  did not resolve, **every** case exited 1 at launch, and all four mutations
+  reported "as expected" while testing nothing. It was caught only because the
+  BASELINES were red too — and the output had been filtered to the lines
+  expected, which hid the actual error. So: run the baseline first, print every
+  line rather than the ones you expect, and treat a red baseline as an abort
+  rather than a result.
 - **READING THE OUTPUT *IS* THE CHECK.** A green badge says a process exited 0.
   It does not say what the process compared, how many rows it read, or whether it
   compared anything at all. Defects 1, 2, 5 and 6 all sat behind a green or a red

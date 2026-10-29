@@ -32,6 +32,11 @@ name: Test Order
 # verified green across seeds 1-20 (20 of 20 runs) and then three times at this
 # seed specifically, 2711 passed / 0 failed each time.
 #
+# ONE SHELL NOTE, because the first draft of this file had it wrong: an
+# `::error::` message with backticks inside DOUBLE quotes is command
+# substitution, so the error path would have run the very suite it was reporting
+# on. Single quotes, or no backticks, in every message below.
+#
 # THE PRECONDITION THAT HAD TO BE MET FIRST, because it is why this job did not
 # ship a week earlier: a pinned seed buys a deterministic ORDER, not a
 # deterministic OUTCOME. While `TransactionEntryModal.composer` was failing
@@ -128,3 +133,44 @@ jobs:
             exit 1
           fi
           echo "ok: the suite ran in order 20261029"
+
+      # THE THIRD CHECK, and the one the other two cannot make. --showConfig
+      # asserts what RESOLVED; the Seed line asserts what the run REPORTED.
+      # Neither asserts THAT TESTS RAN.
+      #
+      # A jest invocation matching nothing EXITS 0. Measured, not assumed:
+      #
+      #   `-t` with a pattern that matches no test name
+      #       exit 0,  "Tests: 2776 skipped, 2776 total"  - and NO passed count
+      #   a path pattern matching one file
+      #       exit 0,  "Tests: 24 passed, 24 total"       - 24 of 2711
+      #   a path pattern matching nothing
+      #       exit 1 - this one jest already protects
+      #
+      # The first is the `jest -t` class this repo has already been bitten by: a
+      # run that matches nothing is green and silent. The second is the shape of
+      # an over-narrow config or testPathIgnorePatterns. Both pass every check
+      # above.
+      #
+      # THE FLOOR IS DELIBERATELY LOW. 2000 against a current 2711, and the
+      # reason is what the TGRANT floor taught: a tight floor needs maintenance
+      # every time the count legitimately moves, goes stale upward, and
+      # eventually fires on a legitimate change - which is exactly how the drift
+      # check spent 21 days red. A low floor catches catastrophe, never needs
+      # touching, and makes no claim to catch small regressions. Coverage is
+      # codecov's job; this is a canary.
+      - name: Floor on the number of tests that actually ran
+        if: always()
+        run: |
+          TALLY=$(grep -E '^Tests:' jest-run.log | tail -1)
+          PASSED=$(printf '%s' "$TALLY" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+          PASSED=${PASSED:-0}
+
+          echo "tally : ${TALLY:-<no Tests: line at all>}"
+          echo "passed: $PASSED  (floor 2000)"
+
+          if [ "$PASSED" -lt 2000 ]; then
+            echo '::error::Only '"$PASSED"' tests passed, against a floor of 2000. This is NOT a pass: a jest run that matches nothing exits 0 and reports no passed count, so a green check here would mean the suite never ran. Check for a stray -t, a narrowed testMatch, or a testPathIgnorePatterns change.'
+            exit 1
+          fi
+          echo "ok: $PASSED tests ran"
