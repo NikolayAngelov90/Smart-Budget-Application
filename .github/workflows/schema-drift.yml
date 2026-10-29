@@ -125,6 +125,8 @@ jobs:
           # connection string that could appear in an error.
           PGPASSWORD: ${{ secrets.SCHEMA_READER_PASSWORD }}
         run: |
+          echo "FORCED PRE-COMPARE FAILURE - throwaway test branch, never merged"
+          exit 1
           if [ -z "$PGPASSWORD" ]; then
             echo "::error::SCHEMA_READER_PASSWORD is not set — production's catalog would be unreadable and the check would compare against nothing."
             exit 1
@@ -206,7 +208,7 @@ jobs:
       # it.
       - name: Describe what failed, for the watchdog
         id: sig
-        if: always() && github.event_name == 'schedule'
+        if: always() && github.event_name == 'workflow_dispatch'  # THROWAWAY TEST BRANCH
         run: |
           set -euo pipefail
 
@@ -251,7 +253,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Scheduled-failure watchdog
-        if: always() && github.event_name == 'schedule'
+        if: always() && github.event_name == 'workflow_dispatch'  # THROWAWAY TEST BRANCH
         uses: ./.github/actions/scheduled-failure-watchdog
         with:
           check-name: Schema Drift
