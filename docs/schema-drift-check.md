@@ -224,6 +224,38 @@ most of the rest.
 
 ### PRESENCE ASSERTIONS FAIL SAFE. ABSENCE ASSERTIONS FAIL OPEN.
 
+#### And the rule applies to CLAIMS, not only to checks
+
+**An absence claim carries an obligation to state where you looked.** "Nothing
+tests X", "this never runs", "there are no other instances" — each is an absence
+assertion in prose, and each fails open exactly like a `want 0` satisfied by a
+command that errored. The difference is only that nobody expects a sentence to
+need a control.
+
+**The worked example, and it is better than the grep ones.** A chain mock threw
+`TypeError: ... maybeSingle is not a function` inside a swallowing `catch`, so
+the savings-logging path died unseen. From that I concluded, and wrote into a
+report *and into a merged commit message*, that "Story 13.9's savings-expense
+logging has never executed in any test."
+
+It was wrong. `src/lib/services/__tests__/savingsTransactionService.test.ts` had
+covered that function since the story shipped — both branches, create-the-category
+and reuse-an-existing-one. **The paired check was one `ls`.** The rule for greps
+had been written three hours earlier and was not applied to a sentence.
+
+What was true is narrower and had to be re-derived: the *seam* is untested —
+`addContribution` resolving the contributor's currency and passing it, with the
+goal's name, through to the ledger entry. The `TypeError` died on exactly the
+step the unit test skips, which is why the failure looked like total absence.
+
+**So: before writing that something does not exist, name the search that
+establishes it** — the glob you ran, the directory you listed, the grep and its
+pattern. An absence claim with no stated search is an unpaired absence
+assertion, and it propagates further than a broken check because prose gets
+quoted.
+
+#### The original form, for checks
+
 A check for *"X is there"* **fails** when the check itself breaks. A check for
 *"X is **not** there"* **passes** when the check itself breaks. That is not a bug
 in any particular check; it is a property of the shape, and it explains nearly
