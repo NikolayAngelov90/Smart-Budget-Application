@@ -11,6 +11,7 @@
  * - addContribution: inserts contribution, increments current_amount, throws on errors
  */
 
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import {
   getGoals,
   getGoal,
@@ -26,50 +27,25 @@ import {
 // ============================================================================
 
 /**
- * Creates a chainable Supabase mock ending at .order() (terminal).
- * Used for getGoals.
+ * ONE CLIENT BUILDER, replacing three hand-rolled chain helpers.
+ *
+ * Each of the three listed the methods one call path happened to use on the day
+ * it was written: an `.order()` terminal for getGoals, `.single()` for
+ * getGoal/createGoal/updateGoal, and — worst of the three — a POSITIONAL `.eq()`
+ * for deleteGoal whose first call returned the chain and whose second RESOLVED.
+ * That is the unconsumed-`...Once` shape this repo has been bitten by twice: the
+ * chain's behaviour depended on how many times `eq` had been called, so adding a
+ * filter to the production query silently changed which call resolved.
+ *
+ * `createSupabaseMock` is chainable at any depth and thenable at any terminal,
+ * so none of that is encoded here any more. Assertions are unchanged: the shared
+ * chain answers each method with a memoised `jest.fn`, precisely so
+ * `expect(db.chainFor('goals').eq).toHaveBeenCalledWith(...)` keeps working.
+ *
+ * An ARRAY is a queue consumed in `from()` order, which is how a service that
+ * queries the same table twice behaves.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createOrderChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {};
-  chain.from = jest.fn().mockReturnValue(chain);
-  chain.select = jest.fn().mockReturnValue(chain);
-  chain.eq = jest.fn().mockReturnValue(chain);
-  chain.order = jest.fn().mockResolvedValue(resolveWith);
-  return chain;
-}
-
-/**
- * Creates a chainable Supabase mock ending at .single() (terminal).
- * Used for getGoal, createGoal (after select), updateGoal (after select).
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createSingleChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {};
-  chain.select = jest.fn().mockReturnValue(chain);
-  chain.insert = jest.fn().mockReturnValue(chain);
-  chain.update = jest.fn().mockReturnValue(chain);
-  chain.delete = jest.fn().mockReturnValue(chain);
-  chain.eq = jest.fn().mockReturnValue(chain);
-  chain.single = jest.fn().mockResolvedValue(resolveWith);
-  return chain;
-}
-
-/**
- * Creates a chainable mock ending at the second .eq() after .delete() (terminal).
- * Used for deleteGoal which ends at `.delete().eq().eq()` resolving the query.
- * First .eq() returns the chain; second .eq() resolves with the result.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createDeleteChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {};
-  chain.delete = jest.fn().mockReturnValue(chain);
-  chain.eq = jest.fn().mockReturnValueOnce(chain).mockResolvedValueOnce(resolveWith);
-  return chain;
-}
+const goalsClient = (result: unknown) => createSupabaseMock({ tables: { goals: result as never } });
 
 // ============================================================================
 // SAMPLE DATA
@@ -93,21 +69,17 @@ const sampleGoal = {
 
 describe('getGoals', () => {
   it('returns empty array when user has no goals', async () => {
-    const chain = createOrderChainMock({ data: [], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof getGoals
-    >[0];
+    const db = goalsClient({ data: [], error: null });
+    const supabase = db.client as Parameters<typeof getGoals>[0];
 
     const result = await getGoals(supabase, 'user-1');
     expect(result).toEqual([]);
-    expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(db.chainFor('goals').order).toHaveBeenCalledWith('created_at', { ascending: false });
   });
 
   it('returns goals array when goals exist', async () => {
-    const chain = createOrderChainMock({ data: [sampleGoal], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof getGoals
-    >[0];
+    const db = goalsClient({ data: [sampleGoal], error: null });
+    const supabase = db.client as Parameters<typeof getGoals>[0];
 
     const result = await getGoals(supabase, 'user-1');
     expect(result).toEqual([sampleGoal]);
@@ -115,10 +87,8 @@ describe('getGoals', () => {
 
   it('throws on DB error', async () => {
     const dbError = new Error('Connection refused');
-    const chain = createOrderChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof getGoals
-    >[0];
+    const db = goalsClient({ data: null, error: dbError });
+    const supabase = db.client as Parameters<typeof getGoals>[0];
 
     await expect(getGoals(supabase, 'user-1')).rejects.toThrow('Connection refused');
   });
@@ -130,10 +100,8 @@ describe('getGoals', () => {
 
 describe('getGoal', () => {
   it('returns goal when found', async () => {
-    const chain = createSingleChainMock({ data: sampleGoal, error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof getGoal
-    >[0];
+    const db = goalsClient({ data: sampleGoal, error: null });
+    const supabase = db.client as Parameters<typeof getGoal>[0];
 
     const result = await getGoal(supabase, 'user-1', 'goal-1');
     expect(result).toEqual(sampleGoal);
@@ -141,10 +109,8 @@ describe('getGoal', () => {
 
   it('returns null when goal not found (PGRST116)', async () => {
     const notFoundError = { code: 'PGRST116', message: 'Row not found' };
-    const chain = createSingleChainMock({ data: null, error: notFoundError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof getGoal
-    >[0];
+    const db = goalsClient({ data: null, error: notFoundError });
+    const supabase = db.client as Parameters<typeof getGoal>[0];
 
     const result = await getGoal(supabase, 'user-1', 'nonexistent');
     expect(result).toBeNull();
@@ -152,10 +118,8 @@ describe('getGoal', () => {
 
   it('throws on non-PGRST116 DB error', async () => {
     const dbError = new Error('Query failed');
-    const chain = createSingleChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof getGoal
-    >[0];
+    const db = goalsClient({ data: null, error: dbError });
+    const supabase = db.client as Parameters<typeof getGoal>[0];
 
     await expect(getGoal(supabase, 'user-1', 'goal-1')).rejects.toThrow('Query failed');
   });
@@ -167,10 +131,8 @@ describe('getGoal', () => {
 
 describe('createGoal', () => {
   it('inserts correct fields and returns created goal', async () => {
-    const chain = createSingleChainMock({ data: sampleGoal, error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof createGoal
-    >[0];
+    const db = goalsClient({ data: sampleGoal, error: null });
+    const supabase = db.client as Parameters<typeof createGoal>[0];
 
     const result = await createGoal(supabase, 'user-1', {
       name: 'Emergency Fund',
@@ -179,7 +141,7 @@ describe('createGoal', () => {
     });
 
     expect(result).toEqual(sampleGoal);
-    expect(chain.insert).toHaveBeenCalledWith({
+    expect(db.chainFor('goals').insert).toHaveBeenCalledWith({
       user_id: 'user-1',
       name: 'Emergency Fund',
       target_amount: 1000,
@@ -189,10 +151,8 @@ describe('createGoal', () => {
 
   it('passes deadline when provided', async () => {
     const goalWithDeadline = { ...sampleGoal, deadline: '2027-01-01' };
-    const chain = createSingleChainMock({ data: goalWithDeadline, error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof createGoal
-    >[0];
+    const db = goalsClient({ data: goalWithDeadline, error: null });
+    const supabase = db.client as Parameters<typeof createGoal>[0];
 
     await createGoal(supabase, 'user-1', {
       name: 'Emergency Fund',
@@ -200,15 +160,15 @@ describe('createGoal', () => {
       deadline: '2027-01-01',
     });
 
-    expect(chain.insert).toHaveBeenCalledWith(expect.objectContaining({ deadline: '2027-01-01' }));
+    expect(db.chainFor('goals').insert).toHaveBeenCalledWith(
+      expect.objectContaining({ deadline: '2027-01-01' })
+    );
   });
 
   it('throws on DB error', async () => {
     const dbError = new Error('Insert failed');
-    const chain = createSingleChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof createGoal
-    >[0];
+    const db = goalsClient({ data: null, error: dbError });
+    const supabase = db.client as Parameters<typeof createGoal>[0];
 
     await expect(
       createGoal(supabase, 'user-1', { name: 'Test', target_amount: 100 })
@@ -223,24 +183,20 @@ describe('createGoal', () => {
 describe('updateGoal', () => {
   it('updates goal and returns updated data', async () => {
     const updatedGoal = { ...sampleGoal, name: 'Updated Name' };
-    const chain = createSingleChainMock({ data: updatedGoal, error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof updateGoal
-    >[0];
+    const db = goalsClient({ data: updatedGoal, error: null });
+    const supabase = db.client as Parameters<typeof updateGoal>[0];
 
     const result = await updateGoal(supabase, 'user-1', 'goal-1', { name: 'Updated Name' });
     expect(result).toEqual(updatedGoal);
-    expect(chain.update).toHaveBeenCalledWith({ name: 'Updated Name' });
-    expect(chain.eq).toHaveBeenCalledWith('id', 'goal-1');
-    expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(db.chainFor('goals').update).toHaveBeenCalledWith({ name: 'Updated Name' });
+    expect(db.chainFor('goals').eq).toHaveBeenCalledWith('id', 'goal-1');
+    expect(db.chainFor('goals').eq).toHaveBeenCalledWith('user_id', 'user-1');
   });
 
   it('throws "Goal not found" when PGRST116 returned', async () => {
     const notFoundError = { code: 'PGRST116', message: 'Row not found' };
-    const chain = createSingleChainMock({ data: null, error: notFoundError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof updateGoal
-    >[0];
+    const db = goalsClient({ data: null, error: notFoundError });
+    const supabase = db.client as Parameters<typeof updateGoal>[0];
 
     await expect(updateGoal(supabase, 'user-1', 'nonexistent', { name: 'New' })).rejects.toThrow(
       'Goal not found'
@@ -249,10 +205,8 @@ describe('updateGoal', () => {
 
   it('throws on DB error', async () => {
     const dbError = new Error('Update failed');
-    const chain = createSingleChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof updateGoal
-    >[0];
+    const db = goalsClient({ data: null, error: dbError });
+    const supabase = db.client as Parameters<typeof updateGoal>[0];
 
     await expect(updateGoal(supabase, 'user-1', 'goal-1', { name: 'New' })).rejects.toThrow(
       'Update failed'
@@ -266,23 +220,19 @@ describe('updateGoal', () => {
 
 describe('deleteGoal', () => {
   it('calls delete with correct ownership filters', async () => {
-    const chain = createDeleteChainMock({ error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof deleteGoal
-    >[0];
+    const db = goalsClient({ error: null });
+    const supabase = db.client as Parameters<typeof deleteGoal>[0];
 
     await deleteGoal(supabase, 'user-1', 'goal-1');
-    expect(chain.delete).toHaveBeenCalled();
-    expect(chain.eq).toHaveBeenCalledWith('id', 'goal-1');
-    expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(db.chainFor('goals').delete).toHaveBeenCalled();
+    expect(db.chainFor('goals').eq).toHaveBeenCalledWith('id', 'goal-1');
+    expect(db.chainFor('goals').eq).toHaveBeenCalledWith('user_id', 'user-1');
   });
 
   it('throws on DB error', async () => {
     const dbError = new Error('Delete failed');
-    const chain = createDeleteChainMock({ error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof deleteGoal
-    >[0];
+    const db = goalsClient({ error: dbError });
+    const supabase = db.client as Parameters<typeof deleteGoal>[0];
 
     await expect(deleteGoal(supabase, 'user-1', 'goal-1')).rejects.toThrow('Delete failed');
   });
@@ -301,44 +251,26 @@ describe('addContribution', () => {
     },
     updateResult: { data: typeof sampleGoal | null; error: Error | null }
   ) {
-    let fromCallCount = 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase: any = {
-      from: jest.fn().mockImplementation(() => {
-        fromCallCount++;
-        if (fromCallCount === 1) {
-          // goal_contributions INSERT ... .select('id').single() (Story 13.9)
-          return {
-            insert: jest.fn().mockReturnValue({
-              select: jest.fn().mockReturnValue({
-                single: jest.fn().mockResolvedValue({
-                  data: insertResult.error ? null : { id: 'contrib-1' },
-                  error: insertResult.error,
-                }),
-              }),
-            }),
-          };
-        }
-        if (fromCallCount === 2) {
-          // goals SELECT current_amount, name
-          const fetchChain = {
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            single: jest.fn().mockResolvedValue(fetchResult),
-          };
-          return fetchChain;
-        }
-        // goals UPDATE
-        const updateChain = {
-          update: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          select: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue(updateResult),
-        };
-        return updateChain;
-      }),
-    };
-    return supabase as Parameters<typeof addContribution>[0];
+    // PER-TABLE RESULTS, replacing a POSITIONAL mock that answered by COUNT:
+    // call 1 was the contributions insert, call 2 the goals select, and call 3+
+    // fell through to the goals update. The service makes a FOURTH call -
+    // `from('user_profiles').select('preferences').eq('id', userId).maybeSingle()`
+    // - which landed on the update chain, which has no `maybeSingle`, so it threw
+    // TypeError. That throw is absorbed by a deliberate non-fatal catch in
+    // goalService, so no assertion ever saw it and Story 13.9's savings-expense
+    // logging has never executed in any test.
+    //
+    // `goals: [fetchResult, updateResult]` is a QUEUE consumed in from() order,
+    // which is what the count-based mock was approximating by hand.
+    return createSupabaseMock({
+      tables: {
+        goal_contributions: {
+          data: insertResult.error ? null : { id: 'contrib-1' },
+          error: insertResult.error,
+        },
+        goals: [fetchResult as never, updateResult as never],
+      },
+    }).client as Parameters<typeof addContribution>[0];
   }
 
   it('inserts contribution and returns goal with updated current_amount', async () => {
@@ -397,6 +329,147 @@ describe('addContribution', () => {
 // markMilestoneCelebrated
 // ============================================================================
 
+describe('addContribution — the savings-expense SEAM (Story 13.9)', () => {
+  /**
+   * THE FIRST TESTS TO EXERCISE THIS SEAM, and worth stating precisely because
+   * the first attempt at stating it was wrong.
+   *
+   * `logSavingsContribution` itself is NOT untested — savingsTransactionService
+   * .test.ts has covered it since the story shipped, both the create-the-category
+   * and reuse-an-existing-one branches. The claim that "Story 13.9's logging has
+   * never executed in any test" was an absence inferred from a failure, and the
+   * paired check was one `ls`.
+   *
+   * What has never run is the SEAM: addContribution reading the contributor's
+   * `preferences.currency_format`, resolving a currency, and passing it with the
+   * GOAL'S NAME to the logger. The old positional mock threw
+   * `TypeError: ... maybeSingle is not a function` on exactly the step the unit
+   * test skips - the profile lookup - so the seam died before the call, and
+   * production's non-fatal catch absorbed it. Both values are user-visible in the
+   * ledger entry, and neither was checked anywhere.
+   *
+   * These tests are reachable only because the shared chain mock stopped
+   * throwing. The migration did not FIND the gap - the logged error did - but it
+   * is what made the gap testable.
+   *
+   * WHAT THESE DELIBERATELY DO NOT ASSERT: anything about `current_amount`.
+   * `goals.current_amount`, `goals.target_amount` and `goal_contributions.amount`
+   * are all unitless - there is no currency column on either table - so goal
+   * progress is raw addition over amounts that may be in different currencies.
+   * Pinning the ledger entry's currency while the accumulator is unitless would
+   * pin half of a broken pair. See the board item in deferred-work.md.
+   */
+  const SAVINGS_CATEGORY = 'cat-savings';
+
+  function contribMock(opts: { currencyFormat?: unknown; goalName?: string } = {}) {
+    const { currencyFormat, goalName = 'Holiday' } = opts;
+    return createSupabaseMock({
+      tables: {
+        goal_contributions: { data: { id: 'contrib-1' }, error: null },
+        goals: [
+          { data: { current_amount: 250, name: goalName }, error: null },
+          { data: { ...sampleGoal, name: goalName, current_amount: 300 }, error: null },
+        ],
+        user_profiles: {
+          data:
+            currencyFormat === undefined
+              ? {}
+              : { preferences: { currency_format: currencyFormat } },
+          error: null,
+        },
+        categories: { data: { id: SAVINGS_CATEGORY }, error: null },
+        transactions: { data: null, error: null },
+      },
+    });
+  }
+
+  it("logs the expense in the CONTRIBUTOR'S currency, not the default", async () => {
+    const db = contribMock({ currencyFormat: 'USD' });
+
+    await addContribution(db.client as Parameters<typeof addContribution>[0], 'user-1', 'goal-1', {
+      amount: 50,
+    } as never);
+
+    // The whole point of the profile lookup. Before this test nothing checked
+    // that the resolved currency reached the row.
+    const inserted = db.callsTo('transactions', 'insert')[0]![0] as Record<string, unknown>;
+    expect(inserted.currency).toBe('USD');
+    expect(inserted.goal_contribution_id).toBe('contrib-1');
+    expect(inserted.type).toBe('expense');
+    expect(inserted.amount).toBe(50);
+  });
+
+  it("carries the GOAL'S NAME into the notes, which the user reads in the ledger", async () => {
+    const db = contribMock({ currencyFormat: 'EUR', goalName: 'New Roof' });
+
+    await addContribution(db.client as Parameters<typeof addContribution>[0], 'user-1', 'goal-1', {
+      amount: 25,
+    } as never);
+
+    const inserted = db.callsTo('transactions', 'insert')[0]![0] as Record<string, unknown>;
+    expect(inserted.notes).toBe('Savings: New Roof');
+  });
+
+  it('falls back to the default currency when the profile has no preference', async () => {
+    const db = contribMock({});
+
+    await addContribution(db.client as Parameters<typeof addContribution>[0], 'user-1', 'goal-1', {
+      amount: 10,
+    } as never);
+
+    const inserted = db.callsTo('transactions', 'insert')[0]![0] as Record<string, unknown>;
+    expect(inserted.currency).toBe('EUR');
+  });
+
+  it('scopes the profile lookup to the contributor', async () => {
+    const db = contribMock({ currencyFormat: 'GBP' });
+
+    await addContribution(db.client as Parameters<typeof addContribution>[0], 'user-1', 'goal-1', {
+      amount: 10,
+    } as never);
+
+    // An arg-blind stub is how a dropped user scope stays green - the repo's
+    // documented 3x-recurring bug, and this lookup is one `eq` away from
+    // reading somebody else's currency.
+    expect(db.callsTo('user_profiles', 'eq')).toContainEqual(['id', 'user-1']);
+  });
+
+  it('the contribution still succeeds when the savings logging fails', async () => {
+    // The non-fatal contract, asserted rather than assumed. `categories`
+    // resolving to no row sends resolveSavingsCategoryId down its create
+    // branch, which then also finds nothing and throws.
+    const db = createSupabaseMock({
+      tables: {
+        goal_contributions: { data: { id: 'contrib-1' }, error: null },
+        goals: [
+          { data: { current_amount: 250, name: 'Holiday' }, error: null },
+          { data: sampleGoal, error: null },
+        ],
+        user_profiles: { data: {}, error: null },
+        categories: { data: null, error: null },
+      },
+    });
+
+    await expect(
+      addContribution(db.client as Parameters<typeof addContribution>[0], 'user-1', 'goal-1', {
+        amount: 50,
+      } as never)
+    ).resolves.toEqual(sampleGoal);
+
+    // AND NOTHING WAS WRITTEN. `callsTo('transactions', ...)` is the wrong
+    // idiom here and the factory says so: it THROWS when asked about a table
+    // nobody queried rather than returning `[]`, which is the pairing rule
+    // implemented in the mock - it refuses to answer an absence question with a
+    // shape that fails open.
+    //
+    // So the absence is asserted on `from`, PAIRED with a presence that proves
+    // the savings path ran at all. Without the pair, "never wrote to
+    // transactions" would also be satisfied by the path never starting.
+    expect(db.from).toHaveBeenCalledWith('categories');
+    expect(db.from).not.toHaveBeenCalledWith('transactions');
+  });
+});
+
 describe('markMilestoneCelebrated', () => {
   /**
    * Builds a mock that:
@@ -413,32 +486,22 @@ describe('markMilestoneCelebrated', () => {
     },
     updateResult: { error: { message: string } | null }
   ) {
-    let fromCallCount = 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateChain: any = {
-      update: jest.fn().mockReturnThis(),
+    // Two calls to the same table, so a QUEUE rather than a counter. The old
+    // mock also used `eq: mockReturnValueOnce(chain).mockResolvedValueOnce(...)`,
+    // whose behaviour depended on HOW MANY TIMES eq had been called - adding an
+    // ownership filter to the production query would silently have changed which
+    // call resolved.
+    const db = createSupabaseMock({
+      tables: { goals: [fetchResult as never, updateResult as never] },
+    });
+    return {
+      supabase: db.client as Parameters<typeof markMilestoneCelebrated>[0],
+      db,
     };
-    updateChain.eq = jest.fn().mockReturnValueOnce(updateChain).mockResolvedValueOnce(updateResult);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase: any = {
-      from: jest.fn().mockImplementation(() => {
-        fromCallCount++;
-        if (fromCallCount === 1) {
-          return {
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            single: jest.fn().mockResolvedValue(fetchResult),
-          };
-        }
-        return updateChain;
-      }),
-    };
-    return { supabase: supabase as Parameters<typeof markMilestoneCelebrated>[0], updateChain };
   }
 
   it('appends threshold and calls update with correct payload and ownership filter', async () => {
-    const { supabase, updateChain } = buildMarkMilestoneMock(
+    const { supabase, db } = buildMarkMilestoneMock(
       { data: { milestones_celebrated: [25] }, error: null },
       { error: null }
     );
@@ -447,9 +510,11 @@ describe('markMilestoneCelebrated', () => {
 
     expect(supabase.from).toHaveBeenCalledTimes(2);
     // M2: verify correct merged array is written
-    expect(updateChain.update).toHaveBeenCalledWith({ milestones_celebrated: [25, 50] });
+    expect(db.chainFor('goals', 1).update).toHaveBeenCalledWith({
+      milestones_celebrated: [25, 50],
+    });
     // M2: verify ownership filter present on UPDATE (prevents cross-user writes)
-    expect(updateChain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(db.chainFor('goals', 1).eq).toHaveBeenCalledWith('user_id', 'user-1');
   });
 
   it('is a no-op when threshold already in milestones_celebrated', async () => {

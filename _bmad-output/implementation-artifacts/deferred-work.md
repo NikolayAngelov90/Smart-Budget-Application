@@ -545,3 +545,44 @@ That argues for one deliberate pass, not an opportunistic one riding on a bug fi
 **Re-open it when** either the app takes a user outside the two current locales,
 or someone is already touching the formatting layer for another reason, so the
 all-at-once pass is not a standalone cost.
+
+---
+
+## ON THE BOARD, NOT STARTED: 32 catch blocks where a failure leaves NO TRACE ANYWHERE
+
+**The sentence that matters:** a `catch` that neither rethrows nor logs produces
+a failure **no instrument can see** — not the test, not the migration, not the
+masked-failure detector.
+
+That is a different claim from "32 files the detector does not cover", and only
+the first conveys why it matters. Every other population found this month is
+invisible *by accident* — a wrong grep, a short-circuiting TypeError, a stale
+floor — and became visible once the instrument improved. **This one is invisible
+by construction.** There is nothing for an instrument to read.
+
+**The measurement**, from `src` excluding tests:
+
+| | |
+| --- | --- |
+| `catch` blocks | 198 |
+| rethrow | 10 |
+| swallow, and LOG (`logger.*` or `console.*` in the body) | **156** |
+| swallow, and are SILENT | **32**, across 25 files |
+
+The worst concentrations: `src/app/layout.tsx` (3), then
+`HouseholdInvites.tsx`, `SharedGoalsCard.tsx`, `InsightsPageContent.tsx`,
+`ValuesPlanSection.tsx` and `usePushNotifications.ts` at 2 each.
+
+**Why it is not started, and what starting it would mean.** This is not a sweep
+with a known defect at the end of it — there is no evidence any of the 32 is
+currently hiding anything, and by their nature there could not be. The work is
+to make the population readable rather than to fix instances: add a log line to
+each swallowing `catch` so that the detector (and a human reading CI output) can
+see when one fires. That is a one-line change in 32 places, and the value is
+entirely in what it makes *possible* later rather than in anything it fixes now.
+
+**Ranking note:** it should be weighed against the fact that
+`scripts/ci/detect-masked-failures.sh` keys on the `(non-fatal)` marker. A
+swallowing catch that logs *without* that marker is also partly invisible, so
+the related and cheaper question is whether the detector's vocabulary should
+widen before the silent 32 are touched at all.

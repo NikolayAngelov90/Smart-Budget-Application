@@ -1276,6 +1276,59 @@ So the dynamic detector's coverage is **156 of 188** swallowing paths plus arm
 (a)'s route-level catches. The 32 silent swallows are a genuine blind spot, and
 "1 confirmed" is a lower bound for that reason, stated rather than implied.
 
+### THE MIGRATION IS NOT A DETECTOR — and the criterion predicts only one of the two
+
+**A prediction made before the migration, and it was wrong.** It said: a
+hand-rolled chain swallowed methods by *throwing*, the shared Proxy does not
+throw, so tests that passed because a `TypeError` short-circuited them will run
+further and some will fail — *those failures are the findings.*
+
+Measured on `goalService`, the one confirmed instance: **23 of 23 passed before
+the migration and 23 of 23 after.** The Proxy did let execution continue, the
+savings-logging path reached further than it ever had, it then failed for a
+different reason, and production's deliberate non-fatal `catch` absorbed *that*
+exactly as completely as it had absorbed the `TypeError`. The migration
+converted one invisible failure into a different invisible failure.
+
+**So migration-silence and detection-silence are different things**, and
+conflating them is easy because the same `catch` causes both. The detector reads
+the LOG, not the test outcome — and on that same 23/23-passing run it printed:
+
+```
+SWALLOWED-FAILURE  [GoalService] Savings expense logging failed (non-fatal): ...
+```
+
+With the detector riding along, **every arm is productive, by a different
+mechanism**:
+
+| population | size | how a masked failure surfaces |
+| --- | --- | --- |
+| no swallowing `catch` | 16 files | **the test fails** — visible in the result, migration alone finds it |
+| swallowing `catch` that LOGS | 156 catches | the test passes; **the detector flags the log** |
+| swallowing `catch` that is SILENT | 32 catches, 25 files | **invisible to both** — see the board item below |
+
+That is a better justification for migrating the remaining files than the one it
+replaces. "Remove the shape so the class cannot recur" is true and is a
+*preventive* argument. "Each migrated file becomes a scan by the one instrument
+that has ever found an instance" is a *detective* argument, and it is the reason
+to finish rather than to stop at a tranche.
+
+### WHEN A POWER CALCULATION LANDS NEAR THE POPULATION SIZE, ENUMERATE
+
+The control arm — files whose production code has no swallowing `catch`, where a
+mock gap has nowhere to hide — had 2 files and 0 failures. Asking what N makes
+that zero meaningful: at a hypothesised 20% per-file rate, 6 clean files leave a
+26% chance of seeing zero by luck and 14 leave 4%.
+
+**And the whole population is 16.** At which point the statistics are beside the
+point: finishing all 16 costs marginally more than the 14 the calculation
+demanded and converts a probable answer into an exhaustive one. So the order is
+the control arm first and completely, then the rest.
+
+Worth generalising: a power calculation is for sampling a population too large
+to enumerate. When it returns an N close to the population, it has told you the
+population is small — which is the answer, not an input to the next calculation.
+
 ### THE FIX ALREADY EXISTS AND HAS TWO ADOPTERS
 
 `src/test-utils/supabaseChain.ts` is a Proxy where **any** method is chainable,
