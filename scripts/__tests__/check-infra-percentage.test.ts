@@ -10,7 +10,7 @@ const {
   calculatePercentage,
   getStatus,
   THRESHOLDS,
-} = require('../check-infra-percentage');
+} = jest.requireActual('../check-infra-percentage');
 
 describe('check-infra-percentage', () => {
   describe('THRESHOLDS', () => {
@@ -145,8 +145,8 @@ development_status:
   });
 
   describe('infrastructure policy document', () => {
-    const nodeFs = require('fs');
-    const nodePath = require('path');
+    const nodeFs = jest.requireActual('fs');
+    const nodePath = jest.requireActual('path');
     const policyPath = nodePath.join(__dirname, '..', '..', 'docs', 'process', 'infrastructure-policy.md');
 
     it('policy document exists', () => {
@@ -190,8 +190,8 @@ development_status:
   });
 
   describe('infrastructure story template', () => {
-    const nodeFs = require('fs');
-    const nodePath = require('path');
+    const nodeFs = jest.requireActual('fs');
+    const nodePath = jest.requireActual('path');
     const templatePath = nodePath.join(__dirname, '..', '..', 'docs', 'templates', 'infrastructure-story-template.md');
 
     it('template exists', () => {
@@ -209,8 +209,8 @@ development_status:
   });
 
   describe('team announcement', () => {
-    const nodeFs = require('fs');
-    const nodePath = require('path');
+    const nodeFs = jest.requireActual('fs');
+    const nodePath = jest.requireActual('path');
     const announcePath = nodePath.join(__dirname, '..', '..', 'docs', 'process', 'infrastructure-policy-announcement.md');
 
     it('announcement document exists', () => {
@@ -231,8 +231,8 @@ development_status:
   });
 
   describe('sprint-status.yaml integration', () => {
-    const nodeFs = require('fs');
-    const nodePath = require('path');
+    const nodeFs = jest.requireActual('fs');
+    const nodePath = jest.requireActual('path');
     const yamlPath = nodePath.join(__dirname, '..', '..', 'docs', 'sprint-artifacts', 'sprint-status.yaml');
 
     it('sprint-status.yaml has infrastructure_tracking section', () => {

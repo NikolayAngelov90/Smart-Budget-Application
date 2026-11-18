@@ -35,8 +35,8 @@ describe('calculateMean', () => {
   });
 
   it('should handle null or undefined input', () => {
-    expect(calculateMean(null as any)).toBe(0);
-    expect(calculateMean(undefined as any)).toBe(0);
+    expect(calculateMean(null as never)).toBe(0);
+    expect(calculateMean(undefined as never)).toBe(0);
   });
 });
 
@@ -80,8 +80,8 @@ describe('calculateStdDev', () => {
   });
 
   it('should handle null or undefined input', () => {
-    expect(calculateStdDev(null as any)).toBe(0);
-    expect(calculateStdDev(undefined as any)).toBe(0);
+    expect(calculateStdDev(null as never)).toBe(0);
+    expect(calculateStdDev(undefined as never)).toBe(0);
   });
 });
 

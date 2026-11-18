@@ -129,7 +129,7 @@ if (typeof global.Headers === 'undefined') {
 // Mock next-intl (ESM module that Jest cannot parse directly)
 // Load actual English translations so existing tests that query for English text continue to work
 jest.mock('next-intl', () => {
-  const messages = require('./messages/en.json');
+  const messages = jest.requireActual('./messages/en.json');
   return {
     useTranslations: jest.fn((namespace) => {
       const nsMessages = messages[namespace] || {};
@@ -144,7 +144,7 @@ jest.mock('next-intl', () => {
         }
         return value;
       };
-      t.rich = (key, params) => {
+      t.rich = (key) => {
         const value = nsMessages[key];
         return value !== undefined ? value : `${namespace}.${key}`;
       };
