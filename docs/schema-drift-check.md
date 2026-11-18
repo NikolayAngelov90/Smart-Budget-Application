@@ -254,6 +254,30 @@ pattern. An absence claim with no stated search is an unpaired absence
 assertion, and it propagates further than a broken check because prose gets
 quoted.
 
+#### A claim about your OWN ACTION is still a claim
+
+"I merged it", "that's landed", "the fix is in" feel like memory rather than
+inference, which is exactly why nobody pairs them. They are inference: you
+pushed, you intended to merge, and you reported the intention.
+
+**The paired check is reading the DESTINATION, not remembering the push.** For a
+merge the destination is `main`, and the check is CONTENT — `git grep` for the
+text the change introduced — not a SHA, because a squash-merge makes SHA
+comparison worthless.
+
+**The worked example is this pull request.** The PR carrying *"an absence claim
+carries an obligation to state where you looked"* was reported as merged while it
+was still open. `git grep -i "where you looked" main` returned nothing; the same
+grep on this branch returned the line. The push had been remembered and the
+destination never read.
+
+It had also been RED for seventeen days without anyone seeing it, which is the
+second half: **a pull request you opened and did not look at again is a
+scheduled job with no schedule.** "A red PR is seen by its author, by
+construction" assumed an author who returns. So before reporting a pull request
+as done, read its check conclusions and report them — and before reporting it as
+merged, read `main`.
+
 #### The original form, for checks
 
 A check for *"X is there"* **fails** when the check itself breaks. A check for

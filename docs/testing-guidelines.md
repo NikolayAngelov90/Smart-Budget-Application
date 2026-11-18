@@ -765,6 +765,33 @@ wrong.** An empty result prompts you to widen; a non-empty one suppresses the
 instinct. That is the vacuity problem in the *search* direction rather than the
 assertion direction, and it is how the figures below were wrong for a week.
 
+**BEFORE ATTRIBUTING A FAILURE TO A GATE, CHECK THE GATE'S SCOPE. A gate cannot
+fail on a file it never reads.** On 2026-11-16 a docs-only pull request went red,
+and the confident first diagnosis was Prettier — `test.yml` itself documents that
+Prettier is non-idempotent here, and the PR added 68 lines of markdown. Wrong:
+`format:check` globs `src/**/*.{js,jsx,ts,tsx,json,css,md}`, so `docs/` is outside
+it entirely. That is the third time a `src`-scoped glob has produced a confident
+wrong conclusion in this repo, after the 148-vs-155 count and the four jest roots
+below.
+
+And read the failing STEP, not the job: the job is called `Run Tests` and runs
+five gates, only one of which runs tests. The step that failed was `Install
+Playwright browsers`.
+
+**AN UNDECLARED INPUT IS STILL AN INPUT, and the ones that bite are the ones not
+spelled like versions.** That step failed because `runs-on: ubuntu-latest` had
+moved to Ubuntu 26.04, which Playwright 1.57 does not support. Every genuine
+dependency in this repo is pinned — the lockfile, the Postgres version, Prettier
+through `npm ci`, Playwright itself — because each of them LOOKS like a version.
+`runs-on` is a label, so nobody read it as a dependency, and six workflows were on
+it.
+
+The argument for pinning was already in the file that broke, three steps above the
+failure, in `test.yml`'s formatting step: *"an unpinned formatter gate fails for
+reasons nobody can reproduce locally, and then gets disabled."* Written by us,
+about Prettier, in the same job. Knowledge that did not travel, because the thing
+it should have travelled to did not look like the thing it was written about.
+
 ### The measurement, 2026-10-05
 
 `jest --listTests` collects **263** files from **four** top-level roots:
