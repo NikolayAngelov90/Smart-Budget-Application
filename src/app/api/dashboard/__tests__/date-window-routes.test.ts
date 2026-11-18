@@ -35,6 +35,7 @@ jest.mock('@/lib/ai/valuesSpendingEngine', () => ({
 }));
 
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock, type SupabaseMock } from '@/test-utils/supabaseChain';
 import { GET as monthOverMonth } from '../month-over-month/route';
 import { GET as spendingByCategory } from '../spending-by-category/route';
 import { GET as trends } from '../trends/route';
@@ -50,51 +51,36 @@ interface Captured {
 }
 
 /**
- * A chain that resolves on whichever terminal the route happens to use, so one
- * harness serves all four shapes (`.lte`, `.lt`, `.order`).
+ * Every date filter the route applied, across ALL tables, in call order.
+ *
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The hand-rolled chain
+ * pushed each gte/lte/lt into a side-channel as it ran; the factory records
+ * every call per chain, so the same arrays are rebuilt by walking from() calls
+ * in global order and reading each chain's calls. Every table answers [] - the
+ * factory's default - which is all these routes need to reach their filters.
  */
-function makeClient(captured: Captured) {
-  const rows: unknown[] = [];
-  const build = () => {
-    const settle = () => Promise.resolve({ data: rows, error: null });
-    const chain: Record<string, unknown> = {
-      select: jest.fn(() => chain),
-      eq: jest.fn(() => chain),
-      order: jest.fn(() => settle()),
-      gte: jest.fn((col: string, v: string) => {
-        captured.cols.push(col);
-        captured.gte.push(v);
-        return chain;
-      }),
-      lte: jest.fn((col: string, v: string) => {
-        captured.cols.push(col);
-        captured.lte.push(v);
-        return Object.assign(settle(), chain);
-      }),
-      lt: jest.fn((col: string, v: string) => {
-        captured.cols.push(col);
-        captured.lt.push(v);
-        return Object.assign(settle(), chain);
-      }),
-    };
-    return chain;
-  };
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'u1' } }, error: null }),
-    },
-    from: jest.fn(() => build()),
-  };
+function capture(db: SupabaseMock): Captured {
+  const out: Captured = { gte: [], lte: [], lt: [], cols: [] };
+  const seen: Record<string, number> = {};
+  for (const [table] of db.from.mock.calls as [string][]) {
+    seen[table] = (seen[table] ?? -1) + 1;
+    for (const { method, args } of db.chainFor(table, seen[table]).calls) {
+      if (method === 'gte' || method === 'lte' || method === 'lt') {
+        out.cols.push(args[0] as string);
+        out[method].push(args[1] as string);
+      }
+    }
+  }
+  return out;
 }
 
 const request = (query = '') => ({ url: `http://localhost:3000/api/dashboard${query}` }) as never;
 
 async function run(handler: (req: never) => Promise<unknown>, query = '') {
-  const captured: Captured = { gte: [], lte: [], lt: [], cols: [] };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mockCreateClient.mockResolvedValue(makeClient(captured) as any);
+  const db = createSupabaseMock({ user: { id: 'u1' } });
+  mockCreateClient.mockResolvedValue(db.client);
   await handler(request(query));
-  return captured;
+  return capture(db);
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;

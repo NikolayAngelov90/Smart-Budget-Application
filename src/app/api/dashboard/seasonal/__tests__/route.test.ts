@@ -25,28 +25,20 @@ jest.mock('@/lib/utils/date', () => ({
 jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), error: jest.fn() } }));
 
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { analyzeSeasonalPatterns } from '@/lib/ai/seasonalAnalysis';
 import { GET } from '../route';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockAnalyze = analyzeSeasonalPatterns as jest.MockedFunction<typeof analyzeSeasonalPatterns>;
 
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`: the route's single
+// transactions read, and the factory's auth for `user` (null -> unauthenticated).
 function makeClient(user: object | null, txData: object[] = [], dbError: object | null = null) {
-  const chain = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    gte: jest.fn().mockReturnThis(),
-    lt: jest.fn().mockResolvedValue({ data: txData, error: dbError }),
-  };
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({
-        data: { user },
-        error: user ? null : { message: 'No session' },
-      }),
-    },
-    from: jest.fn().mockReturnValue(chain),
-  };
+  return createSupabaseMock({
+    user: user as { id: string } | null,
+    tables: { transactions: { data: txData, error: dbError } },
+  }).client;
 }
 
 describe('GET /api/dashboard/seasonal', () => {

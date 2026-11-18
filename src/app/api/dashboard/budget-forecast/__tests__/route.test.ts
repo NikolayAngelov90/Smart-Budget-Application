@@ -38,6 +38,7 @@ jest.mock('@/lib/utils/date', () => ({
 }));
 
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { computeEndOfMonthForecasts } from '@/lib/ai/forecastEngine';
 import { GET } from '../route';
 
@@ -60,7 +61,6 @@ const mockComputeForecasts = computeEndOfMonthForecasts as jest.MockedFunction<
 // Minimal chainable Supabase mock
 function makeSupabaseMock(overrides: {
   user?: object | null;
-  authError?: object | null;
   currentTx?: object[];
   historicalTx?: object[];
   categories?: object[];
@@ -69,7 +69,6 @@ function makeSupabaseMock(overrides: {
 }) {
   const {
     user = { id: 'user-1' },
-    authError = null,
     currentTx = [],
     historicalTx = [],
     categories = [],
@@ -77,39 +76,25 @@ function makeSupabaseMock(overrides: {
     dbError = null,
   } = overrides;
 
-  const makeQueryChain = (data: object[], error: object | null = null) => {
-    const chain = {
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      gte: jest.fn().mockReturnThis(),
-      lte: jest.fn().mockReturnThis(),
-      lt: jest.fn().mockResolvedValue({ data, error }),
-      is: jest.fn().mockResolvedValue({ data, error }),
-      order: jest.fn().mockResolvedValue({ data, error }),
-    };
-    // make the terminal call resolve
-    chain.lte.mockResolvedValue({ data, error });
-    chain.lt.mockResolvedValue({ data, error });
-    chain.is.mockResolvedValue({ data, error });
-    chain.select.mockReturnValue(chain);
-    chain.eq.mockReturnValue(chain);
-    chain.gte.mockReturnValue(chain);
-    return chain;
-  };
-
-  let callCount = 0;
-  const mockFrom = jest.fn().mockImplementation(() => {
-    callCount++;
-    if (callCount === 1) return makeQueryChain(currentTx, dbError);
-    if (callCount === 2) return makeQueryChain(historicalTx, dbError);
-    if (callCount === 3) return makeQueryChain(categories, dbError);
-    return makeQueryChain(budgets, dbError); // ADR-025: category_budgets query
-  });
-
-  return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: authError }) },
-    from: mockFrom,
-  };
+  /*
+   * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The hand-rolled mock
+   * dispatched by a CALL COUNTER (1 current tx, 2 historical tx, 3 categories,
+   * 4+ budgets), correct only while the route's Promise.all keeps that order.
+   * Per-table results need only the order WITHIN transactions: current month,
+   * then history - which the "returns forecasts" test pins, because it asserts
+   * the current-month rows reach the engine.
+   */
+  return createSupabaseMock({
+    user: user as { id: string } | null,
+    tables: {
+      transactions: [
+        { data: currentTx, error: dbError },
+        { data: historicalTx, error: dbError },
+      ],
+      categories: { data: categories, error: dbError },
+      category_budgets: { data: budgets, error: dbError }, // ADR-025
+    },
+  }).client;
 }
 
 describe('GET /api/dashboard/budget-forecast', () => {
@@ -119,9 +104,7 @@ describe('GET /api/dashboard/budget-forecast', () => {
   });
 
   it('returns 401 when user is not authenticated', async () => {
-    mockCreateClient.mockResolvedValue(
-      makeSupabaseMock({ user: null, authError: { message: 'No session' } }) as never
-    );
+    mockCreateClient.mockResolvedValue(makeSupabaseMock({ user: null }) as never);
     const res = await GET(getRequest());
     expect(res.status).toBe(401);
     const body = await res.json();
@@ -181,20 +164,13 @@ describe('GET /api/dashboard/budget-forecast', () => {
   });
 
   it('returns 500 on database error', async () => {
+    // Auth succeeds, the reads fail. The route throws the current-month error
+    // into its catch, which answers 500 - the same catch the old rejecting
+    // chains reached. (The old test built a dbError client and then replaced
+    // it before use; this keeps the one that was actually exercised.)
     mockCreateClient.mockResolvedValue(
-      makeSupabaseMock({ currentTx: [], dbError: { message: 'DB error' } }) as never
+      makeSupabaseMock({ currentTx: [], dbError: { message: 'DB failure' } }) as never
     );
-    // Make auth succeed but DB fail
-    const mockClient = makeSupabaseMock({ currentTx: [] });
-    mockClient.from = jest.fn().mockImplementation(() => ({
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      gte: jest.fn().mockReturnThis(),
-      lte: jest.fn().mockRejectedValue(new Error('DB failure')),
-      lt: jest.fn().mockRejectedValue(new Error('DB failure')),
-      is: jest.fn().mockRejectedValue(new Error('DB failure')),
-    }));
-    mockCreateClient.mockResolvedValue(mockClient as never);
 
     const res = await GET(getRequest());
     expect(res.status).toBe(500);

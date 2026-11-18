@@ -29,6 +29,7 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { GET } from '../route';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -46,51 +47,33 @@ interface Captured {
  * (current window, previous window) can be told apart by call order.
  */
 /** Explicit, because `gte` returns the chain it is defined in. */
-interface QueryChain {
-  select: jest.Mock;
-  eq: jest.Mock;
-  gte: jest.Mock;
-  lte: jest.Mock;
-}
-
-function makeClient(rowsPerQuery: object[][], captured: Captured) {
-  let call = 0;
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
-    },
-    from: jest.fn(() => {
-      const index = call++;
-      const chain: QueryChain = {
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn((col: string, value: unknown) => {
-          captured.eq.push([col, value]);
-          return chain;
-        }),
-        gte: jest.fn((col: string, value: string) => {
-          captured.gteCols.push(col);
-          captured.gte.push(value);
-          return chain;
-        }),
-        lte: jest.fn((col: string, value: string) => {
-          captured.lteCols.push(col);
-          captured.lte.push(value);
-          return Promise.resolve({ data: rowsPerQuery[index] ?? [], error: null });
-        }),
-      };
-      return chain;
-    }),
-  };
-}
-
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The hand-rolled client
+ * pushed every filter into a side-channel as it was called and indexed rows by
+ * a call counter. The route reads only `transactions` (current period, then the
+ * previous one), so the rows are a transactions QUEUE, and `captured` is rebuilt
+ * after the request from allCallsTo - which flattens the chains in from() order,
+ * the same order the side-channel recorded them in.
+ */
 const request = (query: string) =>
   ({ url: `http://localhost:3000/api/dashboard/stats${query}` }) as Parameters<typeof GET>[0];
 
 const run = async (query: string, rows: object[][] = [[], []]) => {
-  const captured: Captured = { gte: [], lte: [], gteCols: [], lteCols: [], eq: [] };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mockCreateClient.mockResolvedValue(makeClient(rows, captured) as any);
+  const db = createSupabaseMock({
+    user: { id: 'user-1' },
+    tables: { transactions: rows.map((data) => ({ data, error: null })) },
+  });
+  mockCreateClient.mockResolvedValue(db.client);
   const res = await GET(request(query));
+
+  const calls = (method: string) => db.allCallsTo('transactions', method) as [string, unknown][];
+  const captured: Captured = {
+    gte: calls('gte').map(([, v]) => v as string),
+    gteCols: calls('gte').map(([c]) => c),
+    lte: calls('lte').map(([, v]) => v as string),
+    lteCols: calls('lte').map(([c]) => c),
+    eq: calls('eq'),
+  };
   return { body: await res.json(), captured, status: res.status };
 };
 
