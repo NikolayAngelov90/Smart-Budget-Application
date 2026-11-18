@@ -1354,6 +1354,32 @@ reasoning was written down in the file, and it did not travel.** A utility with
 migration plus a lint rule banning hand-rolled `from: jest.fn()` chain stubs in
 tests — enforcement, not another note.
 
+### A KNOWN SHAPE, NOT AN INSTRUMENT: a mock that outlived its call site
+
+`settingsService`'s two `updatePreferences` tests labelled their first queued
+result *"Mock getUserProfile"*. `updatePreferences` is one line,
+`return updateUserProfile(userId, { preferences })`, and does not call
+`getUserProfile`. The first query it actually makes is DW-2's migration-041
+fallback read, `select('preferences')`. The tests passed because the full profile
+row they queued happens to carry a `preferences` field, so it served the real
+query by coincidence.
+
+Nothing failed, because nothing was wrong yet: the data fit. The label was the
+defect. It described a call that does not happen to anyone reading the test, and
+the next change to the fallback would have been reasoned about against a query
+that was never made. (Found during the 2026-11 chain migration; labels corrected,
+data left as it was.)
+
+**It is recorded as a shape, and deliberately given no instrument.** It is not
+greppable: a stale label and a correct one look the same to a search. Spotting it
+took reading the production function next to the mock's queue. So when you
+migrate or touch a queued mock, read the function under test and check that each
+queued entry's label names a query that function really makes.
+
+**WHAT MECHANISM CARRIES THIS: none, by decision.** This is the honest case of a
+guidelines entry being all there is. It says so here, so that nobody mistakes it
+for a guard.
+
 ## Measuring a flake: two rules bought at a high price
 
 ### Prefer a deterministic assertion over a sampled one wherever the cause can be asserted directly
