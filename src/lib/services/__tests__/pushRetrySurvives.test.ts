@@ -53,55 +53,50 @@ const mockSend = webpush.sendNotification as jest.Mock;
 
 const USER = 'user-push';
 
-/** Chainable Supabase stub: one push subscription, prefs that allow the push. */
-function client(opts: { subscriptions?: unknown[]; deletes?: string[] } = {}) {
-  const deletes = opts.deletes ?? [];
+/**
+ * One push subscription, and prefs that allow the push.
+ *
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. push_subscriptions is a
+ * QUEUE: the subscriptions read, then any delete (a dry queue repeats). The
+ * hand-rolled stub recorded deleted ids through a `__deleting` flag on a shared
+ * chain; the factory gives the delete its own chain, so "what was deleted" is
+ * read off the chain that called delete() - see `deletedIds`.
+ */
+function client(opts: { subscriptions?: unknown[] } = {}) {
   const subs = opts.subscriptions ?? [
     { id: 'sub-1', endpoint: 'https://push.example/abc', p256dh: 'p', auth: 'a' },
   ];
-
-  const from = jest.fn((table: string) => {
-    if (table === 'user_profiles') {
-      const chain: Record<string, unknown> = {
-        select: () => chain,
-        eq: () => chain,
-        // quiet hours 0..0 is the degenerate range the service treats as "never
-        // quiet", so the dispatcher reaches the send rather than deferring.
-        maybeSingle: async () => ({
-          data: {
-            preferences: { push_digest_enabled: true, quiet_hours_start: 0, quiet_hours_end: 0 },
-          },
-          error: null,
-        }),
-      };
-      return chain;
-    }
-    // push_subscriptions
-    const chain: Record<string, unknown> = {
-      select: () => chain,
-      eq: (_col: string, val: string) => {
-        if (chain.__deleting) {
-          deletes.push(val);
-          return Promise.resolve({ error: null });
-        }
-        return chain;
+  return createSupabaseMock({
+    tables: {
+      // quiet hours 0..0 is the degenerate range the service treats as "never
+      // quiet", so the dispatcher reaches the send rather than deferring.
+      user_profiles: {
+        data: {
+          preferences: { push_digest_enabled: true, quiet_hours_start: 0, quiet_hours_end: 0 },
+        },
+        error: null,
       },
-      delete: () => {
-        chain.__deleting = true;
-        return chain;
-      },
-      then: (resolve: (v: unknown) => unknown) =>
-        Promise.resolve({ data: subs, error: null }).then(resolve),
-    };
-    return chain;
+      push_subscriptions: [
+        { data: subs, error: null },
+        { data: null, error: null },
+      ],
+    },
   });
-  return { from, deletes };
 }
+
+/** The `id` filters of every push_subscriptions chain that called delete(). */
+const deletedIds = (db: ReturnType<typeof client>) =>
+  (db.chains.push_subscriptions ?? [])
+    .filter((c) => c.callsTo('delete').length > 0)
+    .flatMap((c) => c.callsTo('eq'))
+    .filter(([col]) => col === 'id')
+    .map(([, id]) => id);
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceRoleClient: jest.fn(),
 }));
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -115,7 +110,7 @@ describe('a failed push stays retryable', () => {
     // fails transiently must not be recorded as delivered — the routes write a
     // marker only on 'sent', and a marker is never deleted.
     const c = client();
-    (createServiceRoleClient as jest.Mock).mockReturnValue(c);
+    (createServiceRoleClient as jest.Mock).mockReturnValue(c.client);
     mockSend.mockRejectedValue(Object.assign(new Error('socket hang up'), { statusCode: 500 }));
 
     const outcome = await dispatchCategorizedPush(USER, 'digest', {
@@ -134,7 +129,7 @@ describe('a failed push stays retryable', () => {
     // outcome rather than as a delivery: the ABSENCE of a row already means "not
     // delivered", which is true, so no status column is needed to say it.
     const c = client({ subscriptions: [] });
-    (createServiceRoleClient as jest.Mock).mockReturnValue(c);
+    (createServiceRoleClient as jest.Mock).mockReturnValue(c.client);
 
     const outcome = await dispatchCategorizedPush(USER, 'digest', {
       type: 'digest',
@@ -149,7 +144,7 @@ describe('a failed push stays retryable', () => {
 
   it('a pruned dead endpoint is not marked delivered', async () => {
     const c = client();
-    (createServiceRoleClient as jest.Mock).mockReturnValue(c);
+    (createServiceRoleClient as jest.Mock).mockReturnValue(c.client);
     mockSend.mockRejectedValue(Object.assign(new Error('gone'), { statusCode: 410 }));
 
     const outcome = await dispatchCategorizedPush(USER, 'digest', {
@@ -166,19 +161,19 @@ describe('a failed push stays retryable', () => {
     // correct. Without pruning, a 410 endpoint would be retried every run,
     // erroring each time and never resolving — a worse steady state than the bug.
     const c = client();
-    (createServiceRoleClient as jest.Mock).mockReturnValue(c);
+    (createServiceRoleClient as jest.Mock).mockReturnValue(c.client);
     mockSend.mockRejectedValue(Object.assign(new Error('gone'), { statusCode: 410 }));
 
     await sendPushToUser(c as never, USER, { type: 'digest', title: 't', body: 'b' });
 
-    expect(c.deletes).toContain('sub-1');
+    expect(deletedIds(c)).toContain('sub-1');
   });
 
   it('an accepted send DOES report a delivery', async () => {
     // The other half: if this did not pass, the fix would have replaced a
     // feature that marks everything with one that marks nothing.
     const c = client();
-    (createServiceRoleClient as jest.Mock).mockReturnValue(c);
+    (createServiceRoleClient as jest.Mock).mockReturnValue(c.client);
     mockSend.mockResolvedValue({ statusCode: 201 });
 
     const outcome = await dispatchCategorizedPush(USER, 'digest', {
@@ -197,7 +192,7 @@ describe('a failed push stays retryable', () => {
     // state cannot be monitored.
     delete process.env.VAPID_PRIVATE_KEY;
     const c = client();
-    (createServiceRoleClient as jest.Mock).mockReturnValue(c);
+    (createServiceRoleClient as jest.Mock).mockReturnValue(c.client);
 
     const outcome = await dispatchCategorizedPush(USER, 'digest', {
       type: 'digest',

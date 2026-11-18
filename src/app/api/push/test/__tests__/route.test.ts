@@ -24,6 +24,7 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { sendPushToUser } from '@/lib/services/pushService';
 import { POST } from '../route';
 
@@ -35,23 +36,12 @@ const mockPush = sendPushToUser as jest.MockedFunction<typeof sendPushToUser>;
 
 const ORIGINAL_ENV = process.env;
 
-function authClient(user: object | null) {
-  return {
-    auth: {
-      getUser: jest
-        .fn()
-        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
-    },
-  };
-}
-function countClient(count: number) {
-  return {
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockResolvedValue({ count, error: null }),
-    })),
-  };
-}
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`: the factory supplies
+// auth.getUser for `user` (null -> unauthenticated) and the count query below.
+const authClient = (user: { id: string } | null) => createSupabaseMock({ user }).client;
+/** The service-role count of this user's subscribed devices. */
+const countDb = (count: number) =>
+  createSupabaseMock({ tables: { push_subscriptions: { data: null, count, error: null } } });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -74,16 +64,20 @@ it('503 when VAPID is not configured', async () => {
 
 it('returns sent:0 and does not push when the user has no subscribed devices', async () => {
   mockCreateClient.mockResolvedValue(authClient({ id: 'u' }) as never);
-  mockServiceClient.mockReturnValue(countClient(0) as never);
+  const db = countDb(0);
+  mockServiceClient.mockReturnValue(db.client);
   const res = await POST();
   expect(res.status).toBe(200);
   expect((await res.json()).data.sent).toBe(0);
+  // PAIRED: the count was read, for THIS user - so "no push" is the answer to
+  // zero devices, not a path that never asked.
+  expect(db.callsTo('push_subscriptions', 'eq')).toContainEqual(['user_id', 'u']);
   expect(mockPush).not.toHaveBeenCalled();
 });
 
 it('sends a test push to each subscribed device', async () => {
   mockCreateClient.mockResolvedValue(authClient({ id: 'u' }) as never);
-  mockServiceClient.mockReturnValue(countClient(2) as never);
+  mockServiceClient.mockReturnValue(countDb(2).client);
   const res = await POST();
   expect(res.status).toBe(200);
   expect((await res.json()).data.sent).toBe(2);
