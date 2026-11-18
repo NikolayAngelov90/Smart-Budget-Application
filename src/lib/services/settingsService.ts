@@ -313,7 +313,9 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
   try {
     const supabase = await createClient();
 
-    // Delete user profile (cascades to auth.users via ON DELETE CASCADE)
+    // Delete the user profile. This does NOT reach auth.users: the FK runs the
+    // other way (user_profiles.id REFERENCES auth.users ON DELETE CASCADE). The
+    // auth user is deleted explicitly below, and THAT is what cascades.
     const { error: profileError } = await supabase.from('user_profiles').delete().eq('id', userId);
 
     if (profileError) {

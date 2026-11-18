@@ -1334,16 +1334,108 @@ Both arms are measurable, and arm (b) is the larger one:
 
 | | |
 | --- | --- |
-| `catch` blocks in `src` (excluding tests) | 198 |
+| `catch` blocks in `src` (excluding tests) | **256** |
 | of those, rethrow | 10 |
-| **swallow** — arm (b)'s surface | **188**, across 130 files |
-| swallowing catches that LOG — the detector can see these | 156 |
-| swallowing catches that are SILENT — **invisible to the detector** | 32, across 25 files |
-| status-code-only assertions in chain-mock files — arm (a)'s surface | 61 across 14 files |
+| **swallow** — arm (b)'s surface | **246** |
+| swallowing catches that LOG — the detector can see these | 157 |
+| swallowing catches that are SILENT — **invisible to the detector** | **89, across 64 files** |
 
-So the dynamic detector's coverage is **156 of 188** swallowing paths plus arm
-(a)'s route-level catches. The 32 silent swallows are a genuine blind spot, and
+**THESE FIGURES WERE WRONG ONCE, AND THE WAY THEY WERE WRONG IS THE LESSON.** The
+first census reported 198 catch blocks, 156 logging and **32 silent across 25
+files**. Its pattern was `catch\s*\([^)]*\)\s*\{`, which REQUIRES a binding —
+so every ES2019 bare `catch {` was invisible to it. There are 58. And a bare
+`catch` cannot log the error it never bound, so the blind spot fell almost
+entirely on the SILENT population: 57 of the 89 silent swallows are bare. The
+corrected census was paired with a must-find control (a known bare `catch` in
+`digestService` had to be counted) — the first was not, which is why nothing
+flagged that a third of the catches were missing.
+
+So the dynamic detector's coverage is **157 of 246** swallowing paths plus arm
+(a)'s route-level catches. The 89 silent swallows are a genuine blind spot, and
 "1 confirmed" is a lower bound for that reason, stated rather than implied.
+
+### THE MIGRATION IS NOT A DETECTOR — and the criterion predicts only one of the two
+
+**A prediction made before the migration, and it was wrong.** It said: a
+hand-rolled chain swallowed methods by *throwing*, the shared Proxy does not
+throw, so tests that passed because a `TypeError` short-circuited them will run
+further and some will fail — *those failures are the findings.*
+
+Measured on `goalService`, the one confirmed instance: **23 of 23 passed before
+the migration and 23 of 23 after.** The Proxy did let execution continue, the
+savings-logging path reached further than it ever had, it then failed for a
+different reason, and production's deliberate non-fatal `catch` absorbed *that*
+exactly as completely as it had absorbed the `TypeError`. The migration
+converted one invisible failure into a different invisible failure.
+
+**So migration-silence and detection-silence are different things**, and
+conflating them is easy because the same `catch` causes both. The detector reads
+the LOG, not the test outcome — and on that same 23/23-passing run it printed:
+
+```
+SWALLOWED-FAILURE  [GoalService] Savings expense logging failed (non-fatal): ...
+```
+
+With the detector riding along, **every arm is productive, by a different
+mechanism**:
+
+| population | size | how a masked failure surfaces |
+| --- | --- | --- |
+| no swallowing `catch` | **21 files** (stated as 16; see the correction below) | **the test fails**: visible in the result, so migration alone finds it |
+| swallowing `catch` that LOGS | 157 catches | the test passes; **the detector flags the log** |
+| swallowing `catch` that is SILENT | **89 catches, 64 files** | **invisible to both** — see the board item below |
+
+That is a better justification for migrating the remaining files than the one it
+replaces. "Remove the shape so the class cannot recur" is true and is a
+*preventive* argument. "Each migrated file becomes a scan by the one instrument
+that has ever found an instance" is a *detective* argument, and it is the reason
+to finish rather than to stop at a tranche.
+
+### WHEN A POWER CALCULATION LANDS NEAR THE POPULATION SIZE, ENUMERATE
+
+The control arm — files whose production code has no swallowing `catch`, where a
+mock gap has nowhere to hide — had 2 files and 0 failures. Asking what N makes
+that zero meaningful: at a hypothesised 20% per-file rate, 6 clean files leave a
+26% chance of seeing zero by luck and 14 leave 4%.
+
+**And the whole population is 16.** At which point the statistics are beside the
+point: finishing all 16 costs marginally more than the 14 the calculation
+demanded and converts a probable answer into an exhaustive one. So the order is
+the control arm first and completely, then the rest.
+
+**CORRECTED TWICE (2026-11-18), and the second correction is the instructive
+one.** First, the population was 15, not 16: `uploadService`'s `from:` is
+`storage.from`, a different API with the same property name. Then it was
+**21**. The census that defined the arms matched one shape only,
+`from: jest.fn(`. It never saw three others that build the same hand-rolled
+chain:
+
+| shape | example | files the census missed |
+| --- | --- | --- |
+| variable, passed as `{ from }` | `const from = jest.fn((table) => …)` | 11 |
+| assignment | `mockClient.from = jest.fn(…)` | 2 |
+| arrow over a mock | `from: (t: string) => mockFrom(t)` | 3 |
+
+Sixteen files in all. Six of them are control-arm by the very rule that defined
+the arm (`budgetService`, `comebackService`, `featureStateService`,
+`streakService`, `valuesService` and `wishlistService` have zero catches); the
+other ten are swallowing-arm. So "15 of 15, exhaustive" was exhaustive only
+over what the census could see. **Enumeration inherits every blind spot of the
+census that defined the population.** The claim survives as **21 of 21**,
+because the six were then migrated (68 tests before and after, 0 failures, the
+detector clean). The first enumeration was not exhaustive, and the claim held
+only after the fix. The swallowing arm still to migrate is 47 files, not 37.
+
+The miss was found only because the population was re-derived from the code
+instead of taken from this document. **WHAT MECHANISM CARRIES THIS:** the lint
+rule that closes this item. It becomes the census from then on, so its
+selectors must name all four shapes, and it needs a must-find fixture for each,
+because a selector that matches nothing is indistinguishable from a codebase
+that has none.
+
+Worth generalising: a power calculation is for sampling a population too large
+to enumerate. When it returns an N close to the population, it has told you the
+population is small — which is the answer, not an input to the next calculation.
 
 ### THE FIX ALREADY EXISTS AND HAS TWO ADOPTERS
 
@@ -1360,6 +1452,32 @@ reasoning was written down in the file, and it did not travel.** A utility with
 2 of 20 adopters is a comment with a type signature. The class closes by
 migration plus a lint rule banning hand-rolled `from: jest.fn()` chain stubs in
 tests — enforcement, not another note.
+
+### A KNOWN SHAPE, NOT AN INSTRUMENT: a mock that outlived its call site
+
+`settingsService`'s two `updatePreferences` tests labelled their first queued
+result *"Mock getUserProfile"*. `updatePreferences` is one line,
+`return updateUserProfile(userId, { preferences })`, and does not call
+`getUserProfile`. The first query it actually makes is DW-2's migration-041
+fallback read, `select('preferences')`. The tests passed because the full profile
+row they queued happens to carry a `preferences` field, so it served the real
+query by coincidence.
+
+Nothing failed, because nothing was wrong yet: the data fit. The label was the
+defect. It described a call that does not happen to anyone reading the test, and
+the next change to the fallback would have been reasoned about against a query
+that was never made. (Found during the 2026-11 chain migration; labels corrected,
+data left as it was.)
+
+**It is recorded as a shape, and deliberately given no instrument.** It is not
+greppable: a stale label and a correct one look the same to a search. Spotting it
+took reading the production function next to the mock's queue. So when you
+migrate or touch a queued mock, read the function under test and check that each
+queued entry's label names a query that function really makes.
+
+**WHAT MECHANISM CARRIES THIS: none, by decision.** This is the honest case of a
+guidelines entry being all there is. It says so here, so that nobody mistakes it
+for a guard.
 
 ## Measuring a flake: two rules bought at a high price
 

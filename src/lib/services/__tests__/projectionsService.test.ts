@@ -8,42 +8,24 @@
  *   trend, is_recurring, sort order
  */
 
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { hasEnoughDataForProjections, getAnnualizedProjections } from '../projectionsService';
 
 // ============================================================================
 // HELPERS
 // ============================================================================
 
-/**
- * Creates a chainable Supabase mock that resolves after .order() (terminal).
- * Used for transaction queries.
+/*
+ * MIGRATED to `@/test-utils/supabaseChain`. Every query here reads
+ * `transactions`. The two hand-rolled helpers each encoded one terminal -
+ * `.order()` and `.lt().limit()` - and getAnnualizedProjections' two parallel
+ * period queries were told apart by a COUNTER (`callCount === 1 ? curr : prev`).
+ * Both become a two-entry `transactions` queue, current period first, because
+ * Promise.all builds both chains synchronously in array order.
+ *
+ * CONTROL-ARM FILE: projectionsService rethrows both query errors - "never
+ * silently returns false", as one test's own name puts it.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createOrderChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {};
-  chain.select = jest.fn().mockReturnValue(chain);
-  chain.eq = jest.fn().mockReturnValue(chain);
-  chain.gte = jest.fn().mockReturnValue(chain);
-  chain.lte = jest.fn().mockReturnValue(chain);
-  chain.order = jest.fn().mockResolvedValue(resolveWith);
-  return chain;
-}
-
-/**
- * Creates a chainable Supabase mock that resolves after .limit() (terminal).
- * Used for hasEnoughDataForProjections .lt().limit() chain.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createLtLimitChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {};
-  chain.select = jest.fn().mockReturnValue(chain);
-  chain.eq = jest.fn().mockReturnValue(chain);
-  chain.lt = jest.fn().mockReturnValue(chain);
-  chain.limit = jest.fn().mockResolvedValue(resolveWith);
-  return chain;
-}
 
 // ============================================================================
 // hasEnoughDataForProjections
@@ -51,23 +33,21 @@ function createLtLimitChainMock(resolveWith: any) {
 
 describe('hasEnoughDataForProjections', () => {
   it('returns true when expense transaction exists before current month', async () => {
-    const chain = createLtLimitChainMock({ data: [{ date: '2026-01-15' }], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof hasEnoughDataForProjections
-    >[0];
+    const db = createSupabaseMock({
+      tables: { transactions: { data: [{ date: '2026-01-15' }], error: null } },
+    });
+    const supabase = db.client as Parameters<typeof hasEnoughDataForProjections>[0];
 
     const result = await hasEnoughDataForProjections(supabase, 'user-1');
 
     expect(result).toBe(true);
-    expect(chain.lt).toHaveBeenCalled();
-    expect(chain.limit).toHaveBeenCalledWith(1);
+    expect(db.chainFor('transactions').lt).toHaveBeenCalled();
+    expect(db.chainFor('transactions').limit).toHaveBeenCalledWith(1);
   });
 
   it('returns false when no expense transactions before current month', async () => {
-    const chain = createLtLimitChainMock({ data: [], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof hasEnoughDataForProjections
-    >[0];
+    const db = createSupabaseMock({ tables: { transactions: { data: [], error: null } } });
+    const supabase = db.client as Parameters<typeof hasEnoughDataForProjections>[0];
 
     const result = await hasEnoughDataForProjections(supabase, 'user-1');
 
@@ -77,24 +57,23 @@ describe('hasEnoughDataForProjections', () => {
   it('returns false with only current-month expenses (lt filter excludes them)', async () => {
     // The .lt('date', currentMonthStart) filter returns empty — current-month transactions
     // are excluded by the service query, so the result data is empty
-    const chain = createLtLimitChainMock({ data: [], error: null });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof hasEnoughDataForProjections
-    >[0];
+    const db = createSupabaseMock({ tables: { transactions: { data: [], error: null } } });
+    const supabase = db.client as Parameters<typeof hasEnoughDataForProjections>[0];
 
     const result = await hasEnoughDataForProjections(supabase, 'user-1');
 
     expect(result).toBe(false);
     // Verify lt was called to enforce the "before current month" constraint
-    expect(chain.lt).toHaveBeenCalledWith('date', expect.stringMatching(/^\d{4}-\d{2}-01$/));
+    expect(db.chainFor('transactions').lt).toHaveBeenCalledWith(
+      'date',
+      expect.stringMatching(/^\d{4}-\d{2}-01$/)
+    );
   });
 
   it('throws on DB error (never silently returns false)', async () => {
     const dbError = new Error('Connection refused');
-    const chain = createLtLimitChainMock({ data: null, error: dbError });
-    const supabase = { from: jest.fn().mockReturnValue(chain) } as unknown as Parameters<
-      typeof hasEnoughDataForProjections
-    >[0];
+    const db = createSupabaseMock({ tables: { transactions: { data: null, error: dbError } } });
+    const supabase = db.client as Parameters<typeof hasEnoughDataForProjections>[0];
 
     await expect(hasEnoughDataForProjections(supabase, 'user-1')).rejects.toThrow(
       'Connection refused'
@@ -108,17 +87,14 @@ describe('hasEnoughDataForProjections', () => {
 
 describe('getAnnualizedProjections', () => {
   function buildSupabaseMock(currentTxns: object[], prevTxns: object[]) {
-    const currChain = createOrderChainMock({ data: currentTxns, error: null });
-    const prevChain = createOrderChainMock({ data: prevTxns, error: null });
-
-    let callCount = 0;
-    const supabase = {
-      from: jest.fn().mockImplementation(() => {
-        callCount++;
-        return callCount === 1 ? currChain : prevChain;
-      }),
-    };
-    return supabase as unknown as Parameters<typeof getAnnualizedProjections>[0];
+    return createSupabaseMock({
+      tables: {
+        transactions: [
+          { data: currentTxns, error: null },
+          { data: prevTxns, error: null },
+        ],
+      },
+    }).client as Parameters<typeof getAnnualizedProjections>[0];
   }
 
   it('aggregates spending across multiple categories', async () => {
@@ -368,25 +344,25 @@ describe('getAnnualizedProjections', () => {
 
   it('throws on DB error for current period query', async () => {
     const dbError = new Error('Query failed');
-    const chain = createOrderChainMock({ data: null, error: dbError });
-    const supabase = {
-      from: jest.fn().mockReturnValue(chain),
-    } as unknown as Parameters<typeof getAnnualizedProjections>[0];
+    // ONE result for both queries, as the hand-rolled version returned the same
+    // chain twice; a dry queue keeps returning its last entry.
+    const supabase = createSupabaseMock({
+      tables: { transactions: { data: null, error: dbError } },
+    }).client as Parameters<typeof getAnnualizedProjections>[0];
 
     await expect(getAnnualizedProjections(supabase, 'user-1')).rejects.toThrow('Query failed');
   });
 
   it('throws on DB error for prev period query', async () => {
     const dbError = new Error('Prev query failed');
-    const currChain = createOrderChainMock({ data: [], error: null });
-    const errChain = createOrderChainMock({ data: null, error: dbError });
-    let callCount = 0;
-    const supabase = {
-      from: jest.fn().mockImplementation(() => {
-        callCount++;
-        return callCount === 1 ? currChain : errChain;
-      }),
-    } as unknown as Parameters<typeof getAnnualizedProjections>[0];
+    const supabase = createSupabaseMock({
+      tables: {
+        transactions: [
+          { data: [], error: null },
+          { data: null, error: dbError },
+        ],
+      },
+    }).client as Parameters<typeof getAnnualizedProjections>[0];
 
     await expect(getAnnualizedProjections(supabase, 'user-1')).rejects.toThrow('Prev query failed');
   });

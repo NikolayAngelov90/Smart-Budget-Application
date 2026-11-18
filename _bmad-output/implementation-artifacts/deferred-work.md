@@ -584,3 +584,161 @@ forced to run on Node.js 24: actions/cache@v4, actions/github-script@60a0d83...
 A warning now, a failure when GitHub stops forcing. Attach it to the next CI
 change rather than opening a second front for it: the next time a workflow is
 edited, bump those two and verify by effect that the warning is gone.
+
+## ON THE BOARD, NOT STARTED: 89 catch blocks where a failure leaves NO TRACE ANYWHERE
+
+**The sentence that matters:** a `catch` that neither rethrows nor logs produces
+a failure **no instrument can see** — not the test, not the migration, not the
+masked-failure detector.
+
+That is a different claim from "89 catches the detector does not cover", and only
+the first conveys why it matters. Every other population found this month is
+invisible *by accident* — a wrong grep, a short-circuiting TypeError, a stale
+floor — and became visible once the instrument improved. **This one is invisible
+by construction.** There is nothing for an instrument to read.
+
+**The measurement**, from `src` excluding tests:
+
+| | |
+| --- | --- |
+| `catch` blocks | **256** |
+| rethrow | 10 |
+| swallow, and LOG (`logger.*` or `console.*` in the body) | **157** |
+| swallow, and are SILENT | **89**, across **64** files |
+
+**CORRECTED 2026-11-18 — this item first said 32 across 25 files.** The census
+behind it matched only `catch (e) {`, so every bare `catch {` was invisible: 58
+of them, and 57 of those are silent, because a catch that never binds the error
+cannot log it. The population this item exists for was undercounted by nearly a
+factor of three by the instrument meant to size it. The corrected census is
+paired with a must-find control; the original was not.
+
+The worst concentrations: `src/app/layout.tsx` (3), then
+`HouseholdInvites.tsx`, `SharedGoalsCard.tsx`, `InsightsPageContent.tsx`,
+`ValuesPlanSection.tsx` and `usePushNotifications.ts` at 2 each.
+
+**Why it is not started, and what starting it would mean.** This is not a sweep
+with a known defect at the end of it — there is no evidence any of the 32 is
+currently hiding anything, and by their nature there could not be. The work is
+to make the population readable rather than to fix instances: add a log line to
+each swallowing `catch` so that the detector (and a human reading CI output) can
+see when one fires. That is a one-line change in 32 places, and the value is
+entirely in what it makes *possible* later rather than in anything it fixes now.
+
+**Ranking note:** it should be weighed against the fact that
+`scripts/ci/detect-masked-failures.sh` keys on the `(non-fatal)` marker. A
+swallowing catch that logs *without* that marker is also partly invisible, so
+the related and cheaper question is whether the detector's vocabulary should
+widen before the silent 89 are touched at all.
+
+---
+
+## ON THE BOARD, NOT STARTED: goal progress is arithmetic over possibly-different currencies
+
+**The finding, in one sentence:** `goals.current_amount`, `goals.target_amount`
+and `goal_contributions.amount` are UNITLESS — there is no currency column on
+either table — so a goal's progress is raw addition over amounts that may have
+been entered in different currencies.
+
+**Verified against production, not inferred** (2026-11-16):
+
+```
+goals:              id, user_id, name, target_amount, current_amount,
+                    deadline, created_at, updated_at,
+                    milestones_celebrated, household_id
+goal_contributions: id, goal_id, user_id, amount, note, created_at
+```
+
+and the whole accumulator is `goalService.ts`:
+`const newAmount = Number(current.current_amount) + Number(input.amount);`
+Nothing converts, and nothing *could*: neither table records the unit.
+
+**The most plausible way to reach it needs no household.** One user switching
+`preferences.currency_format` mid-goal — say EUR to USD — gets the same unitless
+sum in their own goal. The household case (two members, different currencies,
+one shared goal) is real too, but needs a second member; the single-user path
+needs only a settings change.
+
+**Why it is latent, not live:** production had 0 goals and 0 household-shared
+goals at the time of measurement, with 3 users. Nothing in the data is wrong
+today; the schema simply cannot express the right answer if anyone does this.
+
+**Why it was NOT pinned in a test:** the savings-expense seam tests in
+`src/lib/services/__tests__/goalService.test.ts` assert the ledger entry's
+currency (the contributor's, correctly) and deliberately stop there. Pinning
+that while the accumulator is unitless would pin half of a broken pair — and a
+pinned test becomes the reason a bug survives.
+
+**This is a schema and PRD question, not a code fix:** whether a goal has ONE
+currency (and contributions convert into it) or records per-contribution
+currencies and converts at read time. Either needs a migration. Do not build for
+it until that is decided.
+
+**Provenance, recorded because of how this item nearly failed to exist:** it was
+found and agreed on 2026-11-16, and a test comment pointed readers to "the board
+item in deferred-work.md" — but the item was not written until 2026-11-18, when a
+check of that pointer found nothing. A pointer in code to a board item is a claim;
+it was unverified for two days.
+
+## ON THE BOARD, NOT STARTED: account deletion's data removal has never been tested
+
+**The finding:** deleting an account is meant to remove every row the user owns.
+Nothing checks that it does: not the unit suite, not the RLS suite.
+
+**A guard we believed we had.** From `81997a9` (2025-12-21) until 2026-11-18,
+`settingsService.test.ts` carried a test named *"cascade deletes auth.users
+record (verified through RLS and FK constraints)"*. It was a mocked unit test
+and verified neither. For eleven months the name sat where the real test would
+have gone. It was renamed on 2026-11-18 to what it checks: that
+`deleteUserAccount` calls `admin.deleteUser`.
+
+**The claim was also backwards.** The production comment at
+`settingsService.ts:316` (`3f90790`, 2025-12-16) said deleting the profile
+"cascades to auth.users via ON DELETE CASCADE". The FK is
+`user_profiles.id REFERENCES auth.users(id) ON DELETE CASCADE`, so the cascade
+runs FROM `auth.users` TO the profile. The code was right anyway, because it
+calls `admin.deleteUser` explicitly two statements later. The comment was wrong
+and the behaviour correct. Corrected in the same commit.
+
+**What the RLS suite does instead:** two teardowns
+(`households.rls.test.ts:79`, `referenceIsolation.rls.test.ts:70`) RELY on the
+cascade to clean up, and say so in comments. Neither asserts it. Neither could
+notice a failure either: `deleteTestUser` (`src/lib/test-utils/rlsClient.ts:126`)
+awaits `admin.auth.admin.deleteUser(userId)` and discards the result, so a
+blocking FK would fail the delete and the teardown would still pass. That is a
+silent swallow in test infrastructure.
+
+**Production, verified 2026-11-18 (read-only catalog queries):**
+
+```
+FKs from public.* to auth.users:   26
+  ON DELETE CASCADE                24
+  ON DELETE SET NULL                2   household_invitations.invited_by / .accepted_by (deliberate)
+uuid columns named like a user reference (MUST-FIND)   26
+  of which carry an FK to auth.users                   26   -> no orphan column today
+```
+
+So today the schema provides the cascade. The risk is the next migration: a new
+`user_id` column without an FK would orphan rows on account deletion, and
+nothing would notice.
+
+**Noticed, not decided:** `households.created_by` is ON DELETE CASCADE, and
+`households` cascades to `household_members`, `household_invitations`,
+`category_budgets` and `personal_allowances` (`categories`, `goals` and
+`transactions` go to SET NULL). So when a household's CREATOR deletes their
+account, the household disappears for every other member. That is what the FKs
+say; whether it is intended is a product question. Also untested: the
+`admin.deleteUser` failure path in `deleteUserAccount`, i.e. "Failed to delete
+user account" after the profile row is already gone.
+
+**WHAT MECHANISM WOULD CARRY THIS.** None is built. Ranked by what each covers:
+
+1. **A catalog check in the drift job**, which already reads production's
+   catalog: every public uuid column that references a user has an FK to
+   `auth.users` with CASCADE or a deliberate SET NULL. It is the only option
+   that covers a table that does not exist yet. The query above is most of it.
+2. **An RLS test**: create a user, insert into each user-owned table, delete the
+   user, assert zero rows remain. It covers behaviour, but only for the tables
+   it lists.
+3. **`deleteTestUser` throws on error.** Cheap. Every RLS teardown would then
+   exercise "the delete succeeds", but nothing would assert that the rows are gone.

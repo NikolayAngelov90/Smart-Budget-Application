@@ -8,41 +8,24 @@
  * - getIntensityLevel: quartile calculations
  */
 
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { getDailySpending, hasEnoughDataForHeatmap, getIntensityLevel } from '../heatmapService';
 
 // ============================================================================
 // HELPERS
 // ============================================================================
 
-/**
- * Creates a chainable Supabase mock that resolves with the given result
- * after the terminal .order() call (used by getDailySpending).
+/*
+ * MIGRATED to `@/test-utils/supabaseChain`. Both service functions read only
+ * `transactions`, so each test configures that one table. The two hand-rolled
+ * helpers each encoded ONE terminal - `.order()` for getDailySpending, `.limit()`
+ * for hasEnoughDataForHeatmap - so either query gaining or reordering a method
+ * would have broken the mock rather than the code. The factory is thenable at
+ * any terminal, and every assertion survives unchanged because it answers each
+ * method with a memoised jest.fn.
+ *
+ * CONTROL-ARM FILE: heatmapService rethrows its errors; nothing is swallowed.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createOrderChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {};
-  chain.select = jest.fn().mockReturnValue(chain);
-  chain.eq = jest.fn().mockReturnValue(chain);
-  chain.gte = jest.fn().mockReturnValue(chain);
-  chain.lte = jest.fn().mockReturnValue(chain);
-  chain.order = jest.fn().mockResolvedValue(resolveWith);
-  return chain;
-}
-
-/**
- * Creates a chainable Supabase mock that resolves with the given result
- * after the terminal .limit() call (used by hasEnoughDataForHeatmap).
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createEqTerminalChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {};
-  chain.select = jest.fn().mockReturnValue(chain);
-  chain.eq = jest.fn().mockReturnValue(chain);
-  chain.limit = jest.fn().mockResolvedValue(resolveWith);
-  return chain;
-}
 
 // ============================================================================
 // PURE FUNCTION: getIntensityLevel
@@ -97,17 +80,13 @@ describe('getIntensityLevel', () => {
 // ============================================================================
 
 describe('getDailySpending', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSupabase = { from: jest.fn() };
   });
 
   it('returns empty array when no transactions exist in month', async () => {
-    const chain = createOrderChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data: [], error: null } } });
+    const mockSupabase = db.client;
 
     const result = await getDailySpending(mockSupabase, 'user-1', 2026, 3);
     expect(result).toEqual([]);
@@ -119,8 +98,10 @@ describe('getDailySpending', () => {
       { date: '2026-03-15', amount: 30.0 },
       { date: '2026-03-15', amount: 10.5 },
     ];
-    const chain = createOrderChainMock({ data: transactions, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({
+      tables: { transactions: { data: transactions, error: null } },
+    });
+    const mockSupabase = db.client;
 
     const result = await getDailySpending(mockSupabase, 'user-1', 2026, 3);
 
@@ -134,8 +115,10 @@ describe('getDailySpending', () => {
       { date: '2026-03-05', amount: 25.0 },
       { date: '2026-03-10', amount: 15.0 },
     ];
-    const chain = createOrderChainMock({ data: transactions, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({
+      tables: { transactions: { data: transactions, error: null } },
+    });
+    const mockSupabase = db.client;
 
     const result = await getDailySpending(mockSupabase, 'user-1', 2026, 3);
 
@@ -150,8 +133,10 @@ describe('getDailySpending', () => {
       { date: '2026-03-01', amount: 0.1 },
       { date: '2026-03-01', amount: 0.2 },
     ];
-    const chain = createOrderChainMock({ data: transactions, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({
+      tables: { transactions: { data: transactions, error: null } },
+    });
+    const mockSupabase = db.client;
 
     const result = await getDailySpending(mockSupabase, 'user-1', 2026, 3);
 
@@ -160,8 +145,10 @@ describe('getDailySpending', () => {
   });
 
   it('throws error when supabase query fails', async () => {
-    const chain = createOrderChainMock({ data: null, error: { message: 'DB error' } });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({
+      tables: { transactions: { data: null, error: { message: 'DB error' } } },
+    });
+    const mockSupabase = db.client;
 
     await expect(getDailySpending(mockSupabase, 'user-1', 2026, 3)).rejects.toEqual(
       expect.objectContaining({ message: 'DB error' })
@@ -169,43 +156,43 @@ describe('getDailySpending', () => {
   });
 
   it('queries with correct date range for the given month', async () => {
-    const chain = createOrderChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data: [], error: null } } });
+    const mockSupabase = db.client;
 
     await getDailySpending(mockSupabase, 'user-1', 2026, 3);
 
-    expect(chain.gte).toHaveBeenCalledWith('date', '2026-03-01');
-    expect(chain.lte).toHaveBeenCalledWith('date', '2026-03-31');
+    expect(db.chainFor('transactions').gte).toHaveBeenCalledWith('date', '2026-03-01');
+    expect(db.chainFor('transactions').lte).toHaveBeenCalledWith('date', '2026-03-31');
   });
 
   it('queries with correct date range for February (non-leap year)', async () => {
-    const chain = createOrderChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data: [], error: null } } });
+    const mockSupabase = db.client;
 
     await getDailySpending(mockSupabase, 'user-1', 2025, 2);
 
-    expect(chain.gte).toHaveBeenCalledWith('date', '2025-02-01');
-    expect(chain.lte).toHaveBeenCalledWith('date', '2025-02-28');
+    expect(db.chainFor('transactions').gte).toHaveBeenCalledWith('date', '2025-02-01');
+    expect(db.chainFor('transactions').lte).toHaveBeenCalledWith('date', '2025-02-28');
   });
 
   it('queries with correct date range for February (leap year)', async () => {
-    const chain = createOrderChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data: [], error: null } } });
+    const mockSupabase = db.client;
 
     await getDailySpending(mockSupabase, 'user-1', 2024, 2);
 
-    expect(chain.gte).toHaveBeenCalledWith('date', '2024-02-01');
-    expect(chain.lte).toHaveBeenCalledWith('date', '2024-02-29');
+    expect(db.chainFor('transactions').gte).toHaveBeenCalledWith('date', '2024-02-01');
+    expect(db.chainFor('transactions').lte).toHaveBeenCalledWith('date', '2024-02-29');
   });
 
   it('filters by user_id and type expense', async () => {
-    const chain = createOrderChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data: [], error: null } } });
+    const mockSupabase = db.client;
 
     await getDailySpending(mockSupabase, 'user-abc', 2026, 3);
 
-    expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-abc');
-    expect(chain.eq).toHaveBeenCalledWith('type', 'expense');
+    expect(db.chainFor('transactions').eq).toHaveBeenCalledWith('user_id', 'user-abc');
+    expect(db.chainFor('transactions').eq).toHaveBeenCalledWith('type', 'expense');
   });
 });
 
@@ -214,12 +201,8 @@ describe('getDailySpending', () => {
 // ============================================================================
 
 describe('hasEnoughDataForHeatmap', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSupabase = { from: jest.fn() };
   });
 
   it('returns true when user has 7+ distinct transaction dates', async () => {
@@ -232,8 +215,8 @@ describe('hasEnoughDataForHeatmap', () => {
       { date: '2026-03-06' },
       { date: '2026-03-07' },
     ];
-    const chain = createEqTerminalChainMock({ data, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data, error: null } } });
+    const mockSupabase = db.client;
 
     const result = await hasEnoughDataForHeatmap(mockSupabase, 'user-1');
     expect(result).toBe(true);
@@ -241,16 +224,16 @@ describe('hasEnoughDataForHeatmap', () => {
 
   it('returns false when user has fewer than 7 distinct dates', async () => {
     const data = [{ date: '2026-03-01' }, { date: '2026-03-02' }, { date: '2026-03-03' }];
-    const chain = createEqTerminalChainMock({ data, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data, error: null } } });
+    const mockSupabase = db.client;
 
     const result = await hasEnoughDataForHeatmap(mockSupabase, 'user-1');
     expect(result).toBe(false);
   });
 
   it('returns false when no transactions exist', async () => {
-    const chain = createEqTerminalChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data: [], error: null } } });
+    const mockSupabase = db.client;
 
     const result = await hasEnoughDataForHeatmap(mockSupabase, 'user-1');
     expect(result).toBe(false);
@@ -267,8 +250,8 @@ describe('hasEnoughDataForHeatmap', () => {
       { date: '2026-03-05' },
       { date: '2026-03-06' },
     ];
-    const chain = createEqTerminalChainMock({ data, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data, error: null } } });
+    const mockSupabase = db.client;
 
     const result = await hasEnoughDataForHeatmap(mockSupabase, 'user-1');
     expect(result).toBe(false); // only 6 distinct dates
@@ -280,24 +263,26 @@ describe('hasEnoughDataForHeatmap', () => {
     }));
     // Add duplicates — still 10 distinct dates
     data.push({ date: '2026-03-01' }, { date: '2026-03-02' });
-    const chain = createEqTerminalChainMock({ data, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data, error: null } } });
+    const mockSupabase = db.client;
 
     const result = await hasEnoughDataForHeatmap(mockSupabase, 'user-1');
     expect(result).toBe(true);
   });
 
   it('returns false when data is null', async () => {
-    const chain = createEqTerminalChainMock({ data: null, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({ tables: { transactions: { data: null, error: null } } });
+    const mockSupabase = db.client;
 
     const result = await hasEnoughDataForHeatmap(mockSupabase, 'user-1');
     expect(result).toBe(false);
   });
 
   it('throws error when supabase query fails', async () => {
-    const chain = createEqTerminalChainMock({ data: null, error: { message: 'DB error' } });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    const db = createSupabaseMock({
+      tables: { transactions: { data: null, error: { message: 'DB error' } } },
+    });
+    const mockSupabase = db.client;
 
     await expect(hasEnoughDataForHeatmap(mockSupabase, 'user-1')).rejects.toEqual(
       expect.objectContaining({ message: 'DB error' })

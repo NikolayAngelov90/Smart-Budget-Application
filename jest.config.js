@@ -16,6 +16,18 @@ const customJestConfig = {
     '**/__tests__/**/*.test.ts',
     '**/__tests__/**/*.test.tsx',
   ],
+  // NAMING THESE REPLACES JEST'S DEFAULTS, so node_modules and .next are
+  // re-listed deliberately rather than inherited.
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/\.next/',
+    // The masked-failure detector's MUST-FIND CONTROL. It is deliberately dirty
+    // - it passes while emitting a swallowed TypeError - so it must never run in
+    // the ordinary suite, never print its noise, and never count toward the test
+    // tally or the CI floor. scripts/ci/detect-masked-failures.sh runs it by
+    // overriding this ignore, which is the only context it belongs in.
+    'masked-failure-fixture',
+  ],
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',

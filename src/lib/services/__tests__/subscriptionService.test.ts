@@ -7,6 +7,7 @@
  * - Task 7.2: flagUnusedSubscriptions logic (gap detection, threshold calculation)
  */
 
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import {
   normalizeMerchant,
   classifyFrequency,
@@ -127,51 +128,35 @@ describe('amountsMatch', () => {
 // ============================================================================
 
 describe('detectSubscriptions', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Build chainable mock
-    const fromResults: Record<string, unknown> = {};
-    mockSupabase = {
-      from: jest.fn((table: string) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const chain: any = {};
-        chain.select = jest.fn().mockReturnValue(chain);
-        chain.insert = jest.fn().mockResolvedValue({ data: null, error: null });
-        chain.update = jest.fn().mockReturnValue(chain);
-        chain.delete = jest.fn().mockReturnValue(chain);
-        chain.eq = jest.fn().mockReturnValue(chain);
-        chain.in = jest.fn().mockReturnValue(chain);
-        chain.gte = jest.fn().mockReturnValue(chain);
-        chain.lte = jest.fn().mockReturnValue(chain);
-        chain.order = jest.fn().mockReturnValue(chain);
-        chain.limit = jest.fn().mockReturnValue(chain);
-        chain.single = jest.fn().mockResolvedValue({ data: null, error: null });
-        chain.maybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
-
-        // Store resolver for this table
-        if (fromResults[table]) {
-          const result = fromResults[table];
-          chain.order = jest.fn().mockReturnValue({
-            ...chain,
-            then: (resolve: (value: unknown) => void) => resolve(result),
-          });
-        }
-
-        return chain;
-      }),
-    };
-
-    mockCreateServiceRoleClient.mockReturnValue(mockSupabase);
   });
+
+  /*
+   * MIGRATED. The beforeEach this replaces built a `fromResults` lookup that
+   * NOTHING EVER WROTE TO - 0 assignments, 2 reads - so the branch reading it
+   * could never run, and every test replaced `mockSupabase.from` regardless.
+   * Dead mock machinery, removed rather than carried.
+   *
+   * detected_subscriptions answers `{ data: null }` for every call (a dry queue
+   * repeats its last entry): no existing row, so detection takes the insert
+   * path - exactly what the old `subChain` returned for every call after the
+   * first.
+   */
+  function detectDb(transactions: unknown[]) {
+    const db = createSupabaseMock({
+      tables: {
+        transactions: { data: transactions, error: null },
+        detected_subscriptions: { data: null, error: null },
+      },
+    });
+    mockCreateServiceRoleClient.mockReturnValue(db.client as never);
+    return db;
+  }
 
   it('returns empty array when no transactions exist', async () => {
     // Setup mock to resolve transactions query with empty data
-    const chain = createChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    detectDb([]);
 
     const result = await detectSubscriptions('user-1');
     expect(result).toEqual([]);
@@ -220,18 +205,7 @@ describe('detectSubscriptions', () => {
       },
     ];
 
-    // First call: transactions query
-    const txChain = createChainMock({ data: transactions, error: null });
-    // Second call: check existing subscriptions
-    const subChain = createChainMock(null);
-    subChain.maybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
-    subChain.insert = jest.fn().mockResolvedValue({ data: null, error: null });
-
-    let callCount = 0;
-    mockSupabase.from = jest.fn(() => {
-      callCount++;
-      return callCount === 1 ? txChain : subChain;
-    });
+    detectDb(transactions);
 
     const result = await detectSubscriptions('user-1');
 
@@ -284,8 +258,7 @@ describe('detectSubscriptions', () => {
       },
     ];
 
-    const chain = createChainMock({ data: transactions, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    detectDb(transactions);
 
     const result = await detectSubscriptions('user-1');
     expect(result).toEqual([]);
@@ -321,8 +294,7 @@ describe('detectSubscriptions', () => {
       },
     ];
 
-    const chain = createChainMock({ data: transactions, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    detectDb(transactions);
 
     const result = await detectSubscriptions('user-1');
     expect(result).toEqual([]);
@@ -371,8 +343,7 @@ describe('detectSubscriptions', () => {
       },
     ];
 
-    const chain = createChainMock({ data: transactions, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    detectDb(transactions);
 
     const result = await detectSubscriptions('user-1');
     expect(result).toEqual([]);
@@ -380,20 +351,19 @@ describe('detectSubscriptions', () => {
 });
 
 describe('flagUnusedSubscriptions', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSupabase = {
-      from: jest.fn(),
-    };
-    mockCreateServiceRoleClient.mockReturnValue(mockSupabase);
   });
 
+  /** detected_subscriptions: the active-subscription read, then any update(s). */
+  function flagDb(results: Array<{ data: unknown; error: unknown }>) {
+    const db = createSupabaseMock({ tables: { detected_subscriptions: results as never } });
+    mockCreateServiceRoleClient.mockReturnValue(db.client as never);
+    return db;
+  }
+
   it('returns 0 when no active subscriptions exist', async () => {
-    const chain = createChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    flagDb([{ data: [], error: null }]);
 
     const count = await flagUnusedSubscriptions('user-1');
     expect(count).toBe(0);
@@ -417,22 +387,11 @@ describe('flagUnusedSubscriptions', () => {
       },
     ];
 
-    // First call: select active subscriptions — .eq('user_id').eq('status') chain
-    const selectChain = createChainMock(null);
-    // First .eq() returns object with second .eq() that resolves
-    selectChain.eq = jest.fn().mockReturnValue({
-      eq: jest.fn().mockResolvedValue({ data: activeSubs, error: null }),
-    });
-
-    // Second call: update
-    const updateChain = createChainMock(null);
-    updateChain.eq = jest.fn().mockResolvedValue({ data: null, error: null });
-
-    let callCount = 0;
-    mockSupabase.from = jest.fn(() => {
-      callCount++;
-      return callCount === 1 ? selectChain : updateChain;
-    });
+    // The active-subscription read, then the update.
+    flagDb([
+      { data: activeSubs, error: null },
+      { data: null, error: null },
+    ]);
 
     const count = await flagUnusedSubscriptions('user-1');
     expect(count).toBe(1);
@@ -456,8 +415,7 @@ describe('flagUnusedSubscriptions', () => {
       },
     ];
 
-    const selectChain = createChainMock({ data: activeSubs, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(selectChain);
+    flagDb([{ data: activeSubs, error: null }]);
 
     const count = await flagUnusedSubscriptions('user-1');
     expect(count).toBe(0);
@@ -465,13 +423,16 @@ describe('flagUnusedSubscriptions', () => {
 });
 
 describe('getSubscriptionsForUser', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSupabase = { from: jest.fn() };
   });
+
+  /*
+   * The hand-rolled createDoubleOrderChainMock existed only because this query
+   * ends `.order().order()`; the factory is thenable after any number of calls.
+   */
+  const subsClient = (data: unknown[]) =>
+    createSupabaseMock({ tables: { detected_subscriptions: { data, error: null } } }).client;
 
   it('returns subscriptions filtered by active/unused/kept status', async () => {
     const subs = [
@@ -479,38 +440,28 @@ describe('getSubscriptionsForUser', () => {
       { id: 'sub-2', status: 'unused', merchant_pattern: 'hulu', estimated_amount: 7.99 },
     ];
 
-    const chain = createDoubleOrderChainMock({ data: subs, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
-
-    const result = await getSubscriptionsForUser(mockSupabase, 'user-1');
+    const result = await getSubscriptionsForUser(subsClient(subs), 'user-1');
     expect(result).toHaveLength(2);
   });
 
   it('returns empty array when no subscriptions exist', async () => {
-    const chain = createDoubleOrderChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
-
-    const result = await getSubscriptionsForUser(mockSupabase, 'user-1');
+    const result = await getSubscriptionsForUser(subsClient([]), 'user-1');
     expect(result).toEqual([]);
   });
 });
 
 describe('updateSubscriptionStatus', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSupabase = { from: jest.fn() };
   });
 
-  it('returns null when subscription not found', async () => {
-    const chain = createChainMock(null);
-    chain.maybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+  /** detected_subscriptions: the existence check, then the update...single. */
+  const statusClient = (results: Array<{ data: unknown; error: unknown }>) =>
+    createSupabaseMock({ tables: { detected_subscriptions: results as never } }).client;
 
+  it('returns null when subscription not found', async () => {
     const result = await updateSubscriptionStatus(
-      mockSupabase,
+      statusClient([{ data: null, error: null }]),
       'user-1',
       'nonexistent',
       'dismissed'
@@ -522,46 +473,36 @@ describe('updateSubscriptionStatus', () => {
     const existing = { id: 'sub-1', user_id: 'user-1', status: 'active' };
     const updated = { ...existing, status: 'dismissed' };
 
-    // First call: check existing
-    const selectChain = createChainMock(null);
-    selectChain.maybeSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+    const client = statusClient([
+      { data: existing, error: null }, // the existence check
+      { data: updated, error: null }, // the update
+    ]);
 
-    // Second call: update
-    const updateChain = createChainMock(null);
-    updateChain.single = jest.fn().mockResolvedValue({ data: updated, error: null });
-
-    let callCount = 0;
-    mockSupabase.from = jest.fn(() => {
-      callCount++;
-      return callCount === 1 ? selectChain : updateChain;
-    });
-
-    const result = await updateSubscriptionStatus(mockSupabase, 'user-1', 'sub-1', 'dismissed');
+    const result = await updateSubscriptionStatus(client, 'user-1', 'sub-1', 'dismissed');
     expect(result).toEqual(updated);
   });
 });
 
 describe('hasEnoughHistory', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSupabase = { from: jest.fn() };
-    mockCreateServiceRoleClient.mockReturnValue(mockSupabase);
   });
 
+  function historyDb(data: unknown[]) {
+    const db = createSupabaseMock({ tables: { transactions: { data, error: null } } });
+    mockCreateServiceRoleClient.mockReturnValue(db.client as never);
+    return db;
+  }
+
   it('returns true when user has transactions older than 3 months', async () => {
-    const chain = createChainMock({ data: [{ id: 'tx-1' }], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    historyDb([{ id: 'tx-1' }]);
 
     const result = await hasEnoughHistory('user-1');
     expect(result).toBe(true);
   });
 
   it('returns false when user has no old transactions', async () => {
-    const chain = createChainMock({ data: [], error: null });
-    mockSupabase.from = jest.fn().mockReturnValue(chain);
+    historyDb([]);
 
     const result = await hasEnoughHistory('user-1');
     expect(result).toBe(false);
@@ -587,71 +528,3 @@ describe('FREQUENCY_RANGES', () => {
 // ============================================================================
 // HELPERS
 // ============================================================================
-
-/**
- * Creates a chainable mock that resolves with the given result at the end of the chain.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {
-    select: jest.fn().mockReturnThis(),
-    insert: jest.fn().mockResolvedValue({ data: null, error: null }),
-    update: jest.fn().mockReturnThis(),
-    delete: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    in: jest.fn().mockReturnThis(),
-    gte: jest.fn().mockReturnThis(),
-    lte: jest.fn().mockReturnThis(),
-    order: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    single: jest.fn().mockResolvedValue({ data: resolveWith, error: null }),
-    maybeSingle: jest.fn().mockResolvedValue({ data: resolveWith, error: null }),
-  };
-
-  // Make the chain itself thenable to resolve async iteration
-  if (resolveWith !== null && resolveWith !== undefined) {
-    // Override the last chainable to resolve
-    const originalOrder = chain.order;
-    chain.order = jest.fn((...args: unknown[]) => {
-      const result = originalOrder(...args);
-      // After second order call, resolve
-      return {
-        ...result,
-        then: (resolve: (value: unknown) => void) => resolve(resolveWith),
-      };
-    });
-
-    // Also make limit resolve
-    chain.limit = jest.fn().mockResolvedValue(resolveWith);
-  }
-
-  return chain;
-}
-
-/**
- * Creates a chainable mock that supports double .order() calls (e.g., .order().order())
- * before resolving with the given result.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createDoubleOrderChainMock(resolveWith: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: any = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    in: jest.fn().mockReturnThis(),
-    order: jest.fn(),
-  };
-
-  // Second .order() call returns a thenable that resolves
-  const secondOrderResult = {
-    then: (resolve: (value: unknown) => void) => resolve(resolveWith),
-  };
-
-  // First .order() returns an object with a second .order()
-  chain.order = jest.fn().mockReturnValue({
-    order: jest.fn().mockReturnValue(secondOrderResult),
-  });
-
-  return chain;
-}
