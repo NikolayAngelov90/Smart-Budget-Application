@@ -400,61 +400,19 @@ jobs:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
           BENCHMARK_MODE: 'true'
 
-      # ======================================================================
-      # A FAILURE HERE IS REPORTED AS A PRESENCE, NOT AS A MISSING COMMENT
-      # ======================================================================
-      # The natural signal of a broken benchmark job is that NO COMMENT APPEARS
-      # - an absence, and absence assertions fail open (see
-      # docs/schema-drift-check.md). Nobody notices a comment that was never
-      # posted, which is how the drift check went unread for 21 nights.
+      # NO continue-on-error HERE, and that is the fix for a step that NEVER
+      # WORKED. Its script carried escaped backticks - `const comment = \`...`
+      # - which inside a YAML literal block reach JavaScript as a syntax error
+      # before any template literal opens. `continue-on-error: true` turned that
+      # SyntaxError into a green step on every pull request in this repo's
+      # visible history: 0 of 95 PRs ever received a perf comment.
       #
-      # So when a step fails, this posts a comment SAYING SO and naming which
-      # step. Missing numbers become a message rather than a silence. Same need
-      # and same shape as scripts/ci/assert-test-run.sh, which exists to prove a
-      # run happened rather than to infer it from a green tick.
-      - name: Report that benchmarks did NOT run
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const steps = {
-              'Install Playwright browsers': '${{ steps.pw-install.outcome }}',
-              'Install Playwright system deps': '${{ steps.pw-deps.outcome }}',
-              'Build production app': '${{ steps.build.outcome }}',
-              'Start Next.js server': '${{ steps.server.outcome }}',
-              'Run benchmarks': '${{ steps.benchmarks.outcome }}',
-            };
-            const failed = Object.entries(steps)
-              .filter(([, outcome]) => outcome === 'failure')
-              .map(([name]) => name);
-            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const body = [
-              '## Performance benchmarks did NOT run',
-              '',
-              'This job is **non-blocking** - it has not failed your PR, and the',
-              'gates that read code all passed separately. But the numbers below',
-              'are absent rather than good, and a missing comment is easy to read',
-              'as a passing one, so this says it out loud.',
-              '',
-              failed.length
-                ? `**Failed:** ${failed.map((f) => '`' + f + '`').join(', ')}`
-                : '**Failed:** the job failed before any benchmark step reported an outcome.',
-              '',
-              `[Run log](${run})`,
-            ].join('\n');
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body,
-            });
-
+      # The JOB is continue-on-error, so a failure here still cannot block a
+      # merge. What it can now do is FAIL VISIBLY - and the report step at the
+      # end of this job turns that failure into a comment saying so.
       - name: Post benchmark results as PR comment
+        id: post
         if: success()
-        # Restored from the pre-lift file: posting the comment is a side effect,
-        # and its failure must not skip the preview step below.
-        continue-on-error: true
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -504,11 +462,11 @@ jobs:
               }
             });
 
-            const comment = \`## 📊 Performance Benchmark Results
+            const comment = `## 📊 Performance Benchmark Results
 
             | Metric | Current | Baseline | Change | Status |
             |--------|---------|----------|--------|--------|
-            \${tableRows}
+            ${tableRows}
 
             **Thresholds:**
             - Dashboard Load: <2000ms
@@ -516,8 +474,8 @@ jobs:
             - Line Chart Render: <150ms
             - Real-time Latency: <300ms
 
-            \${results.dashboard_load_ms > 2000 || results.realtime_latency_ms > 300 ? '⚠️ **Performance regression detected!**' : '✅ All performance targets met'}
-            \`;
+            ${results.dashboard_load_ms > 2000 || results.realtime_latency_ms > 300 ? '⚠️ **Performance regression detected!**' : '✅ All performance targets met'}
+            `;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -561,3 +519,58 @@ jobs:
             } catch (err) {
               console.log('Preview deployment skipped (Vercel secrets may not be configured):', err.message);
             }
+
+      # ======================================================================
+      # A FAILURE HERE IS REPORTED AS A PRESENCE, NOT AS A MISSING COMMENT
+      # ======================================================================
+      # The natural signal of a broken benchmark job is that NO COMMENT APPEARS
+      # - an absence, and absence assertions fail open (see
+      # docs/schema-drift-check.md). Nobody notices a comment that was never
+      # posted, which is how the drift check went unread for 21 nights.
+      #
+      # It sits at the END of the job so that it sees EVERY step, including the
+      # comment step - which, while it sat before that step, it could not.
+      # That ordering is what let a broken comment script go unreported.
+      #
+      # So when a step fails, this posts a comment SAYING SO and naming which
+      # step. Missing numbers become a message rather than a silence. Same need
+      # and same shape as scripts/ci/assert-test-run.sh, which exists to prove a
+      # run happened rather than to infer it from a green tick.
+      - name: Report that benchmarks did NOT run
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const steps = {
+              'Install Playwright browsers': '${{ steps.pw-install.outcome }}',
+              'Install Playwright system deps': '${{ steps.pw-deps.outcome }}',
+              'Build production app': '${{ steps.build.outcome }}',
+              'Start Next.js server': '${{ steps.server.outcome }}',
+              'Run benchmarks': '${{ steps.benchmarks.outcome }}',
+              'Post benchmark results': '${{ steps.post.outcome }}',
+            };
+            const failed = Object.entries(steps)
+              .filter(([, outcome]) => outcome === 'failure')
+              .map(([name]) => name);
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              '## Performance benchmarks did NOT run',
+              '',
+              'This job is **non-blocking** - it has not failed your PR, and the',
+              'gates that read code all passed separately. But the numbers below',
+              'are absent rather than good, and a missing comment is easy to read',
+              'as a passing one, so this says it out loud.',
+              '',
+              failed.length
+                ? `**Failed:** ${failed.map((f) => '`' + f + '`').join(', ')}`
+                : '**Failed:** the job failed before any benchmark step reported an outcome.',
+              '',
+              `[Run log](${run})`,
+            ].join('\n');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
