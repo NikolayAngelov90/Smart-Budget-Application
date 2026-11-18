@@ -679,3 +679,66 @@ found and agreed on 2026-11-16, and a test comment pointed readers to "the board
 item in deferred-work.md" — but the item was not written until 2026-11-18, when a
 check of that pointer found nothing. A pointer in code to a board item is a claim;
 it was unverified for two days.
+
+## ON THE BOARD, NOT STARTED: account deletion's data removal has never been tested
+
+**The finding:** deleting an account is meant to remove every row the user owns.
+Nothing checks that it does: not the unit suite, not the RLS suite.
+
+**A guard we believed we had.** From `81997a9` (2025-12-21) until 2026-11-18,
+`settingsService.test.ts` carried a test named *"cascade deletes auth.users
+record (verified through RLS and FK constraints)"*. It was a mocked unit test
+and verified neither. For eleven months the name sat where the real test would
+have gone. It was renamed on 2026-11-18 to what it checks: that
+`deleteUserAccount` calls `admin.deleteUser`.
+
+**The claim was also backwards.** The production comment at
+`settingsService.ts:316` (`3f90790`, 2025-12-16) said deleting the profile
+"cascades to auth.users via ON DELETE CASCADE". The FK is
+`user_profiles.id REFERENCES auth.users(id) ON DELETE CASCADE`, so the cascade
+runs FROM `auth.users` TO the profile. The code was right anyway, because it
+calls `admin.deleteUser` explicitly two statements later. The comment was wrong
+and the behaviour correct. Corrected in the same commit.
+
+**What the RLS suite does instead:** two teardowns
+(`households.rls.test.ts:79`, `referenceIsolation.rls.test.ts:70`) RELY on the
+cascade to clean up, and say so in comments. Neither asserts it. Neither could
+notice a failure either: `deleteTestUser` (`src/lib/test-utils/rlsClient.ts:126`)
+awaits `admin.auth.admin.deleteUser(userId)` and discards the result, so a
+blocking FK would fail the delete and the teardown would still pass. That is a
+silent swallow in test infrastructure.
+
+**Production, verified 2026-11-18 (read-only catalog queries):**
+
+```
+FKs from public.* to auth.users:   26
+  ON DELETE CASCADE                24
+  ON DELETE SET NULL                2   household_invitations.invited_by / .accepted_by (deliberate)
+uuid columns named like a user reference (MUST-FIND)   26
+  of which carry an FK to auth.users                   26   -> no orphan column today
+```
+
+So today the schema provides the cascade. The risk is the next migration: a new
+`user_id` column without an FK would orphan rows on account deletion, and
+nothing would notice.
+
+**Noticed, not decided:** `households.created_by` is ON DELETE CASCADE, and
+`households` cascades to `household_members`, `household_invitations`,
+`category_budgets` and `personal_allowances` (`categories`, `goals` and
+`transactions` go to SET NULL). So when a household's CREATOR deletes their
+account, the household disappears for every other member. That is what the FKs
+say; whether it is intended is a product question. Also untested: the
+`admin.deleteUser` failure path in `deleteUserAccount`, i.e. "Failed to delete
+user account" after the profile row is already gone.
+
+**WHAT MECHANISM WOULD CARRY THIS.** None is built. Ranked by what each covers:
+
+1. **A catalog check in the drift job**, which already reads production's
+   catalog: every public uuid column that references a user has an FK to
+   `auth.users` with CASCADE or a deliberate SET NULL. It is the only option
+   that covers a table that does not exist yet. The query above is most of it.
+2. **An RLS test**: create a user, insert into each user-owned table, delete the
+   user, assert zero rows remain. It covers behaviour, but only for the tables
+   it lists.
+3. **`deleteTestUser` throws on error.** Cheap. Every RLS teardown would then
+   exercise "the delete succeeds", but nothing would assert that the rows are gone.

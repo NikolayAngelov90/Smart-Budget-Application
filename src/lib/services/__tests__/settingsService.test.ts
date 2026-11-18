@@ -357,20 +357,26 @@ describe('settingsService', () => {
       await expect(deleteUserAccount(mockUserId)).rejects.toThrow('Failed to delete user profile');
     });
 
-    test('cascade deletes auth.users record (verified through RLS and FK constraints)', async () => {
-      // NAME-CLAIM GAP, recorded for the assertion pass: a mocked unit test can
-      // verify nothing about RLS or FK constraints, and the comment below admits
-      // as much. This is a near-duplicate of the first test in this block.
-      //
-      // This test verifies the service layer calls delete correctly
-      // Actual cascade is handled by database FK constraint: ON DELETE CASCADE
+    test('removes the auth user through an explicit admin.deleteUser call', async () => {
+      /*
+       * RENAMED 2026-11-18. From 81997a9 (2025-12-21) this was "cascade deletes
+       * auth.users record (verified through RLS and FK constraints)". A mocked
+       * unit test verifies neither - and the claim was BACKWARDS:
+       * user_profiles.id REFERENCES auth.users(id) ON DELETE CASCADE, so the
+       * cascade runs FROM auth.users TO the profile. Deleting the profile cannot
+       * reach auth.users, which is exactly why deleteUserAccount makes the
+       * explicit admin.deleteUser call asserted below.
+       *
+       * The guarantee the old name stood in for - that deleting an account
+       * removes the user's rows - has no test anywhere, the RLS suite included.
+       * Board: "account deletion's data removal has never been tested", in
+       * _bmad-output/implementation-artifacts/deferred-work.md.
+       */
       const db = settingsDb({ data: null, error: null });
       mockAdminDeleteUser.mockResolvedValue({ error: null });
 
       await deleteUserAccount(mockUserId);
 
-      // Verify user_profiles delete was called
-      // Database CASCADE will handle auth.users deletion
       expect(db.chainFor('user_profiles').delete).toHaveBeenCalled();
       expect(mockAdminDeleteUser).toHaveBeenCalledWith(mockUserId);
     });

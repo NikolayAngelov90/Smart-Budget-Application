@@ -93,7 +93,8 @@ describe('createHousehold', () => {
     const result = await createHousehold('user-1', '  Our Home  ');
 
     expect(result).toEqual({ ...HOUSEHOLD, role: 'admin' });
-    // name is trimmed before insert
+    // The households table is reached. The TRIM is not checked: nothing here
+    // inspects the insert payload.
     const householdsFrom = client.from.mock.calls.find((c: unknown[]) => c[0] === 'households');
     expect(householdsFrom).toBeTruthy();
   });

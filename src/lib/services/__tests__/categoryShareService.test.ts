@@ -61,7 +61,7 @@ it('shares a category by setting household_id (works for the caller’s own cate
   expect(updatePayload(db)).toEqual({ household_id: 'h-1' });
 });
 
-it('un-shares a category by clearing household_id (no membership lookup needed)', async () => {
+it('un-shares a category by clearing household_id', async () => {
   const db = adminClient({ updated: { id: 'c1', household_id: null } });
   mockServiceClient.mockReturnValue(db.client as never);
   await setCategoryShared('u1', 'c1', false);

@@ -185,7 +185,9 @@ describe('recoveryPlanService', () => {
   });
 
   describe('updatePlanStatus', () => {
-    it('issues a status update scoped to the plan', async () => {
+    it("issues an update setting the plan's status to 'abandoned'", async () => {
+      // updatePlanStatus also filters .eq('id', planId).eq('user_id', userId);
+      // nothing here asserts either filter, so the scoping is UNCHECKED.
       const supabase = makeSupabase({});
       await updatePlanStatus(supabase.client, 'u1', 'plan-1', 'abandoned');
       expect(updatedTo(supabase, 'abandoned')).toBe(true);
