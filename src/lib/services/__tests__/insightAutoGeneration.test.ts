@@ -28,6 +28,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { logger } from '@/lib/utils/logger';
 
 jest.mock('@/lib/supabase/server', () => ({
@@ -62,27 +63,24 @@ const USER = 'user-trigger';
 const NOW = new Date('2026-03-15T12:00:00.000Z');
 const daysBefore = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000).toISOString();
 
-/** The marker value the service reads, and the transaction count it sees. */
+/**
+ * The marker value the service reads, and the transaction count it sees.
+ *
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain` (was two hand-built
+ * chains behind a table-dispatch `from`). The "never reached" assertions below
+ * read `allCallsTo('transactions', 'gte')`, which is `[]` for an unqueried table
+ * - correct, but an absence, so each is PAIRED with the presence of the marker
+ * read: otherwise it would also hold for a check that queried nothing at all.
+ */
 function mockEnvironment(lastGenerated: string | null, newTransactionCount: number) {
-  const profileChain: Record<string, unknown> = {
-    select: jest.fn(() => profileChain),
-    eq: jest.fn(() => profileChain),
-    maybeSingle: jest
-      .fn()
-      .mockResolvedValue({ data: { insights_last_generated_at: lastGenerated }, error: null }),
-  };
-
-  const txChain: Record<string, unknown> = {
-    select: jest.fn(() => txChain),
-    eq: jest.fn(() => txChain),
-    gte: jest.fn(() => Promise.resolve({ count: newTransactionCount, error: null, data: [] })),
-  };
-
-  (createClient as jest.Mock).mockResolvedValue({
-    from: jest.fn((table: string) => (table === 'transactions' ? txChain : profileChain)),
+  const db = createSupabaseMock({
+    tables: {
+      user_profiles: { data: { insights_last_generated_at: lastGenerated }, error: null },
+      transactions: { data: [], count: newTransactionCount, error: null },
+    },
   });
-
-  return { txChain };
+  (createClient as jest.Mock).mockResolvedValue(db.client);
+  return { db };
 }
 
 beforeEach(() => {
@@ -97,12 +95,13 @@ describe('checkAndTriggerForTransactionCount — the 1-hour rate limit', () => {
     // reached, which is the only observable difference between "rate-limited" and
     // "ran and decided not to".
     const tenMinutesBefore = new Date(NOW.getTime() - 10 * 60 * 1000).toISOString();
-    const { txChain } = mockEnvironment(tenMinutesBefore, 50);
+    const { db } = mockEnvironment(tenMinutesBefore, 50);
     const svc = await import('@/lib/services/insightService');
 
     await svc.checkAndTriggerForTransactionCount(USER, NOW);
 
-    expect(txChain.gte).not.toHaveBeenCalled();
+    expect(db.from).toHaveBeenCalledWith('user_profiles');
+    expect(db.allCallsTo('transactions', 'gte')).toEqual([]);
   });
 
   it('proceeds past the TTL once the last run is older than an hour', async () => {
@@ -110,12 +109,12 @@ describe('checkAndTriggerForTransactionCount — the 1-hour rate limit', () => {
     // applies, so the count query MUST be reached. Together with the test above
     // this pins the boundary rather than one side of it.
     const twoHoursBefore = new Date(NOW.getTime() - 2 * 60 * 60 * 1000).toISOString();
-    const { txChain } = mockEnvironment(twoHoursBefore, 50);
+    const { db } = mockEnvironment(twoHoursBefore, 50);
     const svc = await import('@/lib/services/insightService');
 
     await svc.checkAndTriggerForTransactionCount(USER, NOW);
 
-    expect(txChain.gte).toHaveBeenCalled();
+    expect(db.allCallsTo('transactions', 'gte').length).toBeGreaterThan(0);
   });
 });
 
@@ -222,10 +221,11 @@ describe('shouldTriggerGeneration — when insights are due', () => {
     // new transactions the staleness rule would say false, and a "null is old"
     // reading would say true only by treating null as a date. So: true, and the
     // transaction table is never queried.
-    const { txChain } = mockEnvironment(null, 0);
+    const { db } = mockEnvironment(null, 0);
     const { shouldTriggerGeneration } = await import('@/lib/services/insightService');
 
     await expect(shouldTriggerGeneration(USER, NOW)).resolves.toBe(true);
-    expect(txChain.gte).not.toHaveBeenCalled();
+    expect(db.from).toHaveBeenCalledWith('user_profiles');
+    expect(db.allCallsTo('transactions', 'gte')).toEqual([]);
   });
 });

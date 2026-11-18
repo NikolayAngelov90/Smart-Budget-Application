@@ -30,6 +30,7 @@
  */
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { createSupabaseMock, type QueryResult } from '@/test-utils/supabaseChain';
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
@@ -38,25 +39,36 @@ jest.mock('@/lib/supabase/server', () => ({
 
 const USER = 'user-hp8';
 
-/** Reader for `user_profiles.insights_last_generated_at`, with arg capture. */
-function profileReader(lastGeneratedAt: string | null, error: unknown = null) {
-  const maybeSingle = jest.fn().mockResolvedValue({
-    data: error ? null : { insights_last_generated_at: lastGeneratedAt },
-    error,
-  });
-  const eq = jest.fn().mockReturnValue({ maybeSingle });
-  const select = jest.fn().mockReturnValue({ eq });
-  const from = jest.fn().mockReturnValue({ select });
-  return { from, select, eq, maybeSingle };
+/** The `user_profiles.insights_last_generated_at` read. */
+const profileRow = (lastGeneratedAt: string | null, error: unknown = null): QueryResult => ({
+  data: error ? null : { insights_last_generated_at: lastGeneratedAt },
+  error,
+});
+
+/** The transactions-since-the-marker count. */
+const txCount = (count: number): QueryResult => ({ data: null, count, error: null });
+
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. shouldTriggerGeneration
+ * calls createClient() TWICE - the marker read, then the count - and each used
+ * to get its own hand-rolled chain via `mockResolvedValueOnce`, which is what
+ * produced the `...Once` leak described below. ONE factory client now answers
+ * both tables, set with `mockResolvedValue` (not Once), so a scenario that
+ * short-circuits after the marker read leaves nothing queued for the next test.
+ * The resetAllMocks below stays: still correct, now merely redundant for that
+ * particular leak.
+ */
+function userDb(tables: Record<string, QueryResult>) {
+  const db = createSupabaseMock({ tables });
+  (createClient as jest.Mock).mockResolvedValue(db.client);
+  return db;
 }
 
-/** Counter for transactions since a timestamp, with arg capture. */
-function transactionCounter(count: number) {
-  const gte = jest.fn().mockResolvedValue({ count, error: null });
-  const eq = jest.fn().mockReturnValue({ gte });
-  const select = jest.fn().mockReturnValue({ eq });
-  const from = jest.fn().mockReturnValue({ select });
-  return { from, select, eq, gte };
+/** The service-role client markGenerated writes through. */
+function adminDb(update: QueryResult = { data: null, error: null }) {
+  const db = createSupabaseMock({ tables: { user_profiles: update } });
+  (createServiceRoleClient as jest.Mock).mockReturnValue(db.client);
+  return db;
 }
 
 // resetAllMocks, not clearAllMocks. `clearAllMocks` resets recorded CALLS and
@@ -103,33 +115,23 @@ describe('shouldTriggerGeneration — the cold-start bug', () => {
     const recent = RECENTLY();
     // THE BUG: on a cold start this returned true for everyone, because the Map
     // was empty. With a durable marker the same request answers correctly.
-    const profile = profileReader(recent);
-    const counter = transactionCounter(3);
-
-    (createClient as jest.Mock)
-      .mockResolvedValueOnce({ from: profile.from })
-      .mockResolvedValueOnce({ from: counter.from });
+    const db = userDb({ user_profiles: profileRow(recent), transactions: txCount(3) });
 
     const { shouldTriggerGeneration } = await import('@/lib/services/insightService');
     await expect(shouldTriggerGeneration(USER)).resolves.toBe(false);
 
     // Filter args asserted, not just call counts: an arg-blind chain mock lets
     // the user scoping vanish silently, which has bitten this repo repeatedly.
-    expect(profile.from).toHaveBeenCalledWith('user_profiles');
-    expect(profile.eq).toHaveBeenCalledWith('id', USER);
-    expect(counter.from).toHaveBeenCalledWith('transactions');
-    expect(counter.eq).toHaveBeenCalledWith('user_id', USER);
-    expect(counter.gte).toHaveBeenCalledWith('created_at', recent);
+    expect(db.from).toHaveBeenCalledWith('user_profiles');
+    expect(db.callsTo('user_profiles', 'eq')).toContainEqual(['id', USER]);
+    expect(db.from).toHaveBeenCalledWith('transactions');
+    expect(db.callsTo('transactions', 'eq')).toContainEqual(['user_id', USER]);
+    expect(db.callsTo('transactions', 'gte')).toContainEqual(['created_at', recent]);
   });
 
   it('regenerates once the 10-transaction threshold is crossed', async () => {
     const recent = RECENTLY();
-    const profile = profileReader(recent);
-    const counter = transactionCounter(10);
-
-    (createClient as jest.Mock)
-      .mockResolvedValueOnce({ from: profile.from })
-      .mockResolvedValueOnce({ from: counter.from });
+    userDb({ user_profiles: profileRow(recent), transactions: txCount(10) });
 
     const { shouldTriggerGeneration } = await import('@/lib/services/insightService');
     await expect(shouldTriggerGeneration(USER)).resolves.toBe(true);
@@ -138,8 +140,7 @@ describe('shouldTriggerGeneration — the cold-start bug', () => {
   it('treats a NULL marker as never generated', async () => {
     // Still the right answer — the bug was that a cold start made every user
     // look like this one, not that this answer was wrong.
-    const profile = profileReader(null);
-    (createClient as jest.Mock).mockResolvedValueOnce({ from: profile.from });
+    userDb({ user_profiles: profileRow(null) });
 
     const { shouldTriggerGeneration } = await import('@/lib/services/insightService');
     await expect(shouldTriggerGeneration(USER)).resolves.toBe(true);
@@ -149,11 +150,10 @@ describe('shouldTriggerGeneration — the cold-start bug', () => {
     // The migration lands on merge and Vercel deploys on the same merge, in no
     // guaranteed order — so there is a window where this column does not exist.
     // Throwing there would 500 the insights refresh for the length of it.
-    const profile = profileReader(null, { code: '42703', message: 'column does not exist' });
-    const counter = transactionCounter(0);
-    (createClient as jest.Mock)
-      .mockResolvedValueOnce({ from: profile.from })
-      .mockResolvedValueOnce({ from: counter.from });
+    userDb({
+      user_profiles: profileRow(null, { code: '42703', message: 'column does not exist' }),
+      transactions: txCount(0),
+    });
 
     const { shouldTriggerGeneration } = await import('@/lib/services/insightService');
     await expect(shouldTriggerGeneration(USER)).resolves.toBe(true);
@@ -163,8 +163,7 @@ describe('shouldTriggerGeneration — the cold-start bug', () => {
     // Degradation policy: a failed CORE input is a 500. Answering "never
     // generated" here would regenerate for every user on every write — the
     // original bug wearing a different hat.
-    const profile = profileReader(null, { message: 'connection reset' });
-    (createClient as jest.Mock).mockResolvedValueOnce({ from: profile.from });
+    userDb({ user_profiles: profileRow(null, { message: 'connection reset' }) });
 
     const { shouldTriggerGeneration } = await import('@/lib/services/insightService');
     await expect(shouldTriggerGeneration(USER)).rejects.toBeTruthy();
@@ -192,18 +191,16 @@ describe('the marker survives hp-10 (UPSERT semantics)', () => {
     //
     // The marker records that generation RAN. Rows record what it produced.
     // Those are different facts and this test is where that distinction lives.
-    const update = jest.fn().mockReturnValue({
-      eq: jest.fn().mockResolvedValue({ error: null }),
-    });
-    const adminFrom = jest.fn().mockReturnValue({ update });
-    (createServiceRoleClient as jest.Mock).mockReturnValue({ from: adminFrom });
+    const admin = adminDb();
 
     const before = Date.now();
     const { markGeneratedForTest } = await import('@/lib/services/insightService');
     await markGeneratedForTest(USER);
 
-    expect(adminFrom).toHaveBeenCalledWith('user_profiles');
-    const [patch] = update.mock.calls[0] as [{ insights_last_generated_at: string }];
+    expect(admin.from).toHaveBeenCalledWith('user_profiles');
+    const [patch] = admin.callsTo('user_profiles', 'update')[0] as [
+      { insights_last_generated_at: string },
+    ];
     const written = new Date(patch.insights_last_generated_at).getTime();
 
     expect(Number.isNaN(written)).toBe(false);
@@ -214,12 +211,7 @@ describe('the marker survives hp-10 (UPSERT semantics)', () => {
     // The column has UPDATE revoked from `authenticated`. If this ever switched
     // to the user client the write would fail in production while still passing
     // a mock-based test, so the client identity is asserted here.
-    const update = jest.fn().mockReturnValue({
-      eq: jest.fn().mockResolvedValue({ error: null }),
-    });
-    (createServiceRoleClient as jest.Mock).mockReturnValue({
-      from: jest.fn().mockReturnValue({ update }),
-    });
+    adminDb();
 
     const { markGeneratedForTest } = await import('@/lib/services/insightService');
     await markGeneratedForTest(USER);
@@ -229,13 +221,7 @@ describe('the marker survives hp-10 (UPSERT semantics)', () => {
   });
 
   it('does not throw when the marker write fails — the generation still succeeded', async () => {
-    (createServiceRoleClient as jest.Mock).mockReturnValue({
-      from: jest.fn().mockReturnValue({
-        update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({ error: { message: 'permission denied' } }),
-        }),
-      }),
-    });
+    adminDb({ data: null, error: { message: 'permission denied' } });
 
     const { markGeneratedForTest } = await import('@/lib/services/insightService');
     await expect(markGeneratedForTest(USER)).resolves.toBeUndefined();
