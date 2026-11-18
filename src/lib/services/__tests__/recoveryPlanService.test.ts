@@ -122,9 +122,7 @@ describe('recoveryPlanService', () => {
       const supabase = makeSupabase({ activePlanRow: expiredPlan });
       const result = await getActivePlanWithProgress(supabase.client, 'u1', TODAY);
       expect(result.plan).toBeNull();
-      expect(
-        updatedTo(supabase, 'completed')
-      ).toBe(true);
+      expect(updatedTo(supabase, 'completed')).toBe(true);
     });
 
     it('computes progress for an active plan', async () => {
@@ -182,9 +180,7 @@ describe('recoveryPlanService', () => {
       const result = await generatePlan(supabase.client, 'u1', TODAY);
       expect(result.id).toBe('plan-2');
       // abandon update issued on recovery_plans
-      expect(
-        updatedTo(supabase, 'abandoned')
-      ).toBe(true);
+      expect(updatedTo(supabase, 'abandoned')).toBe(true);
     });
   });
 
@@ -192,9 +188,7 @@ describe('recoveryPlanService', () => {
     it('issues a status update scoped to the plan', async () => {
       const supabase = makeSupabase({});
       await updatePlanStatus(supabase.client, 'u1', 'plan-1', 'abandoned');
-      expect(
-        updatedTo(supabase, 'abandoned')
-      ).toBe(true);
+      expect(updatedTo(supabase, 'abandoned')).toBe(true);
     });
   });
 });

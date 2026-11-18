@@ -23,7 +23,7 @@ function shortChain() {
     eq: jest.fn().mockReturnThis(),
     // `maybeSingle` deliberately absent — this is the whole fixture.
   };
-  return { from: jest.fn(() => chain) };
+  return { from: jest.fn((_table: string) => chain) };
 }
 
 /** Production's shape: a best-effort path wrapped in a catch that logs and carries on. */

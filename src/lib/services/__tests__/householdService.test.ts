@@ -80,8 +80,7 @@ function makeAdminMock(opts: AdminOpts) {
 }
 
 function makeUserMock(membership: object | null, error: object | null = null) {
-  return createSupabaseMock({ tables: { household_members: { data: membership, error } } })
-    .client;
+  return createSupabaseMock({ tables: { household_members: { data: membership, error } } }).client;
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -95,7 +94,7 @@ describe('createHousehold', () => {
 
     expect(result).toEqual({ ...HOUSEHOLD, role: 'admin' });
     // name is trimmed before insert
-    const householdsFrom = client.from.mock.calls.find((c) => c[0] === 'households');
+    const householdsFrom = client.from.mock.calls.find((c: unknown[]) => c[0] === 'households');
     expect(householdsFrom).toBeTruthy();
   });
 
