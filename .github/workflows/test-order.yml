@@ -78,7 +78,7 @@ jobs:
     # has not already told you - the whole value of the nightly arm is that its
     # order is DIFFERENT each time.
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -158,7 +158,7 @@ jobs:
   random-order:
     name: Nightly random test order
     if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
