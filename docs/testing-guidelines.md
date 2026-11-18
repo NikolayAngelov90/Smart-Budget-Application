@@ -1426,6 +1426,16 @@ because the six were then migrated (68 tests before and after, 0 failures, the
 detector clean). The first enumeration was not exhaustive, and the claim held
 only after the fix. The swallowing arm still to migrate is 47 files, not 37.
 
+**A JOIN CAN ONLY BE AS FINE AS ITS KEY.** The companion rule, found the next
+time the two instruments were crossed. The lint rule's file list and the
+runtime detector's findings were joined to check the claim "every file the
+detector flags is in the rule's population". By FILE, it held. By CAUSE, it did
+not. `insightService.test.ts` was flagged for a hand-rolled MODULE mock missing
+`createServiceRoleClient`, a fifth shape no chain selector can see, and the file
+happened to also contain a chain, so the file-level join matched it for the
+wrong reason. Cross two instruments at the level of the cause they report, not
+the container they share.
+
 The miss was found only because the population was re-derived from the code
 instead of taken from this document. **WHAT MECHANISM CARRIES THIS:** the lint
 rule that closes this item. It becomes the census from then on, so its
