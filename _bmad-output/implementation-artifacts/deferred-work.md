@@ -548,13 +548,13 @@ all-at-once pass is not a standalone cost.
 
 ---
 
-## ON THE BOARD, NOT STARTED: 32 catch blocks where a failure leaves NO TRACE ANYWHERE
+## ON THE BOARD, NOT STARTED: 89 catch blocks where a failure leaves NO TRACE ANYWHERE
 
 **The sentence that matters:** a `catch` that neither rethrows nor logs produces
 a failure **no instrument can see** — not the test, not the migration, not the
 masked-failure detector.
 
-That is a different claim from "32 files the detector does not cover", and only
+That is a different claim from "89 catches the detector does not cover", and only
 the first conveys why it matters. Every other population found this month is
 invisible *by accident* — a wrong grep, a short-circuiting TypeError, a stale
 floor — and became visible once the instrument improved. **This one is invisible
@@ -564,10 +564,17 @@ by construction.** There is nothing for an instrument to read.
 
 | | |
 | --- | --- |
-| `catch` blocks | 198 |
+| `catch` blocks | **256** |
 | rethrow | 10 |
-| swallow, and LOG (`logger.*` or `console.*` in the body) | **156** |
-| swallow, and are SILENT | **32**, across 25 files |
+| swallow, and LOG (`logger.*` or `console.*` in the body) | **157** |
+| swallow, and are SILENT | **89**, across **64** files |
+
+**CORRECTED 2026-11-18 — this item first said 32 across 25 files.** The census
+behind it matched only `catch (e) {`, so every bare `catch {` was invisible: 58
+of them, and 57 of those are silent, because a catch that never binds the error
+cannot log it. The population this item exists for was undercounted by nearly a
+factor of three by the instrument meant to size it. The corrected census is
+paired with a must-find control; the original was not.
 
 The worst concentrations: `src/app/layout.tsx` (3), then
 `HouseholdInvites.tsx`, `SharedGoalsCard.tsx`, `InsightsPageContent.tsx`,
@@ -585,4 +592,4 @@ entirely in what it makes *possible* later rather than in anything it fixes now.
 `scripts/ci/detect-masked-failures.sh` keys on the `(non-fatal)` marker. A
 swallowing catch that logs *without* that marker is also partly invisible, so
 the related and cheaper question is whether the detector's vocabulary should
-widen before the silent 32 are touched at all.
+widen before the silent 89 are touched at all.

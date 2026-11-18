@@ -1265,15 +1265,24 @@ Both arms are measurable, and arm (b) is the larger one:
 
 | | |
 | --- | --- |
-| `catch` blocks in `src` (excluding tests) | 198 |
+| `catch` blocks in `src` (excluding tests) | **256** |
 | of those, rethrow | 10 |
-| **swallow** — arm (b)'s surface | **188**, across 130 files |
-| swallowing catches that LOG — the detector can see these | 156 |
-| swallowing catches that are SILENT — **invisible to the detector** | 32, across 25 files |
-| status-code-only assertions in chain-mock files — arm (a)'s surface | 61 across 14 files |
+| **swallow** — arm (b)'s surface | **246** |
+| swallowing catches that LOG — the detector can see these | 157 |
+| swallowing catches that are SILENT — **invisible to the detector** | **89, across 64 files** |
 
-So the dynamic detector's coverage is **156 of 188** swallowing paths plus arm
-(a)'s route-level catches. The 32 silent swallows are a genuine blind spot, and
+**THESE FIGURES WERE WRONG ONCE, AND THE WAY THEY WERE WRONG IS THE LESSON.** The
+first census reported 198 catch blocks, 156 logging and **32 silent across 25
+files**. Its pattern was `catch\s*\([^)]*\)\s*\{`, which REQUIRES a binding —
+so every ES2019 bare `catch {` was invisible to it. There are 58. And a bare
+`catch` cannot log the error it never bound, so the blind spot fell almost
+entirely on the SILENT population: 57 of the 89 silent swallows are bare. The
+corrected census was paired with a must-find control (a known bare `catch` in
+`digestService` had to be counted) — the first was not, which is why nothing
+flagged that a third of the catches were missing.
+
+So the dynamic detector's coverage is **157 of 246** swallowing paths plus arm
+(a)'s route-level catches. The 89 silent swallows are a genuine blind spot, and
 "1 confirmed" is a lower bound for that reason, stated rather than implied.
 
 ### THE MIGRATION IS NOT A DETECTOR — and the criterion predicts only one of the two
@@ -1304,8 +1313,8 @@ mechanism**:
 | population | size | how a masked failure surfaces |
 | --- | --- | --- |
 | no swallowing `catch` | 16 files | **the test fails** — visible in the result, migration alone finds it |
-| swallowing `catch` that LOGS | 156 catches | the test passes; **the detector flags the log** |
-| swallowing `catch` that is SILENT | 32 catches, 25 files | **invisible to both** — see the board item below |
+| swallowing `catch` that LOGS | 157 catches | the test passes; **the detector flags the log** |
+| swallowing `catch` that is SILENT | **89 catches, 64 files** | **invisible to both** — see the board item below |
 
 That is a better justification for migrating the remaining files than the one it
 replaces. "Remove the shape so the class cannot recur" is true and is a
