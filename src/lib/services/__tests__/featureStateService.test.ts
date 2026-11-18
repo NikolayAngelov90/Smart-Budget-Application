@@ -17,59 +17,32 @@ import {
   recordFeatureActivity,
   acknowledgeFeature,
 } from '@/lib/services/featureStateService';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
-/**
- * Builds a mock Supabase client. `selectResult` feeds the select().eq().maybeSingle()
- * read; captures the insert/update payloads + the eq filter args.
+/*
+ * MIGRATED to `@/test-utils/supabaseChain`. The hand-rolled client copied
+ * insert/update payloads and eq args into a side-channel object; the factory
+ * records every call, read back with allCallsTo. Its insert and update ALWAYS
+ * succeeded whatever the read returned, so user_feature_state's queue is the
+ * read, then a plain success for whichever write follows.
+ *
+ * CONTROL-ARM FILE: featureStateService has no catch at all. Missed by the
+ * original census (`const from = jest.fn(`, not `from: jest.fn(`).
  */
-function makeClient(
-  selectResult: { data: unknown; error: unknown },
-  rpcResult: { error: unknown } = { error: null }
-) {
-  const captured: {
-    insert?: unknown;
-    update?: unknown;
-    eqArgs: unknown[][];
-    rpc?: [string, unknown];
-  } = { eqArgs: [] };
+type Result = { data: unknown; error: unknown };
 
-  const selectChain: Record<string, jest.Mock> = {
-    maybeSingle: jest.fn().mockResolvedValue(selectResult),
-  };
-  selectChain.select = jest.fn(() => selectChain);
-  selectChain.eq = jest.fn((...args: unknown[]) => {
-    captured.eqArgs.push(args);
-    return selectChain;
+function makeClient(selectResult: Result, rpcResult: { error: unknown } = { error: null }) {
+  const db = createSupabaseMock({
+    tables: { user_feature_state: [selectResult, { data: null, error: null }] },
   });
-
-  const from = jest.fn(() => ({
-    select: selectChain.select,
-    eq: selectChain.eq,
-    maybeSingle: selectChain.maybeSingle,
-    insert: jest.fn((payload: unknown) => {
-      captured.insert = payload;
-      return Promise.resolve({ error: null });
-    }),
-    update: jest.fn((payload: unknown) => {
-      captured.update = payload;
-      return {
-        eq: jest.fn((...args: unknown[]) => {
-          captured.eqArgs.push(args);
-          return Promise.resolve({ error: null });
-        }),
-      };
-    }),
-  }));
-
-  const rpc = jest.fn((name: string, params: unknown) => {
-    captured.rpc = [name, params];
-    return Promise.resolve(rpcResult);
-  });
-
-  return { client: { from, rpc }, captured };
+  (db.client.rpc as jest.Mock).mockResolvedValue({ data: null, ...rpcResult });
+  return db;
 }
+
+const calls = (db: ReturnType<typeof makeClient>, method: string) =>
+  db.allCallsTo('user_feature_state', method);
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -81,16 +54,16 @@ describe('getFeatureState', () => {
       features_unlocked: ['heatmap'],
       last_active_date: '2026-07-20',
     };
-    const { client, captured } = makeClient({ data: row, error: null });
-    mockCreateClient.mockResolvedValue(client as never);
+    const db = makeClient({ data: row, error: null });
+    mockCreateClient.mockResolvedValue(db.client as never);
 
     await expect(getFeatureState('u-1')).resolves.toEqual(row);
-    expect(captured.eqArgs).toContainEqual(['user_id', 'u-1']);
+    expect(calls(db, 'eq')).toContainEqual(['user_id', 'u-1']);
   });
 
   it('creates the default row on first read (missing row)', async () => {
-    const { client, captured } = makeClient({ data: null, error: null });
-    mockCreateClient.mockResolvedValue(client as never);
+    const db = makeClient({ data: null, error: null });
+    mockCreateClient.mockResolvedValue(db.client as never);
 
     const state = await getFeatureState('u-1');
     expect(state).toEqual({
@@ -99,12 +72,12 @@ describe('getFeatureState', () => {
       features_unlocked: [],
       last_active_date: null,
     });
-    expect(captured.insert).toEqual({ user_id: 'u-1' });
+    expect(calls(db, 'insert')).toEqual([[{ user_id: 'u-1' }]]);
   });
 
   it('throws a friendly error on a read failure (degradation policy — never empty-as-error)', async () => {
-    const { client } = makeClient({ data: null, error: { message: 'boom' } });
-    mockCreateClient.mockResolvedValue(client as never);
+    const db = makeClient({ data: null, error: { message: 'boom' } });
+    mockCreateClient.mockResolvedValue(db.client as never);
     await expect(getFeatureState('u-1')).rejects.toThrow('Failed to load feature state');
   });
 });
@@ -114,18 +87,20 @@ describe('recordFeatureActivity', () => {
   // record_feature_activity RPC (migration 040) — race-free + forward-only
   // date. The service just forwards the day key; the arithmetic is DB-tested.
   it('delegates to the atomic RPC with the day key (no read-modify-write)', async () => {
-    const { client, captured } = makeClient({ data: null, error: null });
-    mockCreateClient.mockResolvedValue(client as never);
+    const db = makeClient({ data: null, error: null });
+    mockCreateClient.mockResolvedValue(db.client as never);
 
     await recordFeatureActivity('u-1', '2026-07-21');
-    expect(captured.rpc).toEqual(['record_feature_activity', { p_today: '2026-07-21' }]);
+    expect(db.client.rpc).toHaveBeenLastCalledWith('record_feature_activity', {
+      p_today: '2026-07-21',
+    });
     // must NOT do the old non-atomic read-then-update
-    expect(captured.update).toBeUndefined();
+    expect(calls(db, 'update')).toEqual([]);
   });
 
   it('throws a friendly error when the RPC fails (enrichment caller catches)', async () => {
-    const { client } = makeClient({ data: null, error: null }, { error: { message: 'rpc boom' } });
-    mockCreateClient.mockResolvedValue(client as never);
+    const db = makeClient({ data: null, error: null }, { error: { message: 'rpc boom' } });
+    mockCreateClient.mockResolvedValue(db.client as never);
     await expect(recordFeatureActivity('u-1', '2026-07-21')).rejects.toThrow(
       'Failed to record feature activity'
     );
@@ -134,7 +109,7 @@ describe('recordFeatureActivity', () => {
 
 describe('acknowledgeFeature', () => {
   it('appends a valid key when absent', async () => {
-    const { client, captured } = makeClient({
+    const db = makeClient({
       data: {
         transactions_count: 40,
         days_active: 5,
@@ -143,14 +118,14 @@ describe('acknowledgeFeature', () => {
       },
       error: null,
     });
-    mockCreateClient.mockResolvedValue(client as never);
+    mockCreateClient.mockResolvedValue(db.client as never);
 
     await expect(acknowledgeFeature('u-1', 'heatmap')).resolves.toEqual(['heatmap']);
-    expect(captured.update).toEqual({ features_unlocked: ['heatmap'] });
+    expect(calls(db, 'update')).toEqual([[{ features_unlocked: ['heatmap'] }]]);
   });
 
   it('is idempotent — no write when already acknowledged', async () => {
-    const { client, captured } = makeClient({
+    const db = makeClient({
       data: {
         transactions_count: 40,
         days_active: 5,
@@ -159,10 +134,10 @@ describe('acknowledgeFeature', () => {
       },
       error: null,
     });
-    mockCreateClient.mockResolvedValue(client as never);
+    mockCreateClient.mockResolvedValue(db.client as never);
 
     await expect(acknowledgeFeature('u-1', 'heatmap')).resolves.toEqual(['heatmap']);
-    expect(captured.update).toBeUndefined(); // no write
+    expect(calls(db, 'update')).toEqual([]); // no write
   });
 
   it('rejects an unknown feature key (REST trust boundary, 15-3 lesson)', async () => {

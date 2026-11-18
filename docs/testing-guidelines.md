@@ -1312,7 +1312,7 @@ mechanism**:
 
 | population | size | how a masked failure surfaces |
 | --- | --- | --- |
-| no swallowing `catch` | 16 files | **the test fails** — visible in the result, migration alone finds it |
+| no swallowing `catch` | **21 files** (stated as 16; see the correction below) | **the test fails**: visible in the result, so migration alone finds it |
 | swallowing `catch` that LOGS | 157 catches | the test passes; **the detector flags the log** |
 | swallowing `catch` that is SILENT | **89 catches, 64 files** | **invisible to both** — see the board item below |
 
@@ -1333,6 +1333,36 @@ that zero meaningful: at a hypothesised 20% per-file rate, 6 clean files leave a
 point: finishing all 16 costs marginally more than the 14 the calculation
 demanded and converts a probable answer into an exhaustive one. So the order is
 the control arm first and completely, then the rest.
+
+**CORRECTED TWICE (2026-11-18), and the second correction is the instructive
+one.** First, the population was 15, not 16: `uploadService`'s `from:` is
+`storage.from`, a different API with the same property name. Then it was
+**21**. The census that defined the arms matched one shape only,
+`from: jest.fn(`. It never saw three others that build the same hand-rolled
+chain:
+
+| shape | example | files the census missed |
+| --- | --- | --- |
+| variable, passed as `{ from }` | `const from = jest.fn((table) => …)` | 11 |
+| assignment | `mockClient.from = jest.fn(…)` | 2 |
+| arrow over a mock | `from: (t: string) => mockFrom(t)` | 3 |
+
+Sixteen files in all. Six of them are control-arm by the very rule that defined
+the arm (`budgetService`, `comebackService`, `featureStateService`,
+`streakService`, `valuesService` and `wishlistService` have zero catches); the
+other ten are swallowing-arm. So "15 of 15, exhaustive" was exhaustive only
+over what the census could see. **Enumeration inherits every blind spot of the
+census that defined the population.** The claim survives as **21 of 21**,
+because the six were then migrated (68 tests before and after, 0 failures, the
+detector clean). The first enumeration was not exhaustive, and the claim held
+only after the fix. The swallowing arm still to migrate is 47 files, not 37.
+
+The miss was found only because the population was re-derived from the code
+instead of taken from this document. **WHAT MECHANISM CARRIES THIS:** the lint
+rule that closes this item. It becomes the census from then on, so its
+selectors must name all four shapes, and it needs a must-find fixture for each,
+because a selector that matches nothing is indistinguishable from a codebase
+that has none.
 
 Worth generalising: a power calculation is for sampling a population too large
 to enumerate. When it returns an N close to the population, it has told you the

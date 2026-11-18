@@ -19,50 +19,32 @@ import {
   BudgetNotFoundError,
   CategoryNotBudgetableError,
 } from '@/lib/services/budgetService';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
-interface ChainStub {
-  select: jest.Mock;
-  eq: jest.Mock;
-  is: jest.Mock;
-  insert: jest.Mock;
-  update: jest.Mock;
-  delete: jest.Mock;
-  maybeSingle: jest.Mock;
-  single: jest.Mock;
-}
+/*
+ * MIGRATED to `@/test-utils/supabaseChain`. This file carried its own copy of a
+ * per-table `makeClient` - the SAME builder hand-copied into budgetService,
+ * streakService, valuesService and wishlistService tests, never extracted. It
+ * already had the factory's queue model (per table, consumed in from() order);
+ * what it lacked was method coverage: a fixed list of stubbed methods, so a
+ * query using any other method threw a TypeError.
+ *
+ * Two semantic differences, stated rather than hidden: a queue that runs DRY
+ * returned { data: null } there and repeats its last entry here; an unlisted
+ * table returned { data: null } there and { data: [] } here (null for
+ * single/maybeSingle). The tests passed unchanged across both.
+ *
+ * CONTROL-ARM FILE: budgetService has no catch at all, so a mock gap here fails
+ * visibly. It was missed by the original census, which matched only
+ * `from: jest.fn(` and not `const from = jest.fn(`.
+ */
+type Result = { data: unknown; error: unknown };
+type Plan = Record<string, Result | Result[]>;
 
-/** A chainable query stub: every method returns `this`; terminals + await resolve to `result`. */
-function chain(result: { data: unknown; error: unknown }): ChainStub {
-  const q = {} as ChainStub;
-  const bag = q as unknown as Record<string, jest.Mock>;
-  for (const m of ['select', 'eq', 'is', 'insert', 'update', 'delete']) {
-    bag[m] = jest.fn(() => q);
-  }
-  q.maybeSingle = jest.fn().mockResolvedValue(result);
-  q.single = jest.fn().mockResolvedValue(result);
-  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) => resolve(result);
-  return q;
-}
-
-type Plan = Record<string, { data: unknown; error: unknown } | { data: unknown; error: unknown }[]>;
-
-/** Builds a client whose `from(table)` consumes the next queued result for that table. */
 function makeClient(plan: Plan) {
-  const queues: Record<
-    string,
-    { data: unknown; error: unknown }[] | { data: unknown; error: unknown }
-  > = {};
-  for (const [k, v] of Object.entries(plan)) queues[k] = Array.isArray(v) ? [...v] : v;
-  const from = jest.fn((table: string) => {
-    const q = queues[table];
-    let result: { data: unknown; error: unknown } = { data: null, error: null };
-    if (Array.isArray(q)) result = q.length ? q.shift()! : { data: null, error: null };
-    else if (q) result = q;
-    return chain(result);
-  });
-  return { from };
+  return createSupabaseMock({ tables: plan as never });
 }
 
 const BUDGET_ROW = {
@@ -81,7 +63,7 @@ beforeEach(() => jest.clearAllMocks());
 describe('listBudgets', () => {
   it('returns the user personal budget rows', async () => {
     mockCreateClient.mockResolvedValue(
-      makeClient({ category_budgets: { data: [BUDGET_ROW], error: null } }) as never
+      makeClient({ category_budgets: { data: [BUDGET_ROW], error: null } }).client as never
     );
     const result = await listBudgets('u-1');
     expect(result).toEqual([BUDGET_ROW]);
@@ -89,7 +71,7 @@ describe('listBudgets', () => {
 
   it('throws a friendly error on db failure', async () => {
     mockCreateClient.mockResolvedValue(
-      makeClient({ category_budgets: { data: null, error: { message: 'boom' } } }) as never
+      makeClient({ category_budgets: { data: null, error: { message: 'boom' } } }).client as never
     );
     await expect(listBudgets('u-1')).rejects.toThrow('Failed to load budgets');
   });
@@ -98,7 +80,7 @@ describe('listBudgets', () => {
 describe('upsertBudget', () => {
   it('rejects a category the user does not own (404 semantics)', async () => {
     mockCreateClient.mockResolvedValue(
-      makeClient({ categories: { data: null, error: null } }) as never
+      makeClient({ categories: { data: null, error: null } }).client as never
     );
     await expect(upsertBudget('u-1', 'cat-x', 100)).rejects.toBeInstanceOf(BudgetNotFoundError);
   });
@@ -107,7 +89,7 @@ describe('upsertBudget', () => {
     mockCreateClient.mockResolvedValue(
       makeClient({
         categories: { data: { id: 'cat-1', user_id: 'u-1', type: 'income' }, error: null },
-      }) as never
+      }).client as never
     );
     await expect(upsertBudget('u-1', 'cat-1', 100)).rejects.toBeInstanceOf(
       CategoryNotBudgetableError
@@ -115,22 +97,19 @@ describe('upsertBudget', () => {
   });
 
   it('inserts a new budget when none exists', async () => {
-    const client = makeClient({
+    const db = makeClient({
       categories: { data: { id: 'cat-1', user_id: 'u-1', type: 'expense' }, error: null },
       category_budgets: [
         { data: null, error: null }, // existing lookup → none
         { data: BUDGET_ROW, error: null }, // insert result
       ],
     });
-    mockCreateClient.mockResolvedValue(client as never);
+    mockCreateClient.mockResolvedValue(db.client as never);
 
     const result = await upsertBudget('u-1', 'cat-1', 300);
     expect(result).toEqual(BUDGET_ROW);
-    // Third from() call is the insert chain
-    const budgetChains = client.from.mock.results
-      .filter((_, i) => client.from.mock.calls[i]?.[0] === 'category_budgets')
-      .map((r) => r.value as ChainStub);
-    expect(budgetChains[1]!.insert).toHaveBeenCalledWith({
+    // The second category_budgets chain is the insert.
+    expect(db.chainFor('category_budgets', 1).insert).toHaveBeenCalledWith({
       user_id: 'u-1',
       category_id: 'cat-1',
       period: 'monthly',
@@ -139,7 +118,7 @@ describe('upsertBudget', () => {
   });
 
   it('recovers from a 23505 insert race by updating the winner row', async () => {
-    const client = makeClient({
+    const db = makeClient({
       categories: { data: { id: 'cat-1', user_id: 'u-1', type: 'expense' }, error: null },
       category_budgets: [
         { data: null, error: null }, // existing lookup → none (stale: raced)
@@ -147,7 +126,7 @@ describe('upsertBudget', () => {
         { data: { ...BUDGET_ROW, limit_amount: 275 }, error: null }, // recovery update
       ],
     });
-    mockCreateClient.mockResolvedValue(client as never);
+    mockCreateClient.mockResolvedValue(db.client as never);
 
     const result = await upsertBudget('u-1', 'cat-1', 275);
     expect(result.limit_amount).toBe(275);
@@ -155,42 +134,39 @@ describe('upsertBudget', () => {
 
   it('updates the existing budget row when one exists', async () => {
     const updated = { ...BUDGET_ROW, limit_amount: 450 };
-    const client = makeClient({
+    const db = makeClient({
       categories: { data: { id: 'cat-1', user_id: 'u-1', type: 'expense' }, error: null },
       category_budgets: [
         { data: { id: 'b-1' }, error: null }, // existing lookup → found
         { data: updated, error: null }, // update result
       ],
     });
-    mockCreateClient.mockResolvedValue(client as never);
+    mockCreateClient.mockResolvedValue(db.client as never);
 
     const result = await upsertBudget('u-1', 'cat-1', 450);
     expect(result.limit_amount).toBe(450);
-    const budgetChains = client.from.mock.results
-      .filter((_, i) => client.from.mock.calls[i]?.[0] === 'category_budgets')
-      .map((r) => r.value as ChainStub);
-    expect(budgetChains[1]!.update).toHaveBeenCalledWith({ limit_amount: 450 });
+    expect(db.chainFor('category_budgets', 1).update).toHaveBeenCalledWith({ limit_amount: 450 });
   });
 });
 
 describe('deleteBudget', () => {
   it('deletes an owned budget', async () => {
     mockCreateClient.mockResolvedValue(
-      makeClient({ category_budgets: { data: [{ id: 'b-1' }], error: null } }) as never
+      makeClient({ category_budgets: { data: [{ id: 'b-1' }], error: null } }).client as never
     );
     await expect(deleteBudget('u-1', 'b-1')).resolves.toBeUndefined();
   });
 
   it('throws BudgetNotFoundError when no row was deleted (not owned / unknown)', async () => {
     mockCreateClient.mockResolvedValue(
-      makeClient({ category_budgets: { data: [], error: null } }) as never
+      makeClient({ category_budgets: { data: [], error: null } }).client as never
     );
     await expect(deleteBudget('u-1', 'b-x')).rejects.toBeInstanceOf(BudgetNotFoundError);
   });
 
   it('throws a friendly error on db failure', async () => {
     mockCreateClient.mockResolvedValue(
-      makeClient({ category_budgets: { data: null, error: { message: 'boom' } } }) as never
+      makeClient({ category_budgets: { data: null, error: { message: 'boom' } } }).client as never
     );
     await expect(deleteBudget('u-1', 'b-1')).rejects.toThrow('Failed to delete budget');
   });
