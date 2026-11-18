@@ -186,15 +186,13 @@ jest.mock('@chakra-ui/react', () => {
   }
 })
 
-// Mock Supabase client
-jest.mock('@/lib/supabase/client', () => ({
-  createBrowserClient: jest.fn(() => require('./__tests__/setup/supabase-mock').mockSupabaseClient),
-}))
-
-// Mock Supabase server client
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn(async () => require('./__tests__/setup/supabase-mock').mockSupabaseClient),
-}))
+// NO GLOBAL SUPABASE MOCK. There was one here until 2026-11-18, and it was a
+// trap: `@/lib/supabase/client` was mocked with `createBrowserClient` (the real
+// export is `createClient`), `@/lib/supabase/server` had no
+// `createServiceRoleClient`, and the chain was not thenable. Probes (each with a
+// must-find, suite count matched) found no test reaching its chain and only two
+// files reaching its factory - both now own their mocks. A test that needs
+// Supabase mocks it itself, with createSupabaseMock from @/test-utils/supabaseChain.
 
 // Set test environment variables
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
