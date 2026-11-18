@@ -120,8 +120,25 @@ export async function seedSingle<T>(
   return data;
 }
 
-/** Deletes a seeded auth user (cascades app data via ON DELETE CASCADE). */
+/**
+ * Deletes a seeded auth user, which cascades the user's app rows through the
+ * ON DELETE CASCADE foreign keys - and THROWS if the delete fails.
+ *
+ * It used to discard the result. Every RLS suite's afterAll relies on this
+ * cascade, so a foreign key that blocked it (transactions.category_id is
+ * ON DELETE RESTRICT, for one) failed silently in the one place nobody reads,
+ * while a unit test's name claimed the cascade was "verified through RLS and
+ * FK constraints". With the throw, a blocked cascade fails the suite: a throwing
+ * afterAll fails the run (checked 2026-11-18 - jest exit 1, "1 failed" suite,
+ * with the test itself passing).
+ */
 export async function deleteTestUser(userId: string): Promise<void> {
   const admin = createServiceClient();
-  await admin.auth.admin.deleteUser(userId);
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) {
+    throw new Error(
+      `RLS teardown could not delete test user ${userId}: ${error.message}. ` +
+        'A foreign key blocked the account-deletion cascade - the same cascade production relies on.'
+    );
+  }
 }

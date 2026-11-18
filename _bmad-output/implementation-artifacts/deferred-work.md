@@ -742,3 +742,38 @@ user account" after the profile row is already gone.
    it lists.
 3. **`deleteTestUser` throws on error.** Cheap. Every RLS teardown would then
    exercise "the delete succeeds", but nothing would assert that the rows are gone.
+
+## DECISION FOR NIKI: what a household creator's account deletion takes from the other members
+
+Measured read-only on 2026-11-18, from the production FK graph and counts. The
+only multi-member household today has 2 members.
+
+**The other member keeps all personal data:**
+- their own transactions (12 today). The 1 they shared into the household
+  survives and becomes unshared (`household_id` SET NULL)
+- their own categories, with the 1 shared one becoming personal
+- their goals (shared ones become personal) and their savings-expense rows
+
+**The shared layer is deleted:** the household, every membership row, pending
+invitations (3 today), shared budgets (0 today), and personal allowances in that
+household (1 today, the creator's own). Household insights are computed, not
+stored, so nothing is lost there.
+
+**Lost only if it has been created:** another member's contributions to a goal
+the creator owns are deleted with that goal (`goal_contributions` CASCADE). The
+member's matching savings-expense transactions survive. There are 0 today.
+
+**A defect, not a product question:** `transactions.category_id` is
+ON DELETE RESTRICT. If another member has tagged a transaction with a category
+the creator owns (a shared category), the creator's account deletion FAILS
+outright, and it fails half-way. `deleteUserAccount` deletes the `user_profiles`
+row first and the auth user second, so the profile is gone while the account
+and all its data remain; the next login recreates a default profile. There are
+0 such transactions today, but the shared-categories feature makes the path
+reachable in normal use.
+
+Nobody's personal transactions can be deleted by this cascade. The RESTRICT
+blocks first. So the shared-layer loss is a design default to confirm or
+change, and the half-deleted profile is a bug to fix.
+
+## ON THE BOARD (one line): `deferred-work.md` is not Prettier-clean, and that is by scope - `format:check` covers `src/**` only, so docs and `_bmad-output/` are deliberately outside it (decided 2026-11-18, not reopened).

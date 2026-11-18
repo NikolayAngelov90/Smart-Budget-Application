@@ -41,6 +41,17 @@ async function bestEffortPath(db: ReturnType<typeof shortChain>): Promise<string
   }
 }
 
+/** A best-effort path that fails for a reason the test CHOSE, then swallows it. */
+function markedPath(): string {
+  try {
+    throw new Error('deliberate');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[ERROR] [FixtureService] marked path failed (non-fatal):', err);
+    return 'swallowed';
+  }
+}
+
 describe('masked-failure detector control', () => {
   it('PASSES while absorbing a missing chain method — both shapes in one test', async () => {
     const result = await bestEffortPath(shortChain());
@@ -48,5 +59,15 @@ describe('masked-failure detector control', () => {
     // The assertion the real tests make: the caller succeeded. It is TRUE, and
     // it is true whether or not the best-effort path did anything at all.
     expect(result).toBe('swallowed');
+  });
+
+  // detector: expected-swallow — fixture: proves a MARKED swallow is explained, not reported
+  it('swallows on purpose, and says so with the marker', () => {
+    expect(markedPath()).toBe('swallowed');
+  });
+
+  // detector: expected-swallow — fixture: proves a STALE marker is caught (this test swallows nothing)
+  it('carries a marker but no longer swallows anything', () => {
+    expect(1 + 1).toBe(2);
   });
 });

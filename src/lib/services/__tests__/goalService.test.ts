@@ -269,6 +269,11 @@ describe('addContribution', () => {
           error: insertResult.error,
         },
         goals: [fetchResult as never, updateResult as never],
+        // An existing savings category, so the savings-expense step SUCCEEDS.
+        // Without it every test built here failed that step inside a passing
+        // test - found by the masked-failure detector on 2026-11-18, attributed
+        // to "inserts contribution and returns goal with updated current_amount".
+        categories: { data: { id: 'cat-savings' }, error: null },
       },
     }).client as Parameters<typeof addContribution>[0];
   }
@@ -434,6 +439,7 @@ describe('addContribution — the savings-expense SEAM (Story 13.9)', () => {
     expect(db.callsTo('user_profiles', 'eq')).toContainEqual(['id', 'user-1']);
   });
 
+  // detector: expected-swallow — the non-fatal contract IS the subject: savings logging is made to fail, and the test asserts the contribution still succeeds and nothing reached transactions
   it('the contribution still succeeds when the savings logging fails', async () => {
     // The non-fatal contract, asserted rather than assumed. `categories`
     // resolving to no row sends resolveSavingsCategoryId down its create

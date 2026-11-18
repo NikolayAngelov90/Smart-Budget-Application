@@ -29,6 +29,13 @@
 #                             PASSING suite means a best-effort path failed and
 #                             nothing asserted on it.
 #
+# A SWALLOW THAT IS THE POINT OF A TEST is exempted by a marker directly above
+# that it()/test():   // detector: expected-swallow — <reason>
+# and the exemption must keep being USED: a marker whose test ran and produced
+# no swallow is STALE and fails the run, so fixing the deliberate swallow away
+# cannot leave a hiding place behind. Attribution and markers live in
+# masked-failures-scan.mjs, which reads each swallow's test-file stack frame.
+#
 # ABSENCE ASSERTIONS FAIL OPEN, so this script is PAIRED WITH A MUST-FIND
 # CONTROL. "0 masked failures" from a script that read nothing looks identical
 # to "0 masked failures" from a script that worked. Before reporting a clean
@@ -43,26 +50,12 @@ set -uo pipefail
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FIXTURE="$SELF_DIR/__tests__/masked-failure-fixture.test.ts"
-PAT_TYPEERROR='is not a function'
-PAT_SWALLOWED='(non-fatal)'
-
-scan() { # scan <logfile> -> prints matches, returns 0 if any found
-  local log=$1 found=0
-  if grep -qF "$PAT_TYPEERROR" "$log"; then
-    found=1
-    grep -nF "$PAT_TYPEERROR" "$log" | sed 's/^/    MISSING-CHAIN-METHOD  /' | head -20
-  fi
-  if grep -qF "$PAT_SWALLOWED" "$log"; then
-    found=1
-    grep -nF "$PAT_SWALLOWED" "$log" | sed 's/^/    SWALLOWED-FAILURE     /' | head -20
-  fi
-  return $((1 - found))
-}
+SCANNER="$SELF_DIR/masked-failures-scan.mjs"
 
 # -----------------------------------------------------------------------------
 # THE MUST-FIND CONTROL, first. Nothing below is admissible without it.
 # -----------------------------------------------------------------------------
-echo "=== must-find control: a fixture containing one of each shape ==="
+echo "=== must-find control: a fixture with one instance of every behaviour ==="
 if [ ! -f "$FIXTURE" ]; then
   echo "::error::NOT MEASURED - the control fixture $FIXTURE is missing, so this script cannot show it detects anything. A clean result from it would mean nothing."
   exit 1
@@ -73,18 +66,17 @@ CONTROL_LOG=$(mktemp)
 # fixture, which is what lets the control run at all.
 npx jest "$FIXTURE" --testPathIgnorePatterns '/node_modules/' --silent=false > "$CONTROL_LOG" 2>&1 || true
 
-CONTROL_OK=1
-grep -qF "$PAT_TYPEERROR" "$CONTROL_LOG" || { echo "  control did NOT contain '$PAT_TYPEERROR'"; CONTROL_OK=0; }
-grep -qF "$PAT_SWALLOWED" "$CONTROL_LOG" || { echo "  control did NOT contain '$PAT_SWALLOWED'"; CONTROL_OK=0; }
-
-if [ "$CONTROL_OK" != "1" ]; then
-  echo "::error::NOT MEASURED - the control fixture did not produce both shapes, so this detector is not reading what it claims to read. Fix the detector or the fixture; do NOT treat a clean scan as clean."
+# Four must-finds: an unmarked missing method, an unmarked swallow, a MARKED
+# swallow explained, and a STALE marker caught. Any one missing and nothing
+# below can be trusted.
+if ! node "$SCANNER" --mode control "$CONTROL_LOG" | sed 's/^/  /'; then
+  echo "::error::NOT MEASURED - the control fixture did not demonstrate every behaviour, so this detector is not reading what it claims to read. Fix the detector or the fixture; do NOT treat a clean scan as clean."
   echo "--- control output ---"
   tail -40 "$CONTROL_LOG"
   rm -f "$CONTROL_LOG"
   exit 1
 fi
-echo "  ok: both shapes found in the control, so a clean scan below is meaningful"
+echo "  ok: all four behaviours demonstrated, so a clean scan below is meaningful"
 rm -f "$CONTROL_LOG"
 
 # -----------------------------------------------------------------------------
@@ -110,13 +102,13 @@ if [ -z "$TALLY" ]; then
 fi
 
 echo
-if scan "$RUN_LOG"; then
+if ! node "$SCANNER" --mode main "$RUN_LOG"; then
   echo
-  echo "::error::Masked failures found. These are PASSING tests whose production code hit a failure path nothing asserted on - the path the test claims to cover did not run. Diagnose each as a finding; do not silence the log."
+  echo "::error::Masked failures, or a stale/misplaced marker. A finding is a PASSING test whose production code hit a failure path nothing asserted on - diagnose it; do not silence the log. If the swallow IS the point of the test, assert on it and mark the test (see the header)."
   rm -f "$RUN_LOG"
   exit 1
 fi
 
-echo "  none found"
+echo "  none unexplained"
 rm -f "$RUN_LOG"
 exit 0
