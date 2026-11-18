@@ -48,6 +48,7 @@ jest.mock('date-fns', () => ({
 
 import { NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { generateDigestForUser } from '@/lib/services/digestService';
 
 const mockCreateServiceRoleClient = createServiceRoleClient as jest.MockedFunction<
@@ -66,6 +67,22 @@ beforeAll(async () => {
 });
 
 const CRON_SECRET = 'test-cron-secret';
+
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. Eight tests each built
+ * the same hand-rolled client-and-chain and varied only the users read (the
+ * `.limit()` result). Here that is user_profiles; notification_deliveries (the
+ * DW-4 already-delivered lookup and the post-send marker) answers "nobody
+ * delivered yet", as every hand-rolled copy did.
+ */
+function digestDb(users: { data: unknown; error: unknown }) {
+  return createSupabaseMock({
+    tables: {
+      user_profiles: users,
+      notification_deliveries: { data: [], error: null },
+    },
+  }).client;
+}
 
 function makeRequest(token?: string) {
   return {
@@ -111,17 +128,7 @@ describe('GET /api/cron/weekly-digest', () => {
       { id: 'user-1', preferences: {} },
       { id: 'user-2', preferences: { weekly_digest_enabled: true } },
     ];
-    const supabaseMock = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      // DW-4: the route reads `notification_deliveries` to skip users already
-      // pushed this ISO week, and upserts a marker after a successful send.
-      // Default: nobody delivered yet.
-      eq: jest.fn().mockReturnThis(),
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest.fn().mockResolvedValue({ data: users, error: null }),
-    };
+    const supabaseMock = digestDb({ data: users, error: null });
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
     mockGenerateDigest.mockResolvedValue(undefined);
 
@@ -145,19 +152,7 @@ describe('GET /api/cron/weekly-digest', () => {
     const { dispatchCategorizedPush } = jest.requireMock('@/lib/services/pushService') as {
       dispatchCategorizedPush: jest.Mock;
     };
-    const supabaseMock = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      // DW-4: the route reads `notification_deliveries` to skip users already
-      // pushed this ISO week, and upserts a marker after a successful send.
-      // Default: nobody delivered yet.
-      eq: jest.fn().mockReturnThis(),
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest
-        .fn()
-        .mockResolvedValue({ data: [{ id: 'user-1', preferences: {} }], error: null }),
-    };
+    const supabaseMock = digestDb({ data: [{ id: 'user-1', preferences: {} }], error: null });
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
     mockGenerateDigest.mockResolvedValue(undefined);
 
@@ -172,17 +167,7 @@ describe('GET /api/cron/weekly-digest', () => {
 
   it('passes user currency_format preference to generateDigestForUser', async () => {
     const users = [{ id: 'user-1', preferences: { currency_format: 'USD' } }];
-    const supabaseMock = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      // DW-4: the route reads `notification_deliveries` to skip users already
-      // pushed this ISO week, and upserts a marker after a successful send.
-      // Default: nobody delivered yet.
-      eq: jest.fn().mockReturnThis(),
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest.fn().mockResolvedValue({ data: users, error: null }),
-    };
+    const supabaseMock = digestDb({ data: users, error: null });
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
     mockGenerateDigest.mockResolvedValue(undefined);
 
@@ -193,17 +178,7 @@ describe('GET /api/cron/weekly-digest', () => {
 
   it('falls back to EUR when currency_format preference is missing', async () => {
     const users = [{ id: 'user-1', preferences: {} }];
-    const supabaseMock = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      // DW-4: the route reads `notification_deliveries` to skip users already
-      // pushed this ISO week, and upserts a marker after a successful send.
-      // Default: nobody delivered yet.
-      eq: jest.fn().mockReturnThis(),
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest.fn().mockResolvedValue({ data: users, error: null }),
-    };
+    const supabaseMock = digestDb({ data: users, error: null });
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
     mockGenerateDigest.mockResolvedValue(undefined);
 
@@ -213,19 +188,7 @@ describe('GET /api/cron/weekly-digest', () => {
   });
 
   it('returns 500 when user_profiles DB query returns an error', async () => {
-    const supabaseMock = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      // DW-4: the route reads `notification_deliveries` to skip users already
-      // pushed this ISO week, and upserts a marker after a successful send.
-      // Default: nobody delivered yet.
-      eq: jest.fn().mockReturnThis(),
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest
-        .fn()
-        .mockResolvedValue({ data: null, error: { message: 'DB connection timeout' } }),
-    };
+    const supabaseMock = digestDb({ data: null, error: { message: 'DB connection timeout' } });
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
 
     const response = (await GET(makeRequest(CRON_SECRET))) as {
@@ -243,17 +206,7 @@ describe('GET /api/cron/weekly-digest', () => {
       { id: 'user-1', preferences: { weekly_digest_enabled: false } },
       { id: 'user-2', preferences: {} },
     ];
-    const supabaseMock = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      // DW-4: the route reads `notification_deliveries` to skip users already
-      // pushed this ISO week, and upserts a marker after a successful send.
-      // Default: nobody delivered yet.
-      eq: jest.fn().mockReturnThis(),
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest.fn().mockResolvedValue({ data: users, error: null }),
-    };
+    const supabaseMock = digestDb({ data: users, error: null });
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
     mockGenerateDigest.mockResolvedValue(undefined);
 
@@ -272,17 +225,7 @@ describe('GET /api/cron/weekly-digest', () => {
       { id: 'user-1', preferences: {} },
       { id: 'user-2', preferences: {} },
     ];
-    const supabaseMock = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      // DW-4: the route reads `notification_deliveries` to skip users already
-      // pushed this ISO week, and upserts a marker after a successful send.
-      // Default: nobody delivered yet.
-      eq: jest.fn().mockReturnThis(),
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest.fn().mockResolvedValue({ data: users, error: null }),
-    };
+    const supabaseMock = digestDb({ data: users, error: null });
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
     mockGenerateDigest
       .mockRejectedValueOnce(new Error('DB timeout'))
@@ -303,17 +246,7 @@ describe('GET /api/cron/weekly-digest', () => {
   });
 
   it('returns 200 with zero counts when no users exist', async () => {
-    const supabaseMock = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      // DW-4: the route reads `notification_deliveries` to skip users already
-      // pushed this ISO week, and upserts a marker after a successful send.
-      // Default: nobody delivered yet.
-      eq: jest.fn().mockReturnThis(),
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-      limit: jest.fn().mockResolvedValue({ data: [], error: null }),
-    };
+    const supabaseMock = digestDb({ data: [], error: null });
     mockCreateServiceRoleClient.mockReturnValue(supabaseMock as never);
 
     const response = (await GET(makeRequest(CRON_SECRET))) as {

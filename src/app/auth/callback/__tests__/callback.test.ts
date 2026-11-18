@@ -22,6 +22,7 @@ jest.mock('next/server', () => ({
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock, type SupabaseMock } from '@/test-utils/supabaseChain';
 
 jest.mock('@/lib/supabase/server');
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -29,56 +30,25 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
 describe('GET /auth/callback', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockSupabase: any;
+  let db: SupabaseMock;
 
   const mockUserId = '550e8400-e29b-41d4-a716-446655440000';
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockSupabase = {
-      auth: {
-        exchangeCodeForSession: jest.fn(),
+    // MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The callback checks
+    // categories (to seed defaults), updates user_profiles.display_name, and
+    // calls the seed rpc. The old hand-rolled update side-channels are now reads
+    // of the user_profiles calls.
+    db = createSupabaseMock({
+      tables: {
+        categories: { data: [], error: null },
+        user_profiles: { data: null, error: null },
       },
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      rpc: jest.fn(),
-    };
-
-    // Track chained calls for assertions
-    const mockUpdateEq = jest.fn().mockResolvedValue({ data: null, error: null });
-    const mockUpdate = jest.fn().mockReturnValue({ eq: mockUpdateEq });
-
-    // Chain builder for .from().select().eq().limit()
-    mockSupabase.from = jest.fn((table: string) => {
-      if (table === 'categories') {
-        return {
-          select: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              limit: jest.fn().mockResolvedValue({ data: [], error: null }),
-            }),
-          }),
-        };
-      }
-      if (table === 'user_profiles') {
-        return { update: mockUpdate };
-      }
-      return {
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue({ data: [], error: null }),
-        update: jest.fn().mockReturnThis(),
-      };
     });
-
-    // Expose for assertions
-    mockSupabase._mockUpdate = mockUpdate;
-    mockSupabase._mockUpdateEq = mockUpdateEq;
-
-    mockSupabase.rpc = jest.fn().mockResolvedValue({ data: null, error: null });
-
+    mockSupabase = db.client;
+    mockSupabase.auth.exchangeCodeForSession = jest.fn();
     mockCreateClient.mockResolvedValue(mockSupabase);
   });
 
@@ -100,8 +70,8 @@ describe('GET /auth/callback', () => {
 
     // Verify display name was pre-filled with correct value and user ID
     expect(mockSupabase.from).toHaveBeenCalledWith('user_profiles');
-    expect(mockSupabase._mockUpdate).toHaveBeenCalledWith({ display_name: 'John Doe' });
-    expect(mockSupabase._mockUpdateEq).toHaveBeenCalledWith('id', mockUserId);
+    expect(db.allCallsTo('user_profiles', 'update')).toContainEqual([{ display_name: 'John Doe' }]);
+    expect(db.allCallsTo('user_profiles', 'eq')).toContainEqual(['id', mockUserId]);
   });
 
   it('pre-fills display_name from OAuth name metadata when full_name is absent', async () => {
@@ -121,8 +91,10 @@ describe('GET /auth/callback', () => {
     await GET(request as never);
 
     expect(mockSupabase.from).toHaveBeenCalledWith('user_profiles');
-    expect(mockSupabase._mockUpdate).toHaveBeenCalledWith({ display_name: 'Jane Smith' });
-    expect(mockSupabase._mockUpdateEq).toHaveBeenCalledWith('id', mockUserId);
+    expect(db.allCallsTo('user_profiles', 'update')).toContainEqual([
+      { display_name: 'Jane Smith' },
+    ]);
+    expect(db.allCallsTo('user_profiles', 'eq')).toContainEqual(['id', mockUserId]);
   });
 
   it('does not update display_name when no OAuth name metadata is available', async () => {
