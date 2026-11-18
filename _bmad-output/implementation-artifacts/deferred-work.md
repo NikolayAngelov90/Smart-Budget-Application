@@ -593,3 +593,52 @@ entirely in what it makes *possible* later rather than in anything it fixes now.
 swallowing catch that logs *without* that marker is also partly invisible, so
 the related and cheaper question is whether the detector's vocabulary should
 widen before the silent 89 are touched at all.
+
+---
+
+## ON THE BOARD, NOT STARTED: goal progress is arithmetic over possibly-different currencies
+
+**The finding, in one sentence:** `goals.current_amount`, `goals.target_amount`
+and `goal_contributions.amount` are UNITLESS — there is no currency column on
+either table — so a goal's progress is raw addition over amounts that may have
+been entered in different currencies.
+
+**Verified against production, not inferred** (2026-11-16):
+
+```
+goals:              id, user_id, name, target_amount, current_amount,
+                    deadline, created_at, updated_at,
+                    milestones_celebrated, household_id
+goal_contributions: id, goal_id, user_id, amount, note, created_at
+```
+
+and the whole accumulator is `goalService.ts`:
+`const newAmount = Number(current.current_amount) + Number(input.amount);`
+Nothing converts, and nothing *could*: neither table records the unit.
+
+**The most plausible way to reach it needs no household.** One user switching
+`preferences.currency_format` mid-goal — say EUR to USD — gets the same unitless
+sum in their own goal. The household case (two members, different currencies,
+one shared goal) is real too, but needs a second member; the single-user path
+needs only a settings change.
+
+**Why it is latent, not live:** production had 0 goals and 0 household-shared
+goals at the time of measurement, with 3 users. Nothing in the data is wrong
+today; the schema simply cannot express the right answer if anyone does this.
+
+**Why it was NOT pinned in a test:** the savings-expense seam tests in
+`src/lib/services/__tests__/goalService.test.ts` assert the ledger entry's
+currency (the contributor's, correctly) and deliberately stop there. Pinning
+that while the accumulator is unitless would pin half of a broken pair — and a
+pinned test becomes the reason a bug survives.
+
+**This is a schema and PRD question, not a code fix:** whether a goal has ONE
+currency (and contributions convert into it) or records per-contribution
+currencies and converts at read time. Either needs a migration. Do not build for
+it until that is decided.
+
+**Provenance, recorded because of how this item nearly failed to exist:** it was
+found and agreed on 2026-11-16, and a test comment pointed readers to "the board
+item in deferred-work.md" — but the item was not written until 2026-11-18, when a
+check of that pointer found nothing. A pointer in code to a board item is a claim;
+it was unverified for two days.
