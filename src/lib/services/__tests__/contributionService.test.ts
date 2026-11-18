@@ -11,6 +11,7 @@ jest.mock('@/lib/utils/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { setContribution, getContributionSummary } from '@/lib/services/contributionService';
 import { NotHouseholdMemberError } from '@/lib/services/householdService';
@@ -20,18 +21,22 @@ const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
   typeof createServiceRoleClient
 >;
 
+/**
+ * MIGRATED to `@/test-utils/supabaseChain`. Two clients are in play, as in
+ * production: the caller's auth-scoped client reads membership, and the
+ * service-role client writes the caller's own row.
+ *
+ * CONTROL-ARM FILE: contributionService throws; nothing is swallowed.
+ */
 function membershipClient(householdId: string | null) {
-  return {
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      maybeSingle: jest.fn().mockResolvedValue({
+  return createSupabaseMock({
+    tables: {
+      household_members: {
         data: householdId ? { household_id: householdId } : null,
         error: null,
-      }),
-    })),
-    rpc: jest.fn(),
-  };
+      },
+    },
+  }).client;
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -50,27 +55,26 @@ describe('setContribution', () => {
 
   it('writes the caller’s OWN row via service-role and returns the percentage', async () => {
     mockCreateClient.mockResolvedValue(membershipClient('h-1') as never);
-    const eq = jest.fn().mockResolvedValue({ error: null });
-    const update = jest.fn(() => ({ eq }));
-    mockServiceClient.mockReturnValue({ from: jest.fn(() => ({ update })) } as never);
+    const admin = createSupabaseMock({
+      tables: { household_members: { data: null, error: null } },
+    });
+    mockServiceClient.mockReturnValue(admin.client as never);
 
     const result = await setContribution('user-1', 60);
     expect(result).toBe(60);
-    expect(update).toHaveBeenCalledWith({ contribution_percentage: 60 });
-    expect(eq).toHaveBeenCalledWith('user_id', 'user-1'); // own row only
+    const write = admin.chainFor('household_members');
+    expect(write.update).toHaveBeenCalledWith({ contribution_percentage: 60 });
+    expect(write.eq).toHaveBeenCalledWith('user_id', 'user-1'); // own row only
   });
 });
 
 describe('getContributionSummary', () => {
   function summaryClient(rows: unknown[]) {
-    return {
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({ data: { household_id: 'h-1' }, error: null }),
-      })),
-      rpc: jest.fn().mockResolvedValue({ data: rows, error: null }),
-    };
+    const db = createSupabaseMock({
+      tables: { household_members: { data: { household_id: 'h-1' }, error: null } },
+    });
+    (db.client.rpc as jest.Mock).mockResolvedValue({ data: rows, error: null });
+    return db.client;
   }
 
   it('returns empty summary when the caller has no household', async () => {

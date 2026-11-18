@@ -12,6 +12,7 @@ jest.mock('@/lib/utils/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { createClient } from '@/lib/supabase/server';
 import { getAllowance, upsertAllowance, getAllowanceStatus } from '@/lib/services/allowanceService';
 import { NotHouseholdMemberError } from '@/lib/services/householdService';
@@ -28,23 +29,21 @@ const ALLOWANCE = {
   updated_at: '2026-06-05T00:00:00Z',
 };
 
-/** A chainable query stub: every method returns `this`; terminals resolve to `result`. */
-function chain(result: { data: unknown; error: unknown }) {
-  const q: Record<string, jest.Mock> = {};
-  for (const m of ['select', 'eq', 'gte', 'upsert', 'delete']) {
-    q[m] = jest.fn(() => q);
-  }
-  q.maybeSingle = jest.fn().mockResolvedValue(result);
-  q.single = jest.fn().mockResolvedValue(result);
-  // Allow `await chain` for queries that end on a filter (e.g. .gte()).
-  (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) => resolve(result);
-  return q;
-}
-
+/**
+ * MIGRATED to `@/test-utils/supabaseChain`. `clientWith(byTable)` maps directly
+ * onto the factory's `tables` option.
+ *
+ * ONE DIFFERENCE, checked rather than assumed: the hand-rolled default for an
+ * UNLISTED table was `{ data: null }`; the factory's is `{ data: [] }`, reshaped
+ * to null only on single/maybeSingle. That would change a LIST query on an
+ * unlisted table from null to []. No test in this file does that - the
+ * negative-amount test returns before from(), and every other test lists the
+ * tables its path touches - so the difference cannot change an outcome here.
+ *
+ * CONTROL-ARM FILE: allowanceService rethrows (logging first), nothing swallowed.
+ */
 function clientWith(byTable: Record<string, { data: unknown; error: unknown }>) {
-  return {
-    from: jest.fn((table: string) => chain(byTable[table] ?? { data: null, error: null })),
-  };
+  return createSupabaseMock({ tables: byTable as never });
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -52,14 +51,14 @@ beforeEach(() => jest.clearAllMocks());
 describe('getAllowance', () => {
   it('returns the row when present', async () => {
     mockCreateClient.mockResolvedValue(
-      clientWith({ personal_allowances: { data: ALLOWANCE, error: null } }) as never
+      clientWith({ personal_allowances: { data: ALLOWANCE, error: null } }).client as never
     );
     expect(await getAllowance('user-1')).toEqual(ALLOWANCE);
   });
 
   it('returns null when none exists', async () => {
     mockCreateClient.mockResolvedValue(
-      clientWith({ personal_allowances: { data: null, error: null } }) as never
+      clientWith({ personal_allowances: { data: null, error: null } }).client as never
     );
     expect(await getAllowance('user-1')).toBeNull();
   });
@@ -67,15 +66,15 @@ describe('getAllowance', () => {
 
 describe('upsertAllowance', () => {
   it('rejects a negative amount without touching the DB', async () => {
-    const client = clientWith({});
-    mockCreateClient.mockResolvedValue(client as never);
+    const db = clientWith({});
+    mockCreateClient.mockResolvedValue(db.client as never);
     await expect(upsertAllowance('user-1', { monthly_amount: -5 })).rejects.toThrow(/non-negative/);
-    expect(client.from).not.toHaveBeenCalled();
+    expect(db.from).not.toHaveBeenCalled();
   });
 
   it('throws NotHouseholdMemberError when the caller has no household', async () => {
     mockCreateClient.mockResolvedValue(
-      clientWith({ household_members: { data: null, error: null } }) as never
+      clientWith({ household_members: { data: null, error: null } }).client as never
     );
     await expect(upsertAllowance('user-1', { monthly_amount: 100 })).rejects.toBeInstanceOf(
       NotHouseholdMemberError
@@ -87,30 +86,30 @@ describe('upsertAllowance', () => {
       clientWith({
         household_members: { data: { household_id: 'h-1' }, error: null },
         personal_allowances: { data: ALLOWANCE, error: null },
-      }) as never
+      }).client as never
     );
     const result = await upsertAllowance('user-1', { monthly_amount: 200, currency: 'EUR' });
     expect(result).toEqual(ALLOWANCE);
   });
 
   it('falls back to the default currency for an unsupported code', async () => {
-    const client = clientWith({
+    const db = clientWith({
       household_members: { data: { household_id: 'h-1' }, error: null },
       personal_allowances: { data: ALLOWANCE, error: null },
     });
-    mockCreateClient.mockResolvedValue(client as never);
+    mockCreateClient.mockResolvedValue(db.client as never);
     await upsertAllowance('user-1', { monthly_amount: 200, currency: 'ZZZ' });
-    const upsertCall = client.from.mock.results
-      .map((r) => r.value as ReturnType<typeof chain>)
-      .find((q) => (q.upsert as jest.Mock).mock.calls.length > 0);
-    expect((upsertCall!.upsert as jest.Mock).mock.calls[0][0].currency).toBe('EUR');
+    // The factory records the upsert directly; no digging through from()'s
+    // mock results for whichever chain happened to receive it.
+    const upserted = db.callsTo('personal_allowances', 'upsert')[0]![0] as { currency: string };
+    expect(upserted.currency).toBe('EUR');
   });
 });
 
 describe('getAllowanceStatus', () => {
   it('returns zeroed status when there is no allowance', async () => {
     mockCreateClient.mockResolvedValue(
-      clientWith({ personal_allowances: { data: null, error: null } }) as never
+      clientWith({ personal_allowances: { data: null, error: null } }).client as never
     );
     expect(await getAllowanceStatus('user-1')).toEqual({
       allowance: null,
@@ -123,12 +122,12 @@ describe('getAllowanceStatus', () => {
     // First createClient call → getAllowance; second → the spend query.
     mockCreateClient
       .mockResolvedValueOnce(
-        clientWith({ personal_allowances: { data: ALLOWANCE, error: null } }) as never
+        clientWith({ personal_allowances: { data: ALLOWANCE, error: null } }).client as never
       )
       .mockResolvedValueOnce(
         clientWith({
           transactions: { data: [{ amount: 30 }, { amount: 20.5 }], error: null },
-        }) as never
+        }).client as never
       );
     const status = await getAllowanceStatus('user-1');
     expect(status.allowance).toEqual(ALLOWANCE);
