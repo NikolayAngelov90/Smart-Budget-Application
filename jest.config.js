@@ -32,9 +32,16 @@ const customJestConfig = {
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',
     '!src/**/*.stories.{js,jsx,ts,tsx}',
-    // Test-only helper — exercised by its own suite, but it is scaffolding,
-    // not shipped code, so it should not move the coverage ratio.
+    // TEST-SUPPORT CODE IS NOT PRODUCT CODE, so it must not move the coverage
+    // ratio either way. src/lib/test-utils was missing here until 2026-11-18:
+    // it was instrumented but never run by the unit suite, read as 0%, and
+    // turned codecov/patch red on rlsClient.ts - code that runs in the RLS job.
+    // The SAME patterns are in codecov.yml; scripts/ci/check-coverage-scope.mjs
+    // fails CI if a support file reaches the report or a product file leaves it.
     '!src/test-utils/**',
+    '!src/lib/test-utils/**',
+    '!src/**/__tests__/**',
+    '!src/**/__mocks__/**',
   ],
   coverageReporters: [
     'text',           // Display coverage in terminal
