@@ -219,8 +219,140 @@ found by review**, including by the review that read the same files looking for
 exactly this. A tool that catches defects is not thereby free of them, and the
 practice that found these is the one most easily described as overhead.
 
-Five rules follow. The first two are a pair; the rest generalise past this
-check entirely:
+The rules below generalise past this check entirely, and the first one subsumes
+most of the rest.
+
+### PRESENCE ASSERTIONS FAIL SAFE. ABSENCE ASSERTIONS FAIL OPEN.
+
+#### And the rule applies to CLAIMS, not only to checks
+
+**An absence claim carries an obligation to state where you looked.** "Nothing
+tests X", "this never runs", "there are no other instances" — each is an absence
+assertion in prose, and each fails open exactly like a `want 0` satisfied by a
+command that errored. The difference is only that nobody expects a sentence to
+need a control.
+
+**The worked example, and it is better than the grep ones.** A chain mock threw
+`TypeError: ... maybeSingle is not a function` inside a swallowing `catch`, so
+the savings-logging path died unseen. From that I concluded, and wrote into a
+report *and into a merged commit message*, that "Story 13.9's savings-expense
+logging has never executed in any test."
+
+It was wrong. `src/lib/services/__tests__/savingsTransactionService.test.ts` had
+covered that function since the story shipped — both branches, create-the-category
+and reuse-an-existing-one. **The paired check was one `ls`.** The rule for greps
+had been written three hours earlier and was not applied to a sentence.
+
+What was true is narrower and had to be re-derived: the *seam* is untested —
+`addContribution` resolving the contributor's currency and passing it, with the
+goal's name, through to the ledger entry. The `TypeError` died on exactly the
+step the unit test skips, which is why the failure looked like total absence.
+
+**So: before writing that something does not exist, name the search that
+establishes it** — the glob you ran, the directory you listed, the grep and its
+pattern. An absence claim with no stated search is an unpaired absence
+assertion, and it propagates further than a broken check because prose gets
+quoted.
+
+#### A claim about your OWN ACTION is still a claim
+
+"I merged it", "that's landed", "the fix is in" feel like memory rather than
+inference, which is exactly why nobody pairs them. They are inference: you
+pushed, you intended to merge, and you reported the intention.
+
+**The paired check is reading the DESTINATION, not remembering the push.** For a
+merge the destination is `main`, and the check is CONTENT — `git grep` for the
+text the change introduced — not a SHA, because a squash-merge makes SHA
+comparison worthless.
+
+**The worked example is this pull request.** The PR carrying *"an absence claim
+carries an obligation to state where you looked"* was reported as merged while it
+was still open. `git grep -i "where you looked" main` returned nothing; the same
+grep on this branch returned the line. The push had been remembered and the
+destination never read.
+
+It had also been RED for seventeen days without anyone seeing it, which is the
+second half: **a pull request you opened and did not look at again is a
+scheduled job with no schedule.** "A red PR is seen by its author, by
+construction" assumed an author who returns. So before reporting a pull request
+as done, read its check conclusions and report them — and before reporting it as
+merged, read `main`.
+
+#### The third rung: a TEST NAME is a claim too
+
+Your own action, a prose report — and a test name. A mocked unit test named
+*"cascade deletes auth.users record (verified through RLS and FK constraints)"*
+verifies neither RLS nor a foreign key; its own body says the cascade "is
+handled by database FK constraint". The name is the worst of the three rungs,
+because it has the widest blast radius: it is what the next person reads INSTEAD
+of writing the real test. The name was doing the work of a test that did not
+exist.
+
+So a test is named for what its assertions CHECK, never for what the code under
+it is supposed to guarantee. If the guarantee matters and this test cannot check
+it, the guarantee needs its own test — or a board item saying it has none.
+
+#### CLOSE, NEVER DELETE: deletion manufactures absences
+
+An audit of the scheduled-failure watchdog ran `gh api issues --state all` and got
+`totalCount: 0` — none open, none closed, ever — and could not tell "it has never
+worked" from "it has never had cause to". The true world was the good one: 39
+scheduled runs since 29 October with 0 failures, and five self-test issues (#93–#96,
+#98) proving the mechanism fires. All of it unrecoverable, because those issues had
+been DELETED as clean-up; each now returns HTTP 410.
+
+A closed issue and a deleted issue look identical to a count and completely
+different to the truth, and an absence fails open — so the audit's honest answer
+was "indistinguishable from never having worked". **An artifact whose purpose was
+to prove a mechanism works is evidence, and evidence is not clutter.** The motive
+for deleting was tidiness, which is exactly why this cannot rest on judgement.
+
+What saved the answer is worth keeping: the `watchdog/random-test-order` LABEL
+survived, because nobody thinks to tidy a label, and it could only have been
+created by a real scheduled run. **When you need durable evidence that something
+ran, prefer the artifact nobody would think to clean up.**
+
+**WHAT MECHANISM CARRIES THIS: none yet, so this class is OPEN.** The self-test
+that deleted those issues lived in a scratchpad, not in the repo, so there is no
+artifact here whose default behaviour is to close rather than delete. The carrier
+would be a repository self-test script for the watchdog that labels and closes its
+issues and has no delete path at all. Until it exists, this paragraph is a
+guidelines entry — which, by the note at the top of testing-guidelines.md, is the
+footnote and not the remedy.
+
+#### The original form, for checks
+
+A check for *"X is there"* **fails** when the check itself breaks. A check for
+*"X is **not** there"* **passes** when the check itself breaks. That is not a bug
+in any particular check; it is a property of the shape, and it explains nearly
+every defect this repository has found:
+
+| the absence assertion | how it failed open |
+| --- | --- |
+| `grep -c THROWAWAY` over a branch, wanting 0 | the `git show rev:path` was mangled by MSYS path conversion, so three "want 0" checks returned 0 **because the command errored** |
+| `jest -t <name>` with an unescaped name | matched nothing, exited 0, printed no tally — a suite reported 15 of 15 passing minutes before it reported 10 of 10 failing |
+| the allowlist matcher | derived its tokens from a prose field, so every entry matched nothing and nothing was ever flagged |
+| the TGRANT floor, and the test-count floor | a short or empty catalog reads as agreement; a run that matches nothing reports no passed count |
+| the CI-wait polling loop | found no incomplete runs because it polled before any existed |
+| an extractor using `'\u25cf'` in an ERE | two characters, backslash and u; matched nothing and silently dropped a whole suite from a sweep |
+
+**So: every absence assertion needs a PAIRED PRESENCE ASSERTION in the same
+run** — something the same code path, the same file read, the same query must
+find, or the zeros mean nothing.
+
+This is a pairing *requirement*, not a tip. When `#97`'s override removal was
+verified, `Scheduled-failure watchdog -> 1` was not an extra check alongside the
+four zeros: **it is what made the four zeros admissible.** Without it the four
+were indistinguishable from a grep that never read the file — which, on the
+first attempt, is exactly what they were.
+
+The corollary is about you rather than the code: **when a paired check disagrees
+with your expectation, correct the expectation first.** Verifying that same
+override produced 1 schedule-gate where 2 was expected, and the code was right —
+`pinned-order` gates on `!=` and `random-order` on `==`, so one `==` is correct.
+A check disagreeing with you is not evidence the code is wrong.
+
+### The rest
 
 - **A guard is not done until it has been mutation-tested.** A guard with no
   recorded red state is not evidence that anything is checked — four of the six
