@@ -6,52 +6,40 @@
 import { createHash } from 'crypto';
 import { NextRequest } from 'next/server';
 import { PUT, DELETE } from '@/app/api/user/sessions/[id]/route';
+import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock, type QueryResult } from '@/test-utils/supabaseChain';
 
-// Mock Supabase client
-const mockGetUser = jest.fn();
-const mockGetSession = jest.fn();
-const mockFrom = jest.fn();
-const mockSelect = jest.fn();
-const mockUpdate = jest.fn();
-const mockDelete = jest.fn();
-const mockSingle = jest.fn();
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. Seven module-level
+ * jest.fns behind a hand-rolled client, configured per test with stacked
+ * `...mockResolvedValueOnce`, become one factory client BUILT WHEN THE ROUTE
+ * ASKS FOR IT, from this test's `setup`. user_sessions is a queue: the row the
+ * handler reads or updates, then (DELETE) the delete itself.
+ */
+jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn() }));
 
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn().mockResolvedValue({
-    auth: {
-      getUser: () => mockGetUser(),
-      getSession: () => mockGetSession(),
-    },
-    from: () => mockFrom(),
-  }),
-}));
+let setup: { user: { id: string } | null; session: object | null; rows: QueryResult[] };
+beforeEach(() => {
+  setup = { user: { id: 'user-123' }, session: null, rows: [] };
+  (createClient as jest.Mock).mockImplementation(async () => {
+    const db = createSupabaseMock({
+      user: setup.user,
+      tables: { user_sessions: [...setup.rows, { data: null, error: null }] },
+    });
+    (db.client.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: setup.session },
+    });
+    return db.client;
+  });
+});
 
 describe('PUT /api/user/sessions/:id', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Default mock chain for PUT
-    mockFrom.mockReturnValue({
-      update: mockUpdate,
-      select: mockSelect,
-      delete: mockDelete,
-    });
-    mockUpdate.mockReturnValue({
-      eq: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          select: jest.fn().mockReturnValue({
-            single: mockSingle,
-          }),
-        }),
-      }),
-    });
   });
 
   it('returns 401 if user is not authenticated', async () => {
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: null },
-      error: { message: 'Not authenticated' },
-    });
+    setup.user = null;
 
     const request = new NextRequest('http://localhost/api/user/sessions/session-1', {
       method: 'PUT',
@@ -66,11 +54,6 @@ describe('PUT /api/user/sessions/:id', () => {
   });
 
   it('returns 400 if device_name is missing', async () => {
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-
     const request = new NextRequest('http://localhost/api/user/sessions/session-1', {
       method: 'PUT',
       body: JSON.stringify({}),
@@ -84,11 +67,6 @@ describe('PUT /api/user/sessions/:id', () => {
   });
 
   it('returns 400 if device_name is empty', async () => {
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-
     const request = new NextRequest('http://localhost/api/user/sessions/session-1', {
       method: 'PUT',
       body: JSON.stringify({ device_name: '   ' }),
@@ -109,14 +87,12 @@ describe('PUT /api/user/sessions/:id', () => {
       device_type: 'desktop',
     };
 
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-    mockSingle.mockResolvedValueOnce({
-      data: updatedSession,
-      error: null,
-    });
+    setup.rows = [
+      {
+        data: updatedSession,
+        error: null,
+      },
+    ];
 
     const request = new NextRequest('http://localhost/api/user/sessions/session-1', {
       method: 'PUT',
@@ -134,32 +110,10 @@ describe('PUT /api/user/sessions/:id', () => {
 describe('DELETE /api/user/sessions/:id', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Default mock chain for DELETE
-    const mockSelectEq = jest.fn().mockReturnValue({
-      single: mockSingle,
-    });
-    const mockDeleteEq = jest.fn().mockReturnValue({
-      eq: jest.fn().mockResolvedValue({ error: null }),
-    });
-
-    mockFrom.mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          eq: mockSelectEq,
-        }),
-      }),
-      delete: jest.fn().mockReturnValue({
-        eq: mockDeleteEq,
-      }),
-    });
   });
 
   it('returns 401 if user is not authenticated', async () => {
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: null },
-      error: { message: 'Not authenticated' },
-    });
+    setup.user = null;
 
     const request = new NextRequest('http://localhost/api/user/sessions/session-1', {
       method: 'DELETE',
@@ -173,17 +127,13 @@ describe('DELETE /api/user/sessions/:id', () => {
   });
 
   it('returns 404 if session not found', async () => {
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-    mockGetSession.mockResolvedValueOnce({
-      data: { session: { access_token: 'current-token' } },
-    });
-    mockSingle.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'Not found' },
-    });
+    setup.session = { access_token: 'current-token' };
+    setup.rows = [
+      {
+        data: null,
+        error: { message: 'Not found' },
+      },
+    ];
 
     const request = new NextRequest('http://localhost/api/user/sessions/non-existent', {
       method: 'DELETE',
@@ -204,17 +154,13 @@ describe('DELETE /api/user/sessions/:id', () => {
       session_token: hashedToken,
     };
 
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-    mockGetSession.mockResolvedValueOnce({
-      data: { session: { access_token: 'current-access-token' } },
-    });
-    mockSingle.mockResolvedValueOnce({
-      data: currentSession,
-      error: null,
-    });
+    setup.session = { access_token: 'current-access-token' };
+    setup.rows = [
+      {
+        data: currentSession,
+        error: null,
+      },
+    ];
 
     const request = new NextRequest('http://localhost/api/user/sessions/session-1', {
       method: 'DELETE',
@@ -234,17 +180,13 @@ describe('DELETE /api/user/sessions/:id', () => {
       session_token: 'other-token',
     };
 
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-    mockGetSession.mockResolvedValueOnce({
-      data: { session: { access_token: 'current-token' } },
-    });
-    mockSingle.mockResolvedValueOnce({
-      data: otherSession,
-      error: null,
-    });
+    setup.session = { access_token: 'current-token' };
+    setup.rows = [
+      {
+        data: otherSession,
+        error: null,
+      },
+    ];
 
     const request = new NextRequest('http://localhost/api/user/sessions/session-2', {
       method: 'DELETE',

@@ -40,6 +40,7 @@ import { getStreak } from '@/lib/services/streakService';
 import { isoWeekKey, localDayKey } from '@/lib/ai/streakEngine';
 import { logger } from '@/lib/utils/logger';
 import { GET } from '../route';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockGetStreak = getStreak as jest.MockedFunction<typeof getStreak>;
@@ -49,65 +50,23 @@ interface Result {
   error: unknown;
 }
 
-interface ChainStub extends Record<string, jest.Mock> {
-  select: jest.Mock;
-  eq: jest.Mock;
-  in: jest.Mock;
-  not: jest.Mock;
-}
-
-function chain(result: Result): ChainStub {
-  const c = {} as ChainStub;
-  const thenable = Object.assign(Promise.resolve(result), c);
-  // `upsert` matters: unlockAchievements upserts then selects, and a missing
-  // method throws into the route's catch, silently yielding newlyUnlocked: [].
-  const methods = [
-    'select',
-    'eq',
-    'gte',
-    'lte',
-    'lt',
-    'gt',
-    'is',
-    'or',
-    'in',
-    'not',
-    'order',
-    'upsert',
-    'insert',
-    'update',
-    'delete',
-    'single',
-    'maybeSingle',
-  ];
-  for (const m of methods) {
-    c[m] = jest.fn(() => thenable);
-  }
-  Object.assign(thenable, c);
-  return Object.assign(c, { __thenable: thenable }) as ChainStub;
-}
-
-/** Per-table queues; a table queried twice takes its results in order. */
+/**
+ * Per-table queues; a table queried twice takes its results in order.
+ *
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`, which records every
+ * chain per table (`chains`) in the shape this file's hand-rolled stub kept. One
+ * semantic is preserved deliberately: the old queue answered `[]` once a table's
+ * listed results ran out, where the factory would repeat the last one - so every
+ * table's queue ends with a `[]` sentinel, and over-reading a table still gets
+ * nothing rather than a copy.
+ */
 function makeSupabase(plan: Partial<Record<string, Result | Result[]>>) {
-  const queues: Record<string, Result[]> = {};
+  const tables: Record<string, Result[]> = {};
   for (const [k, v] of Object.entries(plan)) {
-    queues[k] = Array.isArray(v) ? [...v] : [v as Result];
+    tables[k] = [...(Array.isArray(v) ? v : [v as Result]), { data: [], error: null }];
   }
-  const chains: Record<string, ChainStub[]> = {};
-  const from = jest.fn((table: string) => {
-    const queue = queues[table];
-    const result = queue && queue.length ? queue.shift()! : { data: [], error: null };
-    const c = chain(result);
-    (chains[table] ??= []).push(c);
-    return (c as unknown as { __thenable: ChainStub }).__thenable;
-  });
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
-    },
-    from,
-    chains,
-  };
+  const db = createSupabaseMock({ user: { id: 'user-1' }, tables: tables as never });
+  return Object.assign(db.client, { chains: db.chains });
 }
 
 const NOW = new Date();
