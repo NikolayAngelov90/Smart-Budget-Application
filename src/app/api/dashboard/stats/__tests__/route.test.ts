@@ -197,15 +197,8 @@ describe('GET /api/dashboard/stats — period', () => {
   });
 
   it('returns 401 without a session', async () => {
-    mockCreateClient.mockResolvedValue({
-      auth: {
-        getUser: jest
-          .fn()
-          .mockResolvedValue({ data: { user: null }, error: { message: 'no session' } }),
-      },
-      from: jest.fn(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    // user: null -> the factory's unauthenticated client.
+    mockCreateClient.mockResolvedValue(createSupabaseMock({ user: null }).client);
 
     const res = await GET(request('?period=week'));
     expect(res.status).toBe(401);
