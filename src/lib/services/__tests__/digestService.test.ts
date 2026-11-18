@@ -7,6 +7,8 @@
  * - buildHighlight: each rule branch
  */
 
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 import { generateDigestForUser, getLatestDigest, buildHighlight } from '../digestService';
 import type { DigestTopCategory } from '@/types/database.types';
 
@@ -14,28 +16,71 @@ import type { DigestTopCategory } from '@/types/database.types';
 // MOCKS
 // ============================================================================
 
-const mockUpsert = jest.fn();
-const mockMaybeSingle = jest.fn();
-
-const supabaseMock = {
-  from: jest.fn().mockReturnThis(),
-  select: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  gte: jest.fn().mockReturnThis(),
-  lte: jest.fn().mockReturnThis(),
-  order: jest.fn().mockReturnThis(),
-  limit: jest.fn().mockReturnThis(),
-  upsert: mockUpsert,
-  maybeSingle: mockMaybeSingle,
-};
-
+/*
+ * MIGRATED to `@/test-utils/supabaseChain`.
+ *
+ * The hand-rolled mock was ONE MODULE-LEVEL OBJECT that was client and chain at
+ * once (`from: jest.fn().mockReturnThis()`), shared by every test. The two weekly
+ * spending queries were told apart only by `lte.mockResolvedValueOnce(...)` ORDER,
+ * and the suite reset with `jest.clearAllMocks()` - which clears recorded calls
+ * but does NOT drain unconsumed `...Once` values. That is the leak class this repo
+ * has documented twice: a test that queued two values and consumed one left the
+ * second for whichever test ran next.
+ *
+ * A fresh factory mock per test removes the class rather than guarding against it.
+ * The two weekly reads become a two-entry `transactions` queue - current week
+ * first, because Promise.all starts both fetchWeekSpending calls synchronously in
+ * array order - and the upsert is recorded rather than captured by a bare jest.fn.
+ *
+ * CONTROL-ARM FILE, with one reclassification stated: digestService has a single
+ * bare `catch {}` - it wraps only Intl.NumberFormat in formatAmount, falling back
+ * to "EUR 12.00" for an unknown currency. It cannot absorb a failed query, so for
+ * the purpose of this arm the file still behaves as control.
+ */
 jest.mock('@/lib/supabase/server', () => ({
-  createServiceRoleClient: jest.fn(() => supabaseMock),
+  createServiceRoleClient: jest.fn(),
 }));
 
 jest.mock('@/lib/utils/logger', () => ({
   logger: { info: jest.fn(), error: jest.fn() },
 }));
+
+const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
+
+function digestDb(opts: { current?: unknown[]; prev?: unknown[]; upsertError?: unknown } = {}) {
+  const { current = [], prev = [], upsertError = null } = opts;
+  const db = createSupabaseMock({
+    tables: {
+      transactions: [
+        { data: current, error: null },
+        { data: prev, error: null },
+      ],
+      weekly_digests: { data: null, error: upsertError },
+    },
+  });
+  mockServiceClient.mockReturnValue(db.client as never);
+  return db;
+}
+
+/**
+ * The one payload the service upserted, TYPED rather than `as any`. The first
+ * version used `any` under an `eslint-disable-next-line`, and Prettier wrapped
+ * the line so the cast landed one line below the directive - the positional
+ * trap this repo has already documented. A type cannot be moved out from under
+ * its own exemption.
+ */
+interface DigestPayload {
+  user_id: string;
+  week_start: string;
+  week_end: string;
+  total_spending: number;
+  spending_change_pct: number;
+  top_categories: Array<{ category_id: string; total: number }>;
+}
+const upserted = (db: ReturnType<typeof digestDb>) =>
+  db.callsTo('weekly_digests', 'upsert')[0]![0] as DigestPayload;
 
 // ============================================================================
 // HELPERS
@@ -108,20 +153,16 @@ describe('buildHighlight', () => {
 describe('generateDigestForUser', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Default: select returns empty, upsert succeeds
-    supabaseMock.select.mockReturnThis();
-    supabaseMock.gte.mockReturnThis();
-    supabaseMock.lte.mockResolvedValue({ data: [], error: null });
-    mockUpsert.mockResolvedValue({ error: null });
   });
 
   it('calls upsert with correct week_start and week_end for a Monday', async () => {
     // Monday 2026-03-23
+    const db = digestDb();
     const weekStart = new Date('2026-03-23T00:00:00Z');
     await generateDigestForUser('user-1', weekStart);
 
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    const payload = mockUpsert.mock.calls[0][0];
+    expect(db.callsTo('weekly_digests', 'upsert')).toHaveLength(1);
+    const payload = upserted(db);
     expect(payload.week_start).toBe('2026-03-23');
     expect(payload.week_end).toBe('2026-03-29');
     expect(payload.user_id).toBe('user-1');
@@ -134,18 +175,16 @@ describe('generateDigestForUser', () => {
       { amount: 80, category_id: 'cat-a', name: 'Transport', color: '#blue' }, // same cat
     ]);
 
-    // First call (current week), second call (prev week) → empty
-    supabaseMock.lte
-      .mockResolvedValueOnce({ data: rows, error: null })
-      .mockResolvedValueOnce({ data: [], error: null });
+    // Current week, then previous week → empty
+    const db = digestDb({ current: rows, prev: [] });
 
     await generateDigestForUser('user-1', new Date('2026-03-23T00:00:00Z'));
 
-    const payload = mockUpsert.mock.calls[0][0];
+    const payload = upserted(db);
     expect(payload.total_spending).toBe(250); // 50+120+80
-    expect(payload.top_categories[0].category_id).toBe('cat-a'); // 130 > 120
-    expect(payload.top_categories[0].total).toBe(130);
-    expect(payload.top_categories[1].category_id).toBe('cat-b');
+    expect(payload.top_categories[0]!.category_id).toBe('cat-a'); // 130 > 120
+    expect(payload.top_categories[0]!.total).toBe(130);
+    expect(payload.top_categories[1]!.category_id).toBe('cat-b');
   });
 
   it('computes spending_change_pct correctly (positive)', async () => {
@@ -155,14 +194,11 @@ describe('generateDigestForUser', () => {
     const prevRows = makeTransactionRows([
       { amount: 100, category_id: 'c1', name: 'A', color: '#a' },
     ]);
-    supabaseMock.lte
-      .mockResolvedValueOnce({ data: currentRows, error: null })
-      .mockResolvedValueOnce({ data: prevRows, error: null });
+    const db = digestDb({ current: currentRows, prev: prevRows });
 
     await generateDigestForUser('user-1', new Date('2026-03-23T00:00:00Z'));
 
-    const payload = mockUpsert.mock.calls[0][0];
-    expect(payload.spending_change_pct).toBeCloseTo(50, 1);
+    expect(upserted(db).spending_change_pct).toBeCloseTo(50, 1);
   });
 
   it('computes spending_change_pct correctly (negative)', async () => {
@@ -172,28 +208,22 @@ describe('generateDigestForUser', () => {
     const prevRows = makeTransactionRows([
       { amount: 100, category_id: 'c1', name: 'A', color: '#a' },
     ]);
-    supabaseMock.lte
-      .mockResolvedValueOnce({ data: currentRows, error: null })
-      .mockResolvedValueOnce({ data: prevRows, error: null });
+    const db = digestDb({ current: currentRows, prev: prevRows });
 
     await generateDigestForUser('user-1', new Date('2026-03-23T00:00:00Z'));
 
-    const payload = mockUpsert.mock.calls[0][0];
-    expect(payload.spending_change_pct).toBeCloseTo(-20, 1);
+    expect(upserted(db).spending_change_pct).toBeCloseTo(-20, 1);
   });
 
   it('sets spending_change_pct to 100 when previous week total is 0 and current > 0', async () => {
     const currentRows = makeTransactionRows([
       { amount: 100, category_id: 'c1', name: 'A', color: '#a' },
     ]);
-    supabaseMock.lte
-      .mockResolvedValueOnce({ data: currentRows, error: null })
-      .mockResolvedValueOnce({ data: [], error: null }); // prev = 0
+    const db = digestDb({ current: currentRows, prev: [] }); // prev = 0
 
     await generateDigestForUser('user-1', new Date('2026-03-23T00:00:00Z'));
 
-    const payload = mockUpsert.mock.calls[0][0];
-    expect(payload.spending_change_pct).toBe(100);
+    expect(upserted(db).spending_change_pct).toBe(100);
   });
 
   it('limits top_categories to 3', async () => {
@@ -203,18 +233,15 @@ describe('generateDigestForUser', () => {
       { amount: 80, category_id: 'c3', name: 'C', color: '#c' },
       { amount: 70, category_id: 'c4', name: 'D', color: '#d' },
     ]);
-    supabaseMock.lte
-      .mockResolvedValueOnce({ data: rows, error: null })
-      .mockResolvedValueOnce({ data: [], error: null });
+    const db = digestDb({ current: rows, prev: [] });
 
     await generateDigestForUser('user-1', new Date('2026-03-23T00:00:00Z'));
 
-    const payload = mockUpsert.mock.calls[0][0];
-    expect(payload.top_categories).toHaveLength(3);
+    expect(upserted(db).top_categories).toHaveLength(3);
   });
 
   it('throws when upsert fails', async () => {
-    mockUpsert.mockResolvedValue({ error: { message: 'upsert failed' } });
+    digestDb({ upsertError: { message: 'upsert failed' } });
 
     await expect(
       generateDigestForUser('user-1', new Date('2026-03-23T00:00:00Z'))
@@ -229,45 +256,37 @@ describe('generateDigestForUser', () => {
 describe('getLatestDigest', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    supabaseMock.from.mockReturnThis();
-    supabaseMock.select.mockReturnThis();
-    supabaseMock.eq.mockReturnThis();
-    supabaseMock.order.mockReturnThis();
-    supabaseMock.limit.mockReturnThis();
   });
+
+  const latest = (result: { data: unknown; error: unknown }) =>
+    createSupabaseMock({ tables: { weekly_digests: result as never } }).client;
 
   it('returns the digest when found', async () => {
     const digest = { id: 'd-1', user_id: 'user-1', week_start: '2026-03-23' };
-    mockMaybeSingle.mockResolvedValue({ data: digest, error: null });
-
-    const result = await getLatestDigest(supabaseMock as never, 'user-1');
+    const result = await getLatestDigest(latest({ data: digest, error: null }), 'user-1');
     expect(result).toEqual(digest);
   });
 
   it('returns null when no digest found (PGRST116)', async () => {
-    mockMaybeSingle.mockResolvedValue({
-      data: null,
-      error: { code: 'PGRST116', message: 'Not found' },
-    });
-
-    const result = await getLatestDigest(supabaseMock as never, 'user-1');
+    const result = await getLatestDigest(
+      latest({ data: null, error: { code: 'PGRST116', message: 'Not found' } }),
+      'user-1'
+    );
     expect(result).toBeNull();
   });
 
   it('returns null when data is null with no error', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
-
-    const result = await getLatestDigest(supabaseMock as never, 'user-1');
+    const result = await getLatestDigest(latest({ data: null, error: null }), 'user-1');
     expect(result).toBeNull();
   });
 
   it('throws on non-PGRST116 error', async () => {
-    mockMaybeSingle.mockResolvedValue({
-      data: null,
-      error: { code: '42703', message: 'DB error' },
-    });
-
-    await expect(getLatestDigest(supabaseMock as never, 'user-1')).rejects.toMatchObject({
+    await expect(
+      getLatestDigest(
+        latest({ data: null, error: { code: '42703', message: 'DB error' } }),
+        'user-1'
+      )
+    ).rejects.toMatchObject({
       message: 'DB error',
     });
   });
