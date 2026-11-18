@@ -54,6 +54,7 @@ import {
 } from '@/lib/services/budgetService';
 import { GET, PUT } from '../route';
 import { DELETE } from '../[id]/route';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 /**
  * GET now takes the request so it can read `?today=` — the client's local day,
@@ -69,18 +70,10 @@ const mockListBudgets = listBudgets as jest.MockedFunction<typeof listBudgets>;
 const mockUpsertBudget = upsertBudget as jest.MockedFunction<typeof upsertBudget>;
 const mockDeleteBudget = deleteBudget as jest.MockedFunction<typeof deleteBudget>;
 
-// Chainable query stub: methods return `this`; awaiting resolves to `result`.
-function chain(result: { data: unknown; error: unknown }) {
-  const q: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'gte', 'lte', 'in', 'is']) {
-    q[m] = jest.fn(() => q);
-  }
-  // The preferred-currency lookup ends in .single() (DW-1).
-  q.single = jest.fn(async () => result);
-  q.then = (resolve: (v: unknown) => unknown) => resolve(result);
-  return q;
-}
-
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`.
+// The hand-rolled `from` returned `transactions` rows for every table it did
+// not name; the routes read only categories, transactions and user_profiles
+// (the DW-1 preferred-currency lookup), so per-table results are faithful.
 function makeSupabase(
   overrides: {
     user?: object | null;
@@ -89,18 +82,14 @@ function makeSupabase(
   } = {}
 ) {
   const { user = { id: 'user-1' }, categories = [], transactions = [] } = overrides;
-  return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: null }) },
-    from: jest.fn((table: string) => {
-      if (table === 'categories') return chain({ data: categories, error: null });
-      // DW-1: the preferred currency is resolved server-side so the value used
-      // to CONVERT and the value used to LABEL cannot drift apart.
-      if (table === 'user_profiles') {
-        return chain({ data: { preferences: { currency_format: 'EUR' } }, error: null });
-      }
-      return chain({ data: transactions, error: null });
-    }),
-  };
+  return createSupabaseMock({
+    user: user as { id: string } | null,
+    tables: {
+      categories: { data: categories, error: null },
+      transactions: { data: transactions, error: null },
+      user_profiles: { data: { preferences: { currency_format: 'EUR' } }, error: null },
+    },
+  }).client;
 }
 
 const makeRequest = (body: unknown) => ({ json: async () => body }) as unknown as NextRequest;

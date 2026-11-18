@@ -5,25 +5,25 @@
 
 import { NextRequest } from 'next/server';
 import { POST, GET } from '@/app/api/analytics/track/route';
+import { createClient } from '@/lib/supabase/server';
+import {
+  createSupabaseMock,
+  type QueryResult,
+  type SupabaseMock,
+} from '@/test-utils/supabaseChain';
 
-// Mock Supabase client
-const mockGetUser = jest.fn();
-const mockInsert = jest.fn();
-const mockSelect = jest.fn();
-const mockSingle = jest.fn();
-
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn(() =>
-    Promise.resolve({
-      auth: {
-        getUser: mockGetUser,
-      },
-      from: jest.fn(() => ({
-        insert: mockInsert,
-      })),
-    })
-  ),
-}));
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. Module-level
+ * mockInsert/mockSelect/mockSingle wired into a hand-rolled client become one
+ * factory client per test; `eventResult` sets what the analytics_events insert
+ * returns, and the insert payload is read off the insert call.
+ */
+jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn() }));
+let db: SupabaseMock;
+function eventResult(result: QueryResult) {
+  db = createSupabaseMock({ user: { id: 'user-123' }, tables: { analytics_events: result } });
+  (createClient as jest.Mock).mockResolvedValue(db.client);
+}
 
 // Helper to create mock request
 function createMockRequest(body: unknown): NextRequest {
@@ -36,28 +36,13 @@ describe('POST /api/analytics/track', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default: authenticated user
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-
-    // Default: successful insert
-    mockInsert.mockReturnValue({
-      select: mockSelect,
-    });
-    mockSelect.mockReturnValue({
-      single: mockSingle,
-    });
-    mockSingle.mockResolvedValue({
-      data: { id: 'event-uuid-123' },
-      error: null,
-    });
+    // Default: authenticated user, successful insert
+    eventResult({ data: { id: 'event-uuid-123' }, error: null });
   });
 
   describe('Authentication', () => {
     it('returns 401 if user is not authenticated', async () => {
-      mockGetUser.mockResolvedValueOnce({
+      db.client.auth.getUser.mockResolvedValueOnce({
         data: { user: null },
         error: { message: 'Not authenticated' },
       });
@@ -75,7 +60,7 @@ describe('POST /api/analytics/track', () => {
     });
 
     it('returns 401 if auth error occurs', async () => {
-      mockGetUser.mockResolvedValueOnce({
+      db.client.auth.getUser.mockResolvedValueOnce({
         data: { user: null },
         error: { message: 'Auth error' },
       });
@@ -144,7 +129,7 @@ describe('POST /api/analytics/track', () => {
       const validEvents = ['insights_page_viewed', 'insight_viewed', 'insight_dismissed'];
 
       for (const eventName of validEvents) {
-        mockSingle.mockResolvedValueOnce({
+        eventResult({
           data: { id: 'event-uuid' },
           error: null,
         });
@@ -182,13 +167,15 @@ describe('POST /api/analytics/track', () => {
 
       await POST(request);
 
-      expect(mockInsert).toHaveBeenCalledWith({
-        user_id: 'user-123',
-        event_name: 'insight_viewed',
-        event_properties: { insight_id: 'abc', insight_type: 'spending' },
-        session_id: 'session-123',
-        device_type: 'mobile',
-      });
+      expect(db.callsTo('analytics_events', 'insert')).toContainEqual([
+        {
+          user_id: 'user-123',
+          event_name: 'insight_viewed',
+          event_properties: { insight_id: 'abc', insight_type: 'spending' },
+          session_id: 'session-123',
+          device_type: 'mobile',
+        },
+      ]);
     });
 
     it('handles optional fields with defaults', async () => {
@@ -198,19 +185,21 @@ describe('POST /api/analytics/track', () => {
 
       await POST(request);
 
-      expect(mockInsert).toHaveBeenCalledWith({
-        user_id: 'user-123',
-        event_name: 'insights_page_viewed',
-        event_properties: {},
-        session_id: null,
-        device_type: null,
-      });
+      expect(db.callsTo('analytics_events', 'insert')).toContainEqual([
+        {
+          user_id: 'user-123',
+          event_name: 'insights_page_viewed',
+          event_properties: {},
+          session_id: null,
+          device_type: null,
+        },
+      ]);
     });
   });
 
   describe('Database errors', () => {
     it('returns 500 on database insert error', async () => {
-      mockSingle.mockResolvedValueOnce({
+      eventResult({
         data: null,
         error: { message: 'Database error' },
       });

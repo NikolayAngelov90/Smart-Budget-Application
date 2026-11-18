@@ -64,6 +64,7 @@ import {
 import { getValuesPlan } from '@/lib/services/valuesService';
 import { GET, POST } from '../route';
 import { PATCH } from '../[id]/route';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 /**
  * GET now takes the request so it can read `?today=` — the client's local day,
@@ -80,34 +81,13 @@ const mockCreateItem = createItem as jest.MockedFunction<typeof createItem>;
 const mockUpdateStatus = updateStatus as jest.MockedFunction<typeof updateStatus>;
 const mockGetValuesPlan = getValuesPlan as jest.MockedFunction<typeof getValuesPlan>;
 
-// Chainable query stub: every method returns `this`; awaiting resolves to `result`.
-function chain(result: { data: unknown; error: unknown }) {
-  const q: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'gt', 'gte', 'lte', 'in', 'is', 'not', 'order', 'limit']) {
-    q[m] = jest.fn(() => q);
-  }
-  q.then = (resolve: (v: unknown) => unknown) => resolve(result);
-  return q;
-}
-
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. Same per-table queue model as
+// the hand-rolled version (an array is consumed in from() order); a queue that
+// runs dry repeats its last entry, and an unlisted table answers [].
 type Plan = Record<string, { data: unknown; error: unknown } | { data: unknown; error: unknown }[]>;
 
 function makeSupabase(plan: Plan = {}, user: object | null = { id: 'user-1' }) {
-  const queues: Record<
-    string,
-    { data: unknown; error: unknown }[] | { data: unknown; error: unknown }
-  > = {};
-  for (const [k, v] of Object.entries(plan)) queues[k] = Array.isArray(v) ? [...v] : v;
-  return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: null }) },
-    from: jest.fn((table: string) => {
-      const q = queues[table];
-      let result: { data: unknown; error: unknown } = { data: [], error: null };
-      if (Array.isArray(q)) result = q.length ? q.shift()! : { data: [], error: null };
-      else if (q) result = q;
-      return chain(result);
-    }),
-  };
+  return createSupabaseMock({ user: user as { id: string } | null, tables: plan as never }).client;
 }
 
 const makeRequest = (body: unknown) => ({ json: async () => body }) as unknown as NextRequest;

@@ -30,27 +30,18 @@ jest.mock('@/lib/utils/logger', () => ({
 import { createClient } from '@/lib/supabase/server';
 import { getValuesPlan } from '@/lib/services/valuesService';
 import { GET } from '../spending/route';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockGetPlan = getValuesPlan as jest.MockedFunction<typeof getValuesPlan>;
 
-/** transactions query chain ending on `.lt()` (awaited). */
-function txChain(result: { data: unknown; error: unknown }) {
-  const q: Record<string, jest.Mock> = {};
-  for (const m of ['select', 'eq', 'gte']) q[m] = jest.fn(() => q);
-  q.lt = jest.fn(() => Promise.resolve(result));
-  return q;
-}
-
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The route's one query reads
+// transactions; the factory supplies auth for `user` (null -> unauthenticated).
 function client(user: object | null, txResult: { data: unknown; error: unknown }) {
-  return {
-    auth: {
-      getUser: jest
-        .fn()
-        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no user' } }),
-    },
-    from: jest.fn(() => txChain(txResult)),
-  };
+  return createSupabaseMock({
+    user: user as { id: string } | null,
+    tables: { transactions: txResult },
+  }).client;
 }
 
 beforeEach(() => jest.clearAllMocks());

@@ -27,32 +27,24 @@ jest.mock('@/lib/utils/logger', () => ({
 import { createClient } from '@/lib/supabase/server';
 import { getFeatureState } from '@/lib/services/featureStateService';
 import { GET } from '../route';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockGetFeatureState = getFeatureState as jest.MockedFunction<typeof getFeatureState>;
 
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`.
+// The route's one read: user_profiles.preferences (maybeSingle).
 function makeClient(
   user: { id: string } | null,
   prefs: Record<string, unknown> = {},
   prefsError: unknown = null
 ) {
-  const profileChain: Record<string, jest.Mock> = {
-    maybeSingle: jest.fn().mockResolvedValue({
-      data: prefsError ? null : { preferences: prefs },
-      error: prefsError,
-    }),
-  };
-  profileChain.select = jest.fn(() => profileChain);
-  profileChain.eq = jest.fn(() => profileChain);
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({
-        data: { user },
-        error: user ? null : { message: 'no user' },
-      }),
+  return createSupabaseMock({
+    user,
+    tables: {
+      user_profiles: { data: prefsError ? null : { preferences: prefs }, error: prefsError },
     },
-    from: jest.fn(() => profileChain),
-  };
+  }).client;
 }
 
 beforeEach(() => jest.clearAllMocks());

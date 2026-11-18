@@ -5,6 +5,7 @@
 
 import { DELETE } from '@/app/api/user/account/route';
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock, type QueryResult } from '@/test-utils/supabaseChain';
 import * as settingsService from '@/lib/services/settingsService';
 import * as exportService from '@/lib/services/exportService';
 import { NextRequest } from 'next/server';
@@ -29,19 +30,28 @@ describe('/api/user/account DELETE', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockSupabase = {
-      auth: {
-        getUser: jest.fn(),
-        signInWithPassword: jest.fn(),
-        admin: {
-          deleteUser: jest.fn(),
-        },
-      },
-      from: jest.fn(),
+    // MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The route's one
+    // query is the transactions export; `setTransactions` sets its result. The
+    // auth functions stay bare jest.fns the tests configure, exactly as before,
+    // and are carried across when a test swaps the transactions result.
+    mockSupabase = createSupabaseMock({
+      tables: { transactions: { data: [], error: null } },
+    }).client;
+    mockSupabase.auth = {
+      getUser: jest.fn(),
+      signInWithPassword: jest.fn(),
+      admin: { deleteUser: jest.fn() },
     };
-
     mockCreateClient.mockResolvedValue(mockSupabase);
   });
+
+  /** A fresh client whose transactions export returns `result`; the configured auth carries over. */
+  function setTransactions(result: QueryResult) {
+    const auth = mockSupabase.auth;
+    mockSupabase = createSupabaseMock({ tables: { transactions: result } }).client;
+    mockSupabase.auth = auth;
+    mockCreateClient.mockResolvedValue(mockSupabase);
+  }
 
   const mockUser = {
     id: 'user-123',
@@ -80,18 +90,10 @@ describe('/api/user/account DELETE', () => {
       });
 
       // Mock transactions fetch for export
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
+      setTransactions({
         data: mockTransactions,
         error: null,
       });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({ eq: mockEq });
-      mockEq.mockReturnValue({ order: mockOrder });
 
       // Mock CSV export
       mockExportTransactionsToCSV.mockResolvedValue();
@@ -236,18 +238,10 @@ describe('/api/user/account DELETE', () => {
         error: null,
       });
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
+      setTransactions({
         data: mockTransactions,
         error: null,
       });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({ eq: mockEq });
-      mockEq.mockReturnValue({ order: mockOrder });
 
       mockExportTransactionsToCSV.mockResolvedValue();
       mockDeleteUserAccount.mockResolvedValue(true);
@@ -283,18 +277,10 @@ describe('/api/user/account DELETE', () => {
         error: null,
       });
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
+      setTransactions({
         data: [],
         error: null,
       });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({ eq: mockEq });
-      mockEq.mockReturnValue({ order: mockOrder });
 
       mockExportTransactionsToCSV.mockResolvedValue();
       mockDeleteUserAccount.mockResolvedValue(true);
@@ -316,7 +302,13 @@ describe('/api/user/account DELETE', () => {
   });
 
   describe('AC-8.3.8: Cascade deletion', () => {
-    test('deletes user_profiles and cascades to auth.users', async () => {
+    // RENAMED 2026-11-18. Was "deletes user_profiles and cascades to
+    // auth.users" - the SAME backwards claim as the settingsService test renamed
+    // in cf90b2c: the FK cascades FROM auth.users TO the profile, never the other
+    // way. And deleteUserAccount is MOCKED here, so this checks only that the
+    // route delegates to it. The cascade itself is exercised by the RLS suite's
+    // teardown since deleteTestUser started asserting its result.
+    test('delegates the deletion to deleteUserAccount for the authenticated user', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: mockUser },
         error: null,
@@ -327,18 +319,10 @@ describe('/api/user/account DELETE', () => {
         error: null,
       });
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
+      setTransactions({
         data: [],
         error: null,
       });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({ eq: mockEq });
-      mockEq.mockReturnValue({ order: mockOrder });
 
       mockExportTransactionsToCSV.mockResolvedValue();
       mockDeleteUserAccount.mockResolvedValue(true);
@@ -369,18 +353,10 @@ describe('/api/user/account DELETE', () => {
         error: null,
       });
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
+      setTransactions({
         data: [],
         error: null,
       });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({ eq: mockEq });
-      mockEq.mockReturnValue({ order: mockOrder });
 
       mockExportTransactionsToCSV.mockResolvedValue();
       mockDeleteUserAccount.mockRejectedValue(new Error('Profile deletion failed'));
@@ -411,18 +387,10 @@ describe('/api/user/account DELETE', () => {
         error: null,
       });
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
+      setTransactions({
         data: [],
         error: null,
       });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({ eq: mockEq });
-      mockEq.mockReturnValue({ order: mockOrder });
 
       mockDeleteUserAccount.mockResolvedValue(true);
 
@@ -454,18 +422,10 @@ describe('/api/user/account DELETE', () => {
         error: null,
       });
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
+      setTransactions({
         data: null,
         error: { message: 'Database error' },
       });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({ eq: mockEq });
-      mockEq.mockReturnValue({ order: mockOrder });
 
       const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',

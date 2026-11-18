@@ -1,10 +1,19 @@
 /**
  * User Sessions API Unit Tests
  * Story 9-6: Complete Device Session Management (AC-9.6.9)
+ *
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. Nine module-level
+ * jest.fns (from/select/eq/order/maybeSingle/insert/update/...) wired into a
+ * hand-rolled client, configured per test with `...mockResolvedValueOnce`,
+ * become one factory client per test. user_sessions is a QUEUE in the route's
+ * call order: with an auth session, [token lookup, fingerprint lookup, insert,
+ * the list fetch]; without one, [the list fetch].
  */
 
 import { createHash } from 'crypto';
 import { GET } from '@/app/api/user/sessions/route';
+import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock, type QueryResult } from '@/test-utils/supabaseChain';
 
 // Mock next/headers
 jest.mock('next/headers', () => ({
@@ -18,58 +27,30 @@ jest.mock('next/headers', () => ({
   }),
 }));
 
-// Mock Supabase client
-const mockGetUser = jest.fn();
-const mockGetSession = jest.fn();
-const mockSelect = jest.fn();
-const mockFrom = jest.fn();
-const mockEq = jest.fn();
-const mockOrder = jest.fn();
-const mockMaybeSingle = jest.fn();
-const mockInsert = jest.fn();
-const mockUpdate = jest.fn();
-const mockUpdateEq = jest.fn();
+jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn() }));
 
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn().mockResolvedValue({
-    auth: {
-      getUser: () => mockGetUser(),
-      getSession: () => mockGetSession(),
-    },
-    from: (table: string) => mockFrom(table),
-  }),
-}));
+function wire({
+  user = { id: 'user-123' },
+  session = null,
+  sessions,
+}: {
+  user?: { id: string } | null;
+  session?: object | null;
+  sessions: QueryResult[];
+}) {
+  const db = createSupabaseMock({ user, tables: { user_sessions: sessions } });
+  (db.client.auth.getSession as jest.Mock).mockResolvedValue({ data: { session } });
+  (createClient as jest.Mock).mockResolvedValue(db.client);
+  return db;
+}
 
 describe('GET /api/user/sessions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Default: no auth session (skips upsert)
-    mockGetSession.mockResolvedValue({
-      data: { session: null },
-    });
-
-    // Set up mock chain for fetching sessions
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'user_sessions') {
-        return { select: mockSelect, insert: mockInsert, update: mockUpdate };
-      }
-      return { select: mockSelect };
-    });
-    mockSelect.mockReturnValue({ eq: mockEq });
-    // eq is chainable: supports .eq().eq().maybeSingle() for device fingerprint lookup
-    mockEq.mockReturnValue({ eq: mockEq, order: mockOrder, maybeSingle: mockMaybeSingle });
-    mockOrder.mockResolvedValue({ data: [], error: null });
-    mockInsert.mockResolvedValue({ error: null });
-    mockUpdate.mockReturnValue({ eq: mockUpdateEq });
-    mockUpdateEq.mockResolvedValue({ error: null });
   });
 
   it('returns 401 if user is not authenticated', async () => {
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: null },
-      error: { message: 'Not authenticated' },
-    });
+    wire({ user: null, sessions: [] });
 
     const response = await GET();
     const data = await response.json();
@@ -99,15 +80,8 @@ describe('GET /api/user/sessions', () => {
         created_at: '2026-02-02T09:00:00Z',
       },
     ];
-
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-    mockOrder.mockResolvedValueOnce({
-      data: mockSessions,
-      error: null,
-    });
+    // No auth session, so no registration: the list fetch is the only query.
+    wire({ sessions: [{ data: mockSessions, error: null }] });
 
     const response = await GET();
     const data = await response.json();
@@ -118,14 +92,7 @@ describe('GET /api/user/sessions', () => {
   });
 
   it('returns 500 on database error', async () => {
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-    mockOrder.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'Database error' },
-    });
+    wire({ sessions: [{ data: null, error: { message: 'Database error' } }] });
 
     const response = await GET();
     const data = await response.json();
@@ -135,28 +102,24 @@ describe('GET /api/user/sessions', () => {
   });
 
   it('auto-registers current session when auth session exists', async () => {
-    mockGetUser.mockResolvedValueOnce({
-      data: { user: { id: 'user-123' } },
-      error: null,
-    });
-    mockGetSession.mockResolvedValueOnce({
-      data: { session: { access_token: 'token-abc' } },
-    });
-    // 1st maybeSingle: exact token lookup → not found
-    mockMaybeSingle.mockResolvedValueOnce({ data: null });
-    // 2nd maybeSingle: device fingerprint lookup → not found (new device)
-    mockMaybeSingle.mockResolvedValueOnce({ data: null });
-    // Fetch returns the newly inserted session
-    mockOrder.mockResolvedValueOnce({
-      data: [
+    const db = wire({
+      session: { access_token: 'token-abc' },
+      sessions: [
+        { data: null, error: null }, // exact token lookup: not found
+        { data: null, error: null }, // device fingerprint lookup: not found (new device)
+        { data: null, error: null }, // the insert
         {
-          id: 'new-session',
-          user_id: 'user-123',
-          device_name: 'Chrome on Windows',
-          session_token: 'token-abc',
-        },
+          data: [
+            {
+              id: 'new-session',
+              user_id: 'user-123',
+              device_name: 'Chrome on Windows',
+              session_token: 'token-abc',
+            },
+          ],
+          error: null,
+        }, // the list fetch returns the newly inserted session
       ],
-      error: null,
     });
 
     const response = await GET();
@@ -165,13 +128,13 @@ describe('GET /api/user/sessions', () => {
     const hashedToken = createHash('sha256').update('token-abc').digest('hex');
     expect(response.status).toBe(200);
     expect(data.current_session_token).toBe(hashedToken);
-    expect(mockInsert).toHaveBeenCalledWith(
+    expect(db.allCallsTo('user_sessions', 'insert')).toContainEqual([
       expect.objectContaining({
         user_id: 'user-123',
         session_token: hashedToken,
         device_type: 'desktop',
         browser: 'Chrome',
-      })
-    );
+      }),
+    ]);
   });
 });
