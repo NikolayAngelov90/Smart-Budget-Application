@@ -1,5 +1,34 @@
 # Testing Guidelines
 
+> ## READ THIS FIRST: knowledge here travels only when something mechanical carries it
+>
+> A shared helper, a lint rule, a CI step, a factory that throws on an absence
+> question. **Comments, docs and guideline entries — this document included —
+> have a measured travel rate of approximately zero**, over thirteen observed
+> instances, several of them written by the person who then failed to apply
+> them.
+>
+> The thirteenth is the clearest. `.github/workflows/test-order.yml:128` reads
+>
+> ```yaml
+> run: set -o pipefail && npm run test:order 2>&1 | tee jest-run.log
+> ```
+>
+> — written this month, precisely so that piping jest's output does not replace
+> jest's exit status with `tee`'s. Weeks later a local verification command read
+> every gate's exit code through `| tail`, turned a failing `tsc` and a failing
+> Prettier into passes, and pushed a red tree. Same defect, same remedy already
+> written, forty lines away, in a file edited by the same people the same month.
+> The line did not travel, because a line in a workflow carries nothing to a
+> shell somewhere else.
+>
+> **So every class closed here gets asked one question: WHAT MECHANISM CARRIES
+> THIS?** If the honest answer is "a guidelines entry", the class is not closed.
+> Write the entry anyway — but as the footnote, never the remedy.
+>
+> That applies to everything below. Read the rest of this file as the record of
+> what was learned, not as protection against learning it again.
+
 This document outlines testing standards, patterns, and best practices for the Smart Budget Application.
 
 ## Table of Contents
@@ -777,6 +806,19 @@ below.
 And read the failing STEP, not the job: the job is called `Run Tests` and runs
 five gates, only one of which runs tests. The step that failed was `Install
 Playwright browsers`.
+
+**A NON-BLOCKING JOB'S GREEN IS NOT EVIDENCE.** `continue-on-error` at JOB level
+makes the job's conclusion `success` whatever its steps did, so the green tick is
+a `want` that cannot fail — structurally uninformative, exactly as reading the
+`Run Tests` job name as a statement about tests is.
+
+What actually proved the runner pin landed (#100) was the content of the comment
+the `Performance benchmarks (non-blocking)` job posted: real millisecond figures
+rather than "benchmarks did NOT run". Playwright installed, so the image was not
+26.04, so the pin was in effect. That comment exists only because the job was
+built to report its FAILURE as a presence — and the same presence turned out to
+be the only usable evidence of SUCCESS too. Read a non-blocking job's output, or
+you have read nothing.
 
 **AN UNDECLARED INPUT IS STILL AN INPUT, and the ones that bite are the ones not
 spelled like versions.** That step failed because `runs-on: ubuntu-latest` had

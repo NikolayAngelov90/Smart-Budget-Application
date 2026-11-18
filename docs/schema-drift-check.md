@@ -278,6 +278,48 @@ construction" assumed an author who returns. So before reporting a pull request
 as done, read its check conclusions and report them — and before reporting it as
 merged, read `main`.
 
+#### The third rung: a TEST NAME is a claim too
+
+Your own action, a prose report — and a test name. A mocked unit test named
+*"cascade deletes auth.users record (verified through RLS and FK constraints)"*
+verifies neither RLS nor a foreign key; its own body says the cascade "is
+handled by database FK constraint". The name is the worst of the three rungs,
+because it has the widest blast radius: it is what the next person reads INSTEAD
+of writing the real test. The name was doing the work of a test that did not
+exist.
+
+So a test is named for what its assertions CHECK, never for what the code under
+it is supposed to guarantee. If the guarantee matters and this test cannot check
+it, the guarantee needs its own test — or a board item saying it has none.
+
+#### CLOSE, NEVER DELETE: deletion manufactures absences
+
+An audit of the scheduled-failure watchdog ran `gh api issues --state all` and got
+`totalCount: 0` — none open, none closed, ever — and could not tell "it has never
+worked" from "it has never had cause to". The true world was the good one: 39
+scheduled runs since 29 October with 0 failures, and five self-test issues (#93–#96,
+#98) proving the mechanism fires. All of it unrecoverable, because those issues had
+been DELETED as clean-up; each now returns HTTP 410.
+
+A closed issue and a deleted issue look identical to a count and completely
+different to the truth, and an absence fails open — so the audit's honest answer
+was "indistinguishable from never having worked". **An artifact whose purpose was
+to prove a mechanism works is evidence, and evidence is not clutter.** The motive
+for deleting was tidiness, which is exactly why this cannot rest on judgement.
+
+What saved the answer is worth keeping: the `watchdog/random-test-order` LABEL
+survived, because nobody thinks to tidy a label, and it could only have been
+created by a real scheduled run. **When you need durable evidence that something
+ran, prefer the artifact nobody would think to clean up.**
+
+**WHAT MECHANISM CARRIES THIS: none yet, so this class is OPEN.** The self-test
+that deleted those issues lived in a scratchpad, not in the repo, so there is no
+artifact here whose default behaviour is to close rather than delete. The carrier
+would be a repository self-test script for the watchdog that labels and closes its
+issues and has no delete path at all. Until it exists, this paragraph is a
+guidelines entry — which, by the note at the top of testing-guidelines.md, is the
+footnote and not the remedy.
+
 #### The original form, for checks
 
 A check for *"X is there"* **fails** when the check itself breaks. A check for
