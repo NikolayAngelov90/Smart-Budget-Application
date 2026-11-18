@@ -452,6 +452,9 @@ jobs:
 
       - name: Post benchmark results as PR comment
         if: success()
+        # Restored from the pre-lift file: posting the comment is a side effect,
+        # and its failure must not skip the preview step below.
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -523,7 +526,14 @@ jobs:
               body: comment
             });
 
+      # INDEPENDENT OF THE BENCHMARKS. The preview has nothing to do with
+      # performance and only lives in this job because this is the PR-only job.
+      # Without this condition, any failed benchmark step - including the
+      # Playwright install that started all of this - would silently skip the
+      # preview URL as well. `!cancelled()` runs it after a failure but not after
+      # a cancellation.
       - name: Deploy Vercel preview and post URL
+        if: ${{ !cancelled() }}
         uses: actions/github-script@v7
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
