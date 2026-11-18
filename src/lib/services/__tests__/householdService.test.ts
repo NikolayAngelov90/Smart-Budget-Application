@@ -14,6 +14,7 @@ jest.mock('@/lib/utils/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import {
   createHousehold,
@@ -42,6 +43,19 @@ interface AdminOpts {
   memberErr?: object | null;
 }
 
+/**
+ * MIGRATED to `@/test-utils/supabaseChain`. createHousehold touches each table
+ * twice, so each is a two-entry queue consumed in from() order:
+ *
+ *   household_members   lookup (select...maybeSingle)  -> membership insert
+ *   households          insert...select...single       -> rollback delete...eq
+ *
+ * The rollback's `deleteEq` used to be a dedicated jest.fn threaded back out of
+ * the helper; it is now simply the `eq` on the second households chain, which
+ * the factory records like every other call.
+ *
+ * CONTROL-ARM FILE: householdService rethrows; nothing here is swallowed.
+ */
 function makeAdminMock(opts: AdminOpts) {
   const {
     existingMembership = null,
@@ -50,43 +64,24 @@ function makeAdminMock(opts: AdminOpts) {
     householdErr = null,
     memberErr = null,
   } = opts;
-  const deleteEq = jest.fn().mockResolvedValue({ error: null });
-  const from = jest.fn((table: string) => {
-    if (table === 'household_members') {
-      return {
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            maybeSingle: jest
-              .fn()
-              .mockResolvedValue({ data: existingMembership, error: existingErr }),
-          }),
-        }),
-        insert: jest.fn().mockResolvedValue({ error: memberErr }),
-      };
-    }
-    // households
-    return {
-      insert: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          single: jest.fn().mockResolvedValue({ data: household, error: householdErr }),
-        }),
-      }),
-      delete: jest.fn().mockReturnValue({ eq: deleteEq }),
-    };
+  const db = createSupabaseMock({
+    tables: {
+      household_members: [
+        { data: existingMembership, error: existingErr },
+        { data: null, error: memberErr },
+      ],
+      households: [
+        { data: household, error: householdErr },
+        { data: null, error: null },
+      ],
+    },
   });
-  return { client: { from }, deleteEq };
+  return { db, client: db.client };
 }
 
 function makeUserMock(membership: object | null, error: object | null = null) {
-  return {
-    from: jest.fn().mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          maybeSingle: jest.fn().mockResolvedValue({ data: membership, error }),
-        }),
-      }),
-    }),
-  };
+  return createSupabaseMock({ tables: { household_members: { data: membership, error } } })
+    .client;
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -128,11 +123,12 @@ describe('createHousehold', () => {
   });
 
   it('rolls back the household when the membership insert fails', async () => {
-    const { client, deleteEq } = makeAdminMock({ memberErr: { message: 'boom' } });
+    const { db, client } = makeAdminMock({ memberErr: { message: 'boom' } });
     mockCreateServiceRoleClient.mockReturnValue(client as never);
 
     await expect(createHousehold('user-1', 'Our Home')).rejects.toThrow(/membership/);
-    expect(deleteEq).toHaveBeenCalledWith('id', HOUSEHOLD.id);
+    // The rollback is the SECOND households chain: index 1.
+    expect(db.chainFor('households', 1).eq).toHaveBeenCalledWith('id', HOUSEHOLD.id);
   });
 });
 

@@ -8,37 +8,49 @@ jest.mock('@/lib/utils/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { createClient } from '@/lib/supabase/server';
 import { getHouseholdInsights } from '@/lib/services/householdInsightService';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
-function membershipChain(householdId: string | null) {
-  return {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue({
-      data: householdId
-        ? { household_id: householdId }
-        : { preferences: { currency_format: 'EUR' } },
-      error: null,
-    }),
-  };
-}
-
+/*
+ * MIGRATED to `@/test-utils/supabaseChain`. The hand-rolled `membershipChain`
+ * was overloaded: passing `null` returned a `{ preferences }` row, so the same
+ * helper served household_members ("no household") and user_profiles
+ * (currency) depending on which table asked. The factory configures each table
+ * by name instead.
+ *
+ * CONTROL-ARM FILE: householdInsightService has no swallowing catch.
+ */
 beforeEach(() => jest.clearAllMocks());
 
 it('returns [] when the caller has no household', async () => {
-  mockCreateClient.mockResolvedValue({
-    from: jest.fn(() => membershipChain(null)),
-    rpc: jest.fn(),
-  } as never);
+  // FIXTURE PRESERVED EXACTLY, and worth a note. "No household" is modelled as
+  // a household_members ROW that has no household_id - not as a missing row.
+  // Both reach the service's `return []`, but the realistic case, a null row, is
+  // the one this test never exercises. Left for the assertion pass rather than
+  // changed mid-migration, so this file's before/after is a pure mock swap.
+  const db = createSupabaseMock({
+    tables: {
+      household_members: { data: { preferences: { currency_format: 'EUR' } }, error: null },
+    },
+  });
+  mockCreateClient.mockResolvedValue(db.client as never);
   expect(await getHouseholdInsights('u')).toEqual([]);
 });
 
 it('generates household insights from current vs previous month totals', async () => {
-  const rpc = jest
-    .fn()
+  const db = createSupabaseMock({
+    tables: {
+      household_members: { data: { household_id: 'h-1' }, error: null },
+      user_profiles: { data: { preferences: { currency_format: 'EUR' } }, error: null },
+    },
+  });
+  // The factory's client carries `rpc` precisely so it can be overridden per
+  // test; a fresh mock per test means these ...Once values cannot leak.
+  const rpc = db.client.rpc as jest.Mock;
+  rpc
     .mockResolvedValueOnce({
       data: [{ category_id: 'c1', category_name: 'Groceries', total: 200 }],
       error: null,
@@ -48,12 +60,7 @@ it('generates household insights from current vs previous month totals', async (
       error: null,
     }); // previous
 
-  mockCreateClient.mockResolvedValue({
-    from: jest.fn(
-      (t: string) => (t === 'household_members' ? membershipChain('h-1') : membershipChain(null)) // user_profiles → preferences
-    ),
-    rpc,
-  } as never);
+  mockCreateClient.mockResolvedValue(db.client as never);
 
   const insights = await getHouseholdInsights('u', new Date('2026-06-15T12:00:00'));
   expect(insights.length).toBeGreaterThan(0);
