@@ -545,3 +545,42 @@ That argues for one deliberate pass, not an opportunistic one riding on a bug fi
 **Re-open it when** either the app takes a user outside the two current locales,
 or someone is already touching the formatting layer for another reason, so the
 all-at-once pass is not a standalone cost.
+
+---
+
+## ON THE BOARD: two CI dependencies that are warnings today and failures later
+
+Both found on 2026-11-16 while diagnosing why a docs-only PR went red. Neither
+is urgent, both have someone else's timetable attached, and that is exactly why
+they get a dated line rather than a fix today.
+
+### Playwright 1.57 does not support Ubuntu 26.04 — becomes due the day someone wants 26.04
+
+`npx playwright install chromium` fails outright on `ubuntu26.04-x64`:
+
+```
+Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.57.0!
+Error: ERROR: Playwright does not support chromium on ubuntu26.04-x64
+```
+
+The runners are now pinned to `ubuntu-24.04`, which keeps it working, so an
+upgrade on the critical path to unblock a step that is already non-blocking
+would be the wrong order. It becomes due when something else needs 26.04 — a
+newer Node, a newer Postgres client, a security bulletin against 24.04.
+
+Also note the pin is the thing holding this closed. If anyone un-pins a runner,
+this reopens immediately and the first symptom will again be an unrelated PR
+going red.
+
+### actions/cache@v4 and actions/github-script are being forced onto Node 24
+
+From the same run:
+
+```
+Node.js 20 is deprecated. The following actions target Node.js 20 but are being
+forced to run on Node.js 24: actions/cache@v4, actions/github-script@60a0d83...
+```
+
+A warning now, a failure when GitHub stops forcing. Attach it to the next CI
+change rather than opening a second front for it: the next time a workflow is
+edited, bump those two and verify by effect that the warning is gone.
