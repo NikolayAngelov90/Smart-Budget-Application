@@ -26,6 +26,11 @@ jest.mock('next/server', () => ({
 import { GET, POST } from '@/app/api/categories/route';
 import { PUT, DELETE } from '@/app/api/categories/[id]/route';
 import { createClient } from '@/lib/supabase/server';
+import {
+  createSupabaseMock,
+  type QueryResult,
+  type SupabaseMock,
+} from '@/test-utils/supabaseChain';
 
 jest.mock('@/lib/supabase/server');
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -42,10 +47,27 @@ function createMockRequest(url: string, method = 'GET', body?: any): any {
 }
 
 describe('Categories API Integration Tests (AC-10.9.3)', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockQuery: any;
+  /*
+   * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The hand-rolled chain
+   * queued results PER TERMINAL (`single.mockResolvedValueOnce`,
+   * `then.mockImplementationOnce`), consumed in whatever order the handler hit
+   * each terminal across tables. Per table, in each handler's real call order:
+   *
+   *   GET     categories [list]           transactions [usage]
+   *   POST    categories [dup check, insert]
+   *   PUT     categories [fetch, dup check, update]
+   *   DELETE  categories [fetch, reassign target, delete]
+   *           transactions [usage count, reassign update]
+   *
+   * That translation exposed one test modelled on a call that does not happen:
+   * see "updates name and color of custom category".
+   */
+  let db: SupabaseMock;
+  function wire(tables: Record<string, QueryResult | QueryResult[]> = {}) {
+    db = createSupabaseMock({ user: { id: userId }, tables });
+    mockCreateClient.mockResolvedValue(db.client);
+  }
+  const calls = (table: string, method: string) => db.allCallsTo(table, method);
 
   const userId = 'user-123';
   const catId = 'cat-custom-001';
@@ -72,59 +94,17 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    let resolvedValue: { data: unknown; error: null; count?: number } = {
-      data: [],
-      error: null,
-      count: 0,
-    };
-
-    mockQuery = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      neq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({ data: null, error: null }),
-      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      then: jest.fn((resolve: any) => Promise.resolve(resolvedValue).then(resolve)),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockResolvedValue: (value: any) => {
-        resolvedValue = value;
-        return mockQuery;
-      },
-    };
-
-    mockSupabase = {
-      auth: {
-        getUser: jest.fn().mockResolvedValue({
-          data: { user: { id: userId } },
-          error: null,
-        }),
-      },
-      from: jest.fn(() => mockQuery),
-    };
-
-    mockCreateClient.mockResolvedValue(mockSupabase);
+    wire();
   });
 
   // ─── GET /api/categories ──────────────────────────────────────────────────
 
   describe('GET /api/categories — list with usage stats', () => {
     test('returns categories with usage stats and recent subset', async () => {
-      // First query: categories list
-      // Second query: transaction usage stats
-      mockQuery.then
-        .mockImplementationOnce((resolve: (v: unknown) => void) =>
-          Promise.resolve({ data: mockCategories, error: null }).then(resolve)
-        )
-        .mockImplementationOnce((resolve: (v: unknown) => void) =>
-          Promise.resolve({ data: [], error: null }).then(resolve)
-        );
+      wire({
+        categories: { data: mockCategories, error: null },
+        transactions: { data: [], error: null }, // usage stats
+      });
 
       const request = createMockRequest('http://localhost:3000/api/categories');
       const response = await GET(request);
@@ -137,7 +117,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: new Error('Unauthorized'),
       });
@@ -149,31 +129,20 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     });
 
     test('filters categories by type when type param provided', async () => {
-      mockQuery.then
-        .mockImplementationOnce((resolve: (v: unknown) => void) =>
-          Promise.resolve({
-            data: [mockCategories[0]],
-            error: null,
-          }).then(resolve)
-        )
-        .mockImplementationOnce((resolve: (v: unknown) => void) =>
-          Promise.resolve({ data: [], error: null }).then(resolve)
-        );
+      wire({
+        categories: { data: [mockCategories[0]], error: null },
+        transactions: { data: [], error: null },
+      });
 
       const request = createMockRequest('http://localhost:3000/api/categories?type=expense');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      expect(mockQuery.eq).toHaveBeenCalledWith('type', 'expense');
+      expect(calls('categories', 'eq')).toContainEqual(['type', 'expense']);
     });
 
     test('returns 500 on database error', async () => {
-      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({
-          data: null,
-          error: new Error('DB error'),
-        }).then(resolve)
-      );
+      wire({ categories: { data: null, error: new Error('DB error') } });
 
       const request = createMockRequest('http://localhost:3000/api/categories');
       const response = await GET(request);
@@ -192,18 +161,20 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     };
 
     test('creates custom category and returns 201', async () => {
-      // maybeSingle for duplicate check: not found
-      mockQuery.maybeSingle.mockResolvedValue({ data: null, error: null });
-      // single for insert result
-      mockQuery.single.mockResolvedValue({
-        data: {
-          id: catId,
-          ...validBody,
-          is_predefined: false,
-          user_id: userId,
-          created_at: new Date().toISOString(),
-        },
-        error: null,
+      wire({
+        categories: [
+          { data: null, error: null }, // duplicate check: not found
+          {
+            data: {
+              id: catId,
+              ...validBody,
+              is_predefined: false,
+              user_id: userId,
+              created_at: new Date().toISOString(),
+            },
+            error: null,
+          }, // the insert
+        ],
       });
 
       const request = createMockRequest('http://localhost:3000/api/categories', 'POST', validBody);
@@ -212,15 +183,12 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
 
       expect(response.status).toBe(201);
       expect(data.data).toBeDefined();
-      expect(mockQuery.insert).toHaveBeenCalled();
+      expect(calls('categories', 'insert').length).toBeGreaterThan(0);
     });
 
     test('returns 409 when category name already exists for same type', async () => {
       // Duplicate found
-      mockQuery.maybeSingle.mockResolvedValue({
-        data: { id: 'existing-cat', name: 'My Category' },
-        error: null,
-      });
+      wire({ categories: { data: { id: 'existing-cat', name: 'My Category' }, error: null } });
 
       const request = createMockRequest('http://localhost:3000/api/categories', 'POST', validBody);
       const response = await POST(request);
@@ -261,7 +229,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: null,
       });
@@ -279,19 +247,26 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     const params = Promise.resolve({ id: catId });
 
     test('updates name and color of custom category', async () => {
-      // Fetch existing (not predefined)
-      mockQuery.single
-        .mockResolvedValueOnce({
-          data: { id: catId, name: 'Old Name', is_predefined: false, type: 'expense' },
-          error: null,
-        })
-        // No duplicate found
-        .mockResolvedValueOnce({ data: null, error: null })
-        // Update result
-        .mockResolvedValueOnce({
-          data: { id: catId, name: 'New Name', color: '#AABBCC', is_predefined: false },
-          error: null,
-        });
+      // MODELLED ON A CALL THAT DOES NOT HAPPEN, until 2026-11-18. This queued
+      // three single() results - fetch, "no duplicate", update - but the
+      // duplicate check uses maybeSingle(). So the "no duplicate" { data: null }
+      // was what the UPDATE received, the intended update row was never
+      // consumed, and the test passed because `toBeDefined()` accepts null.
+      // In real call order, the update now returns the updated row, and the
+      // assertion below checks it.
+      wire({
+        categories: [
+          {
+            data: { id: catId, name: 'Old Name', is_predefined: false, type: 'expense' },
+            error: null,
+          }, // fetch existing (not predefined)
+          { data: null, error: null }, // duplicate check: none
+          {
+            data: { id: catId, name: 'New Name', color: '#AABBCC', is_predefined: false },
+            error: null,
+          }, // the update
+        ],
+      });
 
       const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'PUT', {
         name: 'New Name',
@@ -301,14 +276,16 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.data).toBeDefined();
-      expect(mockQuery.update).toHaveBeenCalled();
+      expect(data.data).toMatchObject({ name: 'New Name', color: '#AABBCC' });
+      expect(calls('categories', 'update').length).toBeGreaterThan(0);
     });
 
     test('returns 403 when trying to modify a predefined category', async () => {
-      mockQuery.single.mockResolvedValueOnce({
-        data: { id: 'cat-001', name: 'Food', is_predefined: true, type: 'expense' },
-        error: null,
+      wire({
+        categories: {
+          data: { id: 'cat-001', name: 'Food', is_predefined: true, type: 'expense' },
+          error: null,
+        },
       });
 
       const request = createMockRequest('http://localhost:3000/api/categories/cat-001', 'PUT', {
@@ -322,10 +299,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     });
 
     test('returns 404 when category does not exist or does not belong to user', async () => {
-      mockQuery.single.mockResolvedValueOnce({
-        data: null,
-        error: { code: 'PGRST116', message: 'No rows found' },
-      });
+      wire({ categories: { data: null, error: { code: 'PGRST116', message: 'No rows found' } } });
 
       const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'PUT', {
         name: 'Updated',
@@ -336,7 +310,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: null,
       });
@@ -356,19 +330,16 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     const params = Promise.resolve({ id: catId });
 
     test('deletes an unused category directly (no reassignment)', async () => {
-      // Fetch category
-      mockQuery.single.mockResolvedValueOnce({
-        data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
-        error: null,
+      wire({
+        categories: [
+          {
+            data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
+            error: null,
+          },
+          { data: null, error: null },
+        ], // fetch, delete
+        transactions: { data: null, count: 0, error: null }, // usage count = 0
       });
-      // Count transactions = 0
-      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({ count: 0, error: null }).then(resolve)
-      );
-      // Delete category
-      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({ data: null, error: null }).then(resolve)
-      );
 
       const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE');
       const response = await DELETE(request, { params });
@@ -376,19 +347,18 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(mockQuery.update).not.toHaveBeenCalled(); // no reassignment
-      expect(mockQuery.delete).toHaveBeenCalled();
+      expect(calls('transactions', 'update')).toEqual([]); // no reassignment
+      expect(calls('categories', 'delete').length).toBeGreaterThan(0);
     });
 
     test('asks for reassignment (409) when the category is in use and no target is given', async () => {
-      mockQuery.single.mockResolvedValueOnce({
-        data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
-        error: null,
+      wire({
+        categories: {
+          data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
+          error: null,
+        },
+        transactions: { data: null, count: 3, error: null }, // 3 transactions reference it
       });
-      // 3 transactions reference it
-      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({ count: 3, error: null }).then(resolve)
-      );
 
       const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE');
       const response = await DELETE(request, { params });
@@ -397,31 +367,24 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
       expect(response.status).toBe(409);
       expect(data.requiresReassign).toBe(true);
       expect(data.transactionCount).toBe(3);
-      expect(mockQuery.delete).not.toHaveBeenCalled();
+      expect(calls('categories', 'delete')).toEqual([]);
     });
 
     test('reassigns transactions to a same-type target, then deletes', async () => {
-      mockQuery.single.mockResolvedValueOnce({
-        data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
-        error: null,
+      wire({
+        categories: [
+          {
+            data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
+            error: null,
+          }, // fetch
+          { data: { id: 'target-cat', type: 'expense' }, error: null }, // target: same type
+          { data: null, error: null }, // delete
+        ],
+        transactions: [
+          { data: null, count: 3, error: null }, // 3 transactions
+          { data: null, error: null }, // the reassign update
+        ],
       });
-      // 3 transactions
-      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({ count: 3, error: null }).then(resolve)
-      );
-      // Validate target — same type
-      mockQuery.single.mockResolvedValueOnce({
-        data: { id: 'target-cat', type: 'expense' },
-        error: null,
-      });
-      // Reassign update
-      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({ data: null, error: null }).then(resolve)
-      );
-      // Delete category
-      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({ data: null, error: null }).then(resolve)
-      );
 
       const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE', {
         reassignTo: 'target-cat',
@@ -431,22 +394,20 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(mockQuery.update).toHaveBeenCalledWith({ category_id: 'target-cat' });
-      expect(mockQuery.delete).toHaveBeenCalled();
+      expect(calls('transactions', 'update')).toContainEqual([{ category_id: 'target-cat' }]);
+      expect(calls('categories', 'delete').length).toBeGreaterThan(0);
     });
 
     test('rejects reassignment to a different-type category (400)', async () => {
-      mockQuery.single.mockResolvedValueOnce({
-        data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
-        error: null,
-      });
-      mockQuery.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
-        Promise.resolve({ count: 3, error: null }).then(resolve)
-      );
-      // Target is income — a type mismatch
-      mockQuery.single.mockResolvedValueOnce({
-        data: { id: 'income-cat', type: 'income' },
-        error: null,
+      wire({
+        categories: [
+          {
+            data: { id: catId, name: 'My Category', is_predefined: false, type: 'expense' },
+            error: null,
+          }, // fetch
+          { data: { id: 'income-cat', type: 'income' }, error: null }, // target: a type mismatch
+        ],
+        transactions: { data: null, count: 3, error: null },
       });
 
       const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE', {
@@ -455,14 +416,13 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
       const response = await DELETE(request, { params });
 
       expect(response.status).toBe(400);
-      expect(mockQuery.update).not.toHaveBeenCalled();
-      expect(mockQuery.delete).not.toHaveBeenCalled();
+      expect(calls('transactions', 'update')).toEqual([]);
+      expect(calls('categories', 'delete')).toEqual([]);
     });
 
     test('returns 403 when trying to delete a predefined category', async () => {
-      mockQuery.single.mockResolvedValueOnce({
-        data: { id: 'cat-001', name: 'Food', is_predefined: true },
-        error: null,
+      wire({
+        categories: { data: { id: 'cat-001', name: 'Food', is_predefined: true }, error: null },
       });
 
       const request = createMockRequest('http://localhost:3000/api/categories/cat-001', 'DELETE');
@@ -476,10 +436,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     });
 
     test('returns 404 when category not found', async () => {
-      mockQuery.single.mockResolvedValueOnce({
-        data: null,
-        error: { code: 'PGRST116', message: 'No rows found' },
-      });
+      wire({ categories: { data: null, error: { code: 'PGRST116', message: 'No rows found' } } });
 
       const request = createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'DELETE');
       const response = await DELETE(request, { params });
@@ -488,7 +445,7 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: null,
       });

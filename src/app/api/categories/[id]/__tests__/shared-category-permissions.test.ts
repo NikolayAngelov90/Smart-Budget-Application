@@ -36,6 +36,7 @@ jest.mock('@/lib/utils/logger', () => ({
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { getCurrentHousehold } from '@/lib/services/householdService';
 import { PUT, DELETE } from '../route';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
@@ -54,41 +55,42 @@ interface CategoryRow {
   household_id: string | null;
 }
 
-/** Caller-scoped client: category lookup plus an RLS-scoped transaction count. */
-function makeClient(category: CategoryRow, ownTxCount = 0) {
-  const categoryChain = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    neq: jest.fn().mockReturnThis(),
-    single: jest.fn().mockResolvedValue({ data: category, error: null }),
-    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
-  };
-  const txChain = {
-    select: jest.fn(() => Promise.resolve({ count: ownTxCount, error: null })),
-    eq: jest.fn().mockReturnThis(),
-  };
-  // `.select('id', { count }).eq('category_id', id)` — resolve on eq.
-  txChain.select = jest.fn(() => txChain as never);
-  (txChain as unknown as { eq: jest.Mock }).eq = jest.fn(() =>
-    Promise.resolve({ count: ownTxCount, error: null })
-  );
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`, and what it found:
+ *
+ * THREE PUT TESTS PASSED BECAUSE THE ROUTE CRASHED. The hand-rolled category
+ * chain had no `update`, so every PUT that reached the write threw a TypeError
+ * into the route's catch and returned 500 - and "is allowed for an admin",
+ * "does not gate a PERSONAL category" and "does not gate a colour-only edit"
+ * asserted only `status not 403`, which a crash satisfies. The logger is
+ * mocked in this file, so the masked-failure detector could not see the
+ * swallow either. Probed before migrating: all three returned 500. They now
+ * assert 200, which is what "allowed" means.
+ *
+ * categories is a QUEUE in the handler's call order, per flow:
+ *   rename    [fetch, duplicate check (none), update]
+ *   recolour  [fetch, update]           (no duplicate check without a name)
+ *   delete    [fetch, delete]
+ */
+type Flow = 'rename' | 'recolour' | 'delete';
 
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({ data: { user: { id: USER } }, error: null }),
-    },
-    from: jest.fn((table: string) => (table === 'categories' ? categoryChain : txChain)),
-  };
+/** Caller-scoped client: category lookup plus an RLS-scoped transaction count. */
+function makeClient(category: CategoryRow, ownTxCount = 0, flow: Flow = 'rename') {
+  const row = { data: category, error: null };
+  const none = { data: null, error: null };
+  const categories =
+    flow === 'rename' ? [row, none, row] : flow === 'recolour' ? [row, row] : [row, none];
+  return createSupabaseMock({
+    user: { id: USER },
+    tables: { categories, transactions: { data: null, count: ownTxCount, error: null } },
+  }).client;
 }
 
 /** Service-role client: counts OTHER members' transactions. */
 function makeServiceClient(otherCount: number, error: unknown = null) {
-  const chain: Record<string, unknown> = {
-    select: jest.fn(() => chain),
-    eq: jest.fn(() => chain),
-    neq: jest.fn(() => Promise.resolve({ count: otherCount, error })),
-  };
-  return { from: jest.fn(() => chain) };
+  return createSupabaseMock({
+    tables: { transactions: { data: null, count: otherCount, error } },
+  });
 }
 
 const req = (body?: unknown) =>
@@ -136,7 +138,7 @@ describe('renaming a shared category', () => {
 
     const res = await PUT(req({ name: 'Food' }), params);
 
-    expect(res.status).not.toBe(403);
+    expect(res.status).toBe(200);
   });
 
   it('does not gate a PERSONAL category on household role', async () => {
@@ -146,7 +148,7 @@ describe('renaming a shared category', () => {
 
     const res = await PUT(req({ name: 'Food' }), params);
 
-    expect(res.status).not.toBe(403);
+    expect(res.status).toBe(200);
     // No household lookup needed for a personal category.
     expect(mockHousehold).not.toHaveBeenCalled();
   });
@@ -154,19 +156,19 @@ describe('renaming a shared category', () => {
   it('does not gate a colour-only edit of a shared category', async () => {
     // Recolouring does not relabel anyone's history, so it stays open to members.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockCreateClient.mockResolvedValue(makeClient(SHARED) as any);
+    mockCreateClient.mockResolvedValue(makeClient(SHARED, 0, 'recolour') as any);
     asRole('member');
 
     const res = await PUT(req({ color: '#0B5E4A' }), params);
 
-    expect(res.status).not.toBe(403);
+    expect(res.status).toBe(200);
   });
 });
 
 describe('deleting a shared category', () => {
   it('is refused for a non-admin member', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockCreateClient.mockResolvedValue(makeClient(SHARED) as any);
+    mockCreateClient.mockResolvedValue(makeClient(SHARED, 0, 'delete') as any);
     asRole('member');
 
     const res = await DELETE(req(), params);
@@ -177,9 +179,9 @@ describe('deleting a shared category', () => {
 
   it('refuses with a reason while other members still use it', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockCreateClient.mockResolvedValue(makeClient(SHARED) as any);
+    mockCreateClient.mockResolvedValue(makeClient(SHARED, 0, 'delete') as any);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockServiceClient.mockReturnValue(makeServiceClient(3) as any);
+    mockServiceClient.mockReturnValue(makeServiceClient(3).client as any);
     asRole('admin');
 
     const res = await DELETE(req(), params);
@@ -192,23 +194,22 @@ describe('deleting a shared category', () => {
 
   it('counts only OTHER members, not the caller', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockCreateClient.mockResolvedValue(makeClient(SHARED) as any);
+    mockCreateClient.mockResolvedValue(makeClient(SHARED, 0, 'delete') as any);
     const service = makeServiceClient(0);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockServiceClient.mockReturnValue(service as any);
+    mockServiceClient.mockReturnValue(service.client as any);
     asRole('admin');
 
     await DELETE(req(), params);
 
     // The exclusion is the whole point: without `.neq('user_id', …)` an admin
     // could never delete a shared category they had used themselves.
-    const chain = service.from.mock.results[0]!.value as { neq: jest.Mock };
-    expect(chain.neq).toHaveBeenCalledWith('user_id', USER);
+    expect(service.callsTo('transactions', 'neq')).toContainEqual(['user_id', USER]);
   });
 
   it('does not consult the service role for a PERSONAL category', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockCreateClient.mockResolvedValue(makeClient(PERSONAL) as any);
+    mockCreateClient.mockResolvedValue(makeClient(PERSONAL, 0, 'delete') as any);
     asRole('member');
 
     await DELETE(req(), params);
@@ -220,9 +221,9 @@ describe('deleting a shared category', () => {
     // Degradation policy: this is a core input, not an enrichment. Proceeding
     // would risk exactly the partial orphaning this guard exists to prevent.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockCreateClient.mockResolvedValue(makeClient(SHARED) as any);
+    mockCreateClient.mockResolvedValue(makeClient(SHARED, 0, 'delete') as any);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockServiceClient.mockReturnValue(makeServiceClient(0, { message: 'boom' }) as any);
+    mockServiceClient.mockReturnValue(makeServiceClient(0, { message: 'boom' }).client as any);
     asRole('admin');
 
     const res = await DELETE(req(), params);

@@ -22,6 +22,7 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { createClient } from '@/lib/supabase/server';
 import { POST } from '../route';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
@@ -30,37 +31,33 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
  * - household_members: select().eq().maybeSingle() -> membership
  * - categories: select().eq().eq().eq().maybeSingle() -> dup check; insert().select().single() -> inserted row
  */
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. POST reads
+ * household_members (shared categories only), then categories: the duplicate
+ * check (none), then the insert. The hand-captured insert row is now read off
+ * the insert call.
+ */
 function makeSupabase(opts: {
   user?: object | null;
   membership?: object | null;
   inserted?: object;
 }) {
   const { user = { id: 'user-1' }, membership = null, inserted = { id: 'cat-1' } } = opts;
-  const members = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue({ data: membership, error: null }),
-  };
-  let capturedInsert: Record<string, unknown> | null = null;
-  const insertSingle = jest.fn().mockResolvedValue({ data: inserted, error: null });
-  const categories: Record<string, jest.Mock> = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }), // no duplicate
-    insert: jest.fn((row: Record<string, unknown>) => {
-      capturedInsert = row;
-      return { select: jest.fn().mockReturnValue({ single: insertSingle }) };
-    }),
-  };
-  const client = {
-    auth: {
-      getUser: jest
-        .fn()
-        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+  const db = createSupabaseMock({
+    user: user as { id: string } | null,
+    tables: {
+      household_members: { data: membership, error: null },
+      categories: [
+        { data: null, error: null }, // duplicate check: none
+        { data: inserted, error: null }, // the insert
+      ],
     },
-    from: jest.fn((t: string) => (t === 'household_members' ? members : categories)),
+  });
+  return {
+    client: db.client,
+    getInsert: () =>
+      db.allCallsTo('categories', 'insert')[0]?.[0] as Record<string, unknown> | undefined,
   };
-  return { client, getInsert: () => capturedInsert };
 }
 
 function req(body: unknown) {
