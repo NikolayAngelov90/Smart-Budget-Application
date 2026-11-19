@@ -84,6 +84,44 @@ const eslint = new ESLint({
   cache: args.includes('--cache'),
   cacheLocation: path.join(ROOT, '.eslintcache'),
 });
+// --- self-test: the hand-rolled-chain rule fires THROUGH THIS CONFIG ----------
+// The rule is extended into .eslintrc.json, and `no-restricted-syntax` does not
+// merge across overrides: a later override that matches test files and sets
+// that rule would REPLACE it there, and the lint would go green over exactly the
+// code the rule exists for. So the must-find fixture is linted AS IF it lived
+// in every test directory Jest runs from (lintText takes a virtual path) and
+// must produce one hit per shape there; the look-alikes must produce none.
+// Shapes the selectors cannot see (a module mock narrower than its module) are
+// the runtime detector's job, not this rule's.
+const FIX = path.join(ROOT, 'scripts', 'ci', '__lint-fixtures__');
+const { readFileSync } = await import('node:fs');
+const mustFind = readFileSync(path.join(FIX, 'chain-shapes.must-find.test.ts'), 'utf8');
+const mustNot = readFileSync(path.join(FIX, 'chain-shapes.must-not-find.test.ts'), 'utf8');
+const chainHits = (res) =>
+  res.flatMap((r) => r.messages).filter((m) => (m.message ?? '').startsWith('Hand-rolled Supabase chain')).length;
+const selfTestDirs = [...testDirs].sort();
+const blind = [];
+// BOTH extensions: the first version tested only `.test.ts`, and an override
+// aimed at `**/__tests__/**/*.tsx` - every component test - disabled the rule
+// there without the self-test noticing (mutation-tested 2026-11-19).
+for (const dir of selfTestDirs) {
+  for (const ext of ['.test.ts', '.test.tsx']) {
+    const filePath = path.join(ROOT, dir, '__chain_rule_selftest__' + ext);
+    const found = chainHits(await eslint.lintText(mustFind, { filePath }));
+    const falsePos = chainHits(await eslint.lintText(mustNot, { filePath }));
+    if (found !== 6 || falsePos !== 0) {
+      blind.push(`${dir} (${ext}): must-find ${found}/6, must-not-find ${falsePos}/0`);
+    }
+  }
+}
+if (blind.length) {
+  console.error('::error::NOT MEASURED - the hand-rolled-chain rule does not fire as defined in:');
+  blind.forEach((b) => console.error('  ' + b));
+  console.error('An override replacing no-restricted-syntax for these paths would explain it.');
+  process.exit(2);
+}
+console.log(`chain rule self-test: 6/6 shapes caught and 0 look-alikes flagged in all ${selfTestDirs.length} test directories (.ts and .tsx)`);
+
 const results = await eslint.lintFiles(scope);
 const formatter = await eslint.loadFormatter('stylish');
 const out = await formatter.format(results);
