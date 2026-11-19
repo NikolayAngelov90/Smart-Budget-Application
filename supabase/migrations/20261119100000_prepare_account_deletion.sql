@@ -307,3 +307,51 @@ CREATE TRIGGER trg_household_owner_server_only
   BEFORE UPDATE ON public.households
   FOR EACH ROW
   EXECUTE FUNCTION public.enforce_household_owner_server_only();
+
+-- -----------------------------------------------------------------------------
+-- 5. P2 for the EMAIL: invitations ADDRESSED to the person go with the account.
+--
+-- household_invitations.email is personal data that never contains the user id,
+-- so no FK reaches it: before this, an invitation the person had accepted kept
+-- their address (accepted_by merely went NULL) and stayed in the admin's
+-- invitation list (listInvitations returns every status), and pending or revoked
+-- invitations addressed to them stayed in other households.
+--
+-- DELETED, not anonymised: with accepted_by already NULL an anonymised row
+-- carries nothing but an invented placeholder address. Invitations the person
+-- SENT are other households' records and stay (invited_by goes NULL, as before).
+--
+-- A BEFORE DELETE trigger on auth.users, not a step in prepare_account_deletion:
+--   - it runs INSIDE the auth delete's transaction, so a refused delete rolls it
+--     back with everything else. Done in the preparation it would be destructive
+--     before the destructive step, which that function must never be;
+--   - BEFORE, because accepted_by still holds the id; the SET NULL action on
+--     household_invitations.accepted_by runs after the row is gone;
+--   - it covers every way an auth user is deleted, not only the app's path.
+-- Precedent: on_auth_user_created (handle_new_user) is an app trigger on
+-- auth.users; postgres holds TRIGGER on auth.users locally and in production
+-- (checked read-only 2026-11-19). SECURITY DEFINER because the role GoTrue deletes
+-- as has no rights on public tables.
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.delete_invitations_addressed_to_deleted_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM public.household_invitations
+   WHERE accepted_by = OLD.id
+      OR (OLD.email IS NOT NULL AND lower(email) = lower(OLD.email));
+  RETURN OLD;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_invitations_addressed_to_deleted_user() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.delete_invitations_addressed_to_deleted_user() FROM anon, authenticated;
+
+DROP TRIGGER IF EXISTS on_auth_user_deleted_remove_invitations ON auth.users;
+CREATE TRIGGER on_auth_user_deleted_remove_invitations
+  BEFORE DELETE ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.delete_invitations_addressed_to_deleted_user();

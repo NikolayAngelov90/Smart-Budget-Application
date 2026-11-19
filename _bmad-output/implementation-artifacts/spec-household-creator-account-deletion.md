@@ -73,6 +73,7 @@ context:
 - Given C contributed to a shared goal, when C deletes, then `goals.current_amount = SUM(goal_contributions.amount)` for that goal.
 - Given a plain member P who created a shared goal, a shared category another member used, and a shared budget, when P deletes their account, then all three belong to H's owner, the other member's contributions and rows are intact, and another member's own shared category is NOT moved (the scope guard, mutation-tested).
 - Given a plain member P (not a creator) contributed to shared goal G, when P deletes their account, then G survives and its `current_amount` drops by exactly P's contributions. Red state: without the trigger, the total is unchanged.
+- (Added 2026-11-19, Niki.) Given invitations ADDRESSED to the person (accepted by them, including at an address they later changed, or addressed to their email in any status and any letter case), when they delete their account, then every such invitation is gone, invitations they SENT survive unattributed, and a REFUSED delete removes none. The residue scan searches every text-like column for the deleted person's email as well as their id. Red state, recorded before the fix: the scan found the invitation rows.
 
 ## Spec Change Log
 
@@ -104,11 +105,20 @@ context:
     - reuse onto a member's shared same-name category (that is the approved reuse: the member's own category and settings now apply to their own rows);
     - Database type regeneration and a down migration (not used by repo convention).
 
+- **Same date, Niki's direction after review: the email, and the order of release.**
+  - **The invitee's email (P2, needs no new decision).** An accepted invitation kept the person's address, and the admin's list (`listInvitations`, every status) kept showing it. Pending and revoked invitations addressed to them stayed in other households. The residue scan was extended first to search every text-like column for the deleted person's EMAIL. It went red on exactly those rows (`Tests: 2 failed, 5 passed, 7 total`; `household_invitations.email: 3 (email)` in test 5, `: 1 (email)` in test 2) and nowhere else. Fixed by migration section 5, a BEFORE DELETE trigger on `auth.users` that deletes invitations `accepted_by` the person or addressed to their email (case-insensitive).
+    - **Deleted, not anonymised:** with `accepted_by` NULL, an anonymised row carries only an invented placeholder address.
+    - **A trigger, not a step in the preparation:** it runs inside the auth delete's transaction, so a refused delete rolls it back. The preparation must stay non-destructive.
+    - **BEFORE DELETE:** `accepted_by` still holds the id at that point.
+    - Precedent: `on_auth_user_created`. `postgres` holds TRIGGER on `auth.users` locally and in production, checked read-only.
+  - **Release order: migration first, then merge.** Merging first meant a guaranteed 500 window on both paths until the apply. The migration is additive, so it is applied from the PR's commit while production runs main, and THEN merged. This requires "old code × new schema: compatible", proven, not assumed (see Verification). The standing rule's condition 1 is amended for this: a reviewed, CI-green PR commit meets its purpose, and the file is FROZEN once applied (any later change is a new migration).
+  - **Board decisions:** notifications become a separate story, later. The two-call race window is accepted for now: revisit if users grow.
+
 ## Design Notes
 
 **26 FKs to `auth.users`, from the catalog:**
 - **REWRITE to N for household-scoped rows, else CASCADE (4):** `categories.user_id`, `category_budgets.user_id`, `goals.user_id` (P1 for household rows, P2 otherwise); `households.created_by` (P1; CASCADE only when sole member).
-- **SET NULL, kept but unattributed (2):** `household_invitations.invited_by`, `.accepted_by` (P2: the row survives, the person doesn't).
+- **SET NULL, kept but unattributed (2):** `household_invitations.invited_by`, `.accepted_by` (P2: the row survives, the person doesn't). AMENDED 2026-11-19: this holds for invitations the person SENT (`invited_by`). An invitation ADDRESSED to them, accepted by them or carrying their email, is deleted by the `auth.users` BEFORE DELETE trigger before the `accepted_by` SET NULL can apply: its email is their personal data.
 - **CASCADE, personal (20):** `analytics_events`, `comeback_challenges`, `detected_subscriptions`, `goal_contributions`, `household_members`, `insights`, `notification_deliveries`, `personal_allowances`, `push_subscriptions`, `recovery_plans`, `streaks`, `transactions` (P2, confirmed: shared budget totals drop accordingly), `user_achievements`, `user_feature_state`, `user_profiles.id`, `user_sessions`, `user_values`, `value_categories`, `weekly_digests`, `wishlist_items`.
 
 **Function order, one transaction:**
@@ -140,46 +150,65 @@ Nothing here is destructive. If the delete never follows, N owns H and is its on
 - `npx jest` -- expected: `Tests: ... passed`, 0 failed, floor ok
 - CI `RLS Integration Tests` -- expected: the new suite passes on the local stack; red states recorded for the trigger, the copy/repoint, and the ordering
 
-**Results (2026-11-19, after step-4 review patches; local stack on CLI 2.105.0, the CI pin):**
-- `npm run lint`: `files linted: 649   errors: 0   warnings: 0 (max 0)`
+**Results (2026-11-19, final code incl. the email fix; local stack on CLI 2.105.0, the CI pin):**
+- `npm run lint`: `files linted: 649   errors: 0   warnings: 0 (max 0)`; `npm run format:check`: `All matched files use Prettier code style!`
 - `npx tsc --noEmit`: exit 0
 - `npm run test:order` + `scripts/ci/assert-test-run.sh`: `Tests:       73 skipped, 2718 passed, 2791 total`, `ok: 2718 tests ran, in the pinned order 20261029`
-- RLS, after the patches: account-deletion + member-removal, `Tests:       12 passed, 12 total`. **The full 14-suite RLS run was NOT repeated after the patches.** Docker stopped mid-session, so the CI `RLS Integration Tests` job on the PR is that run. The last full local run, before the patches, was `Tests:       71 passed, 71 total`.
-- **Red states against the FINAL code.** Each SQL mutant was applied to the local DB and the original migration re-applied after it; each test-side mutant was a mutated copy of the test file.
+- `npm run test:rls`, the FULL suite on the committed bytes: `Test Suites: 14 passed, 14 total`, `Tests:       73 passed, 73 total`
+- **The email, test before fix.**
+  - Before section 5 was applied: `Tests:       2 failed, 5 passed, 7 total`. The hits were `public.household_invitations.email: 3 (email)` in test 5 and `: 1 (email)` in test 2, and nothing else.
+  - After: `Tests:       7 passed, 7 total`.
+- **Old code × new schema: COMPATIBLE.** Where I looked:
+  1. **Writers of `households.created_by` on main:** `git grep` over `src` and `supabase`. App code only INSERTs (`householdService.createHousehold`) and DELETEs (its rollback); every other call is a SELECT. No SQL anywhere UPDATEs `households`. The guard is BEFORE UPDATE, so nothing on main reaches it.
+  2. **The old deletion path:** profile delete, then `admin.deleteUser`.
+     - Nothing references `user_profiles` or `household_invitations` (catalog), so the profile delete cascades nothing.
+     - The contribution cascade fires the goal trigger. It updates only shared goals, and `goals` has only its `updated_at` trigger.
+     - The `auth.users` trigger deletes invitations addressed to the user.
+     - Both of those are intended changes, not breakages.
+  3. **Name collisions in production** (read-only query): none of the five functions and none of the three triggers exist, and no migration at or after `20261100000000` is recorded. Every `CREATE OR REPLACE` creates; nothing is overwritten.
+  4. **Privilege:** `postgres` holds TRIGGER on `auth.users` in production (read-only check), so section 5 can be applied.
+  5. **EMPIRICAL:** main's actual `deleteUserAccount` and `removeMember` (via `git show main:`, run once and not committed) against the migrated local DB: `Tests:       3 passed, 3 total`.
+     - a plain member's deletion succeeds, with the shared total recomputed and the invitations gone;
+     - a creator's deletion succeeds with the OLD semantics (the household cascades);
+     - main's `removeMember` succeeds and its own UPDATEs still move the category and goal.
+- **Red states against the final code** (each SQL mutant applied to the local DB, the original re-applied after it; test-side mutants were mutated copies). All 24 went red on the intended test:
 
   | Mutant | Red |
   |---|---|
   | M1 trigger dropped | tests 1, 5, 6 |
   | M2 scope guard removed | test 6 |
-  | M3 copy+repoint removed | tests 1, 2 (`Database error deleting user`) |
-  | M4 creator demotion removed | test 2 |
-  | M5 ownership transfer removed | tests 1, 2, 7 |
-  | M6 no walk to the lowest free n | test 1 (`categories_user_id_name_type_key`) |
-  | M7 no truncation | test 6 (`value too long for type character varying(100)`) |
-  | M8 budget-period skip removed | test 1 (`idx_category_budgets_personal`) |
-  | M9 mapping skip removed | test 1 (`value_categories_value_id_category_id_key`) |
+  | M3 copy+repoint removed | tests 1, 2 |
+  | M4 demotion removed | test 2 |
+  | M5 transfer removed | tests 1, 2, 7 |
+  | M6 no walk to the lowest free n | test 1 |
+  | M7 no truncation | test 6 |
+  | M8 budget skip removed | test 1 |
+  | M9 mapping skip removed | test 1 |
   | M10 reuse removed | test 1 |
-  | M11 latest joiner wins | test 7 |
+  | M11 latest joiner | test 7 |
   | M12 NULL join date wins | test 7 |
   | M13 tie to the highest id | test 7 |
   | M14 everyone promoted | test 7 |
-  | M15 trigger recomputes personal goals | test 5 (`current` 20, not 50) |
+  | M15 personal goals recomputed | test 5 |
   | M16 `created_by` trigger dropped | member-removal, owner test |
-  | M17 reassign moves nothing | account-deletion 1, 6; member-removal 2 tests |
-  | T1 blind enumeration | all 7 (`NOT MEASURED`) |
-  | T2 counter never counts | test 4 (presence) |
+  | M17 reassign moves nothing | account-deletion 1, 6 and member-removal 2 tests |
+  | M18 email trigger dropped | tests 2, 5 |
+  | M19 email compared case-sensitively | test 5 |
+  | M20 `accepted_by` clause dropped | test 5 |
+  | T1 blind enumeration | all 7, `NOT MEASURED` |
+  | T2 counter never counts | test 4 |
+  | T3 text path blinded | test 4, `Tests: 1 failed, 6 passed, 7 total` |
+  | T4 email path blinded | test 4 |
 
-  **T3 (text-like path blinded) is NOT MEASURED.** Its first run went red for the wrong reason: the mutant dropped `$1`, so pg rejected every scan. The corrected rerun never executed because Docker had stopped.
-- **Unit mutants.**
-  - The order mutant: `Tests: 1 failed, 11 skipped, 12 total`.
-  - Against the final code, each went red on its intended test:
-    - U1 prepare failure only logged;
-    - U2 the admin passed as the member;
-    - U3 a direct UPDATE kept;
-    - U4 `removeMember` swallows again;
-    - U5 `removeMember`'s old order;
-    - U6 a profile delete through the service client (the two tests that assert no `from`);
-    - U7 a rejected preparation swallowed.
+  T3's `Received` holds every uuid hit and the email hit, and lacks only `public.analytics_events.event_properties: 1`: red for the right reason. Measured before the Prettier reformat, which changed only whitespace; the full suite was re-run on the formatted bytes.
+- **Unit mutants against the final code**, each red on its intended test:
+  - U1 prepare failure only logged;
+  - U2 the admin passed as the member;
+  - U3 a direct UPDATE kept;
+  - U4 `removeMember` swallows again;
+  - U5 `removeMember`'s old order;
+  - U6 a profile delete through the service client;
+  - U7 a rejected preparation swallowed.
 
 ## Suggested Review Order
 
@@ -218,28 +247,36 @@ Nothing here is destructive. If the delete never follows, N owns H and is its on
 - A statement trigger recomputes SHARED goals from their remaining rows on any contribution delete.
   [`20261119100000_prepare_account_deletion.sql:249`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L249)
 
+**P2 for the email**
+
+- Invitations ADDRESSED to the person go inside the auth delete's own transaction (a refused delete rolls back).
+  [`20261119100000_prepare_account_deletion.sql:336`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L336)
+
+- The seeds the email scan went red on before the fix, plus the over-deletion guard.
+  [`account-deletion.rls.test.ts:726`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L726)
+
 **Tests against Postgres**
 
 - The real service, then a residue scan of every user-referencing column, after each deletion.
-  [`account-deletion.rls.test.ts:75`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L75)
+  [`account-deletion.rls.test.ts:106`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L106)
 
 - Why the scan is wider than the FKs (an FK scan cannot fail), plus its NOT MEASURED must-find.
-  [`account-deletion.rls.test.ts:209`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L209)
+  [`account-deletion.rls.test.ts:276`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L276)
 
 - The creator scenario: copy, reuse, rename, invitation, goals, savings link.
-  [`account-deletion.rls.test.ts:294`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L294)
+  [`account-deletion.rls.test.ts:384`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L384)
 
 - A REFUSED auth delete destroys nothing; a retry succeeds.
-  [`account-deletion.rls.test.ts:456`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L456)
+  [`account-deletion.rls.test.ts:576`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L576)
 
 - New-owner choice: ties, NULL join dates, exactly one admin.
-  [`account-deletion.rls.test.ts:638`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L638)
+  [`account-deletion.rls.test.ts:822`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L822)
 
 - Member removal now drives the real service, no longer a stale mirror.
-  [`member-removal.rls.test.ts:156`](../../src/lib/test-utils/__tests__/member-removal.rls.test.ts#L156)
+  [`member-removal.rls.test.ts:161`](../../src/lib/test-utils/__tests__/member-removal.rls.test.ts#L161)
 
 - The admin cannot rewrite `created_by`, but can still rename (the paired presence check).
-  [`member-removal.rls.test.ts:215`](../../src/lib/test-utils/__tests__/member-removal.rls.test.ts#L215)
+  [`member-removal.rls.test.ts:220`](../../src/lib/test-utils/__tests__/member-removal.rls.test.ts#L220)
 
 **Peripherals**
 

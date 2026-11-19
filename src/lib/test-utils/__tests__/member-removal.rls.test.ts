@@ -114,7 +114,12 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
 
     const { data: bg, error: bgError } = await svc
       .from('goals')
-      .insert({ user_id: bId, name: 'B Shared Goal', target_amount: 500, household_id: householdId })
+      .insert({
+        user_id: bId,
+        name: 'B Shared Goal',
+        target_amount: 500,
+        household_id: householdId,
+      })
       .select('id')
       .single();
     if (bgError || !bg) throw new Error(`seed B's shared goal: ${bgError?.message}`);
@@ -228,10 +233,16 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
       .from('households')
       .update({ created_by: bId })
       .eq('id', householdId);
-    expect(ownerError?.message).toContain('households.created_by can only be changed by the server');
+    expect(ownerError?.message).toContain(
+      'households.created_by can only be changed by the server'
+    );
 
     const svc = createServiceClient();
-    const { data: h } = await svc.from('households').select('created_by').eq('id', householdId).single();
+    const { data: h } = await svc
+      .from('households')
+      .select('created_by')
+      .eq('id', householdId)
+      .single();
     expect(h?.created_by).toBe(aId);
   });
 });
