@@ -122,8 +122,10 @@ export async function DELETE(request: NextRequest) {
     // The client can call the CSV export function before account deletion
     const hasTransactions = transactions && transactions.length > 0;
 
-    // Delete user account and all associated data
-    // Cascades: user_profiles → auth.users → transactions, categories, insights
+    // Delete the account: first the non-destructive preparation (household
+    // ownership, shared objects, copies of categories other members use), then
+    // admin.deleteUser, whose auth.users cascade removes the user's own rows,
+    // user_profiles included. A throw from either step lands in the catch: 500.
     const deleteSuccess = await deleteUserAccount(user.id);
 
     if (!deleteSuccess) {

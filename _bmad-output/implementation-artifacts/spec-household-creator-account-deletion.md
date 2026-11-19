@@ -2,7 +2,8 @@
 title: 'A household creator can delete their account without destroying members'' data'
 type: 'feature'
 created: '2026-11-19'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: '071d2c993d4d9a2954772ad725e64bb4850a3c23'
 review_loop_iteration: 0
 context:
   - '{project-root}/docs/api-conventions.md'
@@ -31,6 +32,7 @@ context:
 | Creator + members | creator C of household H; members joined at t1<t2 | earliest-joined N becomes `created_by` and `role='admin'`; H, its members and invitations survive; C's shared categories/budgets/goals move to N (P1); C's own rows go (P2) | — |
 | Member used C's category | M's transaction/budget/value-mapping/wishlist item points at a C-owned category not transferred | M gets a copy (or M's existing same name+type category is reused); M's rows repointed; nothing uncategorised (P1) | value-mapping conflicts skipped (mapping already exists) |
 | Name collision on transfer | N already owns C's shared category's name+type | the transferred one becomes `name n`, the lowest free n ≥ 2, base truncated to fit 100 chars | — |
+| Plain member with shared objects | member P (not creator) owns shared goal/category/budget in H; another member used the category and contributed to the goal | P's shared objects move to H's owner (`created_by`) through the SAME function `removeMember` now uses; others' contributions and rows intact (P1); another member's shared objects untouched | collision rename as above |
 | Sole-member creator | C is H's only member | H deleted, as today (P2) | — |
 | C contributed to a shared goal | goal now owned by N | C's contribution rows go (P2); `current_amount = SUM(remaining)` | — |
 | Plain member deletes their account | member P (not a creator) contributed to shared goal G | P's contributions go (P2); G survives; `current_amount` drops by exactly P's contributions. Today it stays overstated: a FIX outside the creator path | — |
@@ -54,19 +56,53 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `supabase/migrations/20261119100000_prepare_account_deletion.sql` -- function and trigger per Design Notes -- the only place all preparatory writes can share one transaction
-- [ ] `src/lib/services/settingsService.ts` -- prepare RPC, then `admin.deleteUser`; profile delete removed once verified -- destructive step last
-- [ ] `src/lib/services/__tests__/settingsService.test.ts` -- order and failure cases (prepare fails: no deleteUser; deleteUser fails: error surfaced, no profile delete)
-- [ ] `src/lib/test-utils/__tests__/account-deletion.rls.test.ts` -- NEW: the five scenarios below
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md` -- add the residual holes to the accumulator item
+- [x] `supabase/migrations/20261119100000_prepare_account_deletion.sql` -- function and trigger per Design Notes -- the only place all preparatory writes can share one transaction
+- [x] `src/lib/services/settingsService.ts` -- prepare RPC, then `admin.deleteUser`; profile delete removed once verified -- destructive step last
+- [x] `src/lib/services/householdMemberService.ts` -- `removeMember` calls `reassign_member_shared_objects` instead of its own two UPDATEs -- ONE definition of where a departing member's shared objects go
+- [x] `src/lib/services/__tests__/householdMemberService.test.ts` -- assert the RPC call (household, member); the scope guard moves to the RLS suite
+- [x] `src/lib/services/__tests__/settingsService.test.ts` -- order and failure cases (prepare fails: no deleteUser; deleteUser fails: error surfaced, no profile delete)
+- [x] `src/lib/test-utils/__tests__/account-deletion.rls.test.ts` -- NEW: the scenarios below (seven tests after review; each ends in a residue scan)
+- [x] `src/lib/test-utils/__tests__/member-removal.rls.test.ts` -- (review) drives the REAL `removeMember`; asserts category, goal and budget move; asserts `created_by` is server-only
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- add the residual holes to the accumulator item
 
 **Acceptance Criteria:**
 - Given C and member M where M tagged a transaction with C's category, when C deletes, then M owns H (`created_by`, role admin), M's transaction points to M's copy, and C is fully gone.
 - Given `admin.deleteUser` is made to fail, when C deletes, then the profile and all of C's data are intact.
 - Given C is H's sole member, when C deletes, then H is deleted.
-- Given any deletion above, then every rewritten row belongs to N, and **no row in any FK column referencing `auth.users`, enumerated from `pg_constraint` at test time**, holds C's id. The enumeration must find `user_profiles.id`, or the test fails as NOT MEASURED.
+- Given any deletion above, then every rewritten row belongs to N, and **no row in any FK column referencing `auth.users`, enumerated from `pg_constraint` at test time**, holds C's id. The enumeration must find `user_profiles.id`, or the test fails as NOT MEASURED. (Implemented as a superset: every uuid, uuid[] and text-like column of `public` and `storage`. See the Spec Change Log.)
 - Given C contributed to a shared goal, when C deletes, then `goals.current_amount = SUM(goal_contributions.amount)` for that goal.
+- Given a plain member P who created a shared goal, a shared category another member used, and a shared budget, when P deletes their account, then all three belong to H's owner, the other member's contributions and rows are intact, and another member's own shared category is NOT moved (the scope guard, mutation-tested).
 - Given a plain member P (not a creator) contributed to shared goal G, when P deletes their account, then G survives and its `current_amount` drops by exactly P's contributions. Red state: without the trigger, the total is unchanged.
+
+## Spec Change Log
+
+- **2026-11-19, human-approved extension (plain members).** Trigger: the step-3 enumeration found that the transfer covered only households the deleting user CREATED. A plain member's shared goal cascaded with every other member's contributions, against P1, while `removeMember` (Epic 13) already reassigned a removed member's shared objects to the admin. Amended: the transfer applies to plain members too. Their shared categories, budgets and goals go to the household owner. Known-bad state avoided: a member's account deletion destroying household objects that member removal preserves.
+- **Same date, ONE definition, not two (human-required).** `reassign_member_shared_objects(p_household, p_member)` is the single implementation; deletion and `removeMember` both call it. Its target is `households.created_by`, read inside the function. Verified identical to `removeMember`'s old "acting admin" today: admin is set only by `createHousehold` (creator) and invitations set `member`; production has 2/2 households with exactly one admin, the creator. To keep "the admin is the owner" true, the creator transfer also DEMOTES the creator to member in the same transaction. Otherwise a refused delete would leave the first two-admin household. `removeMember` gains, as stated fixes: shared budgets move (they didn't), name collisions are renamed (today the UPDATE failed and the error was logged and swallowed), and atomicity. KEEP: option 1 was chosen over a parity test because the deletion path needs the step anyway; with one implementation there is nothing left to drift.
+
+- **Same date, step 3 implementation: three strengthenings, no change of intent.**
+  - **AC 4's scan is a superset of the FK columns.** Scanning only the FK columns referencing `auth.users` CANNOT fail: once the auth row is gone, referential integrity guarantees each one has cascaded, gone NULL, or refused the delete. The column that can still hold a deleted id is one WITHOUT an FK, which is the risk the deferred-work item names ("a new `user_id` column without an FK"). So test 4 scans EVERY uuid column of every public table, enumerated from the catalog at test time. The FK columns stay as the must-find (`user_profiles.id` or NOT MEASURED; at least 26), and a still-living user must produce hits (the presence control). KEEP: the superset; the presence control.
+  - **The matrix audit added coverage to test 1.** Row 33's reuse branch and its value-mapping conflict skip, the personal-budget period-conflict skip, row 32's surviving unattributed invitation, row 34's "lowest free n" (walks to 3) and 100-char truncation (in test 6), and row 39's surviving savings transaction. Test 3 asserts that row 42's preparation is a literal no-op (all counts zero).
+  - **Statement-level trigger confirmed on cascaded deletes.** Test 5 is green, and red with the trigger dropped. The row-level fallback in Design Notes is not needed.
+- **Same date, step 4 review (three layers): patches only, no loopback.** Nothing was classified intent_gap or bad_spec.
+  - **CORRECTION to the entry above: `removeMember` did NOT gain atomicity.** As first written it deleted the membership row, then called the RPC, and only logged a failure. That left an ex-member still owning shared objects, with nothing left to retry. It now calls the RPC FIRST and THROWS on error, which makes it fail closed. That is not one transaction, but every intermediate state is valid: after a reassignment and a failed delete, the member is still a member and their shared objects belong to the owner.
+  - **The deploy window.** The `deploy` job ships main before the migration is applied (the standing rule requires a merge first). Until it is applied, account deletion and member removal both answer 500 and change nothing. Apply promptly after merge.
+  - **`households.created_by` is now server-only** (trigger `trg_household_owner_server_only`, same shape as `enforce_category_visibility_owner`). The households UPDATE policy let an admin rewrite any column. Before this story `created_by` decided only the cascade; it now decides who receives shared objects and who owns the household, so a client-side rewrite would break "the admin is the owner". Paired test: the admin can still rename the household.
+  - **Tests now run the real services.** Deletion goes through `deleteUserAccount` and removal through `removeMember`, with the app's service-role env pinned to the local stack by `pinAppServiceRoleToLocalStack`; a hard assert precedes every call, because next/jest loads `.env*`. `member-removal.rls.test.ts` had kept mirroring the old UPDATE the service no longer ran.
+  - **Further coverage:**
+    - new-owner choice with ties and a NULL join date, and exactly one admin (test 7);
+    - the trigger's shared-only guard (test 5, an un-shared goal);
+    - the residue scan, now per scenario and widened to uuid[] and text-like columns in `public` and `storage`, with a jsonb presence control (test 4, self-contained);
+    - matrix row 39 seeded as `logSavingsContribution` links it (`goal_contribution_id`, SET NULL);
+    - a test-6 fixture that was an impossible state (current 0 against 80 contributed);
+    - errors checked everywhere;
+    - cleanup that attempts every user.
+  - **Deferred** (deferred-work.md): the race window between the two calls; telling people what changed; accepted invitations keeping the invitee's email (P2, pre-existing).
+  - **Rejected:**
+    - the route's `!deleteSuccess` branch (pre-existing);
+    - SECURITY DEFINER (the 026 convention);
+    - a creator without a membership row, and a second admin (both unreachable);
+    - reuse onto a member's shared same-name category (that is the approved reuse: the member's own category and settings now apply to their own rows);
+    - Database type regeneration and a down migration (not used by repo convention).
 
 ## Design Notes
 
@@ -77,11 +113,11 @@ context:
 
 **Function order, one transaction:**
 1. Lock C's households `FOR UPDATE`.
-2. Per household with another member: choose N (earliest `joined_at`, tie-break `user_id`); set `created_by`; set N's role to `admin`; move C's shared categories (with collision rename), budgets and goals to N.
+2. Per household with another member: choose N (earliest `joined_at`, tie-break `user_id`); set `created_by`; set N's role to `admin` and DEMOTE C to `member`; move C's shared categories (with collision rename), budgets and goals to N through `reassign_member_shared_objects`.
 3. Then, for every category still owned by C that another user's row references (any of the four tables): copy it to that user, or reuse their same name+type category, and repoint their rows.
 4. Return counts.
 
-Nothing here is destructive. If the delete never follows, H simply has two admins and members hold their own categories.
+Nothing here is destructive. If the delete never follows, N owns H and is its only admin, C is a member, and members hold their own categories: a valid state (test 2 asserts it).
 
 **Why a trigger for goal totals:** recomputing before the delete would understate the total while C's rows still exist. Deleting C's contributions inside the function would be destructive if `deleteUser` then failed. A trigger recomputes inside the cascade's own transaction, so the total is valid throughout.
 
@@ -103,3 +139,121 @@ Nothing here is destructive. If the delete never follows, H simply has two admin
 - `npx tsc --noEmit` -- expected: exit 0
 - `npx jest` -- expected: `Tests: ... passed`, 0 failed, floor ok
 - CI `RLS Integration Tests` -- expected: the new suite passes on the local stack; red states recorded for the trigger, the copy/repoint, and the ordering
+
+**Results (2026-11-19, after step-4 review patches; local stack on CLI 2.105.0, the CI pin):**
+- `npm run lint`: `files linted: 649   errors: 0   warnings: 0 (max 0)`
+- `npx tsc --noEmit`: exit 0
+- `npm run test:order` + `scripts/ci/assert-test-run.sh`: `Tests:       73 skipped, 2718 passed, 2791 total`, `ok: 2718 tests ran, in the pinned order 20261029`
+- RLS, after the patches: account-deletion + member-removal, `Tests:       12 passed, 12 total`. **The full 14-suite RLS run was NOT repeated after the patches.** Docker stopped mid-session, so the CI `RLS Integration Tests` job on the PR is that run. The last full local run, before the patches, was `Tests:       71 passed, 71 total`.
+- **Red states against the FINAL code.** Each SQL mutant was applied to the local DB and the original migration re-applied after it; each test-side mutant was a mutated copy of the test file.
+
+  | Mutant | Red |
+  |---|---|
+  | M1 trigger dropped | tests 1, 5, 6 |
+  | M2 scope guard removed | test 6 |
+  | M3 copy+repoint removed | tests 1, 2 (`Database error deleting user`) |
+  | M4 creator demotion removed | test 2 |
+  | M5 ownership transfer removed | tests 1, 2, 7 |
+  | M6 no walk to the lowest free n | test 1 (`categories_user_id_name_type_key`) |
+  | M7 no truncation | test 6 (`value too long for type character varying(100)`) |
+  | M8 budget-period skip removed | test 1 (`idx_category_budgets_personal`) |
+  | M9 mapping skip removed | test 1 (`value_categories_value_id_category_id_key`) |
+  | M10 reuse removed | test 1 |
+  | M11 latest joiner wins | test 7 |
+  | M12 NULL join date wins | test 7 |
+  | M13 tie to the highest id | test 7 |
+  | M14 everyone promoted | test 7 |
+  | M15 trigger recomputes personal goals | test 5 (`current` 20, not 50) |
+  | M16 `created_by` trigger dropped | member-removal, owner test |
+  | M17 reassign moves nothing | account-deletion 1, 6; member-removal 2 tests |
+  | T1 blind enumeration | all 7 (`NOT MEASURED`) |
+  | T2 counter never counts | test 4 (presence) |
+
+  **T3 (text-like path blinded) is NOT MEASURED.** Its first run went red for the wrong reason: the mutant dropped `$1`, so pg rejected every scan. The corrected rerun never executed because Docker had stopped.
+- **Unit mutants.**
+  - The order mutant: `Tests: 1 failed, 11 skipped, 12 total`.
+  - Against the final code, each went red on its intended test:
+    - U1 prepare failure only logged;
+    - U2 the admin passed as the member;
+    - U3 a direct UPDATE kept;
+    - U4 `removeMember` swallows again;
+    - U5 `removeMember`'s old order;
+    - U6 a profile delete through the service client (the two tests that assert no `from`);
+    - U7 a rejected preparation swallowed.
+
+## Suggested Review Order
+
+**The ordering: preparatory writes first, the destructive step last**
+
+- Entry point: one non-destructive RPC, then `admin.deleteUser`; no hand-written profile delete.
+  [`settingsService.ts:331`](../../src/lib/services/settingsService.ts#L331)
+
+- All preparatory writes in one transaction: ownership, shared objects, category copies.
+  [`20261119100000_prepare_account_deletion.sql:96`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L96)
+
+- Longest-standing member becomes owner and admin; the creator is demoted, so a refused delete stays valid.
+  [`20261119100000_prepare_account_deletion.sql:128`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L128)
+
+**One definition of where a departing member's shared objects go**
+
+- The single implementation; the target is `created_by`, and collisions get a numeric suffix.
+  [`20261119100000_prepare_account_deletion.sql:28`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L28)
+
+- removeMember calls it FIRST and fails closed: no ex-member left owning shared objects.
+  [`householdMemberService.ts:94`](../../src/lib/services/householdMemberService.ts#L94)
+
+- `created_by` made server-only: the invariant both functions rely on, closed at the data layer.
+  [`20261119100000_prepare_account_deletion.sql:292`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L292)
+
+**P1: members keep their rows**
+
+- Every category of the user's that another member references: copied or reused, then repointed.
+  [`20261119100000_prepare_account_deletion.sql:157`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L157)
+
+- Conflict skips for personal budgets and value mappings, so a repoint never collides.
+  [`20261119100000_prepare_account_deletion.sql:192`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L192)
+
+**Shared-goal totals**
+
+- A statement trigger recomputes SHARED goals from their remaining rows on any contribution delete.
+  [`20261119100000_prepare_account_deletion.sql:249`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L249)
+
+**Tests against Postgres**
+
+- The real service, then a residue scan of every user-referencing column, after each deletion.
+  [`account-deletion.rls.test.ts:75`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L75)
+
+- Why the scan is wider than the FKs (an FK scan cannot fail), plus its NOT MEASURED must-find.
+  [`account-deletion.rls.test.ts:209`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L209)
+
+- The creator scenario: copy, reuse, rename, invitation, goals, savings link.
+  [`account-deletion.rls.test.ts:294`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L294)
+
+- A REFUSED auth delete destroys nothing; a retry succeeds.
+  [`account-deletion.rls.test.ts:456`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L456)
+
+- New-owner choice: ties, NULL join dates, exactly one admin.
+  [`account-deletion.rls.test.ts:638`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L638)
+
+- Member removal now drives the real service, no longer a stale mirror.
+  [`member-removal.rls.test.ts:156`](../../src/lib/test-utils/__tests__/member-removal.rls.test.ts#L156)
+
+- The admin cannot rewrite `created_by`, but can still rename (the paired presence check).
+  [`member-removal.rls.test.ts:215`](../../src/lib/test-utils/__tests__/member-removal.rls.test.ts#L215)
+
+**Peripherals**
+
+- Pins the app's service-role env to the local stack, with a hard assert before each real call.
+  [`rlsClient.ts:67`](../../src/lib/test-utils/rlsClient.ts#L67)
+
+- Unit test: removal fails closed, and the membership is never deleted.
+  [`householdMemberService.test.ts:114`](../../src/lib/services/__tests__/householdMemberService.test.ts#L114)
+
+- Unit test: the order, failure and rejection cases; no table write through either client.
+  [`settingsService.test.ts:359`](../../src/lib/services/__tests__/settingsService.test.ts#L359)
+
+- Route: either step's throw answers 500; stale cascade comment corrected.
+  [`route.ts:125`](../../src/app/api/user/account/route.ts#L125)
+
+- Deferred from review: the race window, notifications, accepted-invitation emails.
+  [`deferred-work.md:852`](deferred-work.md#L852)

@@ -7,6 +7,12 @@
  * Proves that deleting the household_members row immediately revokes ALL shared access
  * (the ex-member fails every is_household_member gate), while personal data and shared
  * history are preserved.
+ *
+ * The removal runs through the REAL householdMemberService.removeMember (the app's
+ * service-role client pinned to the local stack). Until 2026-11-19 this file
+ * mirrored the service's writes by hand, and the mirror outlived them: the service
+ * moved to reassign_member_shared_objects and this test kept testing an UPDATE the
+ * service no longer performed.
  */
 
 import {
@@ -15,7 +21,10 @@ import {
   createTestUser,
   deleteTestUser,
   signInAsTestUser,
+  pinAppServiceRoleToLocalStack,
+  assertAppPinnedToLocalStack,
 } from '@/lib/test-utils/rlsClient';
+import { removeMember } from '@/lib/services/householdMemberService';
 
 const PWD = 'rls-test-passw0rd!';
 const stamp = Date.now();
@@ -30,8 +39,12 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
   let sharedTxId: string;
   let bPersonalCatId: string;
   let bSharedCatId: string; // a SHARED category B created (reassigned to admin on removal)
+  let bSharedGoalId: string; // a SHARED goal B created (reassigned likewise)
+  let bSharedBudgetId: string; // a SHARED budget B created (reassigned likewise)
+  let restoreEnv: () => void = () => {};
 
   beforeAll(async () => {
+    restoreEnv = pinAppServiceRoleToLocalStack();
     const svc = createServiceClient();
     aId = await createTestUser(aEmail, PWD);
     bId = await createTestUser(bEmail, PWD);
@@ -98,11 +111,36 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
       .select('id')
       .single();
     bSharedCatId = bsc!.id;
+
+    const { data: bg, error: bgError } = await svc
+      .from('goals')
+      .insert({ user_id: bId, name: 'B Shared Goal', target_amount: 500, household_id: householdId })
+      .select('id')
+      .single();
+    if (bgError || !bg) throw new Error(`seed B's shared goal: ${bgError?.message}`);
+    bSharedGoalId = bg.id;
+    const { data: bb, error: bbError } = await svc
+      .from('category_budgets')
+      .insert({
+        user_id: bId,
+        household_id: householdId,
+        category_id: bSharedCatId,
+        period: 'monthly',
+        limit_amount: 120,
+      })
+      .select('id')
+      .single();
+    if (bbError || !bb) throw new Error(`seed B's shared budget: ${bbError?.message}`);
+    bSharedBudgetId = bb.id;
   });
 
   afterAll(async () => {
-    if (aId) await deleteTestUser(aId);
-    if (bId) await deleteTestUser(bId);
+    try {
+      if (aId) await deleteTestUser(aId);
+      if (bId) await deleteTestUser(bId);
+    } finally {
+      restoreEnv();
+    }
   });
 
   it('while a member, B can see the shared category + transaction', async () => {
@@ -112,15 +150,10 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
   });
 
   it('after removal, B loses access to ALL shared data + aggregates', async () => {
-    // Mirror removeMember: delete the membership row + reassign B's shared categories/goals
-    // to the admin (the two writes the service performs).
-    const svc = createServiceClient();
-    await svc.from('household_members').delete().eq('household_id', householdId).eq('user_id', bId);
-    await svc
-      .from('categories')
-      .update({ user_id: aId })
-      .eq('user_id', bId)
-      .eq('household_id', householdId);
+    // The REAL removal: reassign_member_shared_objects by named arguments through
+    // PostgREST, then the membership delete - whatever the service does today.
+    assertAppPinnedToLocalStack();
+    await removeMember(aId, bId);
 
     const b = await signInAsTestUser(bEmail, PWD);
     expect((await b.from('households').select('id').eq('id', householdId)).data).toEqual([]);
@@ -163,5 +196,42 @@ rlsDescribe('Member removal & access revocation (Story 13.11)', () => {
       .single();
     expect(data?.user_id).toBe(aId);
     expect(data?.household_id).toBe(householdId);
+    // ...and so are B's shared goal and shared budget (budgets were never moved
+    // before the one shared definition).
+    for (const [table, id] of [
+      ['goals', bSharedGoalId],
+      ['category_budgets', bSharedBudgetId],
+    ] as const) {
+      const { data: moved, error } = await svc
+        .from(table)
+        .select('user_id, household_id')
+        .eq('id', id)
+        .single();
+      expect(error).toBeNull();
+      expect(moved).toEqual({ user_id: aId, household_id: householdId });
+    }
+  });
+
+  it('the admin cannot rewrite households.created_by (the owner is server-only) - but can still rename the household', async () => {
+    const a = await signInAsTestUser(aEmail, PWD);
+    // PAIRED: an admin update that SHOULD work does, so the refusal below is
+    // about created_by, not about the admin being unable to update at all.
+    const { data: renamed, error: renameError } = await a
+      .from('households')
+      .update({ name: 'Removal HH (renamed)' })
+      .eq('id', householdId)
+      .select('name');
+    expect(renameError).toBeNull();
+    expect(renamed).toEqual([{ name: 'Removal HH (renamed)' }]);
+
+    const { error: ownerError } = await a
+      .from('households')
+      .update({ created_by: bId })
+      .eq('id', householdId);
+    expect(ownerError?.message).toContain('households.created_by can only be changed by the server');
+
+    const svc = createServiceClient();
+    const { data: h } = await svc.from('households').select('created_by').eq('id', householdId).single();
+    expect(h?.created_by).toBe(aId);
   });
 });

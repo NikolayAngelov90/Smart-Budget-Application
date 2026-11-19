@@ -306,8 +306,9 @@ describe('/api/user/account DELETE', () => {
     // auth.users" - the SAME backwards claim as the settingsService test renamed
     // in cf90b2c: the FK cascades FROM auth.users TO the profile, never the other
     // way. And deleteUserAccount is MOCKED here, so this checks only that the
-    // route delegates to it. The cascade itself is exercised by the RLS suite's
-    // teardown since deleteTestUser started asserting its result.
+    // route delegates to it. What the deletion does to the data - ownership
+    // transfer, copies, the cascade, no id left behind - is asserted against
+    // Postgres in src/lib/test-utils/__tests__/account-deletion.rls.test.ts.
     test('delegates the deletion to deleteUserAccount for the authenticated user', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: mockUser },
@@ -342,7 +343,10 @@ describe('/api/user/account DELETE', () => {
       expect(mockDeleteUserAccount).toHaveBeenCalledWith(mockUser.id);
     });
 
-    test('returns 500 when profile deletion fails', async () => {
+    // RENAMED 2026-11-19: there is no profile deletion any more (the auth.users
+    // cascade removes the profile). deleteUserAccount throws when the preparation
+    // fails or the auth delete is refused; both must answer 500.
+    test('returns 500 when deleteUserAccount throws (preparation failed or auth delete refused)', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: mockUser },
         error: null,
@@ -359,7 +363,9 @@ describe('/api/user/account DELETE', () => {
       });
 
       mockExportTransactionsToCSV.mockResolvedValue();
-      mockDeleteUserAccount.mockRejectedValue(new Error('Profile deletion failed'));
+      mockDeleteUserAccount.mockRejectedValue(
+        new Error('Failed to delete user account: Database error deleting user')
+      );
 
       const request = new NextRequest('http://localhost:3000/api/user/account', {
         method: 'DELETE',

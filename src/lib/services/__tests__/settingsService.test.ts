@@ -9,17 +9,17 @@ import {
   updatePreferences,
   deleteUserAccount,
 } from '@/lib/services/settingsService';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import type { UserProfile, UpdateUserProfilePayload } from '@/types/user.types';
 
 // Mock Supabase client
-const mockAdminDeleteUser = jest.fn();
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
-  createServiceRoleClient: jest.fn(() => ({
-    auth: { admin: { deleteUser: mockAdminDeleteUser } },
-  })),
+  // A chain-factory client per deleteUserAccount test (see its beforeEach): its
+  // recording `from` makes "no table write through the service-role client" an
+  // assertion, not an inference from a TypeError on a missing method.
+  createServiceRoleClient: jest.fn(),
 }));
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -336,49 +336,85 @@ describe('settingsService', () => {
   });
 
   describe('deleteUserAccount', () => {
+    /*
+     * REWRITTEN 2026-11-19 (spec-household-creator-account-deletion). The order
+     * changed: the preparatory RPC first, admin.deleteUser LAST, and no explicit
+     * user_profiles delete at all - it used to run FIRST, so a refused auth delete
+     * left the profile gone and the account in place. That the auth.users cascade
+     * removes the profile is proven against Postgres in account-deletion.rls.test.ts,
+     * not here: a mocked test can only check the order and the error handling.
+     */
     const mockUserId = 'user-123';
+    let svcDb: ReturnType<typeof createSupabaseMock>;
+    let mockServiceRpc: jest.Mock;
+    let mockAdminDeleteUser: jest.Mock;
 
-    test('deletes user profile successfully', async () => {
-      const db = settingsDb({ data: null, error: null });
-      mockAdminDeleteUser.mockResolvedValue({ error: null });
-
-      const result = await deleteUserAccount(mockUserId);
-
-      expect(result).toBe(true);
-      expect(db.from).toHaveBeenCalledWith('user_profiles');
-      expect(db.chainFor('user_profiles').delete).toHaveBeenCalled();
-      expect(db.chainFor('user_profiles').eq).toHaveBeenCalledWith('id', mockUserId);
-      expect(mockAdminDeleteUser).toHaveBeenCalledWith(mockUserId);
+    beforeEach(() => {
+      svcDb = createSupabaseMock({});
+      mockServiceRpc = svcDb.client.rpc;
+      mockAdminDeleteUser = svcDb.client.auth.admin.deleteUser;
+      (createServiceRoleClient as jest.Mock).mockReturnValue(svcDb.client);
     });
 
-    test('throws error when deletion fails', async () => {
-      settingsDb({ data: null, error: { message: 'Deletion failed' } });
-
-      await expect(deleteUserAccount(mockUserId)).rejects.toThrow('Failed to delete user profile');
-    });
-
-    test('removes the auth user through an explicit admin.deleteUser call', async () => {
-      /*
-       * RENAMED 2026-11-18. From 81997a9 (2025-12-21) this was "cascade deletes
-       * auth.users record (verified through RLS and FK constraints)". A mocked
-       * unit test verifies neither - and the claim was BACKWARDS:
-       * user_profiles.id REFERENCES auth.users(id) ON DELETE CASCADE, so the
-       * cascade runs FROM auth.users TO the profile. Deleting the profile cannot
-       * reach auth.users, which is exactly why deleteUserAccount makes the
-       * explicit admin.deleteUser call asserted below.
-       *
-       * The guarantee the old name stood in for - that deleting an account
-       * removes the user's rows - has no test anywhere, the RLS suite included.
-       * Board: "account deletion's data removal has never been tested", in
-       * _bmad-output/implementation-artifacts/deferred-work.md.
-       */
-      const db = settingsDb({ data: null, error: null });
+    test('prepares the deletion, then deletes the auth user - in that order', async () => {
+      mockServiceRpc.mockResolvedValue({ data: {}, error: null });
       mockAdminDeleteUser.mockResolvedValue({ error: null });
 
-      await deleteUserAccount(mockUserId);
+      await expect(deleteUserAccount(mockUserId)).resolves.toBe(true);
 
-      expect(db.chainFor('user_profiles').delete).toHaveBeenCalled();
+      expect(mockServiceRpc).toHaveBeenCalledWith('prepare_account_deletion', {
+        p_user: mockUserId,
+      });
       expect(mockAdminDeleteUser).toHaveBeenCalledWith(mockUserId);
+      // The destructive step is LAST.
+      expect(mockServiceRpc.mock.invocationCallOrder[0]!).toBeLessThan(
+        mockAdminDeleteUser.mock.invocationCallOrder[0]!
+      );
+      // And no table write happens at all, through either client: the profile is
+      // not deleted by hand.
+      expect(mockCreateClient).not.toHaveBeenCalled();
+      expect(svcDb.from).not.toHaveBeenCalled();
+    });
+
+    test('never deletes the auth user when the preparation fails', async () => {
+      mockServiceRpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
+
+      await expect(deleteUserAccount(mockUserId)).rejects.toThrow(
+        'Failed to prepare account deletion'
+      );
+      // PAIRED: the preparation was attempted, so "no deleteUser" is the guard
+      // working, not a path that never started.
+      expect(mockServiceRpc).toHaveBeenCalledTimes(1);
+      expect(mockAdminDeleteUser).not.toHaveBeenCalled();
+    });
+
+    test('never deletes the auth user when the preparation call itself rejects', async () => {
+      // A network failure rejects the promise instead of returning { error }.
+      mockServiceRpc.mockRejectedValue(new Error('fetch failed'));
+
+      await expect(deleteUserAccount(mockUserId)).rejects.toThrow('fetch failed');
+      expect(mockServiceRpc).toHaveBeenCalledTimes(1);
+      expect(mockAdminDeleteUser).not.toHaveBeenCalled();
+    });
+
+    test('surfaces a refused auth delete, having destroyed nothing itself', async () => {
+      mockServiceRpc.mockResolvedValue({ data: {}, error: null });
+      mockAdminDeleteUser.mockResolvedValue({ error: { message: 'refused' } });
+
+      await expect(deleteUserAccount(mockUserId)).rejects.toThrow('Failed to delete user account');
+      // The refusal came at the right step: after the preparation, for this user.
+      expect(mockServiceRpc).toHaveBeenCalledWith('prepare_account_deletion', {
+        p_user: mockUserId,
+      });
+      expect(mockAdminDeleteUser).toHaveBeenCalledWith(mockUserId);
+      expect(mockServiceRpc.mock.invocationCallOrder[0]!).toBeLessThan(
+        mockAdminDeleteUser.mock.invocationCallOrder[0]!
+      );
+      // The service made no table write of its own, through either client. What a
+      // refusal leaves in the DATABASE is asserted against Postgres in
+      // account-deletion.rls.test.ts (test 2).
+      expect(mockCreateClient).not.toHaveBeenCalled();
+      expect(svcDb.from).not.toHaveBeenCalled();
     });
   });
 });
