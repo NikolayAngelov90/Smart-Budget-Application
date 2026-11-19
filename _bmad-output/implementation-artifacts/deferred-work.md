@@ -777,3 +777,28 @@ blocks first. So the shared-layer loss is a design default to confirm or
 change, and the half-deleted profile is a bug to fix.
 
 ## ON THE BOARD (one line): `deferred-work.md` is not Prettier-clean, and that is by scope - `format:check` covers `src/**` only, so docs and `_bmad-output/` are deliberately outside it (decided 2026-11-18, not reopened).
+
+## ON THE BOARD, NOT STARTED: the masked-failure detector is blind in 76 of 261 test files
+
+**The finding (2026-11-18, item 4):** the detector reads only what reaches the
+console. **76 of 261 test files mock `@/lib/utils/logger`**, so a swallow routed
+through the logger in those files never prints, and the detector cannot see it.
+Must-finds for the count: `shared-category-permissions` is among the 76, and
+`goalService`, whose swallow the detector did see, is not.
+
+**How it was found:** `shared-category-permissions` had three PUT tests
+("is allowed for an admin", "does not gate a PERSONAL category", "does not gate
+a colour-only edit") passing on a 500. The hand-rolled chain had no `update`,
+the route's catch swallowed the TypeError, and the tests asserted only
+`status not 403`. The detector was clean on that file. A probe that asked for
+200 found it. The chain migration removed that cause in every hand-rolled file,
+so it cannot recur. The bound applies to everything else a mocked logger can
+hide.
+
+**WHAT MECHANISM WOULD CARRY THIS:** none is built. A candidate is a
+`jest.setup.js` `afterEach` that inspects the mocked logger's recorded `error` /
+`warn` calls (`jest.isMockFunction(logger.error)`) for an `Error` whose message
+matches the detector's signatures, and prints a line naming
+`expect.getState().currentTestName`. That would make the 76 files visible
+without un-mocking anything. Until it exists, "detector clean" means clean in
+the 185 files whose logger prints.
