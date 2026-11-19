@@ -802,3 +802,5 @@ matches the detector's signatures, and prints a line naming
 `expect.getState().currentTestName`. That would make the 76 files visible
 without un-mocking anything. Until it exists, "detector clean" means clean in
 the 185 files whose logger prints.
+
+## ON THE BOARD (one line): a fresh clone HALTs every BMAD 6.11 skill render - the per-user config layer `_bmad/config.user.toml` is gitignored and the 6.8 -> 6.11 upgrade migrated the install but not it (recreated locally 2026-11-19 with `communication_language` only; `user_name` and `user_skill_level` from the old YAML are likewise unmigrated and will HALT any skill that needs them).
