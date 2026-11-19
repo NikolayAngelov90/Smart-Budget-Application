@@ -302,6 +302,12 @@ BEGIN
 END;
 $$;
 
+-- A trigger function cannot be called directly, but Supabase's default privileges
+-- grant EXECUTE on every new public function to anon and authenticated: revoke it,
+-- so no client role holds EXECUTE on any function this migration creates.
+REVOKE ALL ON FUNCTION public.enforce_household_owner_server_only() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.enforce_household_owner_server_only() FROM anon, authenticated;
+
 DROP TRIGGER IF EXISTS trg_household_owner_server_only ON public.households;
 CREATE TRIGGER trg_household_owner_server_only
   BEFORE UPDATE ON public.households
@@ -318,8 +324,25 @@ CREATE TRIGGER trg_household_owner_server_only
 -- invitations addressed to them stayed in other households.
 --
 -- DELETED, not anonymised: with accepted_by already NULL an anonymised row
--- carries nothing but an invented placeholder address. Invitations the person
--- SENT are other households' records and stay (invited_by goes NULL, as before).
+-- carries nothing but an invented placeholder address.
+--
+-- WHAT GOES:
+--   (a) every invitation the person ACCEPTED (accepted_by) - including one sent
+--       to an address they have since changed;
+--   (b) every invitation ADDRESSED to their CONFIRMED address that nobody has
+--       accepted (pending or revoked), matched case- and whitespace-insensitively
+--       - the same normalisation invitationService.normalizeEmail applies when it
+--       writes them (trim + lower).
+-- WHAT STAYS, and why:
+--   - invitations they SENT: other households' records (invited_by goes NULL);
+--   - an invitation at the same address ACCEPTED BY SOMEONE ELSE (who held the
+--     address before): that is the other person's record of joining (P1);
+--   - invitations to an UNCONFIRMED address: not proven to be this account's, so
+--     deleting a never-confirmed sign-up must not wipe the real owner's invites.
+-- KNOWN LIMITS (P2 reaches only addresses proven to be theirs): pending
+-- invitations to a FORMER address, to a pending email_change address, or to an
+-- address known only to an OAuth identity are not matched; GoTrue's own
+-- auth.audit_log_entries is GoTrue's to retain (on the board).
 --
 -- A BEFORE DELETE trigger on auth.users, not a step in prepare_account_deletion:
 --   - it runs INSIDE the auth delete's transaction, so a refused delete rolls it
@@ -327,11 +350,23 @@ CREATE TRIGGER trg_household_owner_server_only
 --     before the destructive step, which that function must never be;
 --   - BEFORE, because accepted_by still holds the id; the SET NULL action on
 --     household_invitations.accepted_by runs after the row is gone;
---   - it covers every way an auth user is deleted, not only the app's path.
+--   - it fires on every HARD delete of an auth user - the app's path, a raw
+--     admin.deleteUser, the dashboard. NOT on a GoTrue soft delete (an UPDATE) or
+--     a TRUNCATE; the app always hard-deletes (settingsService's unit test pins
+--     deleteUser(userId) with no soft-delete flag).
+-- FAILURE MODE, deliberately fail-closed: it runs inside EVERY account deletion,
+-- so it must not raise on any data. NULL or blank emails match nothing;
+-- household_invitations.email is NOT NULL with a non-empty CHECK; nothing
+-- references that table and it has no triggers, rules or forced RLS (asserted in
+-- account-deletion.rls.test.ts, test 8). What remains is lock waits, or a deadlock
+-- with the same person accepting an invitation in the same instant: rare, and
+-- the deletion answers 500 and is retryable. Swallowing an error here would make
+-- P2 fail silently instead.
 -- Precedent: on_auth_user_created (handle_new_user) is an app trigger on
 -- auth.users; postgres holds TRIGGER on auth.users locally and in production
 -- (checked read-only 2026-11-19). SECURITY DEFINER because the role GoTrue deletes
--- as has no rights on public tables.
+-- as has no rights on public tables; owned by postgres, which owns
+-- household_invitations (not FORCE RLS), so RLS cannot hide rows from it.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.delete_invitations_addressed_to_deleted_user()
 RETURNS trigger
@@ -339,13 +374,24 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  -- The address, normalised, and only if PROVEN theirs; NULL or blank -> NULL,
+  -- which matches nothing.
+  v_email TEXT := CASE WHEN OLD.email_confirmed_at IS NOT NULL
+                       THEN nullif(lower(btrim(OLD.email)), '') END;
 BEGIN
-  DELETE FROM public.household_invitations
-   WHERE accepted_by = OLD.id
-      OR (OLD.email IS NOT NULL AND lower(email) = lower(OLD.email));
+  DELETE FROM public.household_invitations i
+   WHERE i.accepted_by = OLD.id
+      OR (v_email IS NOT NULL
+          AND i.accepted_by IS NULL
+          AND lower(btrim(i.email)) = v_email);
   RETURN OLD;
 END;
 $$;
+
+-- Serves the email arm above (accepted_by already has idx_household_invitations_accepted_by).
+CREATE INDEX IF NOT EXISTS idx_invitations_email_normalised
+  ON public.household_invitations (lower(btrim(email)));
 
 REVOKE ALL ON FUNCTION public.delete_invitations_addressed_to_deleted_user() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.delete_invitations_addressed_to_deleted_user() FROM anon, authenticated;

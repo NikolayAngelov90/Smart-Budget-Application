@@ -40,7 +40,9 @@ const svc = () => createServiceClient();
 /** Users still alive, deleted in afterAll through the same path. */
 const toCleanUp: string[] = [];
 /** Every test user's email: the residue scan looks for it as well as the id. */
-const emails = new Map<string, string>();
+// null = the account has NO email (phone/OAuth-without-email, or blanked):
+// there is nothing of that kind to leave behind. undefined = never recorded.
+const emails = new Map<string, string | null>();
 
 function forget(userId: string): void {
   const i = toCleanUp.indexOf(userId);
@@ -103,11 +105,38 @@ async function prepare(userId: string): Promise<Prepared> {
 }
 
 /** The REAL deletion, then the residue scan. */
-async function deleteAccount(userId: string): Promise<void> {
+async function deleteAccount(userId: string, allowed: Allowance[] = []): Promise<void> {
   assertAppPinnedToLocalStack();
   await deleteUserAccount(userId); // throws "Failed to ..." on either step
   forget(userId);
-  await expectNoResidue(userId);
+  await expectNoResidue(userId, allowed);
+}
+
+/**
+ * A RAW auth delete - no preparation, no service: what the Supabase dashboard or
+ * any other admin path does. The auth.users trigger must still do its part.
+ */
+async function deleteRaw(userId: string, allowed: Allowance[] = []): Promise<void> {
+  const { error } = await svc().auth.admin.deleteUser(userId);
+  if (error) throw new Error(`raw admin.deleteUser failed: ${error.message}`);
+  forget(userId);
+  await expectNoResidue(userId, allowed);
+}
+
+/** Direct SQL on the LOCAL test database (LOCAL_DB_URL), for catalog reads and fixtures the API cannot make. */
+async function db<T extends Record<string, unknown>>(
+  text: string,
+  params: unknown[] = []
+): Promise<T[]> {
+  const url = process.env.LOCAL_DB_URL;
+  if (!url) throw new Error('NOT MEASURED - LOCAL_DB_URL is unset');
+  const pg = new Client({ connectionString: url });
+  await pg.connect();
+  try {
+    return (await pg.query<T>(text, params)).rows;
+  } finally {
+    await pg.end();
+  }
 }
 
 async function household(
@@ -349,11 +378,27 @@ async function referencesTo(
   }
 }
 
-async function expectNoResidue(userId: string): Promise<void> {
+/**
+ * A hit the design KEEPS on purpose, with the reason. Each one must actually be
+ * found - an allowance that matches nothing fails - so it can never quietly
+ * outlive the row it excuses.
+ */
+type Allowance = { hit: string; why: string };
+
+async function expectNoResidue(userId: string, allowed: Allowance[] = []): Promise<void> {
   const email = emails.get(userId);
-  if (!email)
+  if (email === undefined)
     throw new Error(`NOT MEASURED - no email recorded for ${userId}, so the email scan cannot run`);
-  expect({ userId, hits: (await referencesTo(userId, email)).hits }).toEqual({ userId, hits: [] });
+  const { hits } = await referencesTo(userId, email ?? undefined);
+  const allowedHits = allowed.map((a) => a.hit);
+  expect({ userId, allowedFound: allowedHits.filter((h) => hits.includes(h)) }).toEqual({
+    userId,
+    allowedFound: allowedHits,
+  });
+  expect({ userId, hits: hits.filter((h) => !allowedHits.includes(h)) }).toEqual({
+    userId,
+    hits: [],
+  });
 }
 
 rlsDescribe(
@@ -379,7 +424,9 @@ rlsDescribe(
       restoreEnv();
       if (failures.length)
         throw new Error(`cleanup failed for ${failures.length} user(s):\n${failures.join('\n')}`);
-    });
+      // Each survivor is deleted through the real service AND residue-scanned
+      // (hundreds of catalog queries each), so this outlives Jest's 5 s default.
+    }, 180_000);
 
     it('1. creator with a member: ownership transfers, the member keeps every row, the creator is gone', async () => {
       const c = await makeUser('c1');
@@ -842,6 +889,215 @@ rlsDescribe(
       expect(roles.filter((r) => r.role === 'admin')).toEqual([
         { user_id: expected, role: 'admin' },
       ]);
+    });
+
+    it('8. privileges and structure: no client can EXECUTE any of the five functions, definer only where needed, search_path pinned, the auth trigger is BEFORE DELETE, and nothing on household_invitations can veto a deletion', async () => {
+      const FIVE = [
+        'prepare_account_deletion',
+        'reassign_member_shared_objects',
+        'recompute_shared_goal_totals',
+        'enforce_household_owner_server_only',
+        'delete_invitations_addressed_to_deleted_user',
+      ];
+      const fns = await db<{
+        name: string;
+        owner: string;
+        definer: boolean;
+        config: string | null;
+        anon: boolean;
+        authed: boolean;
+        service: boolean;
+      }>(
+        `select p.proname as name, pg_get_userbyid(p.proowner) as owner, p.prosecdef as definer,
+                array_to_string(p.proconfig, ',') as config,
+                has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+                has_function_privilege('authenticated', p.oid, 'EXECUTE') as authed,
+                has_function_privilege('service_role', p.oid, 'EXECUTE') as service
+           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'public' and p.proname = any($1) order by 1`,
+        [FIVE]
+      );
+      // MUST-FIND: all five, or every absence below is NOT MEASURED.
+      if (fns.length !== 5) {
+        throw new Error(
+          `NOT MEASURED - found ${fns.length} of the 5 functions: ${fns.map((f) => f.name).join(', ')}`
+        );
+      }
+      // No client role can execute any of them.
+      expect(fns.filter((f) => f.anon || f.authed).map((f) => f.name)).toEqual([]);
+      // PAIRED: the grant check can see a grant - the server's two RPCs have one.
+      expect(fns.filter((f) => f.service).map((f) => f.name)).toEqual(
+        expect.arrayContaining(['prepare_account_deletion', 'reassign_member_shared_objects'])
+      );
+      // DEFINER only where needed: the created_by guard must run as the CALLER
+      // (it reads auth.uid()); the rest write rows their callers cannot.
+      expect(fns.filter((f) => !f.definer).map((f) => f.name)).toEqual([
+        'enforce_household_owner_server_only',
+      ]);
+      // search_path pinned on all five (038), owner as the migration intends.
+      expect(fns.filter((f) => f.config !== 'search_path=public').map((f) => f.name)).toEqual([]);
+      expect(fns.filter((f) => f.owner !== 'postgres').map((f) => f.name)).toEqual([]);
+
+      // The auth.users trigger: BEFORE (accepted_by still holds the id), DELETE,
+      // per ROW, bound to the function. The drift dump now reads it in production.
+      const trig = await db<{ def: string }>(
+        `select pg_get_triggerdef(t.oid) as def from pg_trigger t
+          where t.tgrelid = 'auth.users'::regclass and t.tgname = 'on_auth_user_deleted_remove_invitations'`
+      );
+      expect(trig).toHaveLength(1);
+      expect(trig[0]!.def).toMatch(
+        /BEFORE DELETE ON auth\.users FOR EACH ROW EXECUTE FUNCTION (public\.)?delete_invitations_addressed_to_deleted_user\(\)/
+      );
+
+      // Nothing on household_invitations can make the trigger RAISE inside every
+      // account deletion: no FK points at it, no trigger or rule on it, RLS not
+      // forced on its owner (the definer), and that owner is the function's.
+      const veto = await db<{ what: string; n: number }>(
+        `select 'fk referencing it' as what, count(*)::int as n from pg_constraint
+          where contype = 'f' and confrelid = 'public.household_invitations'::regclass
+         union all select 'user triggers on it', count(*)::int from pg_trigger
+          where tgrelid = 'public.household_invitations'::regclass and not tgisinternal
+         union all select 'rules on it', count(*)::int from pg_rewrite
+          where ev_class = 'public.household_invitations'::regclass
+         union all select 'forced rls', (relforcerowsecurity)::int from pg_class
+          where oid = 'public.household_invitations'::regclass
+         union all select 'owner is not postgres', (pg_get_userbyid(relowner) <> 'postgres')::int from pg_class
+          where oid = 'public.household_invitations'::regclass
+         order by 1`
+      );
+      expect(veto).toEqual([
+        { what: 'fk referencing it', n: 0 },
+        { what: 'forced rls', n: 0 },
+        { what: 'owner is not postgres', n: 0 },
+        { what: 'rules on it', n: 0 },
+        { what: 'user triggers on it', n: 0 },
+      ]);
+    });
+
+    it("9. the email rule, adversarially: case and whitespace on BOTH sides, near-misses kept, another person's acceptance kept - and it fires on a RAW auth delete with no preparation", async () => {
+      // The ACCOUNT address in mixed case ("Niki@x.bg"), invitations in other forms.
+      const tag = 'mixed9';
+      const mixedAccount = `Rls-Del-Mixed9-${stamp}@Example.Test`;
+      const mixed = await createTestUser(mixedAccount, PWD);
+      toCleanUp.push(mixed);
+      emails.set(mixed, mixedAccount);
+      const lower = mixedAccount.toLowerCase();
+
+      const owner = await makeUser('own9');
+      const hA = await household('H9-a', owner, [
+        { id: owner, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+      ]);
+      const owner2 = await makeUser('own9b');
+      const hB = await household('H9-b', owner2, [
+        { id: owner2, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+      ]);
+      const owner3 = await makeUser('own9c');
+      const hC = await household('H9-c', owner3, [
+        { id: owner3, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+      ]);
+
+      const padded = await invite(hA, `  ${lower}  `, owner); // whitespace around it
+      const shouted = await invite(
+        hB,
+        `RLS-DEL-${tag.toUpperCase()}-${stamp}@example.TEST`,
+        owner2
+      ); // other casing
+      // NEAR-MISSES: other people's addresses that merely CONTAIN this one.
+      const prefixed = await invite(hA, `x${lower}`, owner);
+      const suffixed = await invite(hA, `${lower}.evil`, owner);
+      // ANOTHER person accepted an invitation at this same address earlier (they
+      // have since changed theirs): that acceptance is THEIR record, and stays.
+      const y = await makeUser('y9');
+      const yAccepted = await invite(hC, lower, owner3, {
+        status: 'accepted',
+        accepted_by: y,
+        accepted_at: '2026-01-10T00:00:00Z',
+      });
+
+      await deleteRaw(mixed, [
+        {
+          hit: 'public.household_invitations.email: 3 (email)',
+          why: "the two near-misses CONTAIN the address (the scan is a substring search) and y's acceptance IS the address - all three kept by design",
+        },
+      ]);
+
+      for (const id of [padded, shouted]) {
+        expect({ id, row: await row('household_invitations', id) }).toEqual({ id, row: null });
+      }
+      for (const id of [prefixed, suffixed, yAccepted]) {
+        expect({ id, kept: (await row('household_invitations', id)) !== null }).toEqual({
+          id,
+          kept: true,
+        });
+      }
+      expect(await row('household_invitations', yAccepted)).toMatchObject({
+        accepted_by: y,
+        status: 'accepted',
+      });
+    });
+
+    it('10. accounts with NO usable or PROVEN email: a NULL or blank address deletes cleanly and matches nothing; an UNCONFIRMED address is not treated as theirs', async () => {
+      const owner = await makeUser('own10');
+      const h = await household('H10', owner, [
+        { id: owner, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+      ]);
+      const unrelated = await invite(h, `rls-del-unrelated10-${stamp}@example.test`, owner);
+
+      for (const [tag, value] of [
+        ['null10', null],
+        ['blank10', '   '],
+      ] as const) {
+        const u = await makeUser(tag);
+        // Accepted under an address the account no longer has; only accepted_by finds it.
+        const acc = await invite(h, `rls-del-${tag}-former-${stamp}@example.test`, owner, {
+          status: 'accepted',
+          accepted_by: u,
+          accepted_at: '2026-01-05T00:00:00Z',
+        });
+        // What a phone/OAuth sign-up without an email looks like (NULL), and a
+        // blank one: made directly, because the API cannot make either.
+        await db('update auth.users set email = $2 where id = $1', [u, value]);
+        emails.set(u, null);
+
+        await deleteAccount(u); // must not raise
+
+        expect({ tag, accepted: await row('household_invitations', acc) }).toEqual({
+          tag,
+          accepted: null,
+        });
+        expect({
+          tag,
+          unrelatedKept: (await row('household_invitations', unrelated)) !== null,
+        }).toEqual({
+          tag,
+          unrelatedKept: true,
+        });
+      }
+
+      // UNCONFIRMED: the address is not proven to be this account's. Deleting a
+      // never-confirmed sign-up (e.g. a dashboard spam clean-up) must not wipe the
+      // real owner's invitations.
+      const squatAddr = `rls-del-unconfirmed10-${stamp}@example.test`;
+      const { data: created, error } = await svc().auth.admin.createUser({
+        email: squatAddr,
+        password: PWD,
+        email_confirm: false,
+      });
+      if (error || !created.user) throw new Error(`create unconfirmed user: ${error?.message}`);
+      const squatter = created.user.id;
+      toCleanUp.push(squatter);
+      emails.set(squatter, squatAddr);
+      const realOwnersInvite = await invite(h, squatAddr, owner);
+
+      await deleteAccount(squatter, [
+        {
+          hit: 'public.household_invitations.email: 1 (email)',
+          why: "addressed to an UNCONFIRMED address - not proven to be the deleted account's, so kept",
+        },
+      ]);
+      expect(await row('household_invitations', realOwnersInvite)).toMatchObject({
+        status: 'pending',
+      });
     });
   }
 );

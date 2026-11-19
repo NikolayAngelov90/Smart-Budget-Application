@@ -62,6 +62,7 @@ context:
 - [x] `src/lib/services/__tests__/householdMemberService.test.ts` -- assert the RPC call (household, member); the scope guard moves to the RLS suite
 - [x] `src/lib/services/__tests__/settingsService.test.ts` -- order and failure cases (prepare fails: no deleteUser; deleteUser fails: error surfaced, no profile delete)
 - [x] `src/lib/test-utils/__tests__/account-deletion.rls.test.ts` -- NEW: the scenarios below (seven tests after review; each ends in a residue scan)
+- [x] `scripts/schema-drift/dump-catalog.sql` -- (review 2) the drift dump also reads triggers the app puts on `auth.*` tables, so the gate can see `on_auth_user_deleted_remove_invitations`
 - [x] `src/lib/test-utils/__tests__/member-removal.rls.test.ts` -- (review) drives the REAL `removeMember`; asserts category, goal and budget move; asserts `created_by` is server-only
 - [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- add the residual holes to the accumulator item
 
@@ -73,7 +74,7 @@ context:
 - Given C contributed to a shared goal, when C deletes, then `goals.current_amount = SUM(goal_contributions.amount)` for that goal.
 - Given a plain member P who created a shared goal, a shared category another member used, and a shared budget, when P deletes their account, then all three belong to H's owner, the other member's contributions and rows are intact, and another member's own shared category is NOT moved (the scope guard, mutation-tested).
 - Given a plain member P (not a creator) contributed to shared goal G, when P deletes their account, then G survives and its `current_amount` drops by exactly P's contributions. Red state: without the trigger, the total is unchanged.
-- (Added 2026-11-19, Niki.) Given invitations ADDRESSED to the person (accepted by them, including at an address they later changed, or addressed to their email in any status and any letter case), when they delete their account, then every such invitation is gone, invitations they SENT survive unattributed, and a REFUSED delete removes none. The residue scan searches every text-like column for the deleted person's email as well as their id. Red state, recorded before the fix: the scan found the invitation rows.
+- (Added 2026-11-19, Niki; refined by review 2.) Given invitations ADDRESSED to the person, meaning ones they accepted (including at an address they later changed) or unaccepted ones addressed to their CONFIRMED email in any letter case and with surrounding whitespace, when they delete their account by any hard delete (the app, or a raw admin delete), then every such invitation is gone. The following survive: invitations they SENT (unattributed), an invitation at the same address accepted by SOMEONE ELSE, invitations to an UNCONFIRMED address, and near-miss addresses that merely contain theirs. A REFUSED delete removes none, and an account with a NULL or blank email deletes cleanly. No client role can EXECUTE any of the migration's five functions. The residue scan searches every text-like column for the deleted person's email as well as their id. Red state, recorded before the fix: the scan found the invitation rows.
 
 ## Spec Change Log
 
@@ -114,6 +115,29 @@ context:
   - **Release order: migration first, then merge.** Merging first meant a guaranteed 500 window on both paths until the apply. The migration is additive, so it is applied from the PR's commit while production runs main, and THEN merged. This requires "old code × new schema: compatible", proven, not assumed (see Verification). The standing rule's condition 1 is amended for this: a reviewed, CI-green PR commit meets its purpose, and the file is FROZEN once applied (any later change is a new migration).
   - **Board decisions:** notifications become a separate story, later. The two-call race window is accepted for now: revisit if users grow.
 
+- **Same date, review 2 (three layers on the `auth.users` email trigger, Niki's five attack points): patches, no loopback.**
+  - **Point 4 FAILED as committed.** `enforce_household_owner_server_only` had no REVOKE, so Supabase's default privileges gave anon and authenticated EXECUTE. Found by all three layers and by a catalog check. Now revoked. New test 8 asserts, for all five functions: no client EXECUTE; DEFINER only where needed; `search_path` pinned; owner. It also asserts that the auth trigger is BEFORE DELETE FOR EACH ROW, and that nothing on `household_invitations` (FK, trigger, rule, forced RLS) can make it raise.
+  - **Point 2:** whitespace was not handled. The match is now `lower(btrim())` on both sides. New test 9 adds a mixed-case ACCOUNT email, padded and mixed-case invitations, and near-misses that must survive.
+  - **Point 3, two scope corrections.** These are the refinements to the earlier instruction:
+    - **Another person's acceptance is kept.** The email arm matched invitations already accepted by SOMEONE ELSE who held the address before, which is that person's record (P1). It now matches only unaccepted rows; the person's own acceptances go through `accepted_by`.
+    - **Unconfirmed addresses are kept.** An UNCONFIRMED address is not proven to be the account's, so deleting a never-confirmed sign-up must not wipe the real owner's invitations. The email arm now requires `email_confirmed_at`.
+  - **Point 1:** a NULL or blank email matches nothing (`nullif(btrim())`). New test 10 deletes accounts with NULL and blank addresses. Production: 0 users with NULL email, providers `email` and `google`.
+  - **The trigger now has a test on a RAW `admin.deleteUser`** with no preparation (test 9). There is an index for the email arm, and comments now state the failure mode (fail-closed, deliberate), that coverage is hard deletes only (not soft delete or TRUNCATE), and the known limits.
+  - **Point 5 / the gate:** the drift dump read triggers only for the `public` schema, so the drift check could not see this trigger. Fixed in `dump-catalog.sql`; both sides were checked to hash `on_auth_user_created` identically, so the change adds no false drift.
+  - **Red before the fix:** `Tests:       3 failed, 7 passed, 10 total` (test 8: anon/authenticated EXECUTE on the guard; test 9: the padded invitation survived; test 10: the unconfirmed address's invitation was deleted). After: `10 passed`.
+  - **Deferred:**
+    - a SECURITY question: does production require email confirmation? If not, `GET /api/invitations/mine` hands invitation tokens to anyone who registers the invitee's address;
+    - function ACLs in the drift dump;
+    - GoTrue's audit log keeping the email (P2);
+    - a stale allowlist entry.
+  - **Rejected:**
+    - SECURITY DEFINER on the RPCs (the 026 convention);
+    - same-address SSO accounts (no SSO; OAuth links by email);
+    - `DROP TRIGGER` needing ownership (it worked on about 24 local re-applies with the trigger present; production's apply is a first apply);
+    - backfill (production has 0 orphaned accepted invitations);
+    - "jsonb not scanned for email" (it is);
+    - the en/bg `lower()` divergence.
+
 ## Design Notes
 
 **26 FKs to `auth.users`, from the catalog:**
@@ -150,14 +174,26 @@ Nothing here is destructive. If the delete never follows, N owns H and is its on
 - `npx jest` -- expected: `Tests: ... passed`, 0 failed, floor ok
 - CI `RLS Integration Tests` -- expected: the new suite passes on the local stack; red states recorded for the trigger, the copy/repoint, and the ordering
 
-**Results (2026-11-19, final code incl. the email fix; local stack on CLI 2.105.0, the CI pin):**
+**Results (2026-11-19, final code after review 2; local stack on CLI 2.105.0, the CI pin):**
 - `npm run lint`: `files linted: 649   errors: 0   warnings: 0 (max 0)`; `npm run format:check`: `All matched files use Prettier code style!`
 - `npx tsc --noEmit`: exit 0
-- `npm run test:order` + `scripts/ci/assert-test-run.sh`: `Tests:       73 skipped, 2718 passed, 2791 total`, `ok: 2718 tests ran, in the pinned order 20261029`
-- `npm run test:rls`, the FULL suite on the committed bytes: `Test Suites: 14 passed, 14 total`, `Tests:       73 passed, 73 total`
-- **The email, test before fix.**
-  - Before section 5 was applied: `Tests:       2 failed, 5 passed, 7 total`. The hits were `public.household_invitations.email: 3 (email)` in test 5 and `: 1 (email)` in test 2, and nothing else.
-  - After: `Tests:       7 passed, 7 total`.
+- `npm run test:order` + `scripts/ci/assert-test-run.sh`: `Tests:       76 skipped, 2718 passed, 2794 total`, `ok: 2718 tests ran, in the pinned order 20261029`
+- `npm run test:rls`, the FULL suite, with BOTH lines checked: `Test Suites: 14 passed, 14 total`, `Tests:       76 passed, 76 total`. The first run of the review-2 tests failed at SUITE level only: the cleanup `afterAll` exceeded Jest's 5 s default, and `Tests:` alone could not show that. It now has an explicit 180 s timeout.
+- **The email: test before fix.**
+  - Round 1, before section 5: `Tests:       2 failed, 5 passed, 7 total` (the invitation rows, and nothing else); after: green.
+  - Review 2, before its fixes: `Tests:       3 failed, 7 passed, 10 total` (the guard's EXECUTE grant, the padded invitation, the unconfirmed address); after: `10 passed`.
+- **Email-trigger mutants, on the final bytes:**
+  - M18 trigger dropped: `5 failed, 5 passed, 10 total` (tests 2, 5, 8, 9, 10)
+  - M19 case-sensitive: `2 failed, 8 passed, 10 total` (tests 5, 9)
+  - M20 `accepted_by` arm dropped: `2 failed, 8 passed, 10 total` (tests 5, 10)
+- **Review-2 guards, each red on its test:**
+  - M21 no trim: test 9
+  - M22 deletes another person's acceptance: test 9
+  - M23 unconfirmed treated as theirs: test 10
+  - M24 REVOKE dropped: test 8
+  - M25 AFTER instead of BEFORE: tests 5, 8, 10
+  - T1–T4 re-run: T4 (email path blind) is red on test 4's presence control and on tests 9 and 10, whose allowances must be found.
+  - The `nullif` blank-email guard cannot be made red: the invitations table's non-empty CHECK already prevents a blank match. It is kept as an unreachable guard.
 - **Old code × new schema: COMPATIBLE.** Where I looked:
   1. **Writers of `households.created_by` on main:** `git grep` over `src` and `supabase`. App code only INSERTs (`householdService.createHousehold`) and DELETEs (its rollback); every other call is a SELECT. No SQL anywhere UPDATEs `households`. The guard is BEFORE UPDATE, so nothing on main reaches it.
   2. **The old deletion path:** profile delete, then `admin.deleteUser`.
@@ -250,27 +286,30 @@ Nothing here is destructive. If the delete never follows, N owns H and is its on
 **P2 for the email**
 
 - Invitations ADDRESSED to the person go inside the auth delete's own transaction (a refused delete rolls back).
-  [`20261119100000_prepare_account_deletion.sql:336`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L336)
+  [`20261119100000_prepare_account_deletion.sql:371`](../../supabase/migrations/20261119100000_prepare_account_deletion.sql#L371)
 
 - The seeds the email scan went red on before the fix, plus the over-deletion guard.
-  [`account-deletion.rls.test.ts:726`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L726)
+  [`account-deletion.rls.test.ts:773`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L773)
 
 **Tests against Postgres**
 
+- Review 2's three: privileges and structure, the email rule attacked, accounts with no proven email.
+  [`account-deletion.rls.test.ts:894`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L894)
+
 - The real service, then a residue scan of every user-referencing column, after each deletion.
-  [`account-deletion.rls.test.ts:106`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L106)
+  [`account-deletion.rls.test.ts:108`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L108)
 
 - Why the scan is wider than the FKs (an FK scan cannot fail), plus its NOT MEASURED must-find.
-  [`account-deletion.rls.test.ts:276`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L276)
+  [`account-deletion.rls.test.ts:305`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L305)
 
 - The creator scenario: copy, reuse, rename, invitation, goals, savings link.
-  [`account-deletion.rls.test.ts:384`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L384)
+  [`account-deletion.rls.test.ts:431`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L431)
 
 - A REFUSED auth delete destroys nothing; a retry succeeds.
-  [`account-deletion.rls.test.ts:576`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L576)
+  [`account-deletion.rls.test.ts:623`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L623)
 
 - New-owner choice: ties, NULL join dates, exactly one admin.
-  [`account-deletion.rls.test.ts:822`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L822)
+  [`account-deletion.rls.test.ts:869`](../../src/lib/test-utils/__tests__/account-deletion.rls.test.ts#L869)
 
 - Member removal now drives the real service, no longer a stale mirror.
   [`member-removal.rls.test.ts:161`](../../src/lib/test-utils/__tests__/member-removal.rls.test.ts#L161)
@@ -279,6 +318,9 @@ Nothing here is destructive. If the delete never follows, N owns H and is its on
   [`member-removal.rls.test.ts:220`](../../src/lib/test-utils/__tests__/member-removal.rls.test.ts#L220)
 
 **Peripherals**
+
+- The drift gate now reads the app's triggers on auth.* tables, so it can see this one.
+  [`dump-catalog.sql:137`](../../scripts/schema-drift/dump-catalog.sql#L137)
 
 - Pins the app's service-role env to the local stack, with a hard assert before each real call.
   [`rlsClient.ts:67`](../../src/lib/test-utils/rlsClient.ts#L67)

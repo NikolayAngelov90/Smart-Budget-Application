@@ -135,13 +135,26 @@ WHERE n.nspname IN ('public', 'private')
 ORDER BY 2;
 
 -- ---------------------------------------------------------------- TRIGGERS
-SELECT 'TRIGGER', c.relname, t.tgname,
+-- Public tables' triggers, PLUS triggers the APP puts on auth.* tables - those
+-- whose function lives in public/private (on_auth_user_created; since
+-- 20261119100000 on_auth_user_deleted_remove_invitations, the whole P2 email fix).
+-- Until 2026-11-19 this read public only, so a missing or AFTER-instead-of-BEFORE
+-- auth trigger in production passed this gate while the function body matched.
+-- GoTrue's own auth triggers (functions in auth) stay out. Public tables keep their
+-- bare relname so existing keys do not move; auth tables are schema-qualified.
+-- Checked before the change: both sides hash on_auth_user_created identically.
+SELECT 'TRIGGER',
+       CASE WHEN n.nspname = 'public' THEN c.relname ELSE n.nspname || '.' || c.relname END,
+       t.tgname,
        md5(regexp_replace(pg_get_triggerdef(t.oid), '\s+', ' ', 'g'))
 FROM pg_catalog.pg_trigger t
 JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public' AND NOT t.tgisinternal
-ORDER BY c.relname, t.tgname;
+JOIN pg_catalog.pg_proc f ON f.oid = t.tgfoid
+JOIN pg_catalog.pg_namespace fn ON fn.oid = f.pronamespace
+WHERE NOT t.tgisinternal
+  AND (n.nspname = 'public' OR (n.nspname = 'auth' AND fn.nspname IN ('public', 'private')))
+ORDER BY 2, 3;
 
 -- ---------------------------------------------------------------- ENVIRONMENT
 -- WHY THESE ARE HERE. The schema comparison found a Postgres MAJOR VERSION
