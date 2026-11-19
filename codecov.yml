@@ -32,3 +32,11 @@ ignore:
   # Same reasoning as src/test-utils/** in jest.config.js: scaffolding should
   # not move the ratio for shipped code either way.
   - "scripts/**"
+  # TEST-SUPPORT CODE (2026-11-18): the same four patterns as jest.config.js
+  # collectCoverageFrom, kept in step and checked in CI by
+  # scripts/ci/check-coverage-scope.mjs. src/lib/test-utils was excluded in
+  # neither place; its 0% turned codecov/patch red on code the RLS job runs.
+  - "src/test-utils/**"
+  - "src/lib/test-utils/**"
+  - "src/**/__tests__/**"
+  - "src/**/__mocks__/**"

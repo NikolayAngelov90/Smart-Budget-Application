@@ -26,6 +26,11 @@ import { GET } from '@/app/api/insights/route';
 import { PUT as dismissPUT } from '@/app/api/insights/[id]/dismiss/route';
 import { PUT as undismissPUT } from '@/app/api/insights/[id]/undismiss/route';
 import { createClient } from '@/lib/supabase/server';
+import {
+  createSupabaseMock,
+  type QueryResult,
+  type SupabaseMock,
+} from '@/test-utils/supabaseChain';
 
 jest.mock('@/lib/supabase/server');
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -98,51 +103,27 @@ const mockInsights = [
 ];
 
 describe('Insights API Integration Tests (AC-10.9.5)', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockQuery: any;
-
+  /*
+   * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. One hand-rolled object
+   * served as client AND chain for every test, with a home-made
+   * `mockResolvedValue` hook to swap its result. Every route here makes exactly
+   * ONE `insights` query, so "swap the result" is "rebuild the client with this
+   * `insights` result", and the filter assertions read that query's calls.
+   */
+  let db: SupabaseMock;
   const userId = 'user-123';
+
+  /** The client for this test, whose single `insights` query returns `result`. */
+  function insightsReturn(result: QueryResult) {
+    db = createSupabaseMock({ tables: { insights: result }, user: { id: userId } });
+    mockCreateClient.mockResolvedValue(db.client);
+  }
+
+  const calls = (method: string) => db.allCallsTo('insights', method);
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    let resolvedValue: { data: unknown; error: null; count: number } = {
-      data: mockInsights,
-      error: null,
-      count: mockInsights.length,
-    };
-
-    mockQuery = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      or: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      range: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({ data: null, error: null }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      then: jest.fn((resolve: any) => Promise.resolve(resolvedValue).then(resolve)),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockResolvedValue: (value: any) => {
-        resolvedValue = value;
-        return mockQuery;
-      },
-    };
-
-    mockSupabase = {
-      auth: {
-        getUser: jest.fn().mockResolvedValue({
-          data: { user: { id: userId } },
-          error: null,
-        }),
-      },
-      from: jest.fn(() => mockQuery),
-    };
-
-    mockCreateClient.mockResolvedValue(mockSupabase);
+    insightsReturn({ data: mockInsights, error: null, count: mockInsights.length });
   });
 
   // ─── GET /api/insights ────────────────────────────────────────────────────
@@ -159,7 +140,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: new Error('Unauthorized'),
       });
@@ -172,7 +153,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
 
     test('filters by type=spending_increase', async () => {
       const filteredInsights = mockInsights.filter((i) => i.type === 'spending_increase');
-      mockQuery.mockResolvedValue({
+      insightsReturn({
         data: filteredInsights,
         error: null,
         count: filteredInsights.length,
@@ -184,12 +165,12 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      expect(mockQuery.eq).toHaveBeenCalledWith('type', 'spending_increase');
+      expect(calls('eq')).toContainEqual(['type', 'spending_increase']);
     });
 
     test('filters by dismissed=false (only active insights)', async () => {
       const activeInsights = mockInsights.filter((i) => !i.is_dismissed);
-      mockQuery.mockResolvedValue({
+      insightsReturn({
         data: activeInsights,
         error: null,
         count: activeInsights.length,
@@ -199,12 +180,12 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      expect(mockQuery.eq).toHaveBeenCalledWith('is_dismissed', false);
+      expect(calls('eq')).toContainEqual(['is_dismissed', false]);
     });
 
     test('filters by dismissed=true (only dismissed insights)', async () => {
       const dismissedInsights = mockInsights.filter((i) => i.is_dismissed);
-      mockQuery.mockResolvedValue({
+      insightsReturn({
         data: dismissedInsights,
         error: null,
         count: dismissedInsights.length,
@@ -214,17 +195,17 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      expect(mockQuery.eq).toHaveBeenCalledWith('is_dismissed', true);
+      expect(calls('eq')).toContainEqual(['is_dismissed', true]);
     });
 
     test('applies search filter to title and description', async () => {
-      mockQuery.mockResolvedValue({ data: [mockInsights[0]], error: null, count: 1 });
+      insightsReturn({ data: [mockInsights[0]], error: null, count: 1 });
 
       const request = createMockRequest('http://localhost:3000/api/insights?search=Food');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      expect(mockQuery.or).toHaveBeenCalledWith(expect.stringContaining('title.ilike.%Food%'));
+      expect(calls('or')).toContainEqual([expect.stringContaining('title.ilike.%Food%')]);
     });
 
     test('applies pagination via limit and offset', async () => {
@@ -232,7 +213,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
       await GET(request);
 
       // range(offset, offset+limit-1) → range(5, 14)
-      expect(mockQuery.range).toHaveBeenCalledWith(5, 14);
+      expect(calls('range')).toContainEqual([5, 14]);
     });
 
     test('clamps limit to max 100', async () => {
@@ -240,27 +221,30 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
       await GET(request);
 
       // Should use clamped limit of 100: range(0, 99)
-      expect(mockQuery.range).toHaveBeenCalledWith(0, 99);
+      expect(calls('range')).toContainEqual([0, 99]);
     });
 
     test('orders by custom field when orderBy param provided', async () => {
       const request = createMockRequest('http://localhost:3000/api/insights?orderBy=priority');
       await GET(request);
 
-      expect(mockQuery.order).toHaveBeenCalledWith('priority', { ascending: true });
+      expect(calls('order')).toContainEqual(['priority', { ascending: true }]);
     });
 
     test('ignores invalid insight type in type filter', async () => {
       const request = createMockRequest('http://localhost:3000/api/insights?type=invalid_type');
       await GET(request);
 
-      // Should NOT call eq with an invalid type
-      const eqCalls = mockQuery.eq.mock.calls;
-      expect(eqCalls.some((call: string[]) => call[0] === 'type')).toBe(false);
+      // Should NOT call eq with an invalid type. PAIRED with the presence of
+      // eq calls at all, or "no type filter" would also hold for a query that
+      // never ran.
+      const eqCalls = calls('eq');
+      expect(eqCalls.length).toBeGreaterThan(0);
+      expect(eqCalls.some((call) => call[0] === 'type')).toBe(false);
     });
 
     test('returns empty array when no insights match', async () => {
-      mockQuery.mockResolvedValue({ data: [], error: null, count: 0 });
+      insightsReturn({ data: [], error: null, count: 0 });
 
       const request = createMockRequest('http://localhost:3000/api/insights');
       const response = await GET(request);
@@ -272,7 +256,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
     });
 
     test('returns 500 on database error', async () => {
-      mockQuery.mockResolvedValue({
+      insightsReturn({
         data: null,
         error: new Error('DB error'),
         count: null,
@@ -291,7 +275,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
     const params = Promise.resolve({ id: VALID_UUID });
 
     test('dismisses insight and returns updated record', async () => {
-      mockQuery.single.mockResolvedValue({
+      insightsReturn({
         data: { ...mockInsights[0], is_dismissed: true, dismissed_at: new Date().toISOString() },
         error: null,
       });
@@ -306,13 +290,11 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.insight).toBeDefined();
-      expect(mockQuery.update).toHaveBeenCalledWith(
-        expect.objectContaining({ is_dismissed: true })
-      );
+      expect(calls('update')).toContainEqual([expect.objectContaining({ is_dismissed: true })]);
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: null,
       });
@@ -339,7 +321,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
     });
 
     test('returns 404 when insight not found (PGRST116)', async () => {
-      mockQuery.single.mockResolvedValue({
+      insightsReturn({
         data: null,
         error: { code: 'PGRST116', message: 'No rows found' },
       });
@@ -360,7 +342,7 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
     const params = Promise.resolve({ id: VALID_UUID });
 
     test('restores dismissed insight (sets is_dismissed=false)', async () => {
-      mockQuery.single.mockResolvedValue({
+      insightsReturn({
         data: { ...mockInsights[2], is_dismissed: false, dismissed_at: null },
         error: null,
       });
@@ -374,13 +356,11 @@ describe('Insights API Integration Tests (AC-10.9.5)', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(mockQuery.update).toHaveBeenCalledWith(
-        expect.objectContaining({ is_dismissed: false })
-      );
+      expect(calls('update')).toContainEqual([expect.objectContaining({ is_dismissed: false })]);
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: null,
       });

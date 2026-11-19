@@ -64,6 +64,12 @@ jobs:
       - name: Run tests
         run: npm run test:coverage
 
+      # Coverage measures SHIPPED code: a product file must be in the report and
+      # no test-support file may be. Blocking, because an exclusion list that
+      # over-reaches drops product code from the ratio silently.
+      - name: Check coverage scope (test-support excluded, product included)
+        run: node scripts/ci/check-coverage-scope.mjs
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:

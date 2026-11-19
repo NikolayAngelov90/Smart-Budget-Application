@@ -82,7 +82,7 @@ describe('AIBudgetCoach', () => {
       isLoading: true,
       mutate: mockMutate,
       isValidating: false,
-    } as any);
+    } as never);
 
     render(<AIBudgetCoach />, { wrapper: AllProviders });
 
@@ -96,7 +96,7 @@ describe('AIBudgetCoach', () => {
       isLoading: false,
       mutate: mockMutate,
       isValidating: false,
-    } as any);
+    } as never);
 
     render(<AIBudgetCoach />, { wrapper: AllProviders });
 
@@ -110,7 +110,7 @@ describe('AIBudgetCoach', () => {
       isLoading: false,
       mutate: mockMutate,
       isValidating: false,
-    } as any);
+    } as never);
 
     render(<AIBudgetCoach />, { wrapper: AllProviders });
 
@@ -128,7 +128,7 @@ describe('AIBudgetCoach', () => {
       isLoading: false,
       mutate: mockMutate,
       isValidating: false,
-    } as any);
+    } as never);
 
     render(<AIBudgetCoach />, { wrapper: AllProviders });
 
@@ -145,7 +145,7 @@ describe('AIBudgetCoach', () => {
       isLoading: false,
       mutate: mockMutate,
       isValidating: false,
-    } as any);
+    } as never);
 
     render(<AIBudgetCoach />, { wrapper: AllProviders });
 
@@ -162,7 +162,7 @@ describe('AIBudgetCoach', () => {
       isLoading: false,
       mutate: mockMutate,
       isValidating: false,
-    } as any);
+    } as never);
 
     render(<AIBudgetCoach />, { wrapper: AllProviders });
 
@@ -177,7 +177,7 @@ describe('AIBudgetCoach', () => {
       isLoading: false,
       mutate: mockMutate,
       isValidating: false,
-    } as any);
+    } as never);
 
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
@@ -213,7 +213,7 @@ describe('AIBudgetCoach', () => {
       isLoading: false,
       mutate: mockMutate,
       isValidating: false,
-    } as any);
+    } as never);
 
     (global.fetch as jest.Mock).mockRejectedValue(new Error('Failed to dismiss'));
 

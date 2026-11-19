@@ -9,7 +9,9 @@ import type { Insight } from '@/types/database.types';
 // Mock Chakra UI
 jest.mock('@chakra-ui/react', () => ({
   ...jest.requireActual('@chakra-ui/react'),
-  useBreakpointValue: jest.fn((values: any) => values.base || values.md),
+  useBreakpointValue: jest.fn(
+    (values: { base?: unknown; md?: unknown }) => values.base || values.md
+  ),
 }));
 
 // Helper to create mock insight

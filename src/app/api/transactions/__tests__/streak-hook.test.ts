@@ -65,6 +65,7 @@ import {
   createChallenge,
   getLatestChallenge,
 } from '@/lib/services/comebackService';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockGetLatestChallenge = getLatestChallenge as jest.MockedFunction<typeof getLatestChallenge>;
 const mockCreateChallenge = createChallenge as jest.MockedFunction<typeof createChallenge>;
@@ -105,32 +106,25 @@ const STREAK_STATE = {
   freeze_used_on: null,
 };
 
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The hand-rolled
+ * "universal" stub answered by table AND terminal. Per table here, faithful to
+ * what each query actually received: transactions is a QUEUE - the insert, then
+ * [] for every later read (a dry queue repeats); user_profiles is read with
+ * maybeSingle(), so it gets what the stub's maybeSingle() returned.
+ */
 function makeClient(category: object) {
-  const universal = (table: string) => {
-    const q: Record<string, jest.Mock> = {};
-    for (const m of ['select', 'eq', 'gte', 'lt', 'is', 'order', 'limit', 'not', 'insert']) {
-      q[m] = jest.fn(() => q);
-    }
-    q.single = jest
-      .fn()
-      .mockResolvedValue(
-        table === 'categories'
-          ? { data: category, error: null }
-          : table === 'transactions'
-            ? { data: { id: 'tx-new' }, error: null }
-            : { data: { preferences: {} }, error: null }
-      );
-    q.maybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
-    (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) =>
-      resolve({ data: [], error: null });
-    return q;
-  };
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
+  return createSupabaseMock({
+    user: { id: 'user-1' },
+    tables: {
+      categories: { data: category, error: null },
+      transactions: [
+        { data: { id: 'tx-new' }, error: null },
+        { data: [], error: null },
+      ],
+      user_profiles: { data: null, error: null },
     },
-    from: jest.fn((t: string) => universal(t)),
-  };
+  }).client;
 }
 
 const req = (body: unknown) => ({ json: async () => body }) as never;

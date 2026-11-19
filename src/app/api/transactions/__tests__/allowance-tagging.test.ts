@@ -41,6 +41,7 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { POST } from '@/app/api/transactions/route';
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock, type SupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
@@ -65,45 +66,34 @@ interface MockOpts {
   allowance?: object | null;
 }
 
-let insertArg: Record<string, unknown> | null;
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The hand-rolled
+ * "universal" stub answered by table AND terminal. Per table here, faithful to
+ * what each query actually received: transactions is a QUEUE - the insert, then
+ * [] for every later read (a dry queue repeats); user_profiles is read with
+ * maybeSingle(), so it gets what the stub's maybeSingle() returned.
+ */
+let db: SupabaseMock;
 
 function makeClient({ category, allowance = ALLOWANCE }: MockOpts) {
-  insertArg = null;
-  const universal = (table: string) => {
-    const q: Record<string, jest.Mock> = {};
-    for (const m of ['select', 'eq', 'gte', 'lt', 'order', 'limit', 'not']) q[m] = jest.fn(() => q);
-    q.insert = jest.fn((arg: Record<string, unknown>) => {
-      insertArg = arg;
-      return q;
-    });
-    q.single = jest
-      .fn()
-      .mockResolvedValue(
-        table === 'categories'
-          ? { data: category, error: category ? null : { message: 'x' } }
-          : table === 'transactions'
-            ? { data: { id: 'tx-new', ...(insertArg ?? {}) }, error: null }
-            : { data: { preferences: {} }, error: null }
-      );
-    q.maybeSingle = jest
-      .fn()
-      .mockResolvedValue(
-        table === 'personal_allowances'
-          ? { data: allowance, error: null }
-          : { data: { preferences: {} }, error: null }
-      );
-    // Awaited filter chains (nudge selects, goals) resolve empty.
-    (q as unknown as { then: unknown }).then = (resolve: (v: unknown) => unknown) =>
-      resolve({ data: [], error: null });
-    return q;
-  };
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
+  db = createSupabaseMock({
+    user: { id: 'user-1' },
+    tables: {
+      categories: { data: category, error: category ? null : { message: 'x' } },
+      personal_allowances: { data: allowance, error: null },
+      transactions: [
+        { data: { id: 'tx-new' }, error: null },
+        { data: [], error: null },
+      ],
+      user_profiles: { data: { preferences: {} }, error: null },
     },
-    from: jest.fn((t: string) => universal(t)),
-  };
+  });
+  return db.client;
 }
+
+/** The payload POST inserted into transactions (the old stub captured it by hand). */
+const insertArg = () =>
+  db.allCallsTo('transactions', 'insert')[0]?.[0] as Record<string, unknown> | undefined;
 
 function req(body: unknown) {
   return { json: async () => body } as never;
@@ -117,8 +107,8 @@ it('tagging a personal-category expense to the allowance forces household_id NUL
   mockCreateClient.mockResolvedValue(makeClient({ category: PERSONAL_CAT }) as never);
   const res = await POST(req({ ...base, category_id: 'cat-p', allowance_id: 'allw-1' }));
   expect(res.status).toBe(201);
-  expect(insertArg?.allowance_id).toBe('allw-1');
-  expect(insertArg?.household_id).toBeNull();
+  expect(insertArg()?.allowance_id).toBe('allw-1');
+  expect(insertArg()?.household_id).toBeNull();
 });
 
 it('rejects tagging a SHARED category to the allowance (400)', async () => {
@@ -149,5 +139,5 @@ it('a normal personal expense without a tag has null allowance_id', async () => 
   mockCreateClient.mockResolvedValue(makeClient({ category: PERSONAL_CAT }) as never);
   const res = await POST(req({ ...base, category_id: 'cat-p' }));
   expect(res.status).toBe(201);
-  expect(insertArg?.allowance_id).toBeNull();
+  expect(insertArg()?.allowance_id).toBeNull();
 });

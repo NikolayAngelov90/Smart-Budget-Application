@@ -54,14 +54,24 @@
  *    `if (usersError) throw usersError` branch had never been exercised. The
  *    chain is now complete AND the test asserts on `details`, so a regression
  *    to a malformed mock reddens instead of passing.
+ *
+ * 4. MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`, and OFF the global
+ *    default. This was one of the two files that depended on jest.setup.js's
+ *    `createClient` default (it captured that implementation and restored it).
+ *    It now owns its server mock, and `beforeEach` installs a FRESH factory
+ *    client per test - the same guarantee (no test inherits another's client),
+ *    with no global state to capture. The hygiene test below guards it.
  */
 
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/cron/generate-insights/route';
 import { createClient } from '@/lib/supabase/server';
 import { generateInsights } from '@/lib/services/insightService';
-import { mockSupabaseClient } from '../../../setup/supabase-mock';
+import { createSupabaseMock, type QueryResult, type SupabaseMock } from '@/test-utils/supabaseChain';
 
+jest.mock('@/lib/supabase/server', () => ({
+  createClient: jest.fn(),
+}));
 jest.mock('@/lib/services/insightService', () => ({
   generateInsights: jest.fn(),
 }));
@@ -70,23 +80,14 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
 const mockGenerateInsights = generateInsights as jest.MockedFunction<typeof generateInsights>;
 
 /**
- * jest.setup.js mocks `createClient` as `jest.fn(async () => mockSupabaseClient)`.
- * Captured HERE, at module load, before any test can overwrite it - restoring it
- * in `beforeEach` is what stops one test's `mockResolvedValue` leaking into the
- * next, without `resetAllMocks()` destroying the factory's implementation.
+ * `.from('user_profiles').select('id').limit(1000)`. The factory answers any
+ * chain, so it can never throw the TypeError that once supplied this file's 500.
  */
-const DEFAULT_CREATE_CLIENT = mockCreateClient.getMockImplementation();
+const supabaseReturning = (result: QueryResult) =>
+  createSupabaseMock({ tables: { user_profiles: result } });
 
-/**
- * The real chain: `.from(table).select(cols).limit(n)`. All three, or the route
- * throws a TypeError and the test passes for the wrong reason.
- */
-const supabaseReturning = (result: { data: unknown; error: unknown }) => {
-  const limit = jest.fn().mockResolvedValue(result);
-  const select = jest.fn().mockReturnValue({ limit });
-  const from = jest.fn().mockReturnValue({ select });
-  return { client: { from } as never, from, select, limit };
-};
+/** This test's default client - fresh per test, installed in `beforeEach`. */
+let defaultDb: SupabaseMock;
 
 // Tests for POST /api/cron/generate-insights
 describe('POST /api/cron/generate-insights', () => {
@@ -98,7 +99,8 @@ describe('POST /api/cron/generate-insights', () => {
     jest.clearAllMocks();
     // clearAllMocks clears CALLS, not IMPLEMENTATIONS. Without this line a
     // mockResolvedValue set by any test above survives into every test below.
-    mockCreateClient.mockImplementation(DEFAULT_CREATE_CLIENT!);
+    defaultDb = createSupabaseMock();
+    mockCreateClient.mockResolvedValue(defaultDb.client);
   });
 
   afterEach(() => {
@@ -153,15 +155,15 @@ describe('POST /api/cron/generate-insights', () => {
     // No apostrophe in this name, deliberately. `jest -t` takes a REGEX and the
     // extractors in this repo read test names out of source; a quote or a
     // parenthesis in a name is how one of them silently addressed nothing.
-    it('beforeEach restores the global createClient default, so no test inherits the client of another', async () => {
+    it('beforeEach installs a fresh default client, so no test inherits the client of another', async () => {
       // THE GUARD FOR THE beforeEach LINE, which is otherwise undetectable.
       // `jest.clearAllMocks()` clears recorded CALLS and leaves IMPLEMENTATIONS,
       // so a `mockResolvedValue` set by any test in this file survives into
       // every test after it. This test sets up nothing and asserts it is handed
-      // the SHARED default client - under `--randomize` it runs after the tests
-      // that override `createClient`, so without the restoration it would be
-      // handed their client instead and this identity check fails.
-      await expect(createClient()).resolves.toBe(mockSupabaseClient);
+      // THIS test's fresh default - under `--randomize` it runs after the tests
+      // that override `createClient`, so without the beforeEach line it would be
+      // handed their client (or none) and this identity check fails.
+      await expect(createClient()).resolves.toBe(defaultDb.client);
     });
   });
 
@@ -194,11 +196,11 @@ describe('POST /api/cron/generate-insights', () => {
       // ESTABLISHES ITS OWN PRECONDITION. This test previously set up nothing
       // and rode jest.setup.js's global default, which is why reordering the
       // file broke it and why it never asserted that a user was processed.
-      const { client, from, select, limit } = supabaseReturning({
+      const db = supabaseReturning({
         data: [{ id: 'user-a' }, { id: 'user-b' }],
         error: null,
       });
-      mockCreateClient.mockResolvedValue(client);
+      mockCreateClient.mockResolvedValue(db.client);
       mockGenerateInsights.mockResolvedValue([{}, {}, {}] as never);
 
       const request = new NextRequest('http://localhost:3000/api/cron/generate-insights', {
@@ -226,9 +228,9 @@ describe('POST /api/cron/generate-insights', () => {
       expect(mockGenerateInsights).toHaveBeenCalledWith('user-b', false);
 
       // The query is scoped as the route documents it.
-      expect(from).toHaveBeenCalledWith('user_profiles');
-      expect(select).toHaveBeenCalledWith('id');
-      expect(limit).toHaveBeenCalledWith(1000);
+      expect(db.from).toHaveBeenCalledWith('user_profiles');
+      expect(db.callsTo('user_profiles', 'select')).toContainEqual(['id']);
+      expect(db.callsTo('user_profiles', 'limit')).toContainEqual([1000]);
 
       jest.useRealTimers();
     });

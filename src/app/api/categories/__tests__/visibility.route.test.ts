@@ -21,35 +21,33 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { createClient } from '@/lib/supabase/server';
 import { PUT } from '../[id]/route';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. No test here renames,
+ * so PUT makes no duplicate check: categories is [fetch, update]. (The
+ * hand-rolled chain answered the first single() with the fetch and every later
+ * one with the update.)
+ */
 function makeClient(opts: { user?: object | null; category?: object | null; updated?: object }) {
   const {
     user = { id: 'user-1' },
     category,
     updated = { id: 'c1', visibility_level: 'private' },
   } = opts;
-  const cat = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    neq: jest.fn().mockReturnThis(),
-    update: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }), // no duplicate
-    single: jest
-      .fn()
-      .mockResolvedValueOnce({ data: category, error: category ? null : { message: 'x' } })
-      .mockResolvedValue({ data: updated, error: null }),
-  };
-  return {
-    auth: {
-      getUser: jest
-        .fn()
-        .mockResolvedValue({ data: { user }, error: user ? null : { message: 'no' } }),
+  return createSupabaseMock({
+    user: user as { id: string } | null,
+    tables: {
+      categories: [
+        { data: category, error: category ? null : { message: 'x' } }, // fetch
+        { data: updated, error: null }, // update
+      ],
     },
-    from: jest.fn(() => cat),
-  };
+  }).client;
 }
+
 function req(body: unknown) {
   return { json: async () => body } as never;
 }

@@ -622,7 +622,6 @@ describe('schema drift check', () => {
       const floor = floors[name] as number;
       const n = rows.filter((l) => l.startsWith(`${kind}\t`)).length;
       expect(n).toBeGreaterThan(0);
-      // eslint-disable-next-line jest/no-conditional-in-test
       if (n < floor) {
         throw new Error(
           `baseline() has ${n} ${kind} rows but the floor is ${floor}: ` +

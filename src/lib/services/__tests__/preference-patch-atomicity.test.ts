@@ -27,6 +27,7 @@ jest.mock('@/lib/utils/logger', () => ({
 }));
 
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { logger } from '@/lib/utils/logger';
 import { updateUserProfile, UnknownPreferenceKeyError } from '@/lib/services/settingsService';
 
@@ -49,22 +50,17 @@ function makeDb(initial: Record<string, unknown>) {
     return { data: { id: USER, preferences: { ...state.preferences } }, error: null };
   });
 
-  const client = {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({ data: { user: { id: USER } }, error: null }),
-    },
-    rpc,
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({
-        data: { id: USER, preferences: { ...state.preferences } },
-        error: null,
-      }),
-    })),
-  };
-  return { client, state, rpc };
+  // MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The stateful rpc above
+  // is the subject of this file and stays exactly as written. `from` is reached
+  // only on the migration-041 FALLBACK path, where the rpc is stubbed to fail and
+  // state never moves - so a fixed user_profiles row equal to the initial state
+  // is what the old chain returned there too.
+  const db = createSupabaseMock({
+    user: { id: USER },
+    tables: { user_profiles: { data: { id: USER, preferences: { ...initial } }, error: null } },
+  });
+  db.client.rpc = rpc;
+  return { client: db.client, state, rpc };
 }
 
 beforeEach(() => jest.clearAllMocks());

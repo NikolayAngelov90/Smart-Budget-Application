@@ -32,6 +32,11 @@ jest.mock('next/server', () => ({
 import { POST } from '@/app/api/transactions/route';
 import { PUT, DELETE } from '@/app/api/transactions/[id]/route';
 import { createClient } from '@/lib/supabase/server';
+import {
+  createSupabaseMock,
+  type QueryResult,
+  type SupabaseMock,
+} from '@/test-utils/supabaseChain';
 
 jest.mock('@/lib/supabase/server');
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -51,10 +56,7 @@ function createMockRequest(url: string, method = 'GET', body?: any): any {
 }
 
 describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockQuery: any;
+  let db: SupabaseMock;
 
   const userId = 'user-123';
   const txId = 'tx-abc-123';
@@ -74,44 +76,46 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     category: { id: categoryId, name: 'Food', color: '#FF6B6B', type: 'expense' },
   };
 
+  /*
+   * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The hand-rolled chain
+   * answered EVERY .single() in a test with one value - POST's category check,
+   * its insert, PUT's update, DELETE's pre-fetch - and every await with
+   * another. Per table, in each handler's real call order:
+   *
+   *   categories    a valid category (POST/PUT category check)
+   *   transactions  [single, awaited]: POST insert | PUT update | DELETE
+   *                 pre-fetch, then the DELETE itself
+   *
+   * The old DELETE test also queued TWO ...Once values on `single` and the
+   * route consumed one - the leak class that crosses clearAllMocks into the
+   * next test. Gone with the shared chain.
+   */
+  const CATEGORY = {
+    id: categoryId,
+    name: 'Food',
+    color: '#FF6B6B',
+    type: 'expense',
+    household_id: null,
+  };
+  function wire(
+    single: QueryResult = { data: mockTransaction, error: null },
+    awaited: QueryResult = { data: null, error: null }
+  ) {
+    db = createSupabaseMock({
+      user: { id: userId },
+      tables: {
+        categories: { data: CATEGORY, error: null },
+        transactions: [single, awaited],
+      },
+    });
+    mockCreateClient.mockResolvedValue(db.client);
+  }
+  const tx = (method: string) => db.allCallsTo('transactions', method);
+
   beforeEach(() => {
     jest.clearAllMocks();
 
-    let resolvedValue = { data: null, error: null };
-
-    mockQuery = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      neq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      range: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({ data: mockTransaction, error: null }),
-      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      then: jest.fn((resolve: any) => Promise.resolve(resolvedValue).then(resolve)),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockResolvedValue: (value: any) => {
-        resolvedValue = value;
-        return mockQuery;
-      },
-    };
-
-    mockSupabase = {
-      auth: {
-        getUser: jest.fn().mockResolvedValue({
-          data: { user: { id: userId } },
-          error: null,
-        }),
-      },
-      from: jest.fn(() => mockQuery),
-    };
-
-    mockCreateClient.mockResolvedValue(mockSupabase);
+    wire();
   });
 
   // ─── POST /api/transactions ────────────────────────────────────────────────
@@ -126,7 +130,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     };
 
     test('creates transaction and returns 201 with transaction data', async () => {
-      mockQuery.single.mockResolvedValue({ data: mockTransaction, error: null });
+      wire({ data: mockTransaction, error: null });
 
       const request = createMockRequest(
         'http://localhost:3000/api/transactions',
@@ -138,11 +142,11 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
 
       expect(response.status).toBe(201);
       expect(data.data).toBeDefined();
-      expect(mockQuery.insert).toHaveBeenCalled();
+      expect(tx('insert').length).toBeGreaterThan(0);
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: new Error('Unauthorized'),
       });
@@ -191,7 +195,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     test.each([12.5, 0.07, 0.29, 19.99, 8.11, 1234567.89, 1000, 12])(
       'accepts %p, which a naive *100 check rejects',
       async (amount) => {
-        mockQuery.single.mockResolvedValue({ data: mockTransaction, error: null });
+        wire({ data: mockTransaction, error: null });
 
         const request = createMockRequest('http://localhost:3000/api/transactions', 'POST', {
           ...validBody,
@@ -225,7 +229,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     });
 
     test('stores currency and exchange_rate when provided', async () => {
-      mockQuery.single.mockResolvedValue({
+      wire({
         data: { ...mockTransaction, currency: 'USD', exchange_rate: 1.08 },
         error: null,
       });
@@ -238,7 +242,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
       const response = await POST(request);
 
       expect(response.status).toBe(201);
-      expect(mockQuery.insert).toHaveBeenCalled();
+      expect(tx('insert').length).toBeGreaterThan(0);
     });
 
     test('enforces user_id from session (not from body)', async () => {
@@ -250,7 +254,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
       await POST(request);
 
       // The insert call should use the session user_id
-      const insertCall = mockQuery.insert.mock.calls[0][0];
+      const insertCall = tx('insert')[0]![0] as Record<string, unknown>;
       expect(insertCall.user_id).toBe(userId);
     });
   });
@@ -261,7 +265,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     const params = Promise.resolve({ id: txId });
 
     test('updates transaction fields and returns 200', async () => {
-      mockQuery.single.mockResolvedValue({
+      wire({
         data: { ...mockTransaction, amount: 75.0 },
         error: null,
       });
@@ -274,11 +278,11 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
 
       expect(response.status).toBe(200);
       expect(data.data).toBeDefined();
-      expect(mockQuery.update).toHaveBeenCalled();
+      expect(tx('update').length).toBeGreaterThan(0);
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: new Error('Unauthorized'),
       });
@@ -312,7 +316,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     });
 
     test('enforces user_id ownership (eq user_id clause)', async () => {
-      mockQuery.single.mockResolvedValue({
+      wire({
         data: { ...mockTransaction, notes: 'Updated' },
         error: null,
       });
@@ -323,7 +327,8 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
       await PUT(request, { params });
 
       // Should call eq with user_id to enforce ownership
-      expect(mockQuery.eq).toHaveBeenCalledWith('user_id', userId);
+      // PER CHAIN: the UPDATE itself is scoped to this user.
+      expect(db.callsTo('transactions', 'eq', 0)).toContainEqual(['user_id', userId]);
     });
   });
 
@@ -333,13 +338,8 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     const params = Promise.resolve({ id: txId });
 
     test('deletes transaction and returns 200 with deleted data', async () => {
-      // First single() call fetches the transaction before delete
-      mockQuery.single
-        .mockResolvedValueOnce({ data: mockTransaction, error: null })
-        .mockResolvedValueOnce({ data: null, error: null });
-
-      // The delete then() call
-      mockQuery.mockResolvedValue({ data: null, error: null });
+      // The pre-fetch returns the row, then the delete succeeds.
+      wire({ data: mockTransaction, error: null }, { data: null, error: null });
 
       const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'DELETE');
       const response = await DELETE(request, { params });
@@ -348,11 +348,11 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
       expect(response.status).toBe(200);
       expect(data.data).toBeDefined();
       expect(data.message).toBe('Transaction deleted successfully');
-      expect(mockQuery.delete).toHaveBeenCalled();
+      expect(tx('delete').length).toBeGreaterThan(0);
     });
 
     test('returns 401 when unauthenticated', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
+      db.client.auth.getUser.mockResolvedValue({
         data: { user: null },
         error: new Error('Unauthorized'),
       });
@@ -364,7 +364,7 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     });
 
     test('returns 404 when transaction not found or belongs to another user', async () => {
-      mockQuery.single.mockResolvedValue({
+      wire({
         data: null,
         error: { code: 'PGRST116', message: 'No rows found' },
       });
@@ -376,13 +376,17 @@ describe('Transaction CRUD Integration Tests (AC-10.9.2)', () => {
     });
 
     test('enforces user_id ownership when fetching before delete', async () => {
-      mockQuery.single.mockResolvedValue({ data: mockTransaction, error: null });
-      mockQuery.mockResolvedValue({ data: null, error: null });
+      wire({ data: mockTransaction, error: null }, { data: null, error: null });
 
       const request = createMockRequest(`http://localhost:3000/api/transactions/${txId}`, 'DELETE');
       await DELETE(request, { params });
 
-      expect(mockQuery.eq).toHaveBeenCalledWith('user_id', userId);
+      // PER CHAIN, not aggregated. The name claims the FETCH is scoped, and an
+      // aggregate across both transactions chains stayed green with the
+      // fetch's user_id filter deleted, because the delete still carried one
+      // (mutation-tested 2026-11-18). Both are now pinned separately.
+      expect(db.callsTo('transactions', 'eq', 0)).toContainEqual(['user_id', userId]); // the pre-fetch
+      expect(db.callsTo('transactions', 'eq', 1)).toContainEqual(['user_id', userId]); // the delete
     });
   });
 });

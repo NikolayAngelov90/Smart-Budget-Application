@@ -32,6 +32,7 @@ import {
   EmailMismatchError,
   AlreadyInHouseholdError,
 } from '@/lib/services/invitationService';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockPush = dispatchCategorizedPush as jest.MockedFunction<typeof dispatchCategorizedPush>;
 
@@ -60,6 +61,20 @@ interface AdminOpts {
   inviteeId?: string | null; // user_id_by_email RPC result (Story 13.2 follow-up notify)
 }
 
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The hand-rolled chain
+ * answered PER TERMINAL (maybeSingle -> precheck/revokeLookup, single -> insert,
+ * await -> thenResult) because one object served every from() call. Production
+ * makes separate from() calls, so household_invitations is a QUEUE in call
+ * order, chosen by which options the test passes:
+ *
+ *   revokeLookup given  -> revoke:  [lookup, update]
+ *   thenResult given    -> list:    [the list]
+ *   otherwise           -> create:  [duplicate precheck, insert]
+ *
+ * (The two list tests that pass neither never reach this table: one returns
+ * before any DB call, one throws at the admin check.)
+ */
 function makeAdmin(opts: AdminOpts = {}) {
   const {
     member = { household_id: 'h-1', role: 'admin' },
@@ -71,28 +86,21 @@ function makeAdmin(opts: AdminOpts = {}) {
     inviteeId = null,
   } = opts;
 
-  const membersChain = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue({ data: member, error: memberErr }),
-  };
-  const invChain: Record<string, jest.Mock> = {
-    select: jest.fn().mockReturnThis(),
-    insert: jest.fn().mockReturnThis(),
-    update: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    order: jest.fn().mockReturnThis(),
-    maybeSingle: jest
-      .fn()
-      .mockResolvedValue(
-        revokeLookup !== undefined ? revokeLookup : { data: precheck, error: null }
-      ),
-    single: jest.fn().mockResolvedValue(insert),
-    then: jest.fn((resolve: (v: unknown) => unknown) => Promise.resolve(thenResult).then(resolve)),
-  };
-  const from = jest.fn((t: string) => (t === 'household_members' ? membersChain : invChain));
-  const rpc = jest.fn().mockResolvedValue({ data: inviteeId, error: null });
-  return { client: { from, rpc }, membersChain, invChain, rpc };
+  const invitations =
+    revokeLookup !== undefined
+      ? [revokeLookup, thenResult]
+      : opts.thenResult !== undefined
+        ? [thenResult]
+        : [{ data: precheck, error: null }, insert];
+
+  const db = createSupabaseMock({
+    tables: {
+      household_members: { data: member, error: memberErr },
+      household_invitations: invitations as never,
+    },
+  });
+  (db.client.rpc as jest.Mock).mockResolvedValue({ data: inviteeId, error: null });
+  return { client: db.client, db };
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -253,38 +261,27 @@ interface AcceptOpts {
   flipErr?: object | null;
 }
 
+/**
+ * Accept/validate. Queues in production's call order:
+ *   household_invitations [lookup, status flip]   (validate uses the lookup only)
+ *   household_members     [already-in-a-household check, insert]
+ */
 function makeAcceptAdmin(opts: AcceptOpts = {}) {
   const { inv = INVITE, inHousehold = false, memberErr = null, flipErr = null } = opts;
-  const invChain = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    update: jest.fn().mockReturnThis(),
-    maybeSingle: jest.fn().mockResolvedValue({ data: inv, error: null }),
-    then: jest.fn((resolve: (v: unknown) => unknown) =>
-      Promise.resolve({ error: flipErr }).then(resolve)
-    ),
-  };
-  const membersChain = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    maybeSingle: jest
-      .fn()
-      .mockResolvedValue({ data: inHousehold ? { id: 'm' } : null, error: null }),
-    insert: jest.fn().mockResolvedValue({ error: memberErr }),
-  };
-  const householdsChain = {
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    single: jest.fn().mockResolvedValue({ data: HOUSEHOLD, error: null }),
-  };
-  const from = jest.fn((t: string) =>
-    t === 'household_invitations'
-      ? invChain
-      : t === 'household_members'
-        ? membersChain
-        : householdsChain
-  );
-  return { client: { from } };
+  const db = createSupabaseMock({
+    tables: {
+      household_invitations: [
+        { data: inv, error: null },
+        { data: null, error: flipErr },
+      ],
+      household_members: [
+        { data: inHousehold ? { id: 'm' } : null, error: null },
+        { data: null, error: memberErr },
+      ],
+      households: { data: HOUSEHOLD, error: null },
+    },
+  });
+  return { client: db.client };
 }
 
 describe('acceptInvitation', () => {

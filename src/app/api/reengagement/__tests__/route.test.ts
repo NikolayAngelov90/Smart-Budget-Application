@@ -20,26 +20,20 @@ jest.mock('@/lib/services/reengagementService', () => ({
 jest.mock('@/lib/utils/logger', () => ({ logger: { info: jest.fn(), error: jest.fn() } }));
 
 import { createClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { getReengagementSummary } from '@/lib/services/reengagementService';
 import { GET } from '../route';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockGetSummary = getReengagementSummary as jest.MockedFunction<typeof getReengagementSummary>;
 
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`: the route's one read is
+// user_profiles.preferences; the factory supplies auth for `user`.
 function makeClient(user: object | null) {
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue({
-        data: { user },
-        error: user ? null : { message: 'No session' },
-      }),
-    },
-    from: jest.fn().mockReturnValue({
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      maybeSingle: jest.fn().mockResolvedValue({ data: { preferences: {} }, error: null }),
-    }),
-  };
+  return createSupabaseMock({
+    user: user as { id: string } | null,
+    tables: { user_profiles: { data: { preferences: {} }, error: null } },
+  }).client;
 }
 
 describe('GET /api/reengagement', () => {

@@ -17,6 +17,7 @@ jest.mock('@/lib/supabase/server', () => ({
 
 import webpush from 'web-push';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { dispatchCategorizedPush, isWithinQuietHours, sendPushToUser } from '../pushService';
 
 const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
@@ -134,24 +135,24 @@ describe('sendPushToUser', () => {
     auth: 'auth2',
   };
 
+  /*
+   * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. push_subscriptions is
+   * a QUEUE: the subscriptions read, then one delete per dead subscription (a
+   * dry queue repeats its last entry, so every delete gets `deleteError`). The
+   * hand-rolled `_deleteFn`/`_deleteEq` side-channels are now allCallsTo.
+   */
   function makeSupabaseMock(subs: (typeof sub1)[], deleteError: unknown = null) {
-    const deleteEq = jest.fn().mockResolvedValue({ error: deleteError });
-    const deleteFn = jest.fn().mockReturnValue({ eq: deleteEq });
-    return {
-      from: jest.fn().mockImplementation((table: string) => {
-        if (table === 'push_subscriptions') {
-          return {
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockResolvedValue({ data: subs, error: null }),
-            delete: deleteFn,
-          };
-        }
-        return {};
-      }),
-      _deleteFn: deleteFn,
-      _deleteEq: deleteEq,
-    };
+    return createSupabaseMock({
+      tables: {
+        push_subscriptions: [
+          { data: subs, error: null },
+          { data: null, error: deleteError },
+        ],
+      },
+    });
   }
+  const deletes = (db: ReturnType<typeof makeSupabaseMock>) =>
+    db.allCallsTo('push_subscriptions', 'delete');
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -167,42 +168,45 @@ describe('sendPushToUser', () => {
   it('calls sendNotification for each subscription', async () => {
     mockSendNotification.mockResolvedValue({} as never);
     const supabase = makeSupabaseMock([sub1, sub2]);
-    await sendPushToUser(supabase as never, 'user-1', payload);
+    await sendPushToUser(supabase.client as never, 'user-1', payload);
     expect(mockSendNotification).toHaveBeenCalledTimes(2);
   });
 
   it('does nothing when user has no subscriptions', async () => {
     const supabase = makeSupabaseMock([]);
-    await sendPushToUser(supabase as never, 'user-1', payload);
+    await sendPushToUser(supabase.client as never, 'user-1', payload);
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 
   it('deletes stale subscription on 410 response', async () => {
     mockSendNotification.mockRejectedValue({ statusCode: 410 });
     const supabase = makeSupabaseMock([sub1]);
-    await sendPushToUser(supabase as never, 'user-1', payload);
-    expect(supabase._deleteFn).toHaveBeenCalled();
-    expect(supabase._deleteEq).toHaveBeenCalledWith('id', 'sub-1');
+    await sendPushToUser(supabase.client as never, 'user-1', payload);
+    expect(deletes(supabase).length).toBeGreaterThan(0);
+    expect(supabase.allCallsTo('push_subscriptions', 'eq')).toContainEqual(['id', 'sub-1']);
   });
 
   it('deletes stale subscription on 404 response', async () => {
     mockSendNotification.mockRejectedValue({ statusCode: 404 });
     const supabase = makeSupabaseMock([sub1]);
-    await sendPushToUser(supabase as never, 'user-1', payload);
-    expect(supabase._deleteFn).toHaveBeenCalled();
+    await sendPushToUser(supabase.client as never, 'user-1', payload);
+    expect(deletes(supabase).length).toBeGreaterThan(0);
   });
 
   it('does not delete on non-410/404 errors', async () => {
     mockSendNotification.mockRejectedValue({ statusCode: 500 });
     const supabase = makeSupabaseMock([sub1]);
-    await sendPushToUser(supabase as never, 'user-1', payload);
-    expect(supabase._deleteFn).not.toHaveBeenCalled();
+    await sendPushToUser(supabase.client as never, 'user-1', payload);
+    // PAIRED: the subscriptions were read, so "no delete" is a decision, not a
+    // path that never started.
+    expect(supabase.from).toHaveBeenCalledWith('push_subscriptions');
+    expect(deletes(supabase)).toEqual([]);
   });
 
   it('returns early without VAPID keys', async () => {
     delete process.env.VAPID_PRIVATE_KEY;
     const supabase = makeSupabaseMock([sub1]);
-    await sendPushToUser(supabase as never, 'user-1', payload);
+    await sendPushToUser(supabase.client as never, 'user-1', payload);
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 });
@@ -243,31 +247,17 @@ describe('dispatchCategorizedPush', () => {
     hourSpy?.mockRestore();
   });
 
+  /** Two tables: user_profiles (the prefs gate), then push_subscriptions (the send). */
   function makeGateClient(preferences: Record<string, unknown> | null, prefsError: unknown = null) {
-    // Two tables hit: user_profiles (prefs) then push_subscriptions (send)
-    const from = jest.fn((table: string) => {
-      if (table === 'user_profiles') {
-        const q: Record<string, jest.Mock> = {};
-        q.select = jest.fn(() => q);
-        q.eq = jest.fn(() => q);
-        q.maybeSingle = jest.fn().mockResolvedValue({
-          data: preferences === null ? null : { preferences },
-          error: prefsError,
-        });
-        return q;
-      }
-      // push_subscriptions
-      const q: Record<string, jest.Mock> = {};
-      q.select = jest.fn(() => q);
-      q.eq = jest.fn(() => q);
-      (q as Record<string, unknown>).then = (resolve: (v: unknown) => unknown) =>
-        resolve({
+    return createSupabaseMock({
+      tables: {
+        user_profiles: { data: preferences === null ? null : { preferences }, error: prefsError },
+        push_subscriptions: {
           data: [{ id: 's1', endpoint: 'https://e/1', p256dh: 'k', auth: 'a' }],
           error: null,
-        });
-      return q;
-    });
-    return { from };
+        },
+      },
+    }).client;
   }
 
   const payload = {

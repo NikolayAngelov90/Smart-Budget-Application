@@ -5,8 +5,8 @@
 
 export {};
 
-const nodeFs = require('fs');
-const { checkEnvVars, REQUIRED_VARS, DEV_OPTIONAL } = require('../check-env-vars');
+const nodeFs = jest.requireActual('fs');
+const { checkEnvVars, REQUIRED_VARS, DEV_OPTIONAL } = jest.requireActual('../check-env-vars');
 
 // Mock fs.existsSync so checkEnvVars() loads NO env files during tests
 // (.env.local AND the pulled .vercel/.env.production.local)

@@ -26,6 +26,11 @@ jest.mock('next/server', () => ({
 
 import { GET } from '@/app/api/dashboard/stats/route';
 import { createClient } from '@/lib/supabase/server';
+import {
+  createSupabaseMock,
+  type QueryResult,
+  type SupabaseMock,
+} from '@/test-utils/supabaseChain';
 
 jest.mock('@/lib/supabase/server');
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -55,10 +60,18 @@ function createMockRequest(url: string): any {
 }
 
 describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockQuery: any;
+  /*
+   * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. One hand-rolled
+   * client-and-chain answered every await from a modulo counter, and tests
+   * re-pointed its `then` to change the rows. The route makes two
+   * `transactions` reads (current month, previous month), so the rows are a
+   * transactions QUEUE set per test by `txReturn`.
+   */
+  let db: SupabaseMock;
+  function txReturn(results: QueryResult | QueryResult[]) {
+    db = createSupabaseMock({ user: { id: userId }, tables: { transactions: results } });
+    mockCreateClient.mockResolvedValue(db.client);
+  }
 
   const userId = 'user-123';
 
@@ -78,37 +91,10 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    let callCount = 0;
-    const responses = [
+    txReturn([
       { data: currentMonthTransactions, error: null },
       { data: previousMonthTransactions, error: null },
-    ];
-
-    mockQuery = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      gte: jest.fn().mockReturnThis(),
-      lte: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      then: jest.fn((resolve: (v: unknown) => void) => {
-        const response = responses[callCount % responses.length] ?? { data: [], error: null };
-        callCount++;
-        return Promise.resolve(response).then(resolve);
-      }),
-    };
-
-    mockSupabase = {
-      auth: {
-        getUser: jest.fn().mockResolvedValue({
-          data: { user: { id: userId } },
-          error: null,
-        }),
-      },
-      from: jest.fn(() => mockQuery),
-    };
-
-    mockCreateClient.mockResolvedValue(mockSupabase);
+    ]);
 
     // Reset exchange rate mock to default
     mockGetExchangeRates.mockResolvedValue({
@@ -160,12 +146,12 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
 
     expect(response.status).toBe(200);
     // Month queries should have been made
-    expect(mockQuery.gte).toHaveBeenCalled();
-    expect(mockQuery.lte).toHaveBeenCalled();
+    expect(db.allCallsTo('transactions', 'gte').length).toBeGreaterThan(0);
+    expect(db.allCallsTo('transactions', 'lte').length).toBeGreaterThan(0);
   });
 
   test('returns 401 when unauthenticated', async () => {
-    mockSupabase.auth.getUser.mockResolvedValue({
+    db.client.auth.getUser.mockResolvedValue({
       data: { user: null },
       error: new Error('Unauthorized'),
     });
@@ -182,16 +168,10 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
       { amount: 100, type: 'expense', currency: 'USD', exchange_rate: 0.93 },
     ];
 
-    let callCount = 0;
-    mockQuery.then.mockImplementation((resolve: (v: unknown) => void) => {
-      const responses = [
-        { data: usdTransactions, error: null },
-        { data: [], error: null },
-      ];
-      const response = responses[callCount % 2];
-      callCount++;
-      return Promise.resolve(response).then(resolve);
-    });
+    txReturn([
+      { data: usdTransactions, error: null },
+      { data: [], error: null },
+    ]);
 
     const request = createMockRequest('http://localhost:3000/api/dashboard/stats?currency=EUR');
     const response = await GET(request);
@@ -208,16 +188,10 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
     // EUR transaction with no stored exchange_rate — needs live USD conversion
     const eurWithoutRate = [{ amount: 100, type: 'expense', currency: 'EUR', exchange_rate: null }];
 
-    let callCount = 0;
-    mockQuery.then.mockImplementation((resolve: (v: unknown) => void) => {
-      const responses = [
-        { data: eurWithoutRate, error: null },
-        { data: [], error: null },
-      ];
-      const response = responses[callCount % 2];
-      callCount++;
-      return Promise.resolve(response).then(resolve);
-    });
+    txReturn([
+      { data: eurWithoutRate, error: null },
+      { data: [], error: null },
+    ]);
 
     // USD is preferred currency, EUR transactions have no stored rate
     const request = createMockRequest('http://localhost:3000/api/dashboard/stats?currency=USD');
@@ -239,9 +213,7 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
   });
 
   test('returns 500 when database query fails', async () => {
-    mockQuery.then.mockImplementation((resolve: (v: unknown) => void) =>
-      Promise.resolve({ data: null, error: new Error('DB error') }).then(resolve)
-    );
+    txReturn({ data: null, error: new Error('DB error') });
 
     const request = createMockRequest('http://localhost:3000/api/dashboard/stats');
     const response = await GET(request);
@@ -250,9 +222,7 @@ describe('Dashboard Stats Integration Tests (AC-10.9.4)', () => {
   });
 
   test('balance is zero when no transactions exist', async () => {
-    mockQuery.then.mockImplementation((resolve: (v: unknown) => void) =>
-      Promise.resolve({ data: [], error: null }).then(resolve)
-    );
+    txReturn({ data: [], error: null });
 
     const request = createMockRequest('http://localhost:3000/api/dashboard/stats');
     const response = await GET(request);

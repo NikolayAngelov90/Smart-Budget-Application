@@ -72,6 +72,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { generateDigestForUser } from '@/lib/services/digestService';
 import { getAlreadyDelivered, markDelivered } from '@/lib/services/notificationDeliveryService';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 const mockClient = createServiceRoleClient as jest.MockedFunction<typeof createServiceRoleClient>;
 const mockDispatch = dispatchCategorizedPush as jest.Mock;
@@ -94,15 +95,11 @@ function request() {
   } as unknown as Request;
 }
 
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`: the route's one read is
+// the opted-in users from user_profiles; delivery markers go through the mocked
+// notificationDeliveryService, not this client.
 function supabase(users: { id: string; preferences: Record<string, unknown> }[]) {
-  return {
-    from: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    in: jest.fn().mockResolvedValue({ data: [], error: null }),
-    upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-    limit: jest.fn().mockResolvedValue({ data: users, error: null }),
-  };
+  return createSupabaseMock({ tables: { user_profiles: { data: users, error: null } } }).client;
 }
 
 const USERS = [{ id: 'user-1', preferences: { weekly_digest_enabled: true } }];

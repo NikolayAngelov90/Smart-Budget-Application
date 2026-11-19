@@ -39,6 +39,7 @@ jest.mock('@/lib/utils/date', () => ({
 
 import { createClient } from '@/lib/supabase/server';
 import { GET } from '../route';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 /**
  * GET now takes the request so it can read `?today=` — the client's local day,
@@ -51,32 +52,14 @@ const getRequest = (query = '') =>
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
-// Chainable query stub: every method returns `this`; awaiting resolves to `result`.
-function chain(result: { data: unknown; error: unknown }) {
-  const q: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'gt', 'gte', 'lt', 'lte', 'in', 'is', 'not', 'order', 'limit']) {
-    q[m] = jest.fn(() => q);
-  }
-  q.then = (resolve: (v: unknown) => unknown) => resolve(result);
-  return q;
-}
-
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. The factory already records
+// every chain per table (`chains`), in the same shape this file's hand-rolled
+// stub kept, so the filter assertions read it unchanged.
 type Plan = Record<string, { data: unknown; error: unknown }>;
-type ChainStub = ReturnType<typeof chain>;
 
 function makeSupabase(plan: Plan = {}, user: object | null = { id: 'user-1' }) {
-  // Record every chain per table so tests can assert the FILTERS, not just the
-  // data (14-4 review: an arg-blind stub let user-scoping/date bounds vanish)
-  const chains: Record<string, ChainStub[]> = {};
-  return {
-    auth: { getUser: jest.fn().mockResolvedValue({ data: { user }, error: null }) },
-    from: jest.fn((table: string) => {
-      const q = chain(plan[table] ?? { data: [], error: null });
-      (chains[table] ??= []).push(q);
-      return q;
-    }),
-    chains,
-  };
+  const db = createSupabaseMock({ user: user as { id: string } | null, tables: plan });
+  return Object.assign(db.client, { chains: db.chains });
 }
 
 // Use month keys relative to "prior 3 months" — any past YYYY-MM works because

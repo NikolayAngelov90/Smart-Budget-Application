@@ -40,6 +40,7 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import {
   detectSubscriptions,
   flagUnusedSubscriptions,
@@ -57,6 +58,13 @@ const mockFlagUnused = flagUnusedSubscriptions as jest.MockedFunction<
 >;
 const mockHasEnoughHistory = hasEnoughHistory as jest.MockedFunction<typeof hasEnoughHistory>;
 const mockJsonResponse = NextResponse.json as jest.MockedFunction<typeof NextResponse.json>;
+
+// MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`: four tests each built a
+// hand-rolled from().select().limit() for the route's one read, the eligible
+// users from user_profiles.
+function usersDb(users: { id: string }[]) {
+  return createSupabaseMock({ tables: { user_profiles: { data: users, error: null } } }).client;
+}
 
 // Dynamic import to load after mocks are set up
 let GET: (request: Request) => Promise<unknown>;
@@ -113,16 +121,7 @@ describe('GET /api/cron/subscription-detect', () => {
   });
 
   it('processes eligible users successfully', async () => {
-    const mockSupabase = {
-      from: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          limit: jest.fn().mockResolvedValue({
-            data: [{ id: 'user-1' }, { id: 'user-2' }],
-            error: null,
-          }),
-        }),
-      }),
-    };
+    const mockSupabase = usersDb([{ id: 'user-1' }, { id: 'user-2' }]);
     mockCreateServiceRoleClient.mockReturnValue(
       mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>
     );
@@ -147,16 +146,7 @@ describe('GET /api/cron/subscription-detect', () => {
   });
 
   it('skips users without enough history', async () => {
-    const mockSupabase = {
-      from: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          limit: jest.fn().mockResolvedValue({
-            data: [{ id: 'user-1' }],
-            error: null,
-          }),
-        }),
-      }),
-    };
+    const mockSupabase = usersDb([{ id: 'user-1' }]);
     mockCreateServiceRoleClient.mockReturnValue(
       mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>
     );
@@ -176,16 +166,7 @@ describe('GET /api/cron/subscription-detect', () => {
   });
 
   it('returns metrics including detected and flagged counts', async () => {
-    const mockSupabase = {
-      from: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          limit: jest.fn().mockResolvedValue({
-            data: [{ id: 'user-1' }],
-            error: null,
-          }),
-        }),
-      }),
-    };
+    const mockSupabase = usersDb([{ id: 'user-1' }]);
     mockCreateServiceRoleClient.mockReturnValue(
       mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>
     );
@@ -217,16 +198,7 @@ describe('GET /api/cron/subscription-detect', () => {
   });
 
   it('handles errors gracefully and continues processing', async () => {
-    const mockSupabase = {
-      from: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          limit: jest.fn().mockResolvedValue({
-            data: [{ id: 'user-1' }, { id: 'user-2' }],
-            error: null,
-          }),
-        }),
-      }),
-    };
+    const mockSupabase = usersDb([{ id: 'user-1' }, { id: 'user-2' }]);
     mockCreateServiceRoleClient.mockReturnValue(
       mockSupabase as unknown as ReturnType<typeof createServiceRoleClient>
     );

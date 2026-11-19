@@ -1,0 +1,32 @@
+{
+  "overrides": [
+    {
+      "files": ["**/__tests__/**/*.ts", "**/__tests__/**/*.tsx", "**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "Property[key.name='from']:not(Property[key.name='storage'] > ObjectExpression > Property) CallExpression[callee.object.name='jest'][callee.property.name='fn']",
+            "message": "Hand-rolled Supabase chain (`from: jest.fn(...)`). Use createSupabaseMock from @/test-utils/supabaseChain: a hand-rolled chain lists the methods production called the day it was written, and the next one throws a TypeError that a non-fatal catch can swallow."
+          },
+          {
+            "selector": "VariableDeclarator[id.name='from'] CallExpression[callee.object.name='jest'][callee.property.name='fn']",
+            "message": "Hand-rolled Supabase chain (`const from = jest.fn(...)`, passed as `{ from }`). Use createSupabaseMock from @/test-utils/supabaseChain."
+          },
+          {
+            "selector": "AssignmentExpression[left.property.name='from'] CallExpression[callee.object.name='jest'][callee.property.name='fn']",
+            "message": "Hand-rolled Supabase chain (`client.from = jest.fn(...)`). Use createSupabaseMock from @/test-utils/supabaseChain."
+          },
+          {
+            "selector": "Property[key.name='from'][value.type='Identifier'][value.name=/^mock/]",
+            "message": "Hand-rolled Supabase chain (`from: mockFrom`). Use createSupabaseMock from @/test-utils/supabaseChain."
+          },
+          {
+            "selector": "Property[key.name='from'] > :matches(ArrowFunctionExpression, FunctionExpression)",
+            "message": "Hand-rolled Supabase chain (`from: (t) => ...`). Use createSupabaseMock from @/test-utils/supabaseChain."
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,7 +1,12 @@
 {
   "extends": [
     "next/core-web-vitals",
-    "next/typescript"
+    "next/typescript",
+    // The hand-rolled Supabase chain rule (item 5, 2026-11-19), landed BLOCKING
+    // at 0 violations. Its single definition is the file the item-4 meter
+    // counted with, so meter and gate cannot drift. scripts/ci/lint.mjs
+    // self-tests it through THIS config in every test directory Jest runs from.
+    "./scripts/ci/chain-mock-rule.json"
   ],
   "rules": {
     "react/no-unescaped-entities": "off",

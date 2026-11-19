@@ -1,85 +1,74 @@
 /**
  * Integration tests for Insight Orchestration Service
+ *
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`, and three things were
+ * wrong here besides the hand-rolled chains:
+ *
+ * 1. A DETECTOR FINDING. The server mock had `createClient` only. Every forced
+ *    generation then called `createServiceRoleClient()` -> `undefined()` inside
+ *    markGenerated, a best-effort write whose catch logs and continues - so two
+ *    passing tests emitted `createServiceRoleClient is not a function` on every
+ *    run and nothing saw it. That is a FIFTH shape of the hand-rolled-mock
+ *    class: a module mock narrower than the module. No chain selector can see
+ *    it; the runtime detector did.
+ *
+ * 2. "should respect cache and return existing insights" asserted only that
+ *    `generateInsights` is DEFINED. Its mock was built and never used. No test
+ *    anywhere covered the cache path its name claimed, so it now tests it.
+ *
+ * 3. "should return true if 10+ transactions since last generation" was also
+ *    vacuous (it said so itself). That behaviour IS tested, properly, in
+ *    insightService.generationMarker.test.ts ("regenerates once the
+ *    10-transaction threshold is crossed"), so this one is renamed to what it
+ *    checks and points there.
  */
 
 import { generateInsights, shouldTriggerGeneration } from '@/lib/services/insightService';
-import { createClient } from '@/lib/supabase/server';
-import { subMonths, format } from 'date-fns';
-import type { Transaction, Category, Insight } from '@/types/database.types';
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import {
+  createSupabaseMock,
+  type SupabaseMock,
+  type SupabaseMockOptions,
+} from '@/test-utils/supabaseChain';
+import type { Insight } from '@/types/database.types';
 
-// Mock Supabase client
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createServiceRoleClient: jest.fn(),
 }));
+
+const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockServiceClient = createServiceRoleClient as jest.MockedFunction<
+  typeof createServiceRoleClient
+>;
+
+/** One factory client for both the user and the service-role path. */
+function insightsDb(tables: SupabaseMockOptions['tables'] = {}): SupabaseMock {
+  const db = createSupabaseMock({ tables });
+  mockCreateClient.mockResolvedValue(db.client);
+  mockServiceClient.mockReturnValue(db.client);
+  return db;
+}
 
 describe('generateInsights', () => {
   const mockUserId = 'test-user-1';
   const mockCategoryId = 'test-category-1';
-  const currentMonth = new Date('2025-01-15');
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  // Simplified test - verify function returns empty array when no insights generated
   it('should return empty array when no insights can be generated', async () => {
-    // Create chainable mock that returns empty data at the end
-    const createChainMock = (): any => {
-      const chainMock: any = {
-        eq: jest.fn(() => chainMock),
-        gte: jest.fn(() => chainMock),
-        lte: jest.fn(() => chainMock),
-        order: jest.fn(() => chainMock),
-        data: [],
-        error: null,
-      };
-      // Make it awaitable
-      chainMock.then = (resolve: any) => resolve({ data: [], error: null });
-      return chainMock;
-    };
-
-    const mockFrom = jest.fn(() => ({
-      select: jest.fn(() => createChainMock()),
-      insert: jest.fn(() => ({ select: jest.fn(() => createChainMock()) })),
-      delete: jest.fn(() => ({ eq: jest.fn(() => Promise.resolve({ error: null })) })),
-    }));
-
-    (createClient as jest.Mock).mockResolvedValue({
-      from: mockFrom,
-    });
+    // No transactions, no categories: every table answers empty.
+    insightsDb();
 
     const result = await generateInsights(mockUserId, true);
 
-    // With no transactions or categories, should return empty array
     expect(Array.isArray(result)).toBe(true);
   });
 
-  // Simplified test - verify function handles missing data gracefully
   it('should return empty array when called with force regenerate', async () => {
-    // Create chainable mock that returns empty data at the end
-    const createChainMock = (): any => {
-      const chainMock: any = {
-        eq: jest.fn(() => chainMock),
-        gte: jest.fn(() => chainMock),
-        lte: jest.fn(() => chainMock),
-        order: jest.fn(() => chainMock),
-        data: [],
-        error: null,
-      };
-      // Make it awaitable
-      chainMock.then = (resolve: any) => resolve({ data: [], error: null });
-      return chainMock;
-    };
-
-    const mockFrom = jest.fn(() => ({
-      select: jest.fn(() => createChainMock()),
-      insert: jest.fn(() => ({ select: jest.fn(() => createChainMock()) })),
-      delete: jest.fn(() => ({ eq: jest.fn(() => Promise.resolve({ error: null })) })),
-    }));
-
-    (createClient as jest.Mock).mockResolvedValue({
-      from: mockFrom,
-    });
+    insightsDb();
 
     const result = await generateInsights(mockUserId, true);
 
@@ -110,25 +99,25 @@ describe('generateInsights', () => {
         last_metadata_expanded_at: null,
       },
     ];
+    // Generated ten minutes ago: inside the one-hour cache window.
+    const db = insightsDb({
+      user_profiles: {
+        data: { insights_last_generated_at: new Date(Date.now() - 10 * 60_000).toISOString() },
+        error: null,
+      },
+      insights: { data: mockInsights, error: null },
+    });
 
-    const mockFrom = jest.fn().mockReturnThis();
-    const mockSelect = jest.fn().mockReturnThis();
-    const mockEq = jest.fn().mockReturnThis();
-    const mockOrder = jest.fn().mockReturnThis();
+    const result = await generateInsights(mockUserId, false);
 
-    const supabaseMock = {
-      from: mockFrom,
-    };
-
-    (createClient as jest.Mock).mockResolvedValue(supabaseMock);
-
-    mockSelect.mockResolvedValue({ data: mockInsights, error: null });
-
-    // First call with forceRegenerate=true to populate cache
-    // (skipping full implementation for brevity - this test needs actual integration)
-
-    // For now, just test the basic structure
-    expect(generateInsights).toBeDefined();
+    // The stored, non-dismissed insights, for THIS user...
+    expect(result).toEqual(mockInsights);
+    expect(db.callsTo('insights', 'eq')).toContainEqual(['user_id', mockUserId]);
+    expect(db.callsTo('insights', 'eq')).toContainEqual(['is_dismissed', false]);
+    // ...and NOTHING REGENERATED. The absence (no transactions read) is paired
+    // with the presence above (the insights read), or it would also hold if
+    // the function had returned before querying anything.
+    expect(db.from).not.toHaveBeenCalledWith('transactions');
   });
 });
 
@@ -147,45 +136,19 @@ describe('shouldTriggerGeneration', () => {
 
   it('should return true when never generated before', async () => {
     // hp-8: "never generated" is no longer an empty in-memory Map — it is a NULL
-    // `user_profiles.insights_last_generated_at`. The behaviour is unchanged
-    // (true when never generated); how it is established is not, so the mock
-    // has to answer the profile read rather than nothing at all.
-    (createClient as jest.Mock).mockResolvedValue({
-      from: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            maybeSingle: jest
-              .fn()
-              .mockResolvedValue({ data: { insights_last_generated_at: null }, error: null }),
-          }),
-        }),
-      }),
-    });
+    // `user_profiles.insights_last_generated_at`.
+    insightsDb({ user_profiles: { data: { insights_last_generated_at: null }, error: null } });
 
     const result = await shouldTriggerGeneration(mockUserId);
 
-    // When never generated before, should return true
     expect(result).toBe(true);
   });
 
-  it('should return true if 10+ transactions since last generation', async () => {
-    const mockFrom = jest.fn().mockReturnThis();
-    const mockSelect = jest.fn().mockReturnThis();
-    const mockEq = jest.fn().mockReturnThis();
-    const mockGte = jest.fn().mockReturnThis();
-
-    const supabaseMock = {
-      from: mockFrom,
-    };
-
-    (createClient as jest.Mock).mockResolvedValue(supabaseMock);
-
-    mockSelect.mockResolvedValue({ count: 15, error: null });
-
-    // This asserted only that the function EXISTS — a vacuous test that passed
-    // no matter what the function did. hp-8's real behaviour is covered in
-    // insightService.generationMarker.test.ts, which mocks the marker read and
-    // the transaction count properly instead of stubbing them away.
+  it('is exported (the 10-transaction threshold is tested in insightService.generationMarker.test.ts)', () => {
+    // Renamed from "should return true if 10+ transactions since last
+    // generation", which this never checked. The real test of that behaviour:
+    // generationMarker.test.ts, "regenerates once the 10-transaction threshold
+    // is crossed".
     expect(shouldTriggerGeneration).toBeDefined();
   });
 });

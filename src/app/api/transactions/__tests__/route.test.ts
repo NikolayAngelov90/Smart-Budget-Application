@@ -28,6 +28,11 @@ jest.mock('next/server', () => ({
 
 import { GET } from '@/app/api/transactions/route';
 import { createClient } from '@/lib/supabase/server';
+import {
+  createSupabaseMock,
+  type QueryResult,
+  type SupabaseMock,
+} from '@/test-utils/supabaseChain';
 
 // Mock Supabase
 jest.mock('@/lib/supabase/server');
@@ -49,53 +54,25 @@ function createMockRequest(url: string): any {
 }
 
 describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockSupabase: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockQuery: any;
+  /*
+   * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. One hand-rolled
+   * client-and-chain served every test, with a home-made `mockResolvedValue`
+   * hook to swap its result. The route under test reads only `transactions`, so "swap
+   * the result" is "rebuild the client with this result" (`dbReturn`), and the
+   * filter assertions read that table's calls.
+   */
+  let db: SupabaseMock;
+  function dbReturn(result: QueryResult) {
+    db = createSupabaseMock({ tables: { transactions: result }, user: { id: 'user-123' } });
+    mockCreateClient.mockResolvedValue(db.client);
+  }
+  const calls = (method: string) => db.allCallsTo('transactions', method);
 
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
 
-    // Mutable resolved value that tests can update
-    let resolvedValue = {
-      data: [],
-      error: null,
-      count: 0,
-    };
-
-    // Create a promise-like query object that chains and resolves
-    mockQuery = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      gte: jest.fn().mockReturnThis(),
-      lte: jest.fn().mockReturnThis(),
-      or: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      range: jest.fn().mockReturnThis(),
-      // Make it thenable so it can be awaited
-      then: jest.fn((resolve) => Promise.resolve(resolvedValue).then(resolve)),
-      // Helper to set resolved value
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockResolvedValue: (value: any) => {
-        resolvedValue = value;
-        return mockQuery;
-      },
-    };
-
-    mockSupabase = {
-      auth: {
-        getUser: jest.fn().mockResolvedValue({
-          data: { user: { id: 'user-123' } },
-          error: null,
-        }),
-      },
-      from: jest.fn(() => mockQuery),
-    };
-
-    mockCreateClient.mockResolvedValue(mockSupabase);
+    dbReturn({ data: [], error: null, count: 0 });
   });
 
   // AC-8.1.5: Test ?all=true bypasses pagination and returns all user transactions
@@ -119,7 +96,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     }));
 
     // Mock query to return all transactions
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: mockTransactions,
       error: null,
       count: 150,
@@ -130,7 +107,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     const data = await response.json();
 
     // Verify range was NOT called (pagination bypassed)
-    expect(mockQuery.range).not.toHaveBeenCalled();
+    expect(calls('range')).toEqual([]);
 
     // Verify all transactions returned
     expect(data.data).toHaveLength(150);
@@ -156,7 +133,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
       },
     }));
 
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: mockTransactions,
       error: null,
       count: 150,
@@ -166,7 +143,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     await GET(request);
 
     // Verify range WAS called (pagination applied)
-    expect(mockQuery.range).toHaveBeenCalledWith(0, 99); // offset 0, limit 100
+    expect(calls('range')).toContainEqual([0, 99]); // offset 0, limit 100
   });
 
   // Test with explicit all=false (pagination should work)
@@ -188,7 +165,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
       },
     }));
 
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: mockTransactions,
       error: null,
       count: 150,
@@ -198,12 +175,12 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     await GET(request);
 
     // Verify range WAS called (pagination applied)
-    expect(mockQuery.range).toHaveBeenCalled();
+    expect(calls('range').length).toBeGreaterThan(0);
   });
 
   // AC-8.1.5: Test RLS enforcement (user A cannot export user B's transactions via all=true)
   test('enforces RLS when all=true (user can only export own transactions)', async () => {
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: [],
       error: null,
       count: 0,
@@ -213,12 +190,12 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     await GET(request);
 
     // Verify eq('user_id', user.id) was called (RLS enforcement)
-    expect(mockQuery.eq).toHaveBeenCalledWith('user_id', 'user-123');
+    expect(calls('eq')).toContainEqual(['user_id', 'user-123']);
   });
 
   // Test maintaining sort order with ?all=true
   test('maintains date descending sort order when all=true', async () => {
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: [],
       error: null,
       count: 0,
@@ -228,13 +205,13 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     await GET(request);
 
     // Verify order was called with correct parameters
-    expect(mockQuery.order).toHaveBeenCalledWith('date', { ascending: false });
-    expect(mockQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(calls('order')).toContainEqual(['date', { ascending: false }]);
+    expect(calls('order')).toContainEqual(['created_at', { ascending: false }]);
   });
 
   // Test combining ?all=true with other filters
   test('combines all=true with date filters', async () => {
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: [],
       error: null,
       count: 0,
@@ -246,16 +223,16 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     await GET(request);
 
     // Verify filters were applied
-    expect(mockQuery.gte).toHaveBeenCalledWith('date', '2025-01-01');
-    expect(mockQuery.lte).toHaveBeenCalledWith('date', '2025-12-31');
+    expect(calls('gte')).toContainEqual(['date', '2025-01-01']);
+    expect(calls('lte')).toContainEqual(['date', '2025-12-31']);
 
     // Verify pagination was NOT applied
-    expect(mockQuery.range).not.toHaveBeenCalled();
+    expect(calls('range')).toEqual([]);
   });
 
   // Test combining ?all=true with category filter
   test('combines all=true with category filter', async () => {
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: [],
       error: null,
       count: 0,
@@ -267,15 +244,15 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     await GET(request);
 
     // Verify category filter was applied
-    expect(mockQuery.eq).toHaveBeenCalledWith('category_id', 'cat-123');
+    expect(calls('eq')).toContainEqual(['category_id', 'cat-123']);
 
     // Verify pagination was NOT applied
-    expect(mockQuery.range).not.toHaveBeenCalled();
+    expect(calls('range')).toEqual([]);
   });
 
   // Test combining ?all=true with type filter
   test('combines all=true with type filter', async () => {
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: [],
       error: null,
       count: 0,
@@ -287,15 +264,15 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
     await GET(request);
 
     // Verify type filter was applied
-    expect(mockQuery.eq).toHaveBeenCalledWith('type', 'expense');
+    expect(calls('eq')).toContainEqual(['type', 'expense']);
 
     // Verify pagination was NOT applied
-    expect(mockQuery.range).not.toHaveBeenCalled();
+    expect(calls('range')).toEqual([]);
   });
 
   // Test unauthorized access with ?all=true
   test('returns 401 for unauthorized user with all=true', async () => {
-    mockSupabase.auth.getUser.mockResolvedValue({
+    db.client.auth.getUser.mockResolvedValue({
       data: { user: null },
       error: new Error('Unauthorized'),
     });
@@ -310,7 +287,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
 
   // Test error handling with ?all=true
   test('handles database error when all=true', async () => {
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: null,
       error: new Error('Database error'),
       count: null,
@@ -326,7 +303,7 @@ describe('GET /api/transactions - Story 8.1: ?all=true support', () => {
 
   // Test empty result set with ?all=true
   test('returns empty array when no transactions exist with all=true', async () => {
-    mockQuery.mockResolvedValue({
+    dbReturn({
       data: [],
       error: null,
       count: 0,

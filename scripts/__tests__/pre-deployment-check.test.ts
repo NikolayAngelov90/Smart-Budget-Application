@@ -5,9 +5,8 @@
 
 export {};
 
-const { execSync } = require('child_process');
-const path = require('path');
-const nodeFs = require('fs');
+const path = jest.requireActual('path');
+const nodeFs = jest.requireActual('fs');
 
 const scriptPath = path.join(__dirname, '..', 'pre-deployment-check.js');
 const projectRoot = path.join(__dirname, '..', '..');
@@ -66,10 +65,10 @@ describe('check-env-vars.js', () => {
   });
 
   it('exports required functions and constants', () => {
-    const module = require(checkEnvPath);
-    expect(typeof module.checkEnvVars).toBe('function');
-    expect(Array.isArray(module.REQUIRED_VARS)).toBe(true);
-    expect(Array.isArray(module.DEV_OPTIONAL)).toBe(true);
+    const mod = jest.requireActual(checkEnvPath);
+    expect(typeof mod.checkEnvVars).toBe('function');
+    expect(Array.isArray(mod.REQUIRED_VARS)).toBe(true);
+    expect(Array.isArray(mod.DEV_OPTIONAL)).toBe(true);
   });
 });
 

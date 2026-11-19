@@ -59,68 +59,36 @@ const fakeCat = {
   created_at: '2026-01-01T00:00:00Z',
 };
 
-const txChain = {
-  select: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  gte: jest.fn().mockReturnThis(),
-  lte: jest.fn().mockReturnThis(),
-  order: jest.fn().mockResolvedValue({ data: [fakeTx], error: null }),
-};
-
-const catChain = {
-  select: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockResolvedValue({ data: [fakeCat], error: null }),
-};
-
-// user_profiles fetch for the user's display currency (Story 12.x currency fix)
-const profileChain = {
-  select: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  maybeSingle: jest.fn().mockResolvedValue({
-    data: { preferences: { currency_format: 'USD' } },
-    error: null,
-  }),
-};
-
-// hp-10 replaced delete+insert with: read the sweep watermark, upsert on
-// (user_id, fingerprint), sweep, then re-read. The chain has to answer all four
-// or the service throws on a missing method — which is how this suite failed
-// when the write path changed, rather than silently passing against a stub.
-const insightsChain = {
-  // watermark read + final re-read
-  select: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  order: jest.fn().mockReturnThis(),
-  limit: jest.fn().mockReturnThis(),
-  maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
-  // writes
-  upsert: jest.fn().mockResolvedValue({ error: null }),
-  delete: jest.fn().mockReturnThis(),
-  lte: jest.fn().mockReturnThis(),
-  not: jest.fn().mockResolvedValue({ error: null }),
-  // The chain is also THENABLE, because two of the four calls end on different
-  // methods: the watermark read terminates at `.maybeSingle()`, the final
-  // re-read at `.order()`, and the sweep at `.lte()` when no fingerprints were
-  // produced. Making every method chainable and the object awaitable answers all
-  // of them without one terminator having to guess which call it is serving.
-  then: (resolve: (v: unknown) => unknown) =>
-    Promise.resolve({ data: [], error: null }).then(resolve),
-};
-
-const mockFrom = jest.fn().mockImplementation((table: string) => {
-  if (table === 'transactions') return txChain;
-  if (table === 'categories') return catChain;
-  if (table === 'user_profiles') return profileChain;
-  // insights (service role client): watermark, upsert, sweep, re-read
-  return insightsChain;
-});
+/*
+ * MIGRATED 2026-11-18 to `@/test-utils/supabaseChain`. Four hand-built chains
+ * (transactions, categories, user_profiles, insights) dispatched by a table-name
+ * `mockFrom` become one factory client per test. `insights` answers `[]`: the
+ * factory reshapes that to null for the watermark's maybeSingle() (no previous
+ * run, so no sweep) and returns [] for the awaited re-read - what the
+ * hand-rolled thenable chain did.
+ */
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { createSupabaseMock } from '@/test-utils/supabaseChain';
 
 jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn().mockResolvedValue({ from: (...args: unknown[]) => mockFrom(...args) }),
-  createServiceRoleClient: jest
-    .fn()
-    .mockReturnValue({ from: (...args: unknown[]) => mockFrom(...args) }),
+  createClient: jest.fn(),
+  createServiceRoleClient: jest.fn(),
 }));
+
+function wireClients() {
+  const db = createSupabaseMock({
+    tables: {
+      transactions: { data: [fakeTx], error: null },
+      categories: { data: [fakeCat], error: null },
+      // the user's display currency (Story 12.x currency fix)
+      user_profiles: { data: { preferences: { currency_format: 'USD' } }, error: null },
+      insights: { data: [], error: null },
+    },
+  });
+  (createClient as jest.Mock).mockResolvedValue(db.client);
+  (createServiceRoleClient as jest.Mock).mockReturnValue(db.client);
+  return db;
+}
 
 // ============================================================================
 // TESTS
@@ -131,8 +99,7 @@ describe('generateInsights — pattern detection wiring (Story 12.1)', () => {
     jest.clearAllMocks();
     mockDetectAnomalies.mockReturnValue([]);
     mockDetectNewHigh.mockReturnValue([]);
-    txChain.order.mockResolvedValue({ data: [fakeTx], error: null });
-    catChain.eq.mockResolvedValue({ data: [fakeCat], error: null });
+    wireClients();
   });
 
   it('calls detectSpendingAnomalies when generateInsights runs with data', async () => {
