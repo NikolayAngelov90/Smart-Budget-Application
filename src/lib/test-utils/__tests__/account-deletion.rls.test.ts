@@ -48,6 +48,13 @@ const toCleanUp: string[] = [];
 // null = the account has NO email (phone/OAuth-without-email, or blanked):
 // there is nothing of that kind to leave behind. undefined = never recorded.
 const emails = new Map<string, string | null>();
+/**
+ * Every test user's DISPLAY NAME: the scan looks for it too (P2). A notice that
+ * said "Ivan left" would store the departing person's name without their id or
+ * email, so neither of those scans could see it. Same convention as `emails`:
+ * null = the account has no display name; undefined = never recorded.
+ */
+const displayNames = new Map<string, string | null>();
 
 function forget(userId: string): void {
   const i = toCleanUp.indexOf(userId);
@@ -58,11 +65,25 @@ function emailOf(tag: string): string {
   return `rls-del-${tag}-${stamp}@example.test`;
 }
 
+/** Distinctive on purpose: a substring scan must not match ordinary text. */
+function displayNameOf(tag: string): string {
+  return `Rls Person ${tag} ${stamp}`;
+}
+
+/** Sets the profile's display name (the signup trigger made the row) and records it. */
+async function giveDisplayName(id: string, tag: string): Promise<void> {
+  const name = displayNameOf(tag);
+  const { error } = await svc().from('user_profiles').update({ display_name: name }).eq('id', id);
+  if (error) throw new Error(`seed display name for ${tag}: ${error.message}`);
+  displayNames.set(id, name);
+}
+
 async function makeUser(tag: string): Promise<string> {
   const email = emailOf(tag);
   const id = await createTestUser(email, PWD);
   toCleanUp.push(id);
   emails.set(id, email);
+  await giveDisplayName(id, tag);
   return id;
 }
 
@@ -309,7 +330,8 @@ async function expectAuthUserGone(userId: string): Promise<void> {
  */
 async function referencesTo(
   userId: string,
-  email?: string
+  email?: string,
+  displayName?: string
 ): Promise<{ fkColumns: string[]; scanned: string[]; hits: string[] }> {
   const url = process.env.LOCAL_DB_URL;
   if (!url) throw new Error('NOT MEASURED - LOCAL_DB_URL is unset, so the catalog cannot be read');
@@ -376,6 +398,16 @@ async function referencesTo(
         );
         if (er.rows[0]!.n > 0) hits.push(`${name(r)}: ${er.rows[0]!.n} (email)`);
       }
+      // The DISPLAY NAME, the same way: what a stored notice naming the person
+      // would hold, with neither their id nor their email in it.
+      if (displayName && r.kind === 'text') {
+        const dr = await pg.query<{ n: number }>(
+          `select count(*)::int as n from ${pg.escapeIdentifier(r.sch)}.${pg.escapeIdentifier(r.tbl)}
+            where position(lower($1) in lower(${col}::text)) > 0`,
+          [displayName]
+        );
+        if (dr.rows[0]!.n > 0) hits.push(`${name(r)}: ${dr.rows[0]!.n} (display name)`);
+      }
     }
     return { fkColumns, scanned: rows.map(name), hits };
   } finally {
@@ -394,7 +426,12 @@ async function expectNoResidue(userId: string, allowed: Allowance[] = []): Promi
   const email = emails.get(userId);
   if (email === undefined)
     throw new Error(`NOT MEASURED - no email recorded for ${userId}, so the email scan cannot run`);
-  const { hits } = await referencesTo(userId, email ?? undefined);
+  const displayName = displayNames.get(userId);
+  if (displayName === undefined)
+    throw new Error(
+      `NOT MEASURED - no display name recorded for ${userId}, so the display-name scan cannot run`
+    );
+  const { hits } = await referencesTo(userId, email ?? undefined, displayName ?? undefined);
   const allowedHits = allowed.map((a) => a.hit);
   expect({ userId, allowedFound: allowedHits.filter((h) => hits.includes(h)) }).toEqual({
     userId,
@@ -734,7 +771,7 @@ rlsDescribe(
       ]);
       await invite(h4b, emailOf('live').toUpperCase(), inviter);
 
-      const r = await referencesTo(live, emailOf('live'));
+      const r = await referencesTo(live, emailOf('live'), displayNameOf('live').toUpperCase());
       // The enumeration: the auth.users FKs are all inside it (the 26 classified in
       // the spec; more is allowed, fewer means it is broken), and it is WIDER than
       // them - otherwise it could never fail.
@@ -754,6 +791,10 @@ rlsDescribe(
           'public.analytics_events.event_properties: 1',
           // found case-insensitively: the invitation spells the address in capitals
           'public.household_invitations.email: 1 (email)',
+          // MUST-FIND for the display-name scan, searched for in capitals: the
+          // living user's own profile. Without it, "no display-name hits" for a
+          // deleted user is also what a scan that never looks returns.
+          'public.user_profiles.display_name: 1 (display name)',
         ])
       );
     });
@@ -986,6 +1027,7 @@ rlsDescribe(
       const mixed = await createTestUser(mixedAccount, PWD);
       toCleanUp.push(mixed);
       emails.set(mixed, mixedAccount);
+      await giveDisplayName(mixed, tag);
       const lower = mixedAccount.toLowerCase();
 
       const owner = await makeUser('own9');
@@ -1092,6 +1134,7 @@ rlsDescribe(
       const squatter = created.user.id;
       toCleanUp.push(squatter);
       emails.set(squatter, squatAddr);
+      await giveDisplayName(squatter, 'squat10');
       const realOwnersInvite = await invite(h, squatAddr, owner);
 
       await deleteAccount(squatter, [
