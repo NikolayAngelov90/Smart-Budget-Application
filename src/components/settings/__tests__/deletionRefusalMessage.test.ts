@@ -84,7 +84,12 @@ type Case = { name: string; status: number; body: unknown } & (
 );
 
 const CASES: Case[] = [
-  { name: 'transferred', status: 500, body: refusal('transferred'), key: 'deletionRefusedTransferred' },
+  {
+    name: 'transferred',
+    status: 500,
+    body: refusal('transferred'),
+    key: 'deletionRefusedTransferred',
+  },
   {
     name: 'transferredShared',
     status: 500,
@@ -104,7 +109,12 @@ const CASES: Case[] = [
     body: refusal('transferred', false),
     key: 'accountDeleteFailed',
   },
-  { name: 'an unknown outcome', status: 500, body: refusal('somethingNew'), key: 'accountDeleteFailed' },
+  {
+    name: 'an unknown outcome',
+    status: 500,
+    body: refusal('somethingNew'),
+    key: 'accountDeleteFailed',
+  },
   {
     name: 'no code (any other 500)',
     status: 500,
@@ -123,7 +133,9 @@ const CASES: Case[] = [
   {
     name: 'a 4xx with details (wrong password), as before',
     status: 401,
-    body: { error: { message: 'Invalid password', details: 'The password you entered is incorrect' } },
+    body: {
+      error: { message: 'Invalid password', details: 'The password you entered is incorrect' },
+    },
     verbatim: 'The password you entered is incorrect',
   },
 ];
@@ -156,14 +168,15 @@ describe.each(['en', 'bg'] as const)('rendered by the real ICU engine (%s)', (lo
     texts = renderWithRealIcu(locale, calls);
   });
 
-  test.each(
-    CASES.map((c, i) => [c.name, c, i] as const).filter(([, c]) => 'key' in c)
-  )('%s: the exact text of its key, values filled in', (_name, c, i) => {
-    const text = texts[callIndex(i)]!;
-    // EXACT: the three named variants share their first sentence, so a prefix
-    // check could not tell them apart.
-    expect(text).toBe(expected(locale, (c as { key: string }).key));
-    expect(text).not.toMatch(/[{}]/);
-    expect(text).not.toContain('raw server text');
-  });
+  test.each(CASES.map((c, i) => [c.name, c, i] as const).filter(([, c]) => 'key' in c))(
+    '%s: the exact text of its key, values filled in',
+    (_name, c, i) => {
+      const text = texts[callIndex(i)]!;
+      // EXACT: the three named variants share their first sentence, so a prefix
+      // check could not tell them apart.
+      expect(text).toBe(expected(locale, (c as { key: string }).key));
+      expect(text).not.toMatch(/[{}]/);
+      expect(text).not.toContain('raw server text');
+    }
+  );
 });

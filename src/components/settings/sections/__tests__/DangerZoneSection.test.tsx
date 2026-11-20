@@ -23,7 +23,9 @@ const settings = enMessages.settings;
 const RAW = 'Failed to delete user account: Database error deleting user';
 
 function failNetwork() {
-  global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch')) as unknown as typeof fetch;
+  global.fetch = jest
+    .fn()
+    .mockRejectedValue(new TypeError('Failed to fetch')) as unknown as typeof fetch;
 }
 
 function respond(status: number, body: unknown, { json = true } = {}) {
@@ -51,9 +53,7 @@ async function attemptDeletion(): Promise<HTMLElement> {
   // The dialog already holds a static warning Alert ("cannot be undone"); the
   // error is the alert that appears once the request has failed.
   const errorAlert = () =>
-    screen
-      .getAllByRole('alert')
-      .filter((a) => !a.textContent?.includes(settings.cannotBeUndone));
+    screen.getAllByRole('alert').filter((a) => !a.textContent?.includes(settings.cannotBeUndone));
   await waitFor(() => expect(errorAlert()).toHaveLength(1));
   return errorAlert()[0]!;
 }

@@ -490,7 +490,10 @@ describe('settingsService', () => {
       });
 
       test.each([
-        ['no response (status 0)', { message: 'fetch failed', status: 0, name: 'AuthRetryableFetchError' }],
+        [
+          'no response (status 0)',
+          { message: 'fetch failed', status: 0, name: 'AuthRetryableFetchError' },
+        ],
         ['a gateway timeout (504)', { message: 'Gateway Timeout', status: 504 }],
         ['a bad gateway (502)', { message: 'Bad Gateway', status: 502 }],
         ['no status at all', { message: 'weird' }],
@@ -539,7 +542,7 @@ describe('settingsService', () => {
       });
     });
 
-    test("an unrecognisable prepare result never blocks a deletion that succeeds", async () => {
+    test('an unrecognisable prepare result never blocks a deletion that succeeds', async () => {
       mockServiceRpc.mockResolvedValue({ data: 'unexpected', error: null });
       mockAdminDeleteUser.mockResolvedValue({ data: null, error: null });
 

@@ -68,7 +68,7 @@ function icuArguments(message: string): string[] {
   // At a quote that opens a quoted literal: skip to its closing lone quote.
   const skipQuoted = (): void => {
     const literal = /^'\{\s*[A-Za-z0-9_]+\s*[,}]/.test(message.slice(i));
-    if (literal) fail('quoted placeholder renders literally (use \'\' for an apostrophe)');
+    if (literal) fail("quoted placeholder renders literally (use '' for an apostrophe)");
     let j = i + 1;
     for (;;) {
       const close = message.indexOf("'", j);
@@ -193,9 +193,7 @@ describe('ICU argument parity (en and bg use the same placeholders)', () => {
     expect(
       icuArguments('{count, plural, one {# item from {who}} other {# items from {who}}}')
     ).toEqual(['count:plural', 'who:plain']);
-    expect(icuArguments('{n, plural, offset: 1 =0 {none} other {# more}}')).toEqual([
-      'n:plural',
-    ]);
+    expect(icuArguments('{n, plural, offset: 1 =0 {none} other {# more}}')).toEqual(['n:plural']);
     expect(icuArguments('{n, number}')).toEqual(['n:number']);
     expect(icuArguments("It's {a}, isn't it")).toEqual(['a:plain']);
     expect(icuArguments("'{}' and '' and {b}")).toEqual(['b:plain']);

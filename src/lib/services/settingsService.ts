@@ -11,7 +11,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import type { UserProfile, UpdateUserProfilePayload, UserPreferences } from '@/types/user.types';
 import { logger } from '@/lib/utils/logger';
-import { AccountDeletionRefusedError, readPreparedChanges } from '@/lib/services/accountDeletionRefusal';
+import {
+  AccountDeletionRefusedError,
+  readPreparedChanges,
+} from '@/lib/services/accountDeletionRefusal';
 
 /**
  * Get user profile by ID
@@ -373,8 +376,7 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
       }
 
       // Verify by effect before claiming "your account was not deleted".
-      const { data: lookup, error: lookupError } =
-        await adminClient.auth.admin.getUserById(userId);
+      const { data: lookup, error: lookupError } = await adminClient.auth.admin.getUserById(userId);
       if (isUserNotFound(lookupError)) {
         logger.warn(
           'SettingsService',

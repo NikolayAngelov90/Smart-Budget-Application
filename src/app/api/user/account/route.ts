@@ -139,7 +139,11 @@ export async function DELETE(request: NextRequest) {
       deleteSuccess = await deleteUserAccount(user.id);
     } catch (error) {
       if (error instanceof AccountDeletionRefusedError) {
-        const refused = await refusalResponse(error, supabase as unknown as SupabaseClient, user.id);
+        const refused = await refusalResponse(
+          error,
+          supabase as unknown as SupabaseClient,
+          user.id
+        );
         if (refused) return refused;
       }
       throw error;
@@ -203,7 +207,10 @@ async function refusalResponse(
 
   const names = await resolveRefusalNames(supabase, userId);
   if (!names) {
-    logger.warn('Account', `refused deletion (${outcome}) could not be described: names unresolvable`);
+    logger.warn(
+      'Account',
+      `refused deletion (${outcome}) could not be described: names unresolvable`
+    );
     return null;
   }
   return NextResponse.json(
