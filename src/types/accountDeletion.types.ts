@@ -8,8 +8,9 @@
 export const ACCOUNT_NOT_DELETED = 'ACCOUNT_NOT_DELETED';
 
 /**
- * Which refusal text is TRUE. The approved "nothing else changed" texts are only
- * true when no shared object moved, hence four outcomes and not two.
+ * Which refusal text is TRUE. Whether the household and/or the person's shared
+ * objects moved decides what the dialog may claim, hence four outcomes. (The
+ * texts claim only what the code knows - Niki, 2026-11-20.)
  */
 export type RefusalOutcome = 'unchanged' | 'transferred' | 'transferredShared' | 'shared';
 

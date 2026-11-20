@@ -1106,7 +1106,7 @@ rlsDescribe(
     });
     it('11. a REFUSED deletion through the real service reports what the preparation did, and names the household and its new owner through the person’s own session (spec-account-deletion-refused-message)', async () => {
       // A creator with a member and a SHARED category: prepare transfers H AND
-      // moves the category - the case in which "nothing else changed" is false.
+      // moves the category - the case in which the dialog must say shared items moved.
       const c = await makeUser('c11');
       const m = await makeUser('m11');
       const h = await household('H11', c, [

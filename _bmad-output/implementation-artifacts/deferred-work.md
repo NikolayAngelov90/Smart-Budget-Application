@@ -912,4 +912,4 @@ What `npm audit` still reports after the audit PR: 20 (19 moderate, 1 high). Non
   evidence: route.ts returns `details: 'The password you entered is incorrect'` / `'Password is required for account deletion'`, and `deletionFailureMessage` shows a 4xx `details` verbatim (PR 1 kept that behaviour; it fixed only the 5xx path). Same class as the raw-error bug PR 1 fixed, but pre-existing.
 - source_spec: `_bmad-output/implementation-artifacts/spec-account-deletion-refused-message.md`
   summary: Every existing push notification title and body is hardcoded English, whatever the recipient's language.
-  evidence: found while investigating the notifications story (2026-11-20). The push senders build English strings inline and do not read `preferences.language`. PR 2's notice pushes must not copy that pattern.
+  evidence: found while investigating the notifications story (2026-11-20). The push senders build English strings inline and do not read `preferences.language`. PR 2's notice pushes must not copy that pattern. Niki (2026-11-20): PR 2's pushes are localised from the start; localising the existing ones is a separate follow-up.

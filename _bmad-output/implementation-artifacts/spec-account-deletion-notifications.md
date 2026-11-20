@@ -25,6 +25,8 @@ context:
 - **Scope, both edges IN:**
   - the owner is told when a departed member's shared goals or budgets moved to them, not only about renamed categories;
   - `removeMember` notifies the affected members too: it moves, renames and copies through the same function, so it is the same event.
+- **Pushes are localised from the start** (Niki, 2026-11-20): PR 2's pushes render in the recipient's language. Every EXISTING push being English is a separate follow-up on the board.
+- **Claims rule:** a notice says only what the code knows; no absolute claim about state it cannot see.
 - **Text rules for every new string:** never the departed person's name; no gendered pronoun for anyone; Bulgarian written as Bulgarian, not translated English. **Show Niki the new Bulgarian strings in the PR 2 report.**
 
 **Texts** (en / bg; the English as drafted, the Bulgarian as corrected by Niki):

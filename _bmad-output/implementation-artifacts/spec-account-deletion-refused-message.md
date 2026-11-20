@@ -30,11 +30,14 @@ context:
 
 **Never:** a stored row; a new migration; showing a server `message` or `details` string for a 500.
 
-**Texts** (settings namespace, en / bg). ✅ approved by Niki; ⏳ PROPOSED, needed because the approved two are false whenever shared objects moved (in production that is both people in the only shared household, with 9 and 1 shared categories). They ship only with Niki's yes.
-- ✅ `deletionRefusedUnchanged`: "Your account was not deleted and nothing was changed. Please try again." / "Акаунтът ви не беше изтрит и нищо не е променено. Моля, опитайте отново."
-- ✅ `deletionRefusedTransferred`: "Your account was not deleted. Before the deletion stopped, {household} passed to {newOwner}, who is now its owner. You remain a member, and nothing else changed. You can try again." / "Акаунтът ви не беше изтрит. Преди изтриването да спре, домакинството {household} беше прехвърлено и сега {newOwner} е негов собственик. Вие оставате член и нищо друго не е променено. Можете да опитате отново."
-- ⏳ `deletionRefusedTransferredShared`: "Your account was not deleted. Before the deletion stopped, {household} passed to {newOwner}, who is now its owner. The shared categories, budgets and goals you created in it now belong to the new owner too. You remain a member, and nothing else changed. You can try again." / "Акаунтът ви не беше изтрит. Преди изтриването да спре, домакинството {household} беше прехвърлено и сега {newOwner} е негов собственик. Общите категории, бюджети и цели, които създадохте в него, също вече принадлежат на новия собственик. Вие оставате член и нищо друго не е променено. Можете да опитате отново."
-- ⏳ `deletionRefusedShared`: "Your account was not deleted. Before the deletion stopped, the shared categories, budgets and goals you created in {household} passed to its owner, {owner}. You remain a member, and nothing else changed. You can try again." / "Акаунтът ви не беше изтрит. Преди изтриването да спре, общите категории, бюджети и цели, които създадохте в домакинството {household}, бяха прехвърлени към неговия собственик {owner}. Вие оставате член и нищо друго не е променено. Можете да опитате отново."
+**Texts** (settings namespace, en / bg). FINAL, all four approved by Niki on 2026-11-20. Two rules came with the approval:
+- the copy claims only what the code knows, so "nothing (else) changed" was dropped everywhere;
+- "categories, budgets OR goals" stays true when only categories moved.
+
+- `deletionRefusedUnchanged`: "Your account was not deleted. Please try again." / "Акаунтът ви не беше изтрит. Моля, опитайте отново."
+- `deletionRefusedTransferred`: "Your account was not deleted. Before the deletion stopped, {household} passed to {newOwner}, who is now its owner. You remain a member. You can try again." / "Акаунтът ви не беше изтрит. Преди изтриването да спре, домакинството {household} беше прехвърлено и сега {newOwner} е негов собственик. Вие оставате член. Можете да опитате отново."
+- `deletionRefusedTransferredShared`: "Your account was not deleted. Before the deletion stopped, {household} passed to {newOwner}, who is now its owner. Shared categories, budgets or goals you created there now belong to the new owner as well. You are still a member of the household. You can try again." / "Акаунтът ви не беше изтрит. Преди изтриването да спре, домакинството {household} беше прехвърлено и сега {newOwner} е негов собственик. Създадените от вас общи категории, бюджети или цели също вече са на новия собственик. Вие оставате член на домакинството. Можете да опитате отново."
+- `deletionRefusedShared`: "Your account was not deleted. Before the deletion stopped, shared categories, budgets or goals you created in {household} passed to its owner, {owner}. You are still a member of the household. You can try again." / "Акаунтът ви не беше изтрит. Преди изтриването да спре, създадените от вас общи категории, бюджети или цели в домакинството {household} бяха прехвърлени на собственика му, {owner}. Вие оставате член на домакинството. Можете да опитате отново."
 
 ## I/O & Edge-Case Matrix
 
@@ -128,6 +131,8 @@ context:
     - names come from the person's own session;
     - nothing is stored;
     - the real-ICU render runs in a child process.
+
+- **2026-11-20, Niki's text decision (renegotiated the frozen texts).** "Nothing (else) changed" was dropped from all four variants: it is an absolute claim about state the dialog cannot see (other members' copies). The shared variants say "or", and the two shared texts are Niki's own. No code changed; the tests derive their expected text from the message files, so their expectations moved with them.
 
 ## Design Notes
 
