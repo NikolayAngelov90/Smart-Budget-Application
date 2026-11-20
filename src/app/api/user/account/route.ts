@@ -12,7 +12,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { deleteUserAccount } from '@/lib/services/settingsService';
+import {
+  ACCOUNT_NOT_DELETED,
+  AccountDeletionRefusedError,
+  refusalOutcome,
+  resolveRefusalNames,
+} from '@/lib/services/accountDeletionRefusal';
 import type { DeleteAccountPayload, DeleteAccountResponse } from '@/types/user.types';
 import { logger } from '@/lib/utils/logger';
 
@@ -110,7 +117,7 @@ export async function DELETE(request: NextRequest) {
         {
           error: {
             message: 'Failed to fetch transactions for export',
-            details: transactionsError.message,
+            details: 'Account deletion failed. Please try again.',
           },
         },
         { status: 500 }
@@ -125,8 +132,18 @@ export async function DELETE(request: NextRequest) {
     // Delete the account: first the non-destructive preparation (household
     // ownership, shared objects, copies of categories other members use), then
     // admin.deleteUser, whose auth.users cascade removes the user's own rows,
-    // user_profiles included. A throw from either step lands in the catch: 500.
-    const deleteSuccess = await deleteUserAccount(user.id);
+    // user_profiles included. A throw from either step lands in the catch: 500,
+    // except a CONFIRMED refusal, which the dialog explains in the user's language.
+    let deleteSuccess: boolean;
+    try {
+      deleteSuccess = await deleteUserAccount(user.id);
+    } catch (error) {
+      if (error instanceof AccountDeletionRefusedError) {
+        const refused = await refusalResponse(error, supabase as unknown as SupabaseClient, user.id);
+        if (refused) return refused;
+      }
+      throw error;
+    }
 
     if (!deleteSuccess) {
       return NextResponse.json(
@@ -155,10 +172,42 @@ export async function DELETE(request: NextRequest) {
       {
         error: {
           message: 'Failed to delete account',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          // Never the raw error: it is English, technical, and was shown verbatim
+          // in the deletion dialog. The cause is in the log above.
+          details: 'Account deletion failed. Please try again.',
         },
       },
       { status: 500 }
     );
   }
+}
+
+/**
+ * The refusal response: a CODE plus live parameters, never text. The dialog
+ * renders it in the reader's language (spec-account-deletion-refused-message).
+ * Names are resolved now, through the person's own session, and stored nowhere.
+ * Returns null when an outcome needs names that cannot be resolved: the caller
+ * then answers with the generic failure rather than a sentence with holes.
+ */
+async function refusalResponse(
+  refusal: AccountDeletionRefusedError,
+  supabase: SupabaseClient,
+  userId: string
+): Promise<NextResponse | null> {
+  const outcome = refusalOutcome(refusal);
+  const base = { message: 'Account not deleted', code: ACCOUNT_NOT_DELETED, outcome };
+
+  if (outcome === 'unchanged') {
+    return NextResponse.json({ error: base }, { status: 500 });
+  }
+
+  const names = await resolveRefusalNames(supabase, userId);
+  if (!names) {
+    logger.warn('Account', `refused deletion (${outcome}) could not be described: names unresolvable`);
+    return null;
+  }
+  return NextResponse.json(
+    { error: { ...base, household: names.household, owner: names.owner } },
+    { status: 500 }
+  );
 }

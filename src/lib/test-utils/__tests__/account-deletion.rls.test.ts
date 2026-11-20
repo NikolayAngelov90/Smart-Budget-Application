@@ -28,10 +28,15 @@ import {
   createServiceClient,
   createTestUser,
   seedSingle,
+  signInAsTestUser,
   pinAppServiceRoleToLocalStack,
   assertAppPinnedToLocalStack,
 } from '@/lib/test-utils/rlsClient';
 import { deleteUserAccount } from '@/lib/services/settingsService';
+import {
+  AccountDeletionRefusedError,
+  resolveRefusalNames,
+} from '@/lib/services/accountDeletionRefusal';
 
 const PWD = 'rls-test-passw0rd!';
 const stamp = Date.now();
@@ -1098,6 +1103,96 @@ rlsDescribe(
       expect(await row('household_invitations', realOwnersInvite)).toMatchObject({
         status: 'pending',
       });
+    });
+    it('11. a REFUSED deletion through the real service reports what the preparation did, and names the household and its new owner through the person’s own session (spec-account-deletion-refused-message)', async () => {
+      // A creator with a member and a SHARED category: prepare transfers H AND
+      // moves the category - the case in which "nothing else changed" is false.
+      const c = await makeUser('c11');
+      const m = await makeUser('m11');
+      const h = await household('H11', c, [
+        { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      const shared = await category(c, 'C11-Shared', h);
+      // A PLAIN member with a shared category in another household: nothing is
+      // transferred, but the category goes to that household's owner.
+      const o = await makeUser('o11');
+      const p = await makeUser('p11');
+      const h2 = await household('H11-b', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: p, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      const pShared = await category(p, 'P11-Shared', h2);
+      // A user in no household: the refusal changes nothing of theirs.
+      const loner = await makeUser('loner11');
+
+      // A REAL refusal, after a real preparation: a fixture-only table whose
+      // RESTRICT foreign key prepare knows nothing about, so GoTrue's delete of
+      // auth.users fails exactly as a production refusal does.
+      // A run killed mid-test must not wedge every later one.
+      await db('DROP TABLE IF EXISTS public.rls_refusal_blocker');
+      await db(
+        'CREATE TABLE public.rls_refusal_blocker (user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT)'
+      );
+      let creatorResult: unknown;
+      let memberResult: unknown;
+      let lonerResult: unknown;
+      try {
+        await db('INSERT INTO public.rls_refusal_blocker (user_id) VALUES ($1), ($2), ($3)', [
+          c,
+          p,
+          loner,
+        ]);
+        creatorResult = await deleteUserAccount(c).catch((e: unknown) => e);
+        memberResult = await deleteUserAccount(p).catch((e: unknown) => e);
+        lonerResult = await deleteUserAccount(loner).catch((e: unknown) => e);
+      } finally {
+        await db('DROP TABLE IF EXISTS public.rls_refusal_blocker');
+      }
+
+      // The service confirmed the refusal (both users still exist) and carried
+      // prepare's OWN result.
+      expect(creatorResult).toBeInstanceOf(AccountDeletionRefusedError);
+      expect(creatorResult).toMatchObject({ ownershipTransferred: true, sharedObjectsMoved: true });
+      expect(memberResult).toBeInstanceOf(AccountDeletionRefusedError);
+      expect(memberResult).toMatchObject({ ownershipTransferred: false, sharedObjectsMoved: true });
+      expect(lonerResult).toBeInstanceOf(AccountDeletionRefusedError);
+      expect(lonerResult).toMatchObject({ ownershipTransferred: false, sharedObjectsMoved: false });
+
+      // ...and that result matches the database: M owns H, and C's shared category
+      // now belongs to M. This is the state the dialog text must describe.
+      expect((await row<{ created_by: string }>('households', h))?.created_by).toBe(m);
+      expect((await row<{ user_id: string }>('categories', shared))?.user_id).toBe(m);
+      expect((await row<{ created_by: string }>('households', h2))?.created_by).toBe(o);
+      expect((await row<{ user_id: string }>('categories', pShared))?.user_id).toBe(o);
+
+      // The names, through C's OWN session (RLS bounds it to what C can see).
+      const asC = await signInAsTestUser(emailOf('c11'), PWD);
+      await expect(resolveRefusalNames(asC, c)).resolves.toEqual({
+        household: 'H11',
+        owner: emailOf('m11'),
+      });
+      const asP = await signInAsTestUser(emailOf('p11'), PWD);
+      await expect(resolveRefusalNames(asP, p)).resolves.toEqual({
+        household: 'H11-b',
+        owner: emailOf('o11'),
+      });
+      // PAIRED: a session that is not in the household cannot name it.
+      const asLoner = await signInAsTestUser(emailOf('loner11'), PWD);
+      await expect(resolveRefusalNames(asLoner, loner)).resolves.toBeNull();
+
+      // With the blocker gone, the retry deletes both (afterAll would too; doing it
+      // here residue-scans them inside this test).
+      await deleteAccount(c);
+      await deleteAccount(p);
+      await deleteAccount(loner);
+
+      // The REAL shape of "this user does not exist", which deleteUserAccount
+      // reads as "the deletion happened": 404 AND code user_not_found. A bare 404
+      // is deliberately not enough, so the code must really be there.
+      const { data: gone, error: goneError } = await svc().auth.admin.getUserById(c);
+      expect(gone.user).toBeNull();
+      expect(goneError).toMatchObject({ status: 404, code: 'user_not_found' });
     });
   }
 );

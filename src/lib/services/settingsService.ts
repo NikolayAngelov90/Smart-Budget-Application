@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import type { UserProfile, UpdateUserProfilePayload, UserPreferences } from '@/types/user.types';
 import { logger } from '@/lib/utils/logger';
+import { AccountDeletionRefusedError, readPreparedChanges } from '@/lib/services/accountDeletionRefusal';
 
 /**
  * Get user profile by ID
@@ -324,9 +325,17 @@ export async function updatePreferences(
  * Degradation: both steps are core inputs (docs/api-conventions.md#Error-Handling),
  * so either failing throws and the route answers 500.
  *
+ * A REFUSED auth delete is checked by effect before anything is claimed
+ * (spec-account-deletion-refused-message): getUserById decides what happened.
+ *  - the user still exists -> AccountDeletionRefusedError, carrying what the
+ *    preparation reported, so the dialog can say what changed;
+ *  - the user is gone -> the deletion DID happen; success;
+ *  - the lookup fails, or prepare's result was unrecognisable -> a generic Error.
+ *
  * @param userId - User ID (UUID)
  * @returns Success boolean
- * @throws Error if deletion fails
+ * @throws AccountDeletionRefusedError if the auth delete was refused and the user still exists
+ * @throws Error if deletion fails in any other way
  */
 export async function deleteUserAccount(userId: string): Promise<boolean> {
   try {
@@ -334,14 +343,20 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
 
     // 1. PREPARATORY (non-destructive, one transaction). The RPC is not in the
     // generated Database types, hence the generic client.
-    const { error: prepareError } = await (adminClient as unknown as SupabaseClient).rpc(
-      'prepare_account_deletion',
-      { p_user: userId }
-    );
+    const { data: prepared, error: prepareError } = await (
+      adminClient as unknown as SupabaseClient
+    ).rpc('prepare_account_deletion', { p_user: userId });
 
     if (prepareError) {
       logger.error('SettingsService', 'Error preparing account deletion:', prepareError);
       throw new Error(`Failed to prepare account deletion: ${prepareError.message}`);
+    }
+
+    // What the preparation did, from its own result. An unrecognised shape only
+    // means a refusal cannot be described; it never blocks the deletion.
+    const changes = readPreparedChanges(prepared);
+    if (!changes) {
+      logger.warn('SettingsService', 'prepare_account_deletion returned an unrecognised result');
     }
 
     // 2. DESTRUCTIVE, last.
@@ -349,6 +364,38 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
 
     if (authError) {
       logger.error('SettingsService', 'Error deleting auth user:', authError);
+
+      // A transport-level failure (no response, or a gateway error) says nothing
+      // about whether GoTrue went on to delete the user, possibly AFTER any check
+      // made now. Its outcome is unknown: never "not deleted".
+      if (isOutcomeUnknown(authError)) {
+        throw new Error(`Failed to delete user account (outcome unknown): ${authError.message}`);
+      }
+
+      // Verify by effect before claiming "your account was not deleted".
+      const { data: lookup, error: lookupError } =
+        await adminClient.auth.admin.getUserById(userId);
+      if (isUserNotFound(lookupError)) {
+        logger.warn(
+          'SettingsService',
+          'auth delete reported an error, but the user is gone: the deletion happened'
+        );
+        return true;
+      }
+      if (lookupError || lookup?.user?.id !== userId) {
+        logger.warn(
+          'SettingsService',
+          'refused deletion NOT described: the existence check was inconclusive',
+          { lookupError, foundUser: lookup?.user?.id ?? null }
+        );
+      } else if (!changes) {
+        logger.warn(
+          'SettingsService',
+          "refused deletion NOT described: prepare's result was unrecognisable"
+        );
+      } else {
+        throw new AccountDeletionRefusedError(changes, authError.message);
+      }
       throw new Error(`Failed to delete user account: ${authError.message}`);
     }
 
@@ -357,4 +404,30 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
     logger.error('SettingsService', 'deleteUserAccount error:', error);
     throw error;
   }
+}
+
+/**
+ * GoTrue answers getUserById for a missing user with 404 AND code
+ * `user_not_found` (pinned against the real stack in account-deletion.rls.test.ts).
+ * A bare 404 - a misrouted or proxied call - must never read as "deleted".
+ */
+function isUserNotFound(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  return (error as { code?: unknown }).code === 'user_not_found';
+}
+
+/**
+ * supabase-js reports a request that got no usable answer as
+ * AuthRetryableFetchError: status 0 (no response) or a 502/503/504 gateway error.
+ * A refusal GoTrue itself returns ("Database error deleting user") is a 500.
+ */
+function isOutcomeUnknown(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return true;
+  const { status, name } = error as { status?: unknown; name?: unknown };
+  return (
+    name === 'AuthRetryableFetchError' ||
+    typeof status !== 'number' ||
+    status === 0 ||
+    status >= 502
+  );
 }
