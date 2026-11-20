@@ -59,7 +59,7 @@ Every insight is rule-based and deterministic — there is no LLM in the request
 | i18n | next-intl (en + bg, key parity enforced in CI) |
 | Dates | date-fns v4 |
 | Notifications | web-push (VAPID) |
-| Testing | Jest 30, React Testing Library, Playwright, Lighthouse CI |
+| Testing | Jest 30, React Testing Library, Playwright |
 | Hosting | Vercel (`arn1`, co-located with the database region) |
 
 ## Getting Started
@@ -145,8 +145,9 @@ See [Testing Guidelines](docs/testing-guidelines.md) for the rest.
 | Lighthouse performance | > 90 |
 | Lighthouse accessibility | > 95 |
 
-Lighthouse CI runs on every PR; Vercel Analytics tracks Core Web Vitals in
-production. To benchmark locally:
+Vercel Analytics tracks Core Web Vitals in production. Lighthouse audits are run
+manually (no CI workflow runs them; see the Performance Testing Guide). To
+benchmark locally:
 
 ```bash
 npm run build && npm run start
@@ -224,7 +225,7 @@ Documentation lives in two places, and the split matters:
 
 ### Setup & Deployment
 - **[Authentication Setup Guide](docs/AUTH_SETUP_GUIDE.md)** - Step-by-step instructions for configuring Supabase authentication
-- **[Performance Testing Guide](docs/performance-testing.md)** - Performance benchmarks, Lighthouse CI, and optimization strategies
+- **[Performance Testing Guide](docs/performance-testing.md)** - Performance benchmarks, manual Lighthouse audits, and optimization strategies
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Vercel setup and environment configuration
 - **[Deployment Checklist](docs/deployment-checklist.md)** - Pre-release steps, including applying migrations
 

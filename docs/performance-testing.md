@@ -154,17 +154,12 @@ Every pull request triggers:
    - **Performance benchmarks** (runs after tests)
    - Posts benchmark results as PR comment
 
-2. **Lighthouse Workflow** (`.github/workflows/lighthouse.yml`):
-   - Runs Lighthouse on desktop and mobile
-   - Uploads results to temporary public storage
-   - Fails PR if scores below thresholds
-
-### Daily Coverage Reports
-
-Every day at 2 AM UTC:
-- Coverage workflow runs (`github/workflows/coverage.yml`)
-- Generates coverage summary in GitHub
-- Uploads to Codecov for tracking trends
+**No Lighthouse workflow and no daily coverage workflow exist.** Both
+`.github/workflows/lighthouse.yml` and `.github/workflows/coverage.yml` were
+removed as dormant or redundant in `09c6690` (2026-06-04). `@lhci/cli` was removed
+from the devDependencies on 2026-11-20, because nothing ran it. Lighthouse audits
+are run manually, as described above, with a globally installed CLI and
+`lighthouserc.json`. Coverage is reported to Codecov by the Test workflow.
 
 ## Performance Monitoring in Production
 
