@@ -46,8 +46,8 @@
     "framer-motion": "^10.16.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.2",
-    "next": "^15.5.7",
-    "next-intl": "^4.8.2",
+    "next": "^15.5.29",
+    "next-intl": "^4.9.2",
     "next-pwa": "^5.6.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
@@ -56,14 +56,13 @@
     "recharts": "^3.5.0",
     "swr": "^2.3.6",
     "web-push": "^3.6.7",
-    "zod": "^4.1.12"
+    "zod": "^4.6.6"
   },
   "overrides": {
-    "serialize-javascript": "7.0.5",
-    "tmp": "0.2.5"
+    "serialize-javascript": "7.1.3"
   },
   "devDependencies": {
-    "@lhci/cli": "^0.15.1",
+    "@lhci/cli": "^0.16.1",
     "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -86,7 +85,7 @@
     "pg": "^8.23.0",
     "playwright": "^1.57.0",
     "prettier": "^3.1.0",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.5",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
