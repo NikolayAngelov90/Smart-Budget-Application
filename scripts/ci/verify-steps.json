@@ -1,0 +1,28 @@
+{
+  "_what": "The CI test job, run locally by `npm run verify` (scripts/ci/verify.mjs), in CI's order. scripts/__tests__/verify-steps.test.ts fails unless every `run:` step of jobs.test in .github/workflows/test.yml is listed here, either under `run` (same name, same command, same continue-on-error) or under `skip` with a reason. A step the workflow gains turns that test red until this file learns it.",
+  "workflow": ".github/workflows/test.yml",
+  "job": "test",
+  "run": [
+    { "name": "Install dependencies", "run": "npm ci" },
+    { "name": "Run type check", "run": "npm run type-check" },
+    { "name": "Run linter", "run": "npm run lint" },
+    { "name": "Check formatting", "run": "npm run format:check" },
+    { "name": "Run tests", "run": "npm run test:coverage" },
+    {
+      "name": "Check coverage scope (test-support excluded, product included)",
+      "run": "node scripts/ci/check-coverage-scope.mjs"
+    },
+    { "name": "Check coverage threshold", "run": "node scripts/ci/check-coverage-threshold.mjs" },
+    {
+      "name": "Security audit dependencies",
+      "run": "npm audit --audit-level=critical",
+      "continueOnError": true
+    }
+  ],
+  "skip": [
+    {
+      "name": "Check required environment variables",
+      "why": "Needs CI's secrets (GOOGLE_CLIENT_*, CRON_SECRET, UPSTASH_*, SUPABASE_SECRET_KEY...). Run locally it would check your .env, not CI's, and a pass would mean nothing about CI."
+    }
+  ]
+}

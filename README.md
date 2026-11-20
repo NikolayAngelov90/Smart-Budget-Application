@@ -117,6 +117,7 @@ npm run test:watch       # re-run on change
 npm run test:coverage    # coverage report
 npm run test:rls         # RLS isolation suite — needs Docker
 npm run check-env        # report any missing environment variables
+npm run verify           # the CI test job, locally, in CI order (see Contributing)
 ```
 
 `test:rls` runs against a **local** Supabase stack in Docker and proves the
@@ -163,12 +164,11 @@ When contributing to this codebase:
 1. **Review Documentation**: Familiarize yourself with [Component Library](docs/component-library.md), [API Conventions](docs/api-conventions.md), and [Testing Guidelines](docs/testing-guidelines.md)
 2. **Follow Patterns**: Use existing components and patterns documented in the component library
 3. **Write Tests**: Maintain 90% coverage for new code (see testing guidelines)
-4. **Run Checks**: Ensure tests pass and linter is clean before submitting
+4. **Run Checks**: run the CI test job locally before pushing
    ```bash
-   npm run lint
-   npm run type-check
-   npm test
+   npm run verify
    ```
+   It runs every `run:` step of the CI test job, in CI's order: `npm ci`, type-check, lint, format:check, tests with coverage, the coverage scope and threshold checks, and the critical-severity audit. It skips only the env-var check, which needs CI's secrets. The step list is `scripts/ci/verify-steps.json`, and a test fails whenever `.github/workflows/test.yml` gains a step that `verify` does not run. The RLS suite (`npm run test:rls`) is a separate CI job.
 
 ## Project Structure
 
