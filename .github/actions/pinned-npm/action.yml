@@ -1,0 +1,23 @@
+name: Install the pinned npm
+description: >
+  Installs the exact npm version that package.json pins in "packageManager", and
+  fails the job unless `npm --version` then matches it. EVERY job that runs
+  `npm ci` uses this between actions/setup-node and `npm ci`.
+
+# WHY ONE ACTION AND NOT A STEP PER WORKFLOW: this repo learned with the local
+# Supabase stack (.github/actions/local-supabase) that a fix landing in one
+# workflow and not the next is the default outcome when the same sequence is
+# written out in several files. Six jobs run `npm ci`; they share this one
+# definition, so the pin cannot hold in some and not others.
+#
+# WHY IT EXISTS: in PR #104 a lockfile written by local npm 11.6.3 passed every
+# local gate and failed `npm ci` in CI, where Node 22 bundles npm 10. The logic
+# lives in scripts/ci/pinned-npm.sh so it can be run, and mutation-tested,
+# locally.
+
+runs:
+  using: composite
+  steps:
+    - name: Install and verify the pinned npm
+      shell: bash
+      run: bash scripts/ci/pinned-npm.sh

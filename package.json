@@ -2,6 +2,7 @@
   "name": "smart-budget-application",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.6.3",
   "author": "Niki",
   "engines": {
     "node": "22.x"
