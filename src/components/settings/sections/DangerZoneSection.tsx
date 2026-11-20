@@ -7,10 +7,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSWRConfig } from 'swr';
 import { Button, Card, CardBody, Text, VStack, useDisclosure, useToast } from '@chakra-ui/react';
 import { DeleteIcon } from '@chakra-ui/icons';
 import { useTranslations } from 'next-intl';
 import { ConfirmDeleteModal } from '@/components/settings/ConfirmDeleteModal';
+import {
+  deletionFailureMessage,
+  refusalChangedData,
+  type SettingsTranslate,
+} from '@/components/settings/deletionRefusalMessage';
 
 export function DangerZoneSection() {
   const t = useTranslations('settings');
@@ -19,19 +25,43 @@ export function DangerZoneSection() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // The provider-bound mutate: the global one is inert under the localStorage
+  // cache provider.
+  const { mutate } = useSWRConfig();
+  const translate: SettingsTranslate = t;
+
   const handleDeleteAccount = async (password: string) => {
     setIsDeleting(true);
     try {
-      const response = await fetch('/api/user/account', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmation_password: password }),
-      });
+      let response: Response;
+      try {
+        response = await fetch('/api/user/account', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirmation_password: password }),
+        });
+      } catch (networkError) {
+        // Offline or reset: the browser's own English ("Failed to fetch") must
+        // not reach the dialog.
+        console.error('Error deleting account (no response):', networkError);
+        throw new Error(t('accountDeleteFailed'));
+      }
 
-      const data = await response.json();
+      // A non-JSON body (e.g. a platform error page) must not surface as a raw
+      // SyntaxError message in the dialog.
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(data.error?.details || 'Failed to delete account');
+        // A refusal that moved the household or shared objects left the cached
+        // household/category/budget/goal data stale: revalidate every key.
+        if (refusalChangedData(data)) void mutate(() => true);
+        throw new Error(deletionFailureMessage(translate, response.status, data));
+      }
+
+      // Only a body that SAYS the account was deleted is a success; a 2xx that
+      // cannot be read is not proof of anything.
+      if ((data as { data?: { success?: unknown } } | null)?.data?.success !== true) {
+        throw new Error(t('accountDeleteFailed'));
       }
 
       // Account deleted successfully

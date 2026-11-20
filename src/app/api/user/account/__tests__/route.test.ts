@@ -8,16 +8,29 @@ import { createClient } from '@/lib/supabase/server';
 import { createSupabaseMock, type QueryResult } from '@/test-utils/supabaseChain';
 import * as settingsService from '@/lib/services/settingsService';
 import * as exportService from '@/lib/services/exportService';
+import {
+  AccountDeletionRefusedError,
+  resolveRefusalNames,
+} from '@/lib/services/accountDeletionRefusal';
 import { NextRequest } from 'next/server';
 
 // Mock dependencies
 jest.mock('@/lib/supabase/server');
 jest.mock('@/lib/services/settingsService');
 jest.mock('@/lib/services/exportService');
+// The real error class and outcome mapping; only the name lookup is stubbed (it
+// has its own tests in accountDeletionRefusal.test.ts).
+jest.mock('@/lib/services/accountDeletionRefusal', () => ({
+  ...jest.requireActual('@/lib/services/accountDeletionRefusal'),
+  resolveRefusalNames: jest.fn(),
+}));
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockDeleteUserAccount = settingsService.deleteUserAccount as jest.MockedFunction<
   typeof settingsService.deleteUserAccount
+>;
+const mockResolveRefusalNames = resolveRefusalNames as jest.MockedFunction<
+  typeof resolveRefusalNames
 >;
 const mockExportTransactionsToCSV = exportService.exportTransactionsToCSV as jest.MockedFunction<
   typeof exportService.exportTransactionsToCSV
@@ -447,6 +460,115 @@ describe('/api/user/account DELETE', () => {
       expect(response.status).toBe(500);
       expect(data.error.message).toBe('Failed to fetch transactions for export');
       expect(mockDeleteUserAccount).not.toHaveBeenCalled();
+    });
+  });
+  /*
+   * spec-account-deletion-refused-message: a CONFIRMED refusal answers with a code
+   * plus live names, which the dialog renders in the reader's language. Every
+   * other 500 carries no server text the dialog could show.
+   */
+  describe('a refused deletion', () => {
+    const RAW = 'Failed to delete user account: Database error deleting user';
+
+    function authenticated() {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser }, error: null });
+      mockSupabase.auth.signInWithPassword.mockResolvedValue({
+        data: { user: mockUser },
+        error: null,
+      });
+      setTransactions({ data: [], error: null });
+    }
+
+    async function callDelete() {
+      const response = await DELETE(
+        new NextRequest('http://localhost:3000/api/user/account', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirmation_password: 'password' }),
+        })
+      );
+      return { status: response.status, body: await response.json() };
+    }
+
+    const refused = (ownershipTransferred: boolean, sharedObjectsMoved: boolean) =>
+      new AccountDeletionRefusedError({ ownershipTransferred, sharedObjectsMoved }, 'refused');
+
+    test.each([
+      [true, false, 'transferred'],
+      [true, true, 'transferredShared'],
+      [false, true, 'shared'],
+    ] as const)(
+      'transferred=%s, shared moved=%s -> code + outcome %s + the names, resolved on the person’s own session',
+      async (transferred, moved, outcome) => {
+        authenticated();
+        mockDeleteUserAccount.mockRejectedValue(refused(transferred, moved));
+        mockResolveRefusalNames.mockResolvedValue({
+          household: 'Вкъщи',
+          owner: 'owner@example.test',
+        });
+
+        const { status, body } = await callDelete();
+
+        expect(status).toBe(500);
+        expect(body.error).toEqual({
+          message: 'Account not deleted',
+          code: 'ACCOUNT_NOT_DELETED',
+          outcome,
+          household: 'Вкъщи',
+          owner: 'owner@example.test',
+        });
+        expect(mockResolveRefusalNames).toHaveBeenCalledWith(mockSupabase, mockUser.id);
+      }
+    );
+
+    test('nothing moved -> code + outcome unchanged, and no names are looked up', async () => {
+      authenticated();
+      mockDeleteUserAccount.mockRejectedValue(refused(false, false));
+
+      const { status, body } = await callDelete();
+
+      expect(status).toBe(500);
+      expect(body.error).toEqual({
+        message: 'Account not deleted',
+        code: 'ACCOUNT_NOT_DELETED',
+        outcome: 'unchanged',
+      });
+      expect(mockResolveRefusalNames).not.toHaveBeenCalled();
+    });
+
+    test('names unresolvable -> the generic failure, with no code (never a sentence with holes)', async () => {
+      authenticated();
+      mockDeleteUserAccount.mockRejectedValue(refused(true, true));
+      mockResolveRefusalNames.mockResolvedValue(null);
+
+      const { status, body } = await callDelete();
+
+      expect(status).toBe(500);
+      expect(body.error.code).toBeUndefined();
+      expect(body.error.message).toBe('Failed to delete account');
+      expect(mockResolveRefusalNames).toHaveBeenCalledWith(mockSupabase, mockUser.id);
+    });
+
+    test('any other failure -> 500 whose details are not the raw error', async () => {
+      authenticated();
+      mockDeleteUserAccount.mockRejectedValue(new Error(RAW));
+
+      const { status, body } = await callDelete();
+
+      expect(status).toBe(500);
+      expect(body.error.code).toBeUndefined();
+      expect(JSON.stringify(body)).not.toContain('Database error deleting user');
+      expect(mockResolveRefusalNames).not.toHaveBeenCalled();
+    });
+
+    test('a failed export read -> 500 whose details are not the raw database message', async () => {
+      authenticated();
+      setTransactions({ data: null, error: { message: 'relation "x" does not exist' } });
+
+      const { status, body } = await callDelete();
+
+      expect(status).toBe(500);
+      expect(JSON.stringify(body)).not.toContain('relation "x"');
     });
   });
 });

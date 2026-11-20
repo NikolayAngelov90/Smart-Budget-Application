@@ -10,6 +10,7 @@ import {
   deleteUserAccount,
 } from '@/lib/services/settingsService';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { AccountDeletionRefusedError } from '@/lib/services/accountDeletionRefusal';
 import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import type { UserProfile, UpdateUserProfilePayload } from '@/types/user.types';
 
@@ -415,6 +416,138 @@ describe('settingsService', () => {
       // account-deletion.rls.test.ts (test 2).
       expect(mockCreateClient).not.toHaveBeenCalled();
       expect(svcDb.from).not.toHaveBeenCalled();
+    });
+    /*
+     * A REFUSED auth delete, checked by effect (spec-account-deletion-refused-message).
+     * Only a refusal CONFIRMED by getUserById may say "your account was not deleted",
+     * and what it says changed comes from prepare_account_deletion's own result.
+     */
+    describe('a refused auth delete', () => {
+      const prepared = (transferred: boolean, moved: number) => ({
+        data: {
+          ownership_transferred: transferred,
+          shared_objects_moved: moved,
+          categories_copied: 0,
+          rows_repointed: 0,
+        },
+        error: null,
+      });
+      let mockGetUserById: jest.Mock;
+
+      beforeEach(() => {
+        mockGetUserById = svcDb.client.auth.admin.getUserById;
+        mockAdminDeleteUser.mockResolvedValue({
+          data: null,
+          error: { message: 'Database error deleting user', status: 500 },
+        });
+      });
+
+      test.each([
+        [true, 3, { ownershipTransferred: true, sharedObjectsMoved: true }],
+        [true, 0, { ownershipTransferred: true, sharedObjectsMoved: false }],
+        [false, 1, { ownershipTransferred: false, sharedObjectsMoved: true }],
+        [false, 0, { ownershipTransferred: false, sharedObjectsMoved: false }],
+      ])(
+        'confirmed (the user still exists): transferred=%s moved=%s -> AccountDeletionRefusedError with what prepare reported',
+        async (transferred, moved, expected) => {
+          mockServiceRpc.mockResolvedValue(prepared(transferred, moved));
+          mockGetUserById.mockResolvedValue({ data: { user: { id: mockUserId } }, error: null });
+
+          const thrown = await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+
+          expect(thrown).toBeInstanceOf(AccountDeletionRefusedError);
+          expect(thrown).toMatchObject(expected);
+          // The confirmation asked about THIS user, after the refusal.
+          expect(mockGetUserById).toHaveBeenCalledWith(mockUserId);
+          expect(mockAdminDeleteUser.mock.invocationCallOrder[0]!).toBeLessThan(
+            mockGetUserById.mock.invocationCallOrder[0]!
+          );
+        }
+      );
+
+      test('the user is gone after all: the deletion happened, so it succeeds', async () => {
+        mockServiceRpc.mockResolvedValue(prepared(true, 2));
+        mockGetUserById.mockResolvedValue({
+          data: { user: null },
+          error: { message: 'User not found', status: 404, code: 'user_not_found' },
+        });
+
+        await expect(deleteUserAccount(mockUserId)).resolves.toBe(true);
+        expect(mockGetUserById).toHaveBeenCalledWith(mockUserId);
+      });
+
+      test('a bare 404 (no user_not_found code) is NOT read as "deleted": a generic error', async () => {
+        mockServiceRpc.mockResolvedValue(prepared(true, 2));
+        mockGetUserById.mockResolvedValue({
+          data: { user: null },
+          error: { message: 'Not Found', status: 404 },
+        });
+
+        const thrown = await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+        expect(thrown).not.toBe(true);
+        expect(thrown).not.toBeInstanceOf(AccountDeletionRefusedError);
+        expect((thrown as Error).message).toMatch(/^Failed to delete user account/);
+      });
+
+      test.each([
+        [
+          'no response (status 0)',
+          { message: 'fetch failed', status: 0, name: 'AuthRetryableFetchError' },
+        ],
+        ['a gateway timeout (504)', { message: 'Gateway Timeout', status: 504 }],
+        ['a bad gateway (502)', { message: 'Bad Gateway', status: 502 }],
+        ['no status at all', { message: 'weird' }],
+      ])(
+        'an auth error with an UNKNOWN outcome (%s) is never "not deleted", and is not checked now',
+        async (_label, authError) => {
+          mockServiceRpc.mockResolvedValue(prepared(true, 2));
+          mockAdminDeleteUser.mockResolvedValue({ data: null, error: authError });
+
+          const thrown = await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+          expect(thrown).not.toBeInstanceOf(AccountDeletionRefusedError);
+          expect((thrown as Error).message).toMatch(/outcome unknown/);
+          // A check made now cannot rule out a delete that commits later.
+          expect(mockGetUserById).not.toHaveBeenCalled();
+        }
+      );
+
+      test('the confirmation itself fails: no claim, a generic error', async () => {
+        mockServiceRpc.mockResolvedValue(prepared(true, 2));
+        mockGetUserById.mockResolvedValue({
+          data: { user: null },
+          error: { message: 'upstream timeout', status: 504 },
+        });
+
+        const thrown = await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+        expect(thrown).not.toBeInstanceOf(AccountDeletionRefusedError);
+        expect((thrown as Error).message).toMatch(/^Failed to delete user account/);
+      });
+
+      test('the confirmation returns a different user: no claim, a generic error', async () => {
+        mockServiceRpc.mockResolvedValue(prepared(false, 0));
+        mockGetUserById.mockResolvedValue({ data: { user: { id: 'someone-else' } }, error: null });
+
+        const thrown = await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+        expect(thrown).not.toBeInstanceOf(AccountDeletionRefusedError);
+        expect((thrown as Error).message).toMatch(/^Failed to delete user account/);
+      });
+
+      test("prepare's result is unrecognisable: a refusal gets a generic error, never a guess", async () => {
+        mockServiceRpc.mockResolvedValue({ data: { ownership_transferred: 'yes' }, error: null });
+        mockGetUserById.mockResolvedValue({ data: { user: { id: mockUserId } }, error: null });
+
+        const thrown = await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+        expect(thrown).not.toBeInstanceOf(AccountDeletionRefusedError);
+        expect((thrown as Error).message).toMatch(/^Failed to delete user account/);
+      });
+    });
+
+    test('an unrecognisable prepare result never blocks a deletion that succeeds', async () => {
+      mockServiceRpc.mockResolvedValue({ data: 'unexpected', error: null });
+      mockAdminDeleteUser.mockResolvedValue({ data: null, error: null });
+
+      await expect(deleteUserAccount(mockUserId)).resolves.toBe(true);
+      expect(mockAdminDeleteUser).toHaveBeenCalledWith(mockUserId);
     });
   });
 });
