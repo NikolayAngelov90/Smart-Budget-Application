@@ -246,6 +246,16 @@ Nothing here is destructive. If the delete never follows, N owns H and is its on
   - U6 a profile delete through the service client;
   - U7 a rejected preparation swallowed.
 
+**Production apply (2026-11-20, Niki's yes for `c52de92`, via the CLI):**
+- Two attempts through the MCP `apply_migration` tool were declined automatically: its confirmation for DROP/REVOKE cannot appear in a non-interactive session. Nothing was applied either time, verified read-only.
+- `supabase projects list`: `● | rlcgqvqpuqkkxtczalpi | smart-budget-application` (linked by Niki).
+- `supabase db push --dry-run` from `c52de92`: `Would push these migrations: • 20261119100000_prepare_account_deletion.sql`. Exactly one.
+- Before: none of the five functions; triggers `on_auth_user_created` only; the new index absent; ledger 47 rows.
+- `supabase db push` from `c52de92` (migration blob `8868eb44`): `Applying migration 20261119100000_prepare_account_deletion.sql...` / `Finished supabase db push.`
+- After: +5 functions (owner postgres, `search_path=public`, `anon_exec=false auth_exec=false` on all five); +3 triggers (auth.users BEFORE DELETE FOR EACH ROW, households BEFORE UPDATE, goal_contributions AFTER DELETE FOR EACH STATEMENT); +1 index; ledger 48 rows, the new one `20261119100000 | prepare_account_deletion`. Ledger vs repo: `in both: 48 | only in the repo: 0 | only in the ledger: 0`. Row counts unchanged.
+- Drift (run 44720322967): `hard failures : 0`, `pending : 0` (8 before the apply), `DRIFT CHECK PASSED.`
+- The file `supabase/migrations/20261119100000_prepare_account_deletion.sql` is FROZEN from here: any change is a new migration.
+
 ## Suggested Review Order
 
 **The ordering: preparatory writes first, the destructive step last**
