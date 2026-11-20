@@ -108,3 +108,11 @@ direct dependency in the original lockfile.
 
 Every advisory in code that runs for users or on the server is fixed. What remains is
 Next's build-time CSS pipeline (postcss) and the test runner (jest).
+
+## Found in CI, after the fact
+
+The first CI run of this PR failed at `npm ci` on every job: `Missing: rollup@4.68.7 from lock file`.
+
+- **What changed hands.** `@lhci/cli` 0.16.1 (`e8d68f3`) brought lighthouse's `@sentry/node` from 7.120.4 to **11.15.0**, a major jump in a dev-only dependency of a dev-only dependency. The local check of that commit looked for downgrades only, not majors, so this was not caught.
+- **Why it broke CI.** Its `@sentry/bundler-plugins` declares an OPTIONAL peer `rollup >=3.2.0`, while rollup 2.80.0 is already present for next-pwa's workbox. Local npm 11.6.3 accepts a present-but-incompatible optional peer. CI's npm 10 (Node 22) does not, and wants rollup 4 in the lockfile.
+- **The fix (`07be18d`).** `npm@10 install --package-lock-only` added exactly the 27 missing entries (rollup 4.68.7 and its platform binaries), with nothing changed or removed. Both `npm@10 ci --dry-run` and `npm@11.6.3 ci --dry-run` pass.
