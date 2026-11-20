@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start",
     "type-check": "tsc --noEmit",
+    "verify": "node scripts/ci/verify.mjs",
     "lint": "node scripts/ci/lint.mjs",
     "lint:fast": "node scripts/ci/lint.mjs --cache && echo \"note: cached run. A green lint:fast is NOT a green gate - a stale cache can pass a file that npm run lint rejects.\"",
     "format:once": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
