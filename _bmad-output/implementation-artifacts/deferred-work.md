@@ -680,6 +680,31 @@ item in deferred-work.md" — but the item was not written until 2026-11-18, whe
 check of that pointer found nothing. A pointer in code to a board item is a claim;
 it was unverified for two days.
 
+**Residual holes in `current_amount == SUM(goal_contributions)`** (added
+2026-11-19, from `spec-household-creator-account-deletion`). Migration
+`20261119100000` adds an AFTER DELETE statement trigger that recomputes a
+SHARED goal's total from its remaining rows whenever contributions are deleted:
+by an account deletion, by a goal deletion, and (a side effect) by a member
+deleting their own contribution through PostgREST. It does not close these two,
+re-derived against the local stack's live `pg_policies` on 2026-11-19:
+
+1. **The personal-goal increment can half-apply.** `goalService.addContribution`
+   inserts the contribution, then reads, increments and writes `current_amount`
+   in a second statement with no rollback; its own comment, at the line
+   `// Step 3: Increment current_amount.`, says so. A failed UPDATE leaves a row
+   the total does not include.
+   Personal goals are outside the trigger on purpose: the invariant was never
+   established for them.
+2. **Direct PostgREST writes bypass both services.** `goals` carries
+   `Users can update own goals`, so an owner can set `current_amount` to any
+   non-negative number. `goal_contributions` carries
+   `Users can insert own contributions`, so a member can insert a row no service
+   recomputes from. Nothing corrects an INSERT or an UPDATE.
+
+Not measurable from production data (0 goals on 2026-11-18). If it is decided:
+recompute on INSERT/UPDATE too, or take `current_amount` off the client-writable
+surface. For personal goals, decide first whether the invariant is meant to hold.
+
 ## ON THE BOARD, NOT STARTED: account deletion's data removal has never been tested
 
 **The finding:** deleting an account is meant to remove every row the user owns.
@@ -743,6 +768,17 @@ user account" after the profile row is already gone.
 3. **`deleteTestUser` throws on error.** Cheap. Every RLS teardown would then
    exercise "the delete succeeds", but nothing would assert that the rows are gone.
 
+**STATUS 2026-11-19: options 2 and 3 are built; option 1 is not.** Option 3
+landed in #102. Option 2 landed, in a wider form, with
+`spec-household-creator-account-deletion`: `account-deletion.rls.test.ts` deletes
+six accounts and scans EVERY uuid column of every public table, enumerated from
+the catalog at test time, for each deleted id. The auth.users FKs are its
+must-find, and a still-living user is its presence control. It scans more than the
+FKs because for an FK column the answer is guaranteed by referential integrity;
+only a column WITHOUT an FK can still hold a deleted id. That covers the local
+stack at test time. Option 1, the production-catalog check in the drift job (the
+only one that sees production's schema), is still not built.
+
 ## DECISION FOR NIKI: what a household creator's account deletion takes from the other members
 
 Measured read-only on 2026-11-18, from the production FK graph and counts. The
@@ -776,6 +812,14 @@ Nobody's personal transactions can be deleted by this cascade. The RESTRICT
 blocks first. So the shared-layer loss is a design default to confirm or
 change, and the half-deleted profile is a bug to fix.
 
+**STATUS 2026-11-19: DECIDED by Niki and BUILT** in
+`spec-household-creator-account-deletion` (migration `20261119100000`). The
+household transfers to the longest-standing member. Members keep copies of the
+creator's categories they used. Shared objects go to the owner, through the
+function `removeMember` now also uses. The half-deletion is fixed by ordering:
+the preparation runs first, `admin.deleteUser` runs last, and there is no
+explicit profile delete. Production apply is pending, under the standing rule.
+
 ## ON THE BOARD (one line): `deferred-work.md` is not Prettier-clean, and that is by scope - `format:check` covers `src/**` only, so docs and `_bmad-output/` are deliberately outside it (decided 2026-11-18, not reopened).
 
 ## ON THE BOARD, NOT STARTED: the masked-failure detector is blind in 76 of 261 test files
@@ -802,3 +846,47 @@ matches the detector's signatures, and prints a line naming
 `expect.getState().currentTestName`. That would make the 76 files visible
 without un-mocking anything. Until it exists, "detector clean" means clean in
 the 185 files whose logger prints.
+
+## ON THE BOARD (one line): a fresh clone HALTs every BMAD 6.11 skill render - the per-user config layer `_bmad/config.user.toml` is gitignored and the 6.8 -> 6.11 upgrade migrated the install but not it (recreated locally 2026-11-19 with `communication_language` only; `user_name` and `user_skill_level` from the old YAML are likewise unmigrated and will HALT any skill that needs them).
+
+## DEFERRED FROM REVIEW: spec-household-creator-account-deletion (2026-11-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md`
+  summary: Account deletion is two calls, `prepare_account_deletion` and then `admin.deleteUser`, and a write landing between them is not covered. Each of these is lost or detached without any refusal:
+    - another member's new `category_budgets` / `value_categories` row on the deleting user's category (CASCADE), or a `wishlist_items` row on it (SET NULL);
+    - an invitation to a sole-member creator's household accepted in the gap (the household then cascades);
+    - a concurrent deletion by the member just chosen as new owner.
+  evidence: The two calls are separate transactions by Niki's approved design ("one Postgres function makes all preparatory writes; `admin.deleteUser` runs last"). Test 2 proves only the RESTRICT case (`transactions.category_id`), which refuses instead of losing data. The window is the time between two sequential calls in one request. Closing it means either deleting the auth row inside the same SQL transaction, which changes the approved design, or a "deletion pending" marker that the other writers respect. Both are decisions, not patches. The same class, already present: `reassign_member_shared_objects` checks name collisions without locking the owner's categories (a concurrent insert aborts the call: fail-closed, retryable), and `householdGoalService`'s SUM-then-UPDATE can race the trigger.
+  decision: 2026-11-19, Niki: ACCEPTED FOR NOW. Revisit if users grow.
+- source_spec: `_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md`
+  summary: Nobody is told what the deletion changed for them. A member becomes owner and admin without notice, other members find shared categories renamed ("Groceries 3"), and a user whose auth delete was refused gets a 500 after their household ownership has already moved.
+  evidence: Product questions, not defects. The refused-delete state is valid and approved (matrix row 40: "prepared writes stand (valid by design)"), and `removeMember` already notifies the removed member through `dispatchCategorizedPush`, so the mechanism exists. Whether to notify, whom, and in what words (en+bg) is Niki's to decide.
+  decision: 2026-11-19, Niki: a SEPARATE STORY, later. Not in this one.
+- source_spec: `_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md`
+  summary: An ACCEPTED invitation keeps the invitee's email address after the invitee deletes their account. `household_invitations.email` is NOT NULL and survives, and only `accepted_by` goes NULL. That is personal data left behind, against P2.
+  evidence: This predates the story: invitations were never touched by deletion, and the story's decision ("invitations kept; invited_by/accepted_by NULL") covered attribution, not the address. The test 4 residue scan looks for ids, not emails, so it cannot see this. Options: blank or hash the email of accepted invitations when the acceptor is deleted, or delete accepted invitations, which are history and not pending work. Needs Niki's call.
+  decision: 2026-11-19, Niki: NOT for later. It breaks P2, which is already approved, and the migration was still unapplied. FIXED in this story: the BEFORE DELETE trigger `on_auth_user_deleted_remove_invitations` on `auth.users` deletes every invitation the person accepted (`accepted_by`, which also catches an address they later changed) or that is addressed to their email (any status, case-insensitive). Invitations they SENT stay. The residue scan was extended to look for the deleted person's email first, and it went red on exactly those invitation rows before the fix.
+
+## DEFERRED FROM REVIEW, ROUND 2 (the auth.users email trigger): spec-household-creator-account-deletion (2026-11-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md`
+  summary: SECURITY QUESTION FOR NIKI. If production lets users sign in without confirming their email, anyone can register an invitee's address, read that invitation's TOKEN from `GET /api/invitations/mine`, and accept it, joining a household they were never invited to.
+  evidence: This predates the story; the account-deletion work only touched the deletion side. `listMyPendingInvitations(user.email)` (src/app/api/invitations/mine/route.ts) selects `id, token, ...` for pending invitations whose email equals the signed-in user's email, and nothing checks `email_confirmed_at`. `acceptInvitation` checks only `inv.email === userEmail`. Local `supabase/config.toml` has `enable_confirmations = false`. The production setting cannot be read through the MCP. Read-only data shows 2 of 3 users confirmed within 5 seconds of sign-up, which fits either autoconfirm or Google OAuth. Check: Dashboard -> Authentication -> Providers -> Email -> "Confirm email". A mechanical guard in code (refuse to list or accept unless `email_confirmed_at` is set) would make the dashboard setting irrelevant.
+  decision: CHECKED 2026-11-19 by Niki in the dashboard. "Confirm email" is ENABLED in production, so an unconfirmed registration cannot claim an invitee's address. CLOSED.
+  dependency: the invitation flow's safety RELIES on that setting staying on. It is a dashboard setting that cannot be read through the database tools, so the drift check cannot guard it, and turning it off would silently reopen this. The code guard above remains the way to remove the dependency.
+- source_spec: `_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md`
+  summary: The drift dump does not compare function ACLs, so a dropped REVOKE (anon/authenticated EXECUTE on a SECURITY DEFINER function) passes the drift gate.
+  evidence: `dump-catalog.sql`'s FUNCTION rows carry `prosecdef` and `proconfig` but not `proacl`. Adding it was measured read-only on 2026-11-19: production and the migrations agree on every function's ACL except `public.seed_user_categories(uuid)`, which is already allowlisted for body and proconfig drift. So adding ACLs means a comparator change and an allowlist update for that one function. For THIS migration's five functions, the grants are asserted locally (account-deletion.rls.test.ts, test 8) and in the production after-snapshot. (The TRIGGER blind spot, auth.* triggers on app functions, was fixed in this story.)
+- source_spec: `_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md`
+  summary: P2 QUESTION FOR NIKI. GoTrue's own `auth.audit_log_entries` keeps a deleted user's email (the `user_deleted` entry's traits), so the address outlives the account there.
+  evidence: Found by the edge-case reviewer: 2310 local rows. The residue scan deliberately excludes the `auth` schema, because GoTrue owns its tables, including its audit log, and the app does not clean them. The options are a decision, not a patch: accept it as a security log with retention as a legitimate interest, or purge audit entries older than N days on a schedule.
+  decision: 2026-11-19, Niki: KEEP it as a security log. Do not purge, for now.
+- source_spec: `_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md`
+  summary: The allowlist entry `migration-ledger-divergence` says 20260924100000 is NOT recorded in production's `schema_migrations`, but a read-only query on 2026-11-19 shows it recorded (`20260924100000 | close_drifted_production_policies`).
+  evidence: Its own `resolves_when` says to delete the entry once the version is recorded. Seen in passing while checking how production records migration versions; not verified when or how the row got there.
+- source_spec: `_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md`
+  summary: INDEX DRIFT, invisible to the drift gate. Production's `idx_invitations_active` is `UNIQUE (household_id, email) WHERE status = 'pending'`, but `021_household_invitations.sql` (and the local stack) define it on `(household_id, lower(email))`. `dump-catalog.sql` has no INDEX kind, so no check compares indexes at all.
+  evidence: Read-only `pg_indexes` on production, 2026-11-19, while checking that the new `idx_invitations_email_normalised` collides with nothing (it does not). Harmless in practice today, because `invitationService.normalizeEmail` lowercases before every write. But a write that skipped it could insert a case-variant duplicate pending invitation in production that the migrations would refuse. Fix options: a migration that recreates the index as defined (needs the standing rule), and an INDEX kind in the drift dump.
+- source_spec: `_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md`
+  summary: The Supabase MCP `apply_migration` tool CANNOT apply a migration that contains DROP or REVOKE from a non-interactive Claude session. It was declined twice on 2026-11-19 (`"Migration was declined."`), and Niki was never shown a confirmation dialog.
+  evidence: The tool describes itself as possibly requiring user confirmation for destructive statements. This session runs non-interactively, so that confirmation can never be shown and every such apply is declined automatically. The tool also takes no version, so it cannot record the repo file's version in `schema_migrations`. Use the CLI instead: `supabase db push` after `supabase login` and `supabase link`, gated by `--dry-run` listing exactly the expected migration. That is how 20261119100000 was applied, and the ledger still matches the repo 48/48.

@@ -78,7 +78,7 @@ describe('removeMember', () => {
     await expect(removeMember('admin', 'target')).rejects.toBeInstanceOf(MemberNotFoundError);
   });
 
-  it('deletes the membership row, reassigns shared categories/goals to the admin, and notifies', async () => {
+  it("deletes the membership row, hands the member's shared objects to the owner through the one shared function, and notifies", async () => {
     const db = adminClient({});
     mockServiceClient.mockReturnValue(db.client);
     await removeMember('admin', 'target');
@@ -94,22 +94,40 @@ describe('removeMember', () => {
       ])
     );
 
-    // Residual owner-branch severed: the REMOVED member's shared categories and
-    // goals are reassigned to the admin - and ONLY theirs. Without the user_id
-    // filter every shared row in the household, other members' included, would
-    // be handed to the admin; the old assertion checked the payload only.
-    for (const table of ['categories', 'goals']) {
-      expect(db.callsTo(table, 'update')).toEqual([[{ user_id: 'admin' }]]);
-      expect(db.callsTo(table, 'eq')).toEqual(
-        expect.arrayContaining([
-          ['user_id', 'target'],
-          ['household_id', 'h'],
-        ])
-      );
-    }
+    // Residual owner-branch severed - through the ONE shared definition,
+    // reassign_member_shared_objects, which account deletion also uses. The scope
+    // guard (ONLY this member's shared rows move; a missing user_id filter would
+    // hand every member's to the owner) now lives in that SQL function and is
+    // tested against Postgres in account-deletion.rls.test.ts. Here: the right
+    // household and the right member are passed.
+    expect(db.client.rpc).toHaveBeenCalledWith('reassign_member_shared_objects', {
+      p_household: 'h',
+      p_member: 'target',
+    });
+    expect(db.allCallsTo('categories', 'update')).toEqual([]);
+    expect(db.allCallsTo('goals', 'update')).toEqual([]);
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush.mock.calls[0]![0]).toBe('target');
     expect(mockPush.mock.calls[0]![1]).toBe('household'); // category gate (15.5)
+  });
+
+  it('FAILS CLOSED when the reassignment fails: it throws, and the membership is never deleted', async () => {
+    // The reassignment runs BEFORE the delete. It used to run after it with its
+    // error only logged, leaving an ex-member who still owned shared objects and
+    // nothing to retry. This also covers the deploy window: before the migration
+    // exists, the RPC errors and the removal changes nothing.
+    const db = adminClient({});
+    (db.client.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { message: 'function reassign_member_shared_objects does not exist' },
+    });
+    mockServiceClient.mockReturnValue(db.client);
+
+    await expect(removeMember('admin', 'target')).rejects.toThrow('Failed to remove member');
+    // PAIRED: the reassignment was attempted, so "no delete" is the guard working.
+    expect(db.client.rpc).toHaveBeenCalledTimes(1);
+    expect(db.allCallsTo('household_members', 'delete')).toEqual([]);
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });
 

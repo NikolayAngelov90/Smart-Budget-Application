@@ -14,8 +14,10 @@
  *   npx supabase start && npm run test:rls
  */
 
-// Import the RAW supabase-js client (not @/lib/supabase/server, which jest.setup.js
-// globally mocks). RLS tests need a real client that carries a real user JWT.
+// Import the RAW supabase-js client: RLS tests need a real client that carries a
+// real user JWT. (The comment here used to say @/lib/supabase/server is globally
+// mocked by jest.setup.js; that mock was deleted on 2026-11-18. To run a REAL
+// service function against the local stack, see pinAppServiceRoleToLocalStack.)
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const URL = process.env.RLS_TEST_SUPABASE_URL;
@@ -45,6 +47,55 @@ function requireConfig(): { url: string; anonKey: string; serviceKey: string } {
     );
   }
   return { url: URL, anonKey: ANON_KEY, serviceKey: SERVICE_KEY };
+}
+
+/** Same allowlist as scripts/rls-preflight.mjs, compared with === on the PARSED host. */
+const LOCAL_HOSTS = ['127.0.0.1', 'localhost', '[::1]'];
+
+/**
+ * Points the APP's service-role client (`createServiceRoleClient` in
+ * @/lib/supabase/server) at the local test stack, so an RLS test can run a REAL
+ * service function instead of a copy of its steps - a copy that can drift from
+ * the service while every test stays green.
+ *
+ * SAFETY, because next/jest loads .env* files: SUPABASE_SECRET_KEY may hold
+ * PRODUCTION's key when this runs. Both variables the app reads are overwritten
+ * with the harness values, whose host rls-preflight.mjs has already checked; the
+ * host is checked again here, and `assertAppPinnedToLocalStack` re-checks before
+ * every real call. Returns a function that restores the previous values.
+ */
+export function pinAppServiceRoleToLocalStack(): () => void {
+  const { url, serviceKey } = requireConfig();
+  const host = new globalThis.URL(url).hostname;
+  if (!LOCAL_HOSTS.includes(host)) {
+    throw new Error(`Refusing to point the app at a non-local host: ${host}`);
+  }
+  const saved = {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
+  };
+  process.env.NEXT_PUBLIC_SUPABASE_URL = url;
+  process.env.SUPABASE_SECRET_KEY = serviceKey;
+  return () => {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  };
+}
+
+/** Throws unless the app's service-role client would reach the local test stack. */
+export function assertAppPinnedToLocalStack(): void {
+  const { url, serviceKey } = requireConfig();
+  if (
+    process.env.NEXT_PUBLIC_SUPABASE_URL !== url ||
+    process.env.SUPABASE_SECRET_KEY !== serviceKey ||
+    !LOCAL_HOSTS.includes(new globalThis.URL(url).hostname)
+  ) {
+    throw new Error(
+      'The app service-role client is not pinned to the local test stack - refusing to run a real service function'
+    );
+  }
 }
 
 /**

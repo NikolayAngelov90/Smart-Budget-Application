@@ -7,6 +7,7 @@
  * RLS policies ensure users can only access their own data
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import type { UserProfile, UpdateUserProfilePayload, UserPreferences } from '@/types/user.types';
 import { logger } from '@/lib/utils/logger';
@@ -305,26 +306,45 @@ export async function updatePreferences(
  * Delete user account and all associated data
  * AC-8.3.8: Account deletion with cascading deletes
  *
+ * ORDERED SO EVERY INTERMEDIATE STATE IS VALID (spec-household-creator-account-deletion):
+ *  1. prepare_account_deletion - one transaction of PREPARATORY writes: household
+ *     ownership transfer, the user's shared objects to the owner, and copies of
+ *     any of the user's categories another member's rows reference. None of it is
+ *     destructive, so it stands correctly whether or not step 2 succeeds.
+ *  2. admin.deleteUser - the ONLY destructive step, last. The auth.users cascade
+ *     removes every personal row, user_profiles included (user_profiles.id
+ *     REFERENCES auth.users ON DELETE CASCADE).
+ *
+ * There is deliberately no explicit user_profiles delete. It used to run FIRST, so
+ * a refused auth delete (transactions.category_id is ON DELETE RESTRICT) left the
+ * profile gone and the account and all its data in place. The RLS suite proves the
+ * cascade removes the profile: account-deletion.rls.test.ts asserts no FK column
+ * referencing auth.users - user_profiles.id among them - still holds the id.
+ *
+ * Degradation: both steps are core inputs (docs/api-conventions.md#Error-Handling),
+ * so either failing throws and the route answers 500.
+ *
  * @param userId - User ID (UUID)
  * @returns Success boolean
  * @throws Error if deletion fails
  */
 export async function deleteUserAccount(userId: string): Promise<boolean> {
   try {
-    const supabase = await createClient();
+    const adminClient = createServiceRoleClient();
 
-    // Delete the user profile. This does NOT reach auth.users: the FK runs the
-    // other way (user_profiles.id REFERENCES auth.users ON DELETE CASCADE). The
-    // auth user is deleted explicitly below, and THAT is what cascades.
-    const { error: profileError } = await supabase.from('user_profiles').delete().eq('id', userId);
+    // 1. PREPARATORY (non-destructive, one transaction). The RPC is not in the
+    // generated Database types, hence the generic client.
+    const { error: prepareError } = await (adminClient as unknown as SupabaseClient).rpc(
+      'prepare_account_deletion',
+      { p_user: userId }
+    );
 
-    if (profileError) {
-      logger.error('SettingsService', 'Error deleting user profile:', profileError);
-      throw new Error(`Failed to delete user profile: ${profileError.message}`);
+    if (prepareError) {
+      logger.error('SettingsService', 'Error preparing account deletion:', prepareError);
+      throw new Error(`Failed to prepare account deletion: ${prepareError.message}`);
     }
 
-    // Delete auth user using service role client (admin operations require elevated privileges)
-    const adminClient = createServiceRoleClient();
+    // 2. DESTRUCTIVE, last.
     const { error: authError } = await adminClient.auth.admin.deleteUser(userId);
 
     if (authError) {

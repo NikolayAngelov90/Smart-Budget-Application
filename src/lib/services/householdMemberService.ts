@@ -91,7 +91,38 @@ export async function removeMember(adminUserId: string, targetUserId: string): P
     .maybeSingle();
   if (!targetRow) throw new MemberNotFoundError();
 
-  // The revocation: delete the membership row.
+  // 1. Reassign the SHARED categories, budgets and goals the member owns to the household
+  // owner, so the ex-member loses the owner-branch read/WRITE over shared structures
+  // (without it they could still rename/delete a shared category or goal they own).
+  // household_id is kept, so remaining members are unaffected. Transactions are NOT
+  // reassigned — they keep their user_id attribution per AC#3.
+  //
+  // ONE DEFINITION, shared with account deletion: reassign_member_shared_objects
+  // (migration 20261119100000). This used to be two UPDATEs here while account deletion
+  // needed the same rule, and the two had drifted: shared budgets were never moved, and a
+  // category name the admin already used made the UPDATE fail and the error was only
+  // logged. The function targets households.created_by - the same row as the acting admin:
+  // the admin role is only ever granted to the owner, and created_by is server-only.
+  //
+  // FIRST, and FAIL CLOSED. It used to run after the membership delete with its error only
+  // logged, so a failure left an ex-member still owning shared objects with nothing to
+  // retry. Run first, a failure (including the function not existing yet, between deploy
+  // and migration) changes nothing and answers 500; run first and succeeding, the state is
+  // valid even if the delete below then fails - the member is still a member, and their
+  // shared objects simply belong to the owner. A retry reassigns nothing and deletes.
+  const { error: reassignError } = await (admin as unknown as SupabaseClient).rpc(
+    'reassign_member_shared_objects',
+    { p_household: householdId, p_member: targetUserId }
+  );
+  if (reassignError) {
+    logger.error(
+      'HouseholdMemberService',
+      `shared-object reassign failed: ${reassignError.message}`
+    );
+    throw new Error('Failed to remove member');
+  }
+
+  // 2. The revocation: delete the membership row.
   const { error: deleteError } = await admin
     .from('household_members')
     .delete()
@@ -100,29 +131,6 @@ export async function removeMember(adminUserId: string, targetUserId: string): P
   if (deleteError) {
     logger.error('HouseholdMemberService', `member delete failed: ${deleteError.message}`);
     throw new Error('Failed to remove member');
-  }
-
-  // Reassign the SHARED categories + goals the removed member created to the admin, so the
-  // ex-member loses the owner-branch read/WRITE over shared structures (without it they
-  // could still rename/delete a shared category or goal they own). household_id is kept, so
-  // remaining members are unaffected. Transactions are NOT reassigned — they keep their
-  // user_id attribution per AC#3 (the ex-member only retains sight of their own entries).
-  const genericAdmin = admin as unknown as SupabaseClient;
-  const { error: catReassignError } = await admin
-    .from('categories')
-    .update({ user_id: adminUserId })
-    .eq('user_id', targetUserId)
-    .eq('household_id', householdId);
-  if (catReassignError) {
-    logger.error('HouseholdMemberService', `category reassign failed: ${catReassignError.message}`);
-  }
-  const { error: goalReassignError } = await genericAdmin
-    .from('goals')
-    .update({ user_id: adminUserId })
-    .eq('user_id', targetUserId)
-    .eq('household_id', householdId);
-  if (goalReassignError) {
-    logger.error('HouseholdMemberService', `goal reassign failed: ${goalReassignError.message}`);
   }
 
   // Best-effort: notify the removed member. Never fail the removal on a push error.
