@@ -47,6 +47,12 @@ describe('GET /api/notices', () => {
 
     expect(res.status).toBe(200);
     expect((await res.json()).data).toEqual(notices);
+    // Every column the card needs: `cause` picks the body, `created_at` breaks ties
+    // in the sort, `params` fills the text.
+    const [columns] = db.callsTo('account_notices', 'select')[0] as [string];
+    for (const column of ['id', 'kind', 'cause', 'params', 'created_at']) {
+      expect(columns.split(',').map((c) => c.trim())).toContain(column);
+    }
     expect(db.callsTo('account_notices', 'eq')).toContainEqual(['recipient_id', 'u-1']);
     expect(db.callsTo('account_notices', 'is')).toContainEqual(['dismissed_at', null]);
     expect(db.callsTo('account_notices', 'order')).toContainEqual([

@@ -52,6 +52,13 @@ export interface NoticeMessage {
 
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
 
+/** "A, B and C" for the locale; a plain join where Intl.ListFormat is missing (old Safari). */
+function formatList(names: string[], locale: string): string {
+  return typeof Intl.ListFormat === 'function'
+    ? new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(names)
+    : names.join(', ');
+}
+
 /**
  * The keys and values for a notice, or `null` when its params cannot fill the
  * text. A notice is never shown with a hole in it.
@@ -61,26 +68,28 @@ export function noticeMessage(notice: AccountNotice, locale: string): NoticeMess
   switch (notice.kind) {
     case 'household_transferred': {
       const household = text(p.household);
-      return household
-        ? {
-            titleKey: 'householdTransferredTitle',
-            bodyKey: 'householdTransferredBody',
-            values: { household },
-          }
-        : null;
+      if (!household) return null;
+      // "As its longest-standing member" only when the database KNEW it (every
+      // candidate had a join date). Absent means not known: no claim.
+      return {
+        titleKey: 'householdTransferredTitle',
+        bodyKey:
+          p.seniority === true ? 'householdTransferredBody' : 'householdTransferredBodyNoSeniority',
+        values: { household },
+      };
     }
     case 'categories_copied': {
       const names = Array.isArray(p.categories)
-        ? p.categories.filter((n): n is string => typeof n === 'string' && n.length > 0)
+        ? p.categories.filter((n): n is string => text(n) !== null)
         : [];
       if (names.length === 0) return null;
-      const categories = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(
-        names
-      );
+      // "A household member" only when the recipient shares the household with
+      // the person who left; otherwise (e.g. a former member) a neutral subject.
       return {
         titleKey: 'categoriesCopiedTitle',
-        bodyKey: 'categoriesCopiedBody',
-        values: { categories },
+        bodyKey:
+          p.shared_household === true ? 'categoriesCopiedBody' : 'categoriesCopiedBodyOutside',
+        values: { categories: formatList(names, locale) },
       };
     }
     case 'category_renamed': {

@@ -43,8 +43,10 @@ jest.mock('@/lib/utils/logger', () => ({
 
 // Account notices ride this daily run for their push retry
 // (spec-account-deletion-notifications); its own module, with its own tests.
+// Resolves by default (the real one always returns a promise); tests override ONCE,
+// so nothing leaks into the next test in a randomised order.
 jest.mock('@/lib/services/accountNoticeService', () => ({
-  deliverAccountNoticePushes: jest.fn(),
+  deliverAccountNoticePushes: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock('date-fns', () => ({
@@ -125,7 +127,7 @@ describe('GET /api/cron/weekly-digest', () => {
 
   it('retries owed account-notice pushes once per run, and reports their counts', async () => {
     const counts = { considered: 2, sent: 1, deferred: 1, notDelivered: 0, skipped: 0 };
-    (deliverAccountNoticePushes as jest.Mock).mockResolvedValue(counts);
+    (deliverAccountNoticePushes as jest.Mock).mockResolvedValueOnce(counts);
     mockCreateServiceRoleClient.mockReturnValue(digestDb({ data: [], error: null }) as never);
 
     const response = (await GET(makeRequest(CRON_SECRET))) as {
@@ -138,6 +140,19 @@ describe('GET /api/cron/weekly-digest', () => {
     expect(deliverAccountNoticePushes).toHaveBeenCalledTimes(1);
     expect(deliverAccountNoticePushes).toHaveBeenCalledWith();
     expect(((await response.json()) as { noticePushes: unknown }).noticePushes).toEqual(counts);
+  });
+
+  it('a failing notice retry never fails the digest', async () => {
+    (deliverAccountNoticePushes as jest.Mock).mockRejectedValueOnce(new Error('regression'));
+    mockCreateServiceRoleClient.mockReturnValue(digestDb({ data: [], error: null }) as never);
+
+    const response = (await GET(makeRequest(CRON_SECRET))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { noticePushes: unknown }).noticePushes).toBeNull();
   });
 
   it('returns 401 when CRON_SECRET is wrong', async () => {

@@ -66,8 +66,10 @@ const notice = (
 });
 
 const CASES = [
-  notice('household_transferred', { household: 'Вкъщи' }),
-  notice('categories_copied', { categories: ['Храна', 'Сметки'] }),
+  notice('household_transferred', { household: 'Вкъщи', seniority: true }),
+  notice('household_transferred', { household: 'Вкъщи', seniority: false }),
+  notice('categories_copied', { categories: ['Храна', 'Сметки'], shared_household: true }),
+  notice('categories_copied', { categories: ['Храна', 'Сметки'], shared_household: false }),
   notice('category_renamed', { household: 'Вкъщи', from: 'Храна', to: 'Храна 2' }),
   notice('shared_plans_received', { household: 'Вкъщи', goals: 1, budgets: 1 }),
   notice('shared_plans_received', { household: 'Вкъщи', goals: 0, budgets: 2 }, 'member_removed'),
@@ -79,7 +81,7 @@ describe.each(['en', 'bg'] as const)('account-notice texts under real ICU (%s)',
   const expected = (key: string, values: Record<string, string>) =>
     Object.entries(values).reduce((s, [k, v]) => s.split(`{${k}}`).join(v), file[key]!);
 
-  test.each(CASES.map((c) => [`${c.kind}/${c.cause}`, c] as const))(
+  test.each(CASES.map((c, i) => [`${i}: ${c.kind}/${c.cause}`, c] as const))(
     '%s: title and body are the file text with every value filled',
     (_name, c) => {
       const message = noticeMessage(c, locale)!;
@@ -100,7 +102,7 @@ describe.each(['en', 'bg'] as const)('account-notice texts under real ICU (%s)',
   );
 
   test('the list of copied categories reads naturally in this language', () => {
-    const message = noticeMessage(CASES[1]!, locale)!;
+    const message = noticeMessage(CASES[2]!, locale)!;
     const [body] = render(locale, [[message.bodyKey, message.values]]);
     expect(body).toContain(locale === 'en' ? 'Храна and Сметки' : 'Храна и Сметки');
   });

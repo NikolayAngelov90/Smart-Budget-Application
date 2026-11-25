@@ -11,13 +11,31 @@ jest.mock('@/lib/services/notificationDeliveryService', () => ({
   claimDelivery: jest.fn(),
   releaseDelivery: jest.fn(),
 }));
-// The real ICU engine is proven in noticeTexts.icu.test.ts; here the translator
-// RECORDS which locale, namespace, key and values the service asked for.
+// The real ICU engine is proven in noticeTexts.icu.test.ts. Here the translator
+// returns the TEMPLATE from the message file it was GIVEN (so a push built from
+// the wrong file is caught), tagged with the locale and values, and reports a
+// missing key through onError as the real one does.
 jest.mock('next-intl', () => ({
   createTranslator:
-    ({ locale, namespace }: { locale: string; namespace: string }) =>
-    (key: string, values: Record<string, string>) =>
-      `${locale}|${namespace}|${key}|${JSON.stringify(values)}`,
+    ({
+      locale,
+      messages,
+      namespace,
+      onError,
+    }: {
+      locale: string;
+      messages: Record<string, Record<string, string>>;
+      namespace: string;
+      onError?: (e: Error) => void;
+    }) =>
+    (key: string, values: Record<string, string>) => {
+      const template = messages[namespace]?.[key];
+      if (template === undefined) {
+        onError?.(new Error(`MISSING_MESSAGE: ${namespace}.${key}`));
+        return `${namespace}.${key}`;
+      }
+      return `${locale}|${template}|${JSON.stringify(values)}`;
+    },
 }));
 jest.mock('@/lib/utils/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
@@ -27,6 +45,8 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { claimDelivery, releaseDelivery } from '@/lib/services/notificationDeliveryService';
 import { createSupabaseMock } from '@/test-utils/supabaseChain';
+import enMessages from '../../../../messages/en.json';
+import bgMessages from '../../../../messages/bg.json';
 import {
   deliverAccountNoticePushes,
   renderAccountNotice,
@@ -104,9 +124,9 @@ describe('deliverAccountNoticePushes', () => {
   test("pushes each notice in its RECIPIENT's stored language, through the household gate", async () => {
     setup({
       notices: [
-        row('n-bg', 'u-bg', 'household_transferred', { household: 'Вкъщи' }),
-        row('n-en', 'u-en', 'household_transferred', { household: 'Home' }),
-        row('n-none', 'u-none', 'household_transferred', { household: 'Casa' }),
+        row('n-bg', 'u-bg', 'household_transferred', { household: 'Вкъщи', seniority: true }),
+        row('n-en', 'u-en', 'household_transferred', { household: 'Home', seniority: true }),
+        row('n-none', 'u-none', 'household_transferred', { household: 'Casa', seniority: true }),
       ],
       profiles: [
         { id: 'u-bg', preferences: { language: 'bg' } },
@@ -118,14 +138,20 @@ describe('deliverAccountNoticePushes', () => {
     const result = await deliverAccountNoticePushes({ now: NOW });
 
     expect(result).toEqual({ considered: 3, sent: 3, deferred: 0, notDelivered: 0, skipped: 0 });
+    const v = (h: string) => JSON.stringify({ household: h });
+    // The Bulgarian recipient gets the TEMPLATES from bg.json, the others en.json.
     expect(mockDispatch).toHaveBeenCalledWith('u-bg', 'household', {
       type: 'household_event',
-      title: 'bg|accountNotices|householdTransferredTitle|{"household":"Вкъщи"}',
-      body: 'bg|accountNotices|householdTransferredBody|{"household":"Вкъщи"}',
+      title: `bg|${bgMessages.accountNotices.householdTransferredTitle}|${v('Вкъщи')}`,
+      body: `bg|${bgMessages.accountNotices.householdTransferredBody}|${v('Вкъщи')}`,
       data: { url: '/dashboard' },
     });
-    expect(mockDispatch.mock.calls.find((c) => c[0] === 'u-en')![2].title).toMatch(/^en\|/);
-    expect(mockDispatch.mock.calls.find((c) => c[0] === 'u-none')![2].title).toMatch(/^en\|/);
+    expect(mockDispatch.mock.calls.find((c) => c[0] === 'u-en')![2].title).toBe(
+      `en|${enMessages.accountNotices.householdTransferredTitle}|${v('Home')}`
+    );
+    expect(mockDispatch.mock.calls.find((c) => c[0] === 'u-none')![2].title).toBe(
+      `en|${enMessages.accountNotices.householdTransferredTitle}|${v('Casa')}`
+    );
   });
 
   test('CLAIMS before sending, and keeps the claim only for a SENT push', async () => {
@@ -263,13 +289,77 @@ describe('deliverAccountNoticePushes', () => {
     expect(mockDispatch).not.toHaveBeenCalled();
   });
 
-  test('a failed language lookup still pushes, in the default language', async () => {
+  test('a failed language lookup sends NOTHING (fail closed: a wrong-language push would be marked sent)', async () => {
     setup({
       notices: [row('n-1', 'u-1', 'household_transferred', { household: 'H' })],
       profilesError: { message: 'boom' },
     });
     await deliverAccountNoticePushes({ now: NOW });
-    expect(mockDispatch.mock.calls[0]![2].title).toMatch(/^en\|/);
+    expect(mockClaim).not.toHaveBeenCalled();
+    expect(mockDispatch).not.toHaveBeenCalled();
+  });
+
+  test('selects every column the push needs, newest first', async () => {
+    const db = setup({ notices: [] });
+    await deliverAccountNoticePushes({ now: NOW });
+    const [columns] = db.callsTo('account_notices', 'select')[0] as [string];
+    for (const column of ['id', 'recipient_id', 'kind', 'cause', 'params', 'created_at']) {
+      expect(columns.split(',').map((c) => c.trim())).toContain(column);
+    }
+    expect(db.callsTo('account_notices', 'order')).toContainEqual([
+      'created_at',
+      { ascending: false },
+    ]);
+  });
+
+  test('an unrenderable notice does not hold one of the 3 slots', async () => {
+    setup({
+      notices: [
+        row('bad1', 'u-1', 'household_transferred', {}),
+        row('bad2', 'u-1', 'categories_copied', { categories: [] }),
+        row('p', 'u-1', 'shared_plans_received', { household: 'H', goals: 1, budgets: 0 }),
+        row('r1', 'u-1', 'category_renamed', { from: 'A', to: 'A 2' }),
+        row('r2', 'u-1', 'category_renamed', { from: 'B', to: 'B 2' }),
+      ],
+    });
+
+    const result = await deliverAccountNoticePushes({ now: NOW });
+
+    expect(mockClaim.mock.calls.map((c) => c[2])).toEqual(['p', 'r1', 'r2']);
+    expect(result).toMatchObject({ considered: 3, skipped: 2 });
+  });
+
+  test('a notice dismissed after the lookup is not pushed, and its claim is released', async () => {
+    const db = createSupabaseMock({
+      tables: {
+        account_notices: [
+          { data: [row('n-1', 'u-1', 'household_transferred', { household: 'H' })], error: null },
+          { data: { dismissed_at: '2026-11-25T11:59:00Z' }, error: null }, // the re-check
+        ],
+        notification_deliveries: { data: [], error: null },
+        user_profiles: { data: [], error: null },
+      },
+    });
+    (createServiceRoleClient as jest.Mock).mockReturnValue(db.client);
+
+    const result = await deliverAccountNoticePushes({ now: NOW });
+
+    expect(db.callsTo('account_notices', 'eq', 1)).toContainEqual(['id', 'n-1']);
+    expect(mockDispatch).not.toHaveBeenCalled();
+    expect(mockRelease).toHaveBeenCalledWith(expect.anything(), 'account_notice', 'n-1', 'u-1');
+    expect(result).toMatchObject({ skipped: 1, sent: 0 });
+  });
+
+  test('a push is bounded in length (a long category list must not exceed the payload)', async () => {
+    const names = Array.from({ length: 40 }, (_, i) => `Category number ${i} with a long name`);
+    setup({ notices: [row('n-1', 'u-1', 'categories_copied', { categories: names })] });
+
+    await deliverAccountNoticePushes({ now: NOW });
+
+    const payload = mockDispatch.mock.calls[0]![2] as { title: string; body: string };
+    expect(payload.body.length).toBeLessThanOrEqual(400);
+    expect(payload.body.endsWith('…')).toBe(true);
+    expect(payload.title.length).toBeLessThanOrEqual(120);
   });
 
   test('never throws', async () => {
@@ -296,10 +386,31 @@ describe('renderAccountNotice / toSupportedLocale', () => {
       params: { household: 'Вкъщи', goals: 0, budgets: 1 },
       created_at: '2026-11-25T11:00:00Z',
     });
+    const v = JSON.stringify({ household: 'Вкъщи' });
     expect(r).toEqual({
-      title: 'bg|accountNotices|sharedPlansReceivedTitle|{"household":"Вкъщи"}',
-      body: 'bg|accountNotices|sharedPlansReceivedBodyRemoved|{"household":"Вкъщи"}',
+      title: `bg|${bgMessages.accountNotices.sharedPlansReceivedTitle}|${v}`,
+      body: `bg|${bgMessages.accountNotices.sharedPlansReceivedBodyRemoved}|${v}`,
     });
+  });
+
+  test('a translator error (e.g. a missing key) renders NOTHING, so a key path is never pushed', () => {
+    const notice = {
+      id: 'n',
+      kind: 'household_transferred' as const,
+      cause: 'account_deleted' as const,
+      household_id: 'h',
+      params: { household: 'H', seniority: true },
+      created_at: '2026-11-25T11:00:00Z',
+    };
+    expect(renderAccountNotice('en', notice)).not.toBeNull(); // control: the real keys exist
+    const en = enMessages.accountNotices as Record<string, string>;
+    const saved = en.householdTransferredBody!;
+    delete en.householdTransferredBody;
+    try {
+      expect(renderAccountNotice('en', notice)).toBeNull();
+    } finally {
+      en.householdTransferredBody = saved;
+    }
   });
 
   test.each([

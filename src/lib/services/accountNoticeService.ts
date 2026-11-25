@@ -42,8 +42,18 @@ export const PUSHES_PER_RECIPIENT_PER_RUN = 3;
  * notice's created_at is the DATABASE clock, the request start the APP's.
  */
 export const NOTICE_CLOCK_SKEW_MS = 60_000;
-/** Bounds one run; the next run picks up the rest. */
-const MAX_NOTICES_PER_RUN = 500;
+/**
+ * Bounds one run; the next run picks up the rest. Also bounds the delivered-
+ * marker lookup, whose ids travel in the request URL.
+ */
+const MAX_NOTICES_PER_RUN = 100;
+/** Web push payloads are small (about 4 KB); a long category list must not exceed it. */
+const PUSH_TITLE_MAX = 120;
+const PUSH_BODY_MAX = 400;
+
+function clip(value: string, max: number): string {
+  return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`;
+}
 
 const MESSAGES = { en, bg } as const;
 
@@ -53,19 +63,29 @@ export function toSupportedLocale(language: unknown): SupportedLocale {
     : DEFAULT_LOCALE;
 }
 
-/** The notice's title and body in `locale`, or null if its params cannot fill the text. */
+/**
+ * The notice's title and body in `locale`, or null if its params cannot fill the
+ * text OR the translator reports an error (a missing key would otherwise come
+ * back as a key path - and be pushed and marked sent).
+ */
 export function renderAccountNotice(
   locale: SupportedLocale,
   notice: AccountNotice
 ): { title: string; body: string } | null {
   const message = noticeMessage(notice, locale);
   if (!message) return null;
+  let failed = false;
   const t = createTranslator({
     locale,
     messages: MESSAGES[locale],
     namespace: 'accountNotices',
+    onError: () => {
+      failed = true;
+    },
   }) as unknown as (key: string, values: Record<string, string>) => string;
-  return { title: t(message.titleKey, message.values), body: t(message.bodyKey, message.values) };
+  const title = t(message.titleKey, message.values);
+  const body = t(message.bodyKey, message.values);
+  return failed ? null : { title, body };
 }
 
 export interface NoticePushResult {
@@ -107,7 +127,9 @@ export async function deliverAccountNoticePushes(
       .select('id, recipient_id, kind, cause, household_id, params, created_at')
       .is('dismissed_at', null)
       .gte('created_at', since.toISOString())
-      .order('created_at', { ascending: true })
+      // NEWEST first: a delivered notice stays undismissed (and so in this
+      // window), and must not crowd the owed, recent ones out of the limit.
+      .order('created_at', { ascending: false })
       .limit(MAX_NOTICES_PER_RUN);
     if (error) {
       logger.error('AccountNotices', `owed-notice lookup failed: ${error.message}`);
@@ -148,8 +170,10 @@ export async function deliverAccountNoticePushes(
       .select('id, preferences')
       .in('id', [...byRecipient.keys()]);
     if (profileError) {
-      // Enrichment: fall back to the default language rather than drop the push.
-      logger.warn('AccountNotices', `language lookup failed: ${profileError.message}`);
+      // Fail CLOSED: a push in the wrong language would be marked delivered and
+      // never resent in the right one. Send nothing; the next run retries.
+      logger.error('AccountNotices', `language lookup failed: ${profileError.message}`);
+      return result;
     }
     const languageOf = new Map(
       ((profiles ?? []) as { id: string; preferences: { language?: unknown } | null }[]).map(
@@ -159,13 +183,19 @@ export async function deliverAccountNoticePushes(
 
     for (const [recipient, list] of byRecipient) {
       const locale = toSupportedLocale(languageOf.get(recipient));
-      for (const notice of list.sort(byPriority).slice(0, PUSHES_PER_RECIPIENT_PER_RUN)) {
-        result.considered++;
+      // Render FIRST, then cap: a notice that cannot render must not hold one of
+      // the recipient's slots on every run.
+      const renderable = list.sort(byPriority).flatMap((notice) => {
         const rendered = renderAccountNotice(locale, notice);
         if (!rendered) {
           result.skipped++;
-          continue;
+          logger.warn('AccountNotices', `notice ${notice.id} (${notice.kind}) cannot be rendered`);
+          return [];
         }
+        return [{ notice, rendered }];
+      });
+      for (const { notice, rendered } of renderable.slice(0, PUSHES_PER_RECIPIENT_PER_RUN)) {
+        result.considered++;
         let claimed: boolean;
         try {
           claimed = await claimDelivery(supabase, 'account_notice', notice.id, recipient);
@@ -177,10 +207,21 @@ export async function deliverAccountNoticePushes(
           result.skipped++; // another run holds it
           continue;
         }
+        // Dismissed since the lookup? Never push a notice the person has closed.
+        const { data: current } = await supabase
+          .from('account_notices')
+          .select('dismissed_at')
+          .eq('id', notice.id)
+          .maybeSingle();
+        if (!current || (current as { dismissed_at: string | null }).dismissed_at) {
+          await releaseDelivery(supabase, 'account_notice', notice.id, recipient);
+          result.skipped++;
+          continue;
+        }
         const outcome = await dispatchCategorizedPush(recipient, 'household', {
           type: 'household_event',
-          title: rendered.title,
-          body: rendered.body,
+          title: clip(rendered.title, PUSH_TITLE_MAX),
+          body: clip(rendered.body, PUSH_BODY_MAX),
           data: { url: '/dashboard' },
         });
         if (outcome === 'sent') {

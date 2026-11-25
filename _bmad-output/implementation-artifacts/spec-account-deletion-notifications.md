@@ -2,9 +2,9 @@
 title: 'Tell people what an account deletion changed for them'
 type: 'feature'
 created: '2026-11-20'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'ed5147a567f942e29cf60eceae52343d37a7c499'
-review_loop_iteration: 0
+review_loop_iteration: 1
 context:
   - '{project-root}/docs/api-conventions.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-household-creator-account-deletion.md'
@@ -47,13 +47,15 @@ context:
 
 | Event | Recipient | Notice (kind / cause) | Params (never the departed person) |
 |---|---|---|---|
-| Creator deleted, a member inherits | the new owner | `household_transferred` / `account_deleted` | household name |
-| Any deletion, a member used the person's categories, COPIED to them | that member | `categories_copied` / `account_deleted` | category names (copies only; a reused same-name category is not "a copy") |
+| Creator deleted, a member inherits | the new owner | `household_transferred` / `account_deleted` | household name, `seniority` ("longest-standing" only when every candidate had a join date) |
+| Any deletion, a user's rows used the person's categories, COPIED to them | that user | `categories_copied` / `account_deleted` | category names (copies only, sorted, distinct), `shared_household` ("a household member" only when true) |
 | Shared category moved to the owner and RENAMED | the owner | `category_renamed` / deleted or removed | from, to, household name |
 | Shared goals or budgets moved to the owner | the owner | `shared_plans_received` / deleted or removed | goals n, budgets n, household name |
 | Shared category moved, NOT renamed | none | — | (the name is unchanged) |
 | Sole member, or no household | none | — | — |
-| The notice insert fails | none | the deletion or removal completes; Postgres logs a WARNING | savepoint in `private.record_account_notice` |
+| The deletion is REFUSED after prepare | none | nothing is published; the staged notices wait (the departing user's id only there) and are published if a later deletion succeeds | staged in `private.pending_account_notices`, published by the `auth.users` trigger |
+| The removal fails | none | the whole removal rolls back, notices included | one transaction, `public.remove_household_member` |
+| A notice cannot be staged, published or written | none | the deletion or removal completes; Postgres logs a WARNING | savepoints in `private.record_account_notice` and `private.publish_account_notices` |
 | Push: quiet hours, transient, no subscription | — | the notice is unaffected; retried by the daily cron for 7 days after creation | the delivery claim is released |
 | Notice dismissed | — | gone from the card; never pushed after dismissal | — |
 | Recipient deletes their own account | — | their notices cascade | FK `recipient_id` → `auth.users` ON DELETE CASCADE |
@@ -82,50 +84,38 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `supabase/migrations/20261125100000_account_notices.sql` (NEW, additive, apply-first):
-  - **`public.account_notices`:**
-    - columns: `id`; `recipient_id` (FK `auth.users` ON DELETE CASCADE); `kind` CHECK; `cause` CHECK; `household_id` (FK `households` ON DELETE CASCADE, nullable); `params` jsonb; `created_at`; `dismissed_at`;
-    - a partial index on `(recipient_id, created_at) WHERE dismissed_at IS NULL`;
-    - RLS with SELECT-own (initplan form);
-    - `REVOKE ALL` from PUBLIC/anon/authenticated, then `GRANT SELECT` to authenticated. Writes are service-role only.
-  - **`private.record_account_notice(...)`:** SECURITY DEFINER, pinned search_path, and an `EXCEPTION WHEN OTHERS -> RAISE WARNING` savepoint, so a failed insert never rolls back the caller.
-  - **`private.move_member_shared_objects(p_household, p_member, p_cause)`:** the reassign logic, plus a `category_renamed` notice per renamed category and one `shared_plans_received` notice when goals+budgets > 0. Returns the moved count.
-  - **`public.reassign_member_shared_objects(uuid, uuid)`:** same signature and INTEGER return, now a wrapper calling the private function with `'member_removed'`.
-  - **`public.prepare_account_deletion(uuid)`:** same signature and return keys. It adds a `household_transferred` notice for the new owner, calls the private function with `'account_deleted'`, and adds one `categories_copied` notice per recipient of copies (the copied names, sorted, distinct).
-  - **Privileges:** every function revoked from PUBLIC/anon/authenticated; the public ones granted to service_role.
-- [ ] `src/lib/services/notificationDeliveryService.ts` -- `NotificationKind` gains `'account_notice'`. New `claimDelivery` (an insert; `true` only if this call made the row) and `releaseDelivery`.
-- [ ] `src/lib/services/accountNoticeService.ts` (NEW) -- `deliverAccountNoticePushes({ since? })`:
-  - service role; undismissed notices created within 7 days (or since `since`);
-  - per recipient, at most 3 per run, in priority order (`household_transferred`, `categories_copied`, `shared_plans_received`, `category_renamed`);
-  - for each: claim, render title/body in the recipient's stored language with `createTranslator` (next-intl) and the message files, then `dispatchCategorizedPush(…,'household',…)`; release the claim unless `sent`;
-  - never throws, and returns the counts.
-  
-  Also `renderAccountNotice(locale, notice)`, shared with nothing else. Category lists use `Intl.ListFormat(locale)`.
-- [ ] `src/app/api/user/account/route.ts` and `src/app/api/households/members/[userId]/route.ts` -- after the service call (whatever its outcome, since the writes stand), `after(() => deliverAccountNoticePushes({ since: requestStart }))`.
-- [ ] `src/app/api/cron/weekly-digest/route.ts` -- call `deliverAccountNoticePushes()` once per run and add its counts to the response. A failure is logged and never fails the digest.
-- [ ] `src/app/api/notices/route.ts` (GET) and `src/app/api/notices/[id]/dismiss/route.ts` (POST):
-  - **GET:** the user's own undismissed notices, through the session client (RLS), oldest first. A query error is a 500 (degradation policy: core input).
-  - **POST:** service role, scoped `id` AND `recipient_id = user` AND `dismissed_at IS NULL`, idempotent.
-- [ ] `src/lib/hooks/useAccountNotices.ts` + `src/components/dashboard/AccountNoticesCard.tsx` -- mounted next to `FeatureIntroCard`:
-  - at most 3 visible, plus "{count} more";
-  - a heading per notice;
-  - dismiss = POST, then the bound `mutate`;
-  - no aria-live on the card.
-- [ ] `messages/en.json` + `messages/bg.json` -- an `accountNotices` namespace: the M1, M2a and M2b texts above; `sharedPlansReceived*` (both causes); `dismiss`; `more`.
-- [ ] Tests:
-  - **RLS:**
-    - every matrix row through the REAL `deleteUserAccount` / `removeMember`, against the local stack, with the residue scan (id, email, display name) green;
-    - a FORCED notice-insert failure (a temporary `CHECK (false) NOT VALID`): the deletion and the removal complete, and the data still moved;
-    - clients cannot insert, update or delete notices or read others';
-    - privileges and search_path of the new functions.
-  - **Unit:**
-    - delivery: claim, render, release, the cap, the language, never throws;
-    - both routes schedule `after()`;
-    - the cron;
-    - GET/dismiss scoping;
-    - the card.
-  - **Real ICU:** every notice text in en and bg (child-process render).
-  - **Mutants:** the savepoint removed, the claim skipped, the recipient-scope dropped, the language ignored, plus the existing scan mutants. Each red state is recorded here.
+- [x] `supabase/migrations/20261125100000_account_notices.sql` (NEW, additive, apply-first; signatures and return shapes unchanged):
+  - **`public.account_notices`:** read-own RLS; SELECT only for clients; FK indexes.
+  - **`private.pending_account_notices`:** staged deletion notices, keyed by the departing user (ON DELETE CASCADE); no client privileges.
+  - **`private.record_account_notice`:** the one writer (stages or writes), behind a savepoint.
+  - **`private.publish_account_notices`:** the `auth.users` BEFORE DELETE trigger, behind a savepoint.
+  - **`private.move_member_shared_objects`:** the reassign rule, plus rename and plans notices.
+  - **`public.remove_household_member`:** the one-transaction removal.
+  - **`public.reassign_member_shared_objects`:** the legacy wrapper, with no notices.
+  - **`public.prepare_account_deletion`:** stages the transfer and copies notices, with `seniority` and `shared_household`.
+- [x] `src/lib/services/householdMemberService.ts` -- `removeMember` calls `remove_household_member` (atomic).
+- [x] `src/lib/services/notificationDeliveryService.ts` -- the `account_notice` kind, plus `claimDelivery` and `releaseDelivery`.
+- [x] `src/lib/accountNotices/noticeMessage.ts` -- the one kind→keys mapping (seniority and shared-household variants, an `Intl.ListFormat` fallback).
+- [x] `src/lib/services/accountNoticeService.ts` -- `renderAccountNotice` (an `onError` means no render) and `deliverAccountNoticePushes`:
+  - newest first, at most 100 per run;
+  - renderable notices filtered before the cap of 3 per recipient;
+  - fail closed on the language lookup;
+  - claim, re-check dismissal, send (clipped), release unless `sent`.
+- [x] Routes -- the account deletion and member removal schedule `after()` delivery ONLY after success.
+- [x] Crons -- `weekly-digest` (09:00 UTC) and `subscription-detect` (02:00 UTC) both retry, guarded and before their early returns.
+- [x] `src/app/api/notices` (GET, RLS) and `[id]/dismiss` (POST, service role, scoped).
+- [x] `useAccountNotices` (a per-id hidden set, so concurrent dismissals stay safe) + `AccountNoticesCard`:
+  - mounted on the dashboard;
+  - a section heading and named buttons;
+  - focus moved after a dismissal.
+- [x] `messages/{en,bg}.json` -- the `accountNotices` namespace.
+- [x] Tests:
+  - RLS 3, 4, 11, 12, 12b and 13-16;
+  - unit and component tests for every module above;
+  - real-ICU rendering of every text;
+  - the dashboard mount.
+
+  Mutants are recorded under Verification.
 
 **Acceptance Criteria:**
 - Given a creator with a member deletes their account, when the member next opens the dashboard, then they see the M1 notice (and any M2a/M2b/plans notices) in their UI language, until they dismiss it.
@@ -133,9 +123,39 @@ context:
 - Given any deletion in the RLS suite, when the residue scan runs, then no column holds the departed person's id, email or display name, and the living user's name is found.
 - Given a recipient with a push subscription, when the notice is recorded, then one push in their stored language is sent after the response, and the daily cron retries a deferred or failed one for 7 days.
 
+## Spec Change Log
+
+- **2026-11-25, review 1 (blind hunter, edge-case hunter and verification gap; all three found the HIGH one independently).**
+  - **Trigger:** notices were recorded by `prepare_account_deletion` BEFORE `admin.deleteUser`. A REFUSED deletion therefore left, and pushed, "Its creator deleted their account" while the creator still existed. The same applied to removal: the reassign recorded "a member was removed" before the membership delete, which could still fail. That breaks the claims rule.
+  - **Amended:**
+    - Deletion notices are STAGED in `private.pending_account_notices` (keyed by the departing user, FK ON DELETE CASCADE). A BEFORE DELETE trigger on `auth.users` publishes them inside the deletion's own transaction, behind a savepoint. A refused deletion rolls the publication back with it.
+    - Removal becomes ONE transaction, `public.remove_household_member` (move + membership delete), so its notices commit only with the removal. The old 2-arg wrapper records no notices.
+    - Both routes schedule the push only after SUCCESS. That also closes the unauthorised-request scan.
+  - **Known-bad state avoided:** a notice claiming a deletion or removal that did not happen.
+  - **KEEP:**
+    - kind/cause/params with no text and no departed person in `account_notices`;
+    - the savepoint writer;
+    - claim-then-send;
+    - the shared `noticeMessage` mapping;
+    - the card, the routes' `after()`, and the cron retry;
+    - every existing test's intent.
+  - **Also patched from the review:**
+    - the texts claim only what the code knows: seniority only when every candidate has a join date; "a household member" only when the recipient shares the household; and on removal the reader is the remover;
+    - delivery: newest first, at most 100 per run, the renderable ones filtered before the cap, fail-closed on the language lookup, dismissal re-checked before sending, a bounded push length, an `onError` on the translator;
+    - a second retry slot in the 02:00 UTC cron;
+    - dismissal revalidates;
+    - the card's a11y (named buttons, focus after dismissal), plus an `Intl.ListFormat` fallback;
+    - FK indexes;
+    - the residue scan now also covers the `private` schema;
+    - test gaps: the push language from the file, the selected columns, sorted and distinct names, the dashboard mount.
+
 ## Design Notes
 
-- **Notices are recorded IN the SQL that makes the change, inside a savepoint.** There is no window in which data changed but the notice was lost, as a TS insert after `prepare` would leave, and a failed insert still cannot roll the change back. Delivery (push) is what runs off the critical path, via `after()`.
+- **A notice exists only if its event happened.**
+  - Deletion notices are staged by `prepare` and published by the `auth.users` BEFORE DELETE trigger, in the deletion's own transaction.
+  - Removal notices commit in the same transaction as the membership delete.
+  - Either way, a savepoint keeps a failed notice from ever failing the event, and the push runs after the response, via `after()`.
+  - The departing person's id is held only in the staged row, which goes with their auth row. `account_notices` never holds it.
 - **Same signatures, same return shapes, so this is apply-first.** Old code × new schema: main's `deleteUserAccount` reads the same keys, and main's `removeMember` calls the same 2-arg function, which now also records the owner's notices. Notices recorded before the app deploys simply wait to be shown, because they never expire.
 - **Claim-then-send.** The route's `after()` and the cron can overlap, so a run claims the delivery row before sending and releases it unless the push was `sent`. Duplicates are impossible, and retries keep the marker-absence rule.
 - **Household name is snapshotted into params.** The recipient may later lose RLS read access to the household. The name is the household's, not the departed person's.
@@ -150,3 +170,43 @@ context:
 - `npm run build` -- expected: success.
 
 **Manual checks:** the dashboard card rendered in en and bg on the dev server, against a route intercept (no production writes).
+
+**Evidence (local, 2026-11-25, after review 1):**
+- `npm run verify` -- `verify: OK - every runnable step of the CI test job passed`, with `Tests:       83 skipped, 2914 passed, 2997 total` and coverage at 64.12%.
+- `npm run test:order` -- `ok: 2914 tests ran, in the pinned order 20261029`.
+- RLS (full) -- `Test Suites: 14 passed, 14 total`, `Tests:       83 passed, 83 total`.
+- `next build` -- `Compiled successfully`.
+- **Compatibility, old code × new schema:** main (`ed5147a`), full RLS suite, against the local DB with this migration applied: `Test Suites: 14 passed, 14 total`, `Tests:       77 passed, 77 total`.
+- **Database mutants, 19 of 19 red, each on its own test,** with every mutant applied to the local DB and the original re-applied:
+  - publishing without staging (a refusal would tell people anyway);
+  - no publication trigger;
+  - the publication savepoint removed. It first SURVIVED: test 15 forced both tables, so nothing was staged and the trigger had nothing to publish. Test 15 was split into two phases, and it is now red;
+  - the writer savepoint removed;
+  - a non-atomic removal;
+  - seniority always claimed;
+  - "household member" always claimed;
+  - copied names not distinct;
+  - the display name or id leaked into a notice (caught by the residue scan);
+  - a reused category reported as a copy;
+  - a notice for an unrenamed category;
+  - the wrong removal cause;
+  - client EXECUTE on the writer;
+  - an open read policy;
+  - clients reading the staged notices;
+  - the new owner not told;
+  - the scan skipping `private`;
+  - test 15's control forcing nothing.
+- **App mutants, 34 of 34 red on the final code (A1-A23, A26-A33, H1-H3):**
+  - delivery: the language; the message file; the claim; the release; the cap; render before cap; the dismissal re-check; the clip; the translator error; the language fail-closed; newest first;
+  - endpoints: dismiss scope; GET 500; GET columns;
+  - routes: no scheduling on success, scheduling on refusal, and scheduling before authorisation, for both routes;
+  - `removeMember` atomicity;
+  - the crons: digest slot, digest guard, 02:00 slot;
+  - the card cap, focus, and the button description;
+  - the dashboard mount;
+  - the mapping: seniority, shared household, cause, `ListFormat`;
+  - the bg placeholder;
+  - the hook (H1-H3): a refused dismissal un-hidden; the hidden set used; the cache refreshed.
+
+  A24 and A25 targeted the SWR rollback that was REPLACED: they first survived, and a new in-flight test then showed a real race, where a refetch landing while an earlier dismissal was pending brought that notice back. The hook now keeps a per-id hidden set.
+- **Browser (dev server, QA account, `/api/notices` intercepted, `reachedServer: []`):** en and bg rendered, with list formatting, plurals, priority order, the removal text, dismissal, and focus moving to the next notice. The cached fixture was removed afterwards and the cookie restored.

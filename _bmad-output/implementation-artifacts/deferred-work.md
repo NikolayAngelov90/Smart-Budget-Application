@@ -913,3 +913,16 @@ What `npm audit` still reports after the audit PR: 20 (19 moderate, 1 high). Non
 - source_spec: `_bmad-output/implementation-artifacts/spec-account-deletion-refused-message.md`
   summary: Every existing push notification title and body is hardcoded English, whatever the recipient's language.
   evidence: found while investigating the notifications story (2026-11-20). The push senders build English strings inline and do not read `preferences.language`. PR 2's notice pushes must not copy that pattern. Niki (2026-11-20): PR 2's pushes are localised from the start; localising the existing ones is a separate follow-up.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-account-deletion-notifications.md`
+  summary: A notice push claimed but never sent (the function frozen or killed between claim and dispatch) reads as delivered, so it is never retried.
+  evidence: `claimDelivery` inserts the `notification_deliveries` marker before the push, and only an explicit release gives it back. Fixing it needs a lease (claimed_at + confirmed) on that table, which means a schema change. The in-app notice, the channel that reaches everyone, is unaffected.
+- source_spec: `_bmad-output/implementation-artifacts/spec-account-deletion-notifications.md`
+  summary: The notice push run has no time budget inside the crons; a very large owed backlog could eat the digest's duration.
+  evidence: it is capped at 100 notices and 3 per recipient per run, so at today's scale (3 users) it is negligible. A deadline parameter would bound it.
+- source_spec: `_bmad-output/implementation-artifacts/spec-account-deletion-notifications.md`
+  summary: PRODUCT QUESTIONS for Niki from the PR 2 review. Only the owner is told about a renamed shared category, although every member sees "Food 2". One event can produce up to four notices and three pushes for one person, with no consolidation. A removed person gets no in-app notice, only the existing (English) push.
+  evidence: All three are outside the approved scope, so they were raised, not built.
+- source_spec: `_bmad-output/implementation-artifacts/spec-account-deletion-refused-message.md`
+  summary: Category names must match `/^[a-zA-Z0-9\s]+$/`, so a Bulgarian user cannot create or rename a category in Cyrillic ("Храна"), and nobody can use "&", "-" or "'".
+  evidence: found during the #106 production toast check (2026-11-20). The rule is the same in three places: `src/components/categories/CategoryModal.tsx:58`, `src/app/api/categories/route.ts:181` (create) and `src/app/api/categories/[id]/route.ts:27` (rename). Pre-existing, and user-visible for every Bulgarian user.

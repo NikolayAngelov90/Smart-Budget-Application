@@ -91,45 +91,27 @@ export async function removeMember(adminUserId: string, targetUserId: string): P
     .maybeSingle();
   if (!targetRow) throw new MemberNotFoundError();
 
-  // 1. Reassign the SHARED categories, budgets and goals the member owns to the household
-  // owner, so the ex-member loses the owner-branch read/WRITE over shared structures
-  // (without it they could still rename/delete a shared category or goal they own).
-  // household_id is kept, so remaining members are unaffected. Transactions are NOT
-  // reassigned — they keep their user_id attribution per AC#3.
+  // ONE TRANSACTION (remove_household_member, migration 20261125100000): the
+  // member's SHARED categories, budgets and goals go to the household owner (the
+  // single rule, private.move_member_shared_objects), the owner's account notices
+  // are written, and the membership row is deleted - all of it or none of it.
   //
-  // ONE DEFINITION, shared with account deletion: reassign_member_shared_objects
-  // (migration 20261119100000). This used to be two UPDATEs here while account deletion
-  // needed the same rule, and the two had drifted: shared budgets were never moved, and a
-  // category name the admin already used made the UPDATE fail and the error was only
-  // logged. The function targets households.created_by - the same row as the acting admin:
-  // the admin role is only ever granted to the owner, and created_by is server-only.
+  // Why one transaction: this used to be two calls, the reassign THEN the
+  // membership delete. Once the owner is TOLD "a member was removed", a delete
+  // that failed after the reassign would make that a lie. Atomic, a failure
+  // (including the function not existing yet, between deploy and migration)
+  // changes nothing and answers 500, and a retry is a clean retry.
   //
-  // FIRST, and FAIL CLOSED. It used to run after the membership delete with its error only
-  // logged, so a failure left an ex-member still owning shared objects with nothing to
-  // retry. Run first, a failure (including the function not existing yet, between deploy
-  // and migration) changes nothing and answers 500; run first and succeeding, the state is
-  // valid even if the delete below then fails - the member is still a member, and their
-  // shared objects simply belong to the owner. A retry reassigns nothing and deletes.
-  const { error: reassignError } = await (admin as unknown as SupabaseClient).rpc(
-    'reassign_member_shared_objects',
+  // household_id stays on the moved objects, so remaining members are
+  // unaffected. Transactions are NOT reassigned - they keep their user_id
+  // attribution per AC#3. The owner is the acting admin: the admin role is only
+  // ever granted to the owner, and created_by is server-only.
+  const { error: removeError } = await (admin as unknown as SupabaseClient).rpc(
+    'remove_household_member',
     { p_household: householdId, p_member: targetUserId }
   );
-  if (reassignError) {
-    logger.error(
-      'HouseholdMemberService',
-      `shared-object reassign failed: ${reassignError.message}`
-    );
-    throw new Error('Failed to remove member');
-  }
-
-  // 2. The revocation: delete the membership row.
-  const { error: deleteError } = await admin
-    .from('household_members')
-    .delete()
-    .eq('household_id', householdId)
-    .eq('user_id', targetUserId);
-  if (deleteError) {
-    logger.error('HouseholdMemberService', `member delete failed: ${deleteError.message}`);
+  if (removeError) {
+    logger.error('HouseholdMemberService', `member removal failed: ${removeError.message}`);
     throw new Error('Failed to remove member');
   }
 

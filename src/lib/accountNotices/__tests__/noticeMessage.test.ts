@@ -25,25 +25,58 @@ const notice = (
 });
 
 describe('noticeMessage', () => {
-  test('household_transferred -> the new-owner texts, with the household', () => {
-    expect(noticeMessage(notice('household_transferred', { household: 'Вкъщи' }), 'bg')).toEqual({
+  test('household_transferred -> the new-owner texts; "longest-standing" ONLY when the database knew it', () => {
+    expect(
+      noticeMessage(notice('household_transferred', { household: 'Вкъщи', seniority: true }), 'bg')
+    ).toEqual({
       titleKey: 'householdTransferredTitle',
       bodyKey: 'householdTransferredBody',
       values: { household: 'Вкъщи' },
     });
+    for (const seniority of [false, undefined, 'yes']) {
+      expect(
+        noticeMessage(notice('household_transferred', { household: 'Вкъщи', seniority }), 'bg')
+          ?.bodyKey
+      ).toBe('householdTransferredBodyNoSeniority');
+    }
   });
 
-  test('categories_copied -> the copies texts, the names joined for the LOCALE', () => {
-    const n = notice('categories_copied', { categories: ['Храна', 'Транспорт', 'Сметки'] });
+  test('categories_copied -> the names joined for the LOCALE; "a household member" ONLY when shared', () => {
+    const n = notice('categories_copied', {
+      categories: ['Храна', 'Транспорт', 'Сметки'],
+      shared_household: true,
+    });
     expect(noticeMessage(n, 'en')?.values.categories).toBe('Храна, Транспорт, and Сметки');
     expect(noticeMessage(n, 'bg')?.values.categories).toBe('Храна, Транспорт и Сметки');
     expect(noticeMessage(n, 'bg')).toMatchObject({
       titleKey: 'categoriesCopiedTitle',
       bodyKey: 'categoriesCopiedBody',
     });
+    for (const shared_household of [false, undefined]) {
+      expect(
+        noticeMessage(
+          notice('categories_copied', { categories: ['Храна'], shared_household }),
+          'en'
+        )?.bodyKey
+      ).toBe('categoriesCopiedBodyOutside');
+    }
+    // Whitespace-only names are dropped, not listed as blanks.
     expect(
-      noticeMessage(notice('categories_copied', { categories: ['Храна'] }), 'en')?.values
+      noticeMessage(notice('categories_copied', { categories: ['Храна', '  '] }), 'en')?.values
     ).toEqual({ categories: 'Храна' });
+  });
+
+  test('without Intl.ListFormat (old browsers) the names are still listed, never a crash', () => {
+    const intl = Intl as unknown as Record<string, unknown>;
+    const original = intl.ListFormat;
+    delete intl.ListFormat; // simulating a browser that lacks it
+    try {
+      expect(
+        noticeMessage(notice('categories_copied', { categories: ['A', 'B'] }), 'en')?.values
+      ).toEqual({ categories: 'A, B' });
+    } finally {
+      intl.ListFormat = original;
+    }
   });
 
   test('category_renamed -> from and to', () => {

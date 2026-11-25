@@ -39,6 +39,11 @@ import {
   resolveRefusalNames,
 } from '@/lib/services/accountDeletionRefusal';
 
+// Each real deletion is followed by a residue scan of every column in three
+// schemas (hundreds of catalog queries); a test that deletes three people does
+// that three times. Jest's 5 s default timed test 11 out in a full run.
+jest.setTimeout(60_000);
+
 const PWD = 'rls-test-passw0rd!';
 const stamp = Date.now();
 const svc = () => createServiceClient();
@@ -308,6 +313,15 @@ async function noticesFor(userId: string, withId = false): Promise<Notice[]> {
   );
 }
 
+/** Notices STAGED for a deletion that has not happened (yet), read directly. */
+async function stagedFor(departingUserId: string): Promise<number> {
+  const rows = await db<{ n: number }>(
+    'select count(*)::int as n from private.pending_account_notices where departing_user = $1',
+    [departingUserId]
+  );
+  return rows[0]!.n;
+}
+
 async function rolesIn(householdId: string): Promise<Array<{ user_id: string; role: string }>> {
   const { data, error } = await svc()
     .from('household_members')
@@ -336,7 +350,8 @@ async function expectAuthUserGone(userId: string): Promise<void> {
 }
 
 /**
- * Every column of every app table (schemas public and storage) that could hold a
+ * Every column of every app table (schemas public, storage and private - where
+ * staged account notices wait) that could hold a
  * user id - uuid, uuid[], and text-like (text, varchar, json, jsonb, arrays of
  * them) - enumerated from the catalog NOW, and which of them still hold `userId`.
  *
@@ -380,7 +395,7 @@ async function referencesTo(
          from pg_attribute a
          join pg_class t on t.oid = a.attrelid
          join pg_namespace n on n.oid = t.relnamespace
-        where n.nspname in ('public', 'storage') and t.relkind in ('r', 'p')
+        where n.nspname in ('public', 'storage', 'private') and t.relkind in ('r', 'p')
           and a.attnum > 0 and not a.attisdropped
           and a.atttypid in ('uuid'::regtype, 'uuid[]'::regtype,
                              'text'::regtype, 'varchar'::regtype, 'json'::regtype, 'jsonb'::regtype,
@@ -756,6 +771,12 @@ rlsDescribe(
 
       expect(await row('households', h)).toBeNull();
       expect(await row('categories', catS)).toBeNull();
+      // Nobody stays, so nobody is told: nothing staged, nothing published.
+      expect(
+        await db<{ n: number }>(
+          "select count(*)::int as n from public.account_notices where params->>'household' = 'H3'"
+        )
+      ).toEqual([{ n: 0 }]);
 
       // No household at all: preparation is a no-op, deletion as before.
       const loner = await makeUser('loner');
@@ -803,6 +824,14 @@ rlsDescribe(
       expect(r.fkColumns.length).toBeGreaterThanOrEqual(26);
       expect(r.scanned).toEqual(expect.arrayContaining(r.fkColumns));
       expect(r.scanned.length).toBeGreaterThan(r.fkColumns.length);
+      // MUST-FIND: the private schema is scanned too - where staged account
+      // notices wait, holding a departing person's id until their deletion.
+      expect(r.scanned).toEqual(
+        expect.arrayContaining([
+          'private.pending_account_notices.departing_user',
+          'private.pending_account_notices.params',
+        ])
+      );
       // PRESENCE: the counter finds a user who exists - through uuid FK columns AND
       // through the text-like path (a jsonb payload). Without this, "no hits" for a
       // deleted user is also what a broken counter returns.
@@ -1246,11 +1275,22 @@ rlsDescribe(
       const asLoner = await signInAsTestUser(emailOf('loner11'), PWD);
       await expect(resolveRefusalNames(asLoner, loner)).resolves.toBeNull();
 
+      // A NOTICE EXISTS ONLY IF ITS EVENT HAPPENED: the refused deletion told M
+      // nothing (no "its creator deleted their account" while C still exists).
+      // The notice is STAGED, waiting for a deletion that may still come.
+      expect(await noticesFor(m)).toEqual([]);
+      expect(await stagedFor(c)).toBeGreaterThan(0);
+
       // With the blocker gone, the retry deletes both (afterAll would too; doing it
       // here residue-scans them inside this test).
       await deleteAccount(c);
       await deleteAccount(p);
       await deleteAccount(loner);
+
+      // The deletion happened, so its notice is published - and the staged row,
+      // the only place C's id was held, went with C's auth row.
+      expect((await noticesFor(m)).map((n) => n.kind)).toEqual(['household_transferred']);
+      expect(await stagedFor(c)).toBe(0);
 
       // The REAL shape of "this user does not exist", which deleteUserAccount
       // reads as "the deletion happened": 404 AND code user_not_found. A bare 404
@@ -1260,9 +1300,11 @@ rlsDescribe(
       expect(goneError).toMatchObject({ status: 404, code: 'user_not_found' });
     });
     // -------------------------------------------------------------------------
-    // ACCOUNT NOTICES (spec-account-deletion-notifications). Recorded by the SQL
-    // that makes each change; the residue scan above (id, email, DISPLAY NAME)
-    // runs inside every deleteAccount() and covers account_notices too.
+    // ACCOUNT NOTICES (spec-account-deletion-notifications). A deletion's notices
+    // are STAGED by prepare and PUBLISHED by the auth.users trigger in the
+    // deletion's own transaction; a removal's are written in the removal's one
+    // transaction. The residue scan above (id, email, DISPLAY NAME; public,
+    // storage, private) runs inside every deleteAccount().
     // -------------------------------------------------------------------------
 
     it('12. a creator leaves: the new owner is told everything that changed for them - and nothing names the creator', async () => {
@@ -1301,6 +1343,19 @@ rlsDescribe(
       const cBooks = await category(c, 'Books12');
       await category(m, 'Books12');
       await tx(m, cBooks);
+      // Two more copies, to pin "sorted, distinct": a name that sorts FIRST, and
+      // the SAME name as Hobby12 but of the other type (copied too, listed once).
+      const art = await category(c, 'Art12');
+      await tx(m, art);
+      const hobbyIncome = await seedSingle<{ id: string }>(
+        svc()
+          .from('categories')
+          .insert({ user_id: c, name: 'Hobby12', color: '#123456', type: 'income' })
+          .select('id')
+          .single(),
+        "C's income Hobby12"
+      );
+      await tx(m, hobbyIncome.id, null, { type: 'income' });
 
       await deleteAccount(c); // its residue scan searches C's id, email AND display name
 
@@ -1309,7 +1364,7 @@ rlsDescribe(
           kind: 'categories_copied',
           cause: 'account_deleted',
           household_id: null,
-          params: { categories: ['Hobby12'] },
+          params: { categories: ['Art12', 'Hobby12'], shared_household: true },
         },
         {
           kind: 'category_renamed',
@@ -1321,13 +1376,46 @@ rlsDescribe(
           kind: 'household_transferred',
           cause: 'account_deleted',
           household_id: h,
-          params: { household: 'H12' },
+          // every candidate had a join date, so "longest-standing" is KNOWN
+          params: { household: 'H12', seniority: true },
         },
         {
           kind: 'shared_plans_received',
           cause: 'account_deleted',
           household_id: h,
           params: { household: 'H12', goals: 1, budgets: 1 },
+        },
+      ]);
+
+      // A recipient's notices go with their OWN account.
+      await deleteAccount(m);
+      expect(await noticesFor(m)).toEqual([]);
+    });
+
+    it('12b. the texts claim only what the database knew: no seniority without join dates, no "household member" for someone outside the household', async () => {
+      const c = await makeUser('c12b');
+      const m = await makeUser('m12b');
+      const outsider = await makeUser('x12b');
+      const h = await household('H12b', c, [
+        { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m, role: 'member', joinedAt: null }, // no join date: the pick fell back to id order
+      ]);
+      // Someone NOT in C's household whose rows use C's category (e.g. a former member).
+      const cCat = await category(c, 'Shared12b');
+      await tx(outsider, cCat);
+
+      await deleteAccount(c);
+
+      expect((await noticesFor(m)).find((n) => n.kind === 'household_transferred')).toMatchObject({
+        household_id: h,
+        params: { household: 'H12b', seniority: false },
+      });
+      expect(await noticesFor(outsider)).toEqual([
+        {
+          kind: 'categories_copied',
+          cause: 'account_deleted',
+          household_id: null,
+          params: { categories: ['Shared12b'], shared_household: false },
         },
       ]);
     });
@@ -1406,9 +1494,36 @@ rlsDescribe(
       ]);
       expect(await noticesFor(r)).toEqual([]);
       expect(await countRows('household_members', { household_id: h, user_id: r })).toBe(0);
+
+      // ONE TRANSACTION: a removal that fails rolls back the move AND its notice.
+      // Someone who still owns a shared category in H but is no longer a member:
+      // the move would succeed, the membership delete finds nothing and raises.
+      const ghost = await makeUser('g14');
+      await db(
+        'insert into public.household_members (household_id, user_id, role) values ($1, $2, $3)',
+        [h, ghost, 'member']
+      );
+      const ghostCat = await category(ghost, 'Gym14', h);
+      await db('delete from public.household_members where household_id = $1 and user_id = $2', [
+        h,
+        ghost,
+      ]);
+      const before = (await noticesFor(o)).length;
+
+      const { error } = await svc().rpc('remove_household_member', {
+        p_household: h,
+        p_member: ghost,
+      });
+
+      expect(error).not.toBeNull();
+      expect(await row<{ user_id: string; name: string }>('categories', ghostCat)).toMatchObject({
+        user_id: ghost, // not moved: rolled back
+        name: 'Gym14',
+      });
+      expect((await noticesFor(o)).length).toBe(before); // no "a member was removed"
     });
 
-    it('15. OFF THE CRITICAL PATH: with every notice insert FORCED to fail, the deletion and the removal still complete', async () => {
+    it('15. OFF THE CRITICAL PATH: a notice that cannot be STAGED, PUBLISHED or WRITTEN never stops a deletion or a removal', async () => {
       const c = await makeUser('c15');
       const m = await makeUser('m15');
       const h = await household('H15', c, [
@@ -1425,21 +1540,42 @@ rlsDescribe(
       ]);
       const rShared = await category(r, 'Gym15', h2);
       await category(o, 'Gym15');
+      const c2 = await makeUser('c15b');
+      const m2 = await makeUser('m15b');
+      const h3 = await household('H15-c', c2, [
+        { id: c2, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m2, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
 
-      // Every insert into account_notices now fails (existing rows are not checked).
-      await db(
-        'ALTER TABLE public.account_notices DROP CONSTRAINT IF EXISTS rls_force_notice_failure'
-      );
-      await db(
-        'ALTER TABLE public.account_notices ADD CONSTRAINT rls_force_notice_failure CHECK (false) NOT VALID'
-      );
+      const force = async (table: string) => {
+        await db(`ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS rls_force_notice_failure`);
+        await db(
+          `ALTER TABLE ${table} ADD CONSTRAINT rls_force_notice_failure CHECK (false) NOT VALID`
+        );
+      };
+      const release = (table: string) =>
+        db(`ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS rls_force_notice_failure`);
+
+      // PHASE A - staging WORKS, publication and the removal's write FAIL. Run the
+      // preparation first so there IS something staged for the trigger to try to
+      // publish (otherwise its INSERT selects nothing and its savepoint is never
+      // exercised - the gap mutant V3 found).
+      expect((await prepare(c)).ownership_transferred).toBe(true);
+      expect(await stagedFor(c)).toBeGreaterThan(0); // the control: publication WILL be attempted
+      await force('public.account_notices');
       try {
         await deleteAccount(c); // throws if the deletion failed; then residue-scans C
         await removeMember(o, r); // throws if the removal failed
       } finally {
-        await db(
-          'ALTER TABLE public.account_notices DROP CONSTRAINT IF EXISTS rls_force_notice_failure'
-        );
+        await release('public.account_notices');
+      }
+
+      // PHASE B - STAGING fails (prepare's notice for the new owner).
+      await force('private.pending_account_notices');
+      try {
+        await deleteAccount(c2);
+      } finally {
+        await release('private.pending_account_notices');
       }
 
       // The changes happened exactly as without notices...
@@ -1453,9 +1589,12 @@ rlsDescribe(
         user_id: o,
         name: 'Gym15 2',
       });
-      // ...and the forced failure really did stop every notice (the control).
+      expect((await row<{ created_by: string }>('households', h3))?.created_by).toBe(m2);
+      // ...and the forced failures really did stop every notice (the controls).
       expect(await noticesFor(m)).toEqual([]);
       expect(await noticesFor(o)).toEqual([]);
+      expect(await noticesFor(m2)).toEqual([]);
+      expect(await stagedFor(c)).toBe(0); // went with C's auth row
     });
 
     it("16. notices are read-own and written only by the server: no client can insert, update, delete or see another person's; the new functions are definer-only with a pinned search_path", async () => {
@@ -1516,12 +1655,16 @@ rlsDescribe(
                  or has_function_privilege('authenticated', p.oid, 'EXECUTE')) as client_exec
            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
           where (n.nspname, p.proname) in (('private', 'record_account_notice'),
-                                           ('private', 'move_member_shared_objects'))
+                                           ('private', 'move_member_shared_objects'),
+                                           ('private', 'publish_account_notices'),
+                                           ('public', 'remove_household_member'))
           order by 1`
       );
       expect(fns.map((f) => f.fn)).toEqual([
         'private.move_member_shared_objects(uuid,uuid,text)',
-        'private.record_account_notice(uuid,text,text,uuid,jsonb)',
+        'private.publish_account_notices()',
+        'private.record_account_notice(uuid,text,text,uuid,jsonb,uuid)',
+        'remove_household_member(uuid,uuid)',
       ]);
       for (const f of fns) {
         expect({ fn: f.fn, definer: f.definer, clientExec: f.client_exec }).toEqual({
@@ -1531,6 +1674,17 @@ rlsDescribe(
         });
         expect(f.config).toEqual(expect.arrayContaining(['search_path=public']));
       }
+
+      // The staging table holds a departing person's id while they exist: no
+      // client may touch it at all.
+      const staged = await db<{ priv: string; anon: boolean; authed: boolean }>(
+        `select p.priv,
+                has_table_privilege('anon', 'private.pending_account_notices', p.priv) as anon,
+                has_table_privilege('authenticated', 'private.pending_account_notices', p.priv) as authed
+           from unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) as p(priv)`
+      );
+      expect(staged.filter((x) => x.anon || x.authed)).toEqual([]);
+      expect(staged).toHaveLength(4); // MUST-FIND: all four privileges were checked
     });
   }
 );

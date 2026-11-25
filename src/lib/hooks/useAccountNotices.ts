@@ -4,13 +4,18 @@
  * The signed-in person's undismissed account notices
  * (spec-account-deletion-notifications), biggest change first.
  *
- * `dismiss` hides the notice at once (optimistic) and rolls back if the server
- * refuses, so a failed dismissal shows the notice again instead of losing it.
- * It uses the hook's own bound `mutate`: the global one is inert under the
- * localStorage cache provider.
+ * DISMISSAL, CONCURRENCY-SAFE. A dismissed notice is HIDDEN at once (a set of
+ * ids local to this hook) and the list shown is the server's list minus that
+ * set. Each dismissal touches only its own id:
+ *   - refused -> its id is un-hidden, so it shows again (never silently lost);
+ *   - accepted -> it stays hidden, and the cache is refreshed so the next visit
+ *     (the cache persists in localStorage) does not flash it.
+ * SWR's optimistic rollback was not used for this on purpose: rolling back one
+ * dismissal restores a snapshot that can bring back ANOTHER, and a refetch that
+ * lands while a dismissal is still in flight brings that one back (review 1).
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { byPriority, type AccountNotice } from '@/lib/accountNotices/noticeMessage';
 
@@ -35,24 +40,28 @@ export function useAccountNotices(): UseAccountNoticesResult {
     revalidateOnFocus: true,
     keepPreviousData: true,
   });
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
 
-  const notices = useMemo(() => [...(data ?? [])].sort(byPriority), [data]);
+  const notices = useMemo(
+    () => (data ?? []).filter((n) => !hidden.has(n.id)).sort(byPriority),
+    [data, hidden]
+  );
 
   const dismiss = useCallback(
     async (id: string): Promise<void> => {
-      const without = (current: AccountNotice[] | undefined) =>
-        (current ?? []).filter((n) => n.id !== id);
+      setHidden((prev) => new Set(prev).add(id));
       try {
-        await mutate(
-          async (current) => {
-            const res = await fetch(`/api/notices/${id}/dismiss`, { method: 'POST' });
-            if (!res.ok) throw new Error('Failed to dismiss notice');
-            return without(current);
-          },
-          { optimisticData: without, rollbackOnError: true, revalidate: false }
-        );
+        const res = await fetch(`/api/notices/${id}/dismiss`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to dismiss notice');
+        // Accepted: keep it hidden; bring the persisted cache up to date.
+        void mutate();
       } catch {
-        // Rolled back: the notice is shown again, and the next dismiss retries.
+        // Refused (or offline): show THIS one again; the next dismiss retries.
+        setHidden((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
       }
     },
     [mutate]

@@ -74,7 +74,11 @@ export async function GET(request: NextRequest) {
     // notice was created. Its own job, run BEFORE the digest so none of the
     // digest's early returns (no eligible users, a failed lookup) can skip it.
     // It never throws, and its outcome never changes the digest's.
-    const noticePushes = await deliverAccountNoticePushes();
+    // Guarded although it never throws: a regression there must not cost the digest.
+    const noticePushes = await deliverAccountNoticePushes().catch((error: unknown) => {
+      logger.error('WeeklyDigestCron', 'account notice retry failed (non-fatal):', error);
+      return null;
+    });
 
     // 2. Compute the previous week's Monday (week_start)
     const now = new Date();

@@ -606,37 +606,54 @@ describe('/api/user/account DELETE', () => {
       mockDeliver.mockClear();
     });
 
+    it('a successful deletion schedules delivery after the response, scoped to notices since the request began', async () => {
+      authenticated();
+      mockDeleteUserAccount.mockResolvedValue(true);
+      const before = Date.now();
+
+      const response = await DELETE(request());
+      const afterCall = Date.now();
+
+      expect(response.status).toBe(200);
+      expect(mockAfter).toHaveBeenCalledTimes(1);
+      // Scheduled once the deletion SUCCEEDED (its transaction published the notices)...
+      expect(mockDeleteUserAccount.mock.invocationCallOrder[0]!).toBeLessThan(
+        mockAfter.mock.invocationCallOrder[0]!
+      );
+      // ...and nothing was delivered inside the request.
+      expect(mockDeliver).not.toHaveBeenCalled();
+
+      await (mockAfter.mock.calls[0]![0] as () => Promise<unknown>)();
+      expect(mockDeliver).toHaveBeenCalledTimes(1);
+      const since = (mockDeliver.mock.calls[0]![0] as { since: Date }).since.getTime();
+      // since = request start - 60s, and the request started inside [before, afterCall].
+      expect(since).toBeGreaterThanOrEqual(before - 60_000);
+      expect(since).toBeLessThanOrEqual(afterCall - 60_000);
+    });
+
     it.each([
-      ['the deletion succeeds', () => mockDeleteUserAccount.mockResolvedValue(true), 200],
-      // prepare's writes (and its notices) stand even when the auth delete is refused
       [
         'the auth delete is refused',
-        () => mockDeleteUserAccount.mockRejectedValue(new Error('refused')),
-        500,
+        () =>
+          mockDeleteUserAccount.mockRejectedValue(
+            new AccountDeletionRefusedError(
+              { ownershipTransferred: true, sharedObjectsMoved: true },
+              'refused'
+            )
+          ),
       ],
+      ['the deletion fails', () => mockDeleteUserAccount.mockRejectedValue(new Error('boom'))],
     ])(
-      'schedules delivery when %s, scoped to notices since the request began',
-      async (_l, arrange, status) => {
+      'schedules NOTHING when %s: nothing was published, so nobody is told',
+      async (_l, arrange) => {
         authenticated();
         arrange();
-        const before = Date.now();
+        mockResolveRefusalNames.mockResolvedValue({ household: 'H', owner: 'o@example.test' });
 
         const response = await DELETE(request());
 
-        expect(response.status).toBe(status);
-        expect(mockAfter).toHaveBeenCalledTimes(1);
-        // Scheduled BEFORE the deletion ran, so no outcome can skip it...
-        expect(mockAfter.mock.invocationCallOrder[0]!).toBeLessThan(
-          mockDeleteUserAccount.mock.invocationCallOrder[0]!
-        );
-        // ...and nothing was delivered inside the request.
-        expect(mockDeliver).not.toHaveBeenCalled();
-
-        await (mockAfter.mock.calls[0]![0] as () => Promise<unknown>)();
-        expect(mockDeliver).toHaveBeenCalledTimes(1);
-        const since = (mockDeliver.mock.calls[0]![0] as { since: Date }).since.getTime();
-        expect(since).toBeLessThanOrEqual(before - 60_000 + 50);
-        expect(since).toBeGreaterThanOrEqual(before - 60_000 - 5_000);
+        expect(response.status).toBe(500);
+        expect(mockAfter).not.toHaveBeenCalled();
       }
     );
 

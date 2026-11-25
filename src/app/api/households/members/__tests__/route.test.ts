@@ -115,33 +115,53 @@ describe('DELETE /api/households/members/[userId]', () => {
       mockDeliver.mockClear();
     });
 
+    it('a successful removal schedules delivery after the response, scoped to notices since the request began', async () => {
+      mockCreateClient.mockResolvedValue(authClient({ id: 'admin' }) as never);
+      mockRemove.mockResolvedValue(undefined);
+      const before = Date.now();
+
+      const res = await DELETE({} as never, { params });
+      const afterCall = Date.now();
+
+      expect(res.status).toBe(200);
+      expect(mockAfter).toHaveBeenCalledTimes(1);
+      // Scheduled once the removal SUCCEEDED (its transaction wrote the notices)...
+      expect(mockRemove.mock.invocationCallOrder[0]!).toBeLessThan(
+        mockAfter.mock.invocationCallOrder[0]!
+      );
+      // ...and nothing was delivered inside the request.
+      expect(mockDeliver).not.toHaveBeenCalled();
+
+      await (mockAfter.mock.calls[0]![0] as () => Promise<unknown>)();
+      expect(mockDeliver).toHaveBeenCalledTimes(1);
+      const since = (mockDeliver.mock.calls[0]![0] as { since: Date }).since.getTime();
+      // since = request start - 60s, and the request started inside [before, afterCall].
+      expect(since).toBeGreaterThanOrEqual(before - 60_000);
+      expect(since).toBeLessThanOrEqual(afterCall - 60_000);
+    });
+
     it.each([
-      ['the removal succeeds', () => mockRemove.mockResolvedValue(undefined), 200],
-      // reassign's writes stand even if a later step fails, so its notices are owed
-      ['the removal fails after starting', () => mockRemove.mockRejectedValue(new Error('x')), 500],
+      ['the removal fails', () => mockRemove.mockRejectedValue(new Error('x')), 500],
+      [
+        'the caller is not an admin',
+        () => mockRemove.mockRejectedValue(new NotHouseholdAdminError()),
+        403,
+      ],
+      [
+        'the target is not a member',
+        () => mockRemove.mockRejectedValue(new MemberNotFoundError()),
+        404,
+      ],
     ])(
-      'schedules delivery when %s, scoped to notices since the request began',
+      'schedules NOTHING when %s (no notice was written, and no scan for a refused caller)',
       async (_l, arrange, status) => {
         mockCreateClient.mockResolvedValue(authClient({ id: 'admin' }) as never);
         arrange();
-        const before = Date.now();
 
         const res = await DELETE({} as never, { params });
 
         expect(res.status).toBe(status);
-        expect(mockAfter).toHaveBeenCalledTimes(1);
-        // Scheduled BEFORE the removal ran, so no outcome can skip it...
-        expect(mockAfter.mock.invocationCallOrder[0]!).toBeLessThan(
-          mockRemove.mock.invocationCallOrder[mockRemove.mock.invocationCallOrder.length - 1]!
-        );
-        // ...and nothing was delivered inside the request.
-        expect(mockDeliver).not.toHaveBeenCalled();
-
-        await (mockAfter.mock.calls[0]![0] as () => Promise<unknown>)();
-        expect(mockDeliver).toHaveBeenCalledTimes(1);
-        const since = (mockDeliver.mock.calls[0]![0] as { since: Date }).since.getTime();
-        expect(since).toBeLessThanOrEqual(before - 60_000 + 50);
-        expect(since).toBeGreaterThanOrEqual(before - 60_000 - 5_000);
+        expect(mockAfter).not.toHaveBeenCalled();
       }
     );
 

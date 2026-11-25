@@ -36,15 +36,15 @@ export async function DELETE(
     }
 
     const { userId } = await params;
-    // The removal records the owner's notices in its own SQL; their PUSHES go out
-    // after the response, off the critical path. Scheduled before the call so it
-    // runs whatever the outcome (the reassign's writes stand even if a later step
-    // fails); with nothing new to send it is a no-op.
     const requestStart = Date.now();
+    await removeMember(user.id, userId);
+    // The removal wrote the owner's notices in its own transaction; their PUSHES
+    // go out after the response, off the critical path. Only after SUCCESS: a
+    // failed or refused removal wrote nothing, so there is nothing to send - and
+    // a request that fails authorisation cannot trigger a scan.
     after(() =>
       deliverAccountNoticePushes({ since: new Date(requestStart - NOTICE_CLOCK_SKEW_MS) })
     );
-    await removeMember(user.id, userId);
     return NextResponse.json({ data: { success: true } });
   } catch (error) {
     if (error instanceof CannotRemoveSelfError) {

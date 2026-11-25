@@ -179,8 +179,9 @@ export async function claimDelivery(
 /**
  * Gives a claim back when the push was NOT delivered (deferred, failed, no
  * subscription), so the next run retries it. The marker's ABSENCE is what
- * "owed" means. A failed release only delays that retry until a later run
- * reads the row as delivered, so it is logged, never thrown.
+ * "owed" means. A failed release leaves the marker, so that push is NOT retried
+ * (it reads as delivered); that is logged, never thrown, because the in-app
+ * notice is the channel that reaches everyone and is unaffected.
  */
 export async function releaseDelivery(
   supabase: SupabaseClient,

@@ -1130,13 +1130,15 @@
     "cardLabel": "What changed for you",
     "householdTransferredTitle": "You now own {household}",
     "householdTransferredBody": "Its creator deleted their account, so the household passed to you as its longest-standing member. You are now its owner and admin.",
+    "householdTransferredBodyNoSeniority": "Its creator deleted their account, so the household passed to you. You are now its owner and admin.",
     "categoriesCopiedTitle": "Your categories were kept",
     "categoriesCopiedBody": "A household member deleted their account. You had been using categories they created ({categories}), so you now have your own copies, and your entries point to them.",
+    "categoriesCopiedBodyOutside": "Someone whose categories you used deleted their account. You had been using categories they created ({categories}), so you now have your own copies, and your entries point to them.",
     "categoryRenamedTitle": "A shared category was renamed",
     "categoryRenamedBody": "The shared category \"{from}\" now belongs to you. You already had one with that name, so it is now called \"{to}\".",
     "sharedPlansReceivedTitle": "Shared goals or budgets are now yours",
     "sharedPlansReceivedBodyDeleted": "A household member deleted their account. Shared goals or budgets they created in {household} now belong to you.",
-    "sharedPlansReceivedBodyRemoved": "A member was removed from {household}. Shared goals or budgets that member created there now belong to you.",
+    "sharedPlansReceivedBodyRemoved": "Shared goals or budgets created by the member you removed from {household} now belong to you.",
     "dismiss": "Got it",
     "more": "{count, plural, one {# more notice} other {# more notices}}"
   }
