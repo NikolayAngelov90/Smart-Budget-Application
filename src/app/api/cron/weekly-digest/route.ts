@@ -27,6 +27,7 @@ import {
   weekPeriodKey,
 } from '@/lib/services/notificationDeliveryService';
 import { logger } from '@/lib/utils/logger';
+import { deliverAccountNoticePushes } from '@/lib/services/accountNoticeService';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -68,6 +69,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Account notices (spec-account-deletion-notifications): this daily run is
+    // where a deferred or failed notice push is retried, for 7 days after the
+    // notice was created. Its own job, run BEFORE the digest so none of the
+    // digest's early returns (no eligible users, a failed lookup) can skip it.
+    // It never throws, and its outcome never changes the digest's.
+    const noticePushes = await deliverAccountNoticePushes();
+
     // 2. Compute the previous week's Monday (week_start)
     const now = new Date();
     const prevWeek = subWeeks(now, 1);
@@ -101,6 +109,7 @@ export async function GET(request: NextRequest) {
           success: true,
           usersProcessed: 0,
           digestsGenerated: 0,
+          noticePushes,
           errors: [],
           elapsedMs: Date.now() - startTime,
         },
@@ -213,6 +222,7 @@ export async function GET(request: NextRequest) {
         success: true,
         usersProcessed,
         digestsGenerated,
+        noticePushes,
         errors: errors.length > 0 ? errors.slice(0, 10) : [],
         elapsedMs,
       },

@@ -12,12 +12,23 @@ import {
   AccountDeletionRefusedError,
   resolveRefusalNames,
 } from '@/lib/services/accountDeletionRefusal';
-import { NextRequest } from 'next/server';
+import { NextRequest, after } from 'next/server';
+import { deliverAccountNoticePushes } from '@/lib/services/accountNoticeService';
 
 // Mock dependencies
 jest.mock('@/lib/supabase/server');
 jest.mock('@/lib/services/settingsService');
 jest.mock('@/lib/services/exportService');
+// `after()` RECORDS its callback (spec-account-deletion-notifications): the real
+// one needs a request scope. The tests assert the notice push is scheduled.
+jest.mock('next/server', () => ({
+  ...jest.requireActual('next/server'),
+  after: jest.fn(),
+}));
+jest.mock('@/lib/services/accountNoticeService', () => ({
+  deliverAccountNoticePushes: jest.fn().mockResolvedValue({}),
+  NOTICE_CLOCK_SKEW_MS: 60_000,
+}));
 // The real error class and outcome mapping; only the name lookup is stubbed (it
 // has its own tests in accountDeletionRefusal.test.ts).
 jest.mock('@/lib/services/accountDeletionRefusal', () => ({
@@ -569,6 +580,78 @@ describe('/api/user/account DELETE', () => {
 
       expect(status).toBe(500);
       expect(JSON.stringify(body)).not.toContain('relation "x"');
+    });
+  });
+  describe('account notices: the pushes go out AFTER the response', () => {
+    const mockAfter = after as unknown as jest.Mock;
+    const mockDeliver = deliverAccountNoticePushes as jest.Mock;
+
+    function authenticated() {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser }, error: null });
+      mockSupabase.auth.signInWithPassword.mockResolvedValue({
+        data: { user: mockUser },
+        error: null,
+      });
+      setTransactions({ data: [], error: null });
+    }
+    const request = () =>
+      new NextRequest('http://localhost:3000/api/user/account', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmation_password: 'password' }),
+      });
+
+    beforeEach(() => {
+      mockAfter.mockClear();
+      mockDeliver.mockClear();
+    });
+
+    it.each([
+      ['the deletion succeeds', () => mockDeleteUserAccount.mockResolvedValue(true), 200],
+      // prepare's writes (and its notices) stand even when the auth delete is refused
+      [
+        'the auth delete is refused',
+        () => mockDeleteUserAccount.mockRejectedValue(new Error('refused')),
+        500,
+      ],
+    ])(
+      'schedules delivery when %s, scoped to notices since the request began',
+      async (_l, arrange, status) => {
+        authenticated();
+        arrange();
+        const before = Date.now();
+
+        const response = await DELETE(request());
+
+        expect(response.status).toBe(status);
+        expect(mockAfter).toHaveBeenCalledTimes(1);
+        // Scheduled BEFORE the deletion ran, so no outcome can skip it...
+        expect(mockAfter.mock.invocationCallOrder[0]!).toBeLessThan(
+          mockDeleteUserAccount.mock.invocationCallOrder[0]!
+        );
+        // ...and nothing was delivered inside the request.
+        expect(mockDeliver).not.toHaveBeenCalled();
+
+        await (mockAfter.mock.calls[0]![0] as () => Promise<unknown>)();
+        expect(mockDeliver).toHaveBeenCalledTimes(1);
+        const since = (mockDeliver.mock.calls[0]![0] as { since: Date }).since.getTime();
+        expect(since).toBeLessThanOrEqual(before - 60_000 + 50);
+        expect(since).toBeGreaterThanOrEqual(before - 60_000 - 5_000);
+      }
+    );
+
+    it('schedules nothing when the password is wrong (nothing was prepared)', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser }, error: null });
+      mockSupabase.auth.signInWithPassword.mockResolvedValue({
+        data: null,
+        error: { message: 'Invalid login credentials' },
+      });
+
+      const response = await DELETE(request());
+
+      expect(response.status).toBe(401);
+      expect(mockAfter).not.toHaveBeenCalled();
+      expect(mockDeleteUserAccount).not.toHaveBeenCalled();
     });
   });
 });

@@ -5,7 +5,7 @@
  * DELETE /api/households/members/[userId] - admin removes a member (immediate revocation).
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import {
   removeMember,
@@ -14,6 +14,10 @@ import {
 } from '@/lib/services/householdMemberService';
 import { NotHouseholdAdminError } from '@/lib/services/invitationService';
 import { logger } from '@/lib/utils/logger';
+import {
+  deliverAccountNoticePushes,
+  NOTICE_CLOCK_SKEW_MS,
+} from '@/lib/services/accountNoticeService';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +36,14 @@ export async function DELETE(
     }
 
     const { userId } = await params;
+    // The removal records the owner's notices in its own SQL; their PUSHES go out
+    // after the response, off the critical path. Scheduled before the call so it
+    // runs whatever the outcome (the reassign's writes stand even if a later step
+    // fails); with nothing new to send it is a no-op.
+    const requestStart = Date.now();
+    after(() =>
+      deliverAccountNoticePushes({ since: new Date(requestStart - NOTICE_CLOCK_SKEW_MS) })
+    );
     await removeMember(user.id, userId);
     return NextResponse.json({ data: { success: true } });
   } catch (error) {

@@ -15,7 +15,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { logger } from '@/lib/utils/logger';
 import { toLocalISODate } from '@/lib/utils/date';
 
-export type NotificationKind = 'reengagement' | 'weekly_digest';
+/**
+ * `account_notice`: one row per account notice delivered by push, keyed by the
+ * notice id as its period (spec-account-deletion-notifications). `kind` is free
+ * TEXT in the table, so a new kind needs no migration.
+ */
+export type NotificationKind = 'reengagement' | 'weekly_digest' | 'account_notice';
 
 /**
  * The period a delivery satisfies. Comparing period KEYS rather than timestamps
@@ -142,4 +147,57 @@ export async function getAlreadyDeliveredByPeriod(
       (r) => `${r.user_id}:${r.period_key}`
     )
   );
+}
+
+/**
+ * CLAIMS a delivery before sending, so two overlapping runs (a route's after()
+ * and the daily cron) can never both send the same push. Unlike markDelivered,
+ * which ignores a duplicate silently, this says whether THIS call made the row:
+ * `true` = claimed, send; `false` = someone else holds it, skip.
+ *
+ * Fails CLOSED like getAlreadyDelivered: an error that is not a duplicate is
+ * thrown, so the caller skips rather than risk a duplicate push.
+ */
+export async function claimDelivery(
+  supabase: SupabaseClient,
+  kind: NotificationKind,
+  periodKey: string,
+  userId: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('notification_deliveries')
+    .insert({ user_id: userId, kind, period_key: periodKey });
+  if (!error) return true;
+  if ((error as { code?: string }).code === '23505') return false; // unique_violation: already held
+  logger.error(
+    'NotificationDelivery',
+    `claim failed for ${kind}/${periodKey}/${userId}: ${error.message}`
+  );
+  throw new Error('delivery claim failed');
+}
+
+/**
+ * Gives a claim back when the push was NOT delivered (deferred, failed, no
+ * subscription), so the next run retries it. The marker's ABSENCE is what
+ * "owed" means. A failed release only delays that retry until a later run
+ * reads the row as delivered, so it is logged, never thrown.
+ */
+export async function releaseDelivery(
+  supabase: SupabaseClient,
+  kind: NotificationKind,
+  periodKey: string,
+  userId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('notification_deliveries')
+    .delete()
+    .eq('user_id', userId)
+    .eq('kind', kind)
+    .eq('period_key', periodKey);
+  if (error) {
+    logger.warn(
+      'NotificationDelivery',
+      `release failed for ${kind}/${periodKey}/${userId}: ${error.message} - this push is not retried`
+    );
+  }
 }
