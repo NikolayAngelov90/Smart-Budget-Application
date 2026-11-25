@@ -33,6 +33,7 @@ import {
   assertAppPinnedToLocalStack,
 } from '@/lib/test-utils/rlsClient';
 import { deleteUserAccount } from '@/lib/services/settingsService';
+import { removeMember } from '@/lib/services/householdMemberService';
 import {
   AccountDeletionRefusedError,
   resolveRefusalNames,
@@ -284,6 +285,27 @@ async function countRows(table: string, filters: Record<string, string | null>):
   const { count, error } = await q;
   if (error) throw new Error(`count ${table}: ${error.message}`);
   return count ?? -1;
+}
+
+type Notice = {
+  id?: string;
+  kind: string;
+  cause: string;
+  household_id: string | null;
+  params: Record<string, unknown>;
+};
+
+/** A person's account notices, sorted by kind, read with the service role. */
+async function noticesFor(userId: string, withId = false): Promise<Notice[]> {
+  const { data, error } = await svc()
+    .from('account_notices')
+    .select('id, kind, cause, household_id, params')
+    .eq('recipient_id', userId)
+    .order('kind');
+  if (error) throw new Error(`read notices for ${userId}: ${error.message}`);
+  return ((data ?? []) as Required<Notice>[]).map(({ id, ...rest }) =>
+    withId ? { id, ...rest } : rest
+  );
 }
 
 async function rolesIn(householdId: string): Promise<Array<{ user_id: string; role: string }>> {
@@ -1236,6 +1258,279 @@ rlsDescribe(
       const { data: gone, error: goneError } = await svc().auth.admin.getUserById(c);
       expect(gone.user).toBeNull();
       expect(goneError).toMatchObject({ status: 404, code: 'user_not_found' });
+    });
+    // -------------------------------------------------------------------------
+    // ACCOUNT NOTICES (spec-account-deletion-notifications). Recorded by the SQL
+    // that makes each change; the residue scan above (id, email, DISPLAY NAME)
+    // runs inside every deleteAccount() and covers account_notices too.
+    // -------------------------------------------------------------------------
+
+    it('12. a creator leaves: the new owner is told everything that changed for them - and nothing names the creator', async () => {
+      const c = await makeUser('c12');
+      const m = await makeUser('m12');
+      const h = await household('H12', c, [
+        { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      // C's SHARED category whose name M already uses: moved to M and renamed.
+      const shared = await category(c, 'Food12', h);
+      await category(m, 'Food12');
+      // A shared category M does NOT have: moved, not renamed - no notice for it.
+      await category(c, 'Unique12', h);
+      // C's shared goal and budget: moved to M.
+      await goal(c, 'Trip12', h, 0);
+      await seedSingle(
+        svc()
+          .from('category_budgets')
+          .insert({
+            user_id: c,
+            household_id: h,
+            category_id: shared,
+            period: 'monthly',
+            limit_amount: 50,
+          })
+          .select('id')
+          .single(),
+        "C's shared budget"
+      );
+      // C's PERSONAL category that M used: copied to M.
+      const personal = await category(c, 'Hobby12');
+      await tx(m, personal);
+      // C's personal category whose name M ALREADY has: M's rows move to M's own
+      // "Books12" (REUSED, not copied), so it must not be listed as a copy.
+      const cBooks = await category(c, 'Books12');
+      await category(m, 'Books12');
+      await tx(m, cBooks);
+
+      await deleteAccount(c); // its residue scan searches C's id, email AND display name
+
+      expect(await noticesFor(m)).toEqual([
+        {
+          kind: 'categories_copied',
+          cause: 'account_deleted',
+          household_id: null,
+          params: { categories: ['Hobby12'] },
+        },
+        {
+          kind: 'category_renamed',
+          cause: 'account_deleted',
+          household_id: h,
+          params: { household: 'H12', from: 'Food12', to: 'Food12 2' },
+        },
+        {
+          kind: 'household_transferred',
+          cause: 'account_deleted',
+          household_id: h,
+          params: { household: 'H12' },
+        },
+        {
+          kind: 'shared_plans_received',
+          cause: 'account_deleted',
+          household_id: h,
+          params: { household: 'H12', goals: 1, budgets: 1 },
+        },
+      ]);
+    });
+
+    it('13. a plain member leaves: the owner is told about the renamed category and the shared goal; nobody else is told anything', async () => {
+      const o = await makeUser('o13');
+      const p = await makeUser('p13');
+      const bystander = await makeUser('b13');
+      const h = await household('H13', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: p, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        { id: bystander, role: 'member', joinedAt: '2026-03-01T00:00:00Z' },
+      ]);
+      await category(p, 'Rent13', h);
+      await category(o, 'Rent13');
+      await goal(p, 'Sofa13', h, 0);
+
+      await deleteAccount(p);
+
+      expect(await noticesFor(o)).toEqual([
+        {
+          kind: 'category_renamed',
+          cause: 'account_deleted',
+          household_id: h,
+          params: { household: 'H13', from: 'Rent13', to: 'Rent13 2' },
+        },
+        {
+          kind: 'shared_plans_received',
+          cause: 'account_deleted',
+          household_id: h,
+          params: { household: 'H13', goals: 1, budgets: 0 },
+        },
+      ]);
+      expect(await noticesFor(bystander)).toEqual([]);
+    });
+
+    it('14. removeMember: the owner is told with cause member_removed; the removed person gets no notice', async () => {
+      const o = await makeUser('o14');
+      const r = await makeUser('r14');
+      const h = await household('H14', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: r, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      const rCat = await category(r, 'Gym14', h);
+      await category(o, 'Gym14');
+      await seedSingle(
+        svc()
+          .from('category_budgets')
+          .insert({
+            user_id: r,
+            household_id: h,
+            category_id: rCat,
+            period: 'monthly',
+            limit_amount: 30,
+          })
+          .select('id')
+          .single(),
+        "R's shared budget"
+      );
+
+      await removeMember(o, r); // the real service, as the route calls it
+
+      expect(await noticesFor(o)).toEqual([
+        {
+          kind: 'category_renamed',
+          cause: 'member_removed',
+          household_id: h,
+          params: { household: 'H14', from: 'Gym14', to: 'Gym14 2' },
+        },
+        {
+          kind: 'shared_plans_received',
+          cause: 'member_removed',
+          household_id: h,
+          params: { household: 'H14', goals: 0, budgets: 1 },
+        },
+      ]);
+      expect(await noticesFor(r)).toEqual([]);
+      expect(await countRows('household_members', { household_id: h, user_id: r })).toBe(0);
+    });
+
+    it('15. OFF THE CRITICAL PATH: with every notice insert FORCED to fail, the deletion and the removal still complete', async () => {
+      const c = await makeUser('c15');
+      const m = await makeUser('m15');
+      const h = await household('H15', c, [
+        { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      const cShared = await category(c, 'Food15', h);
+      await category(m, 'Food15');
+      const o = await makeUser('o15');
+      const r = await makeUser('r15');
+      const h2 = await household('H15-b', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: r, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      const rShared = await category(r, 'Gym15', h2);
+      await category(o, 'Gym15');
+
+      // Every insert into account_notices now fails (existing rows are not checked).
+      await db(
+        'ALTER TABLE public.account_notices DROP CONSTRAINT IF EXISTS rls_force_notice_failure'
+      );
+      await db(
+        'ALTER TABLE public.account_notices ADD CONSTRAINT rls_force_notice_failure CHECK (false) NOT VALID'
+      );
+      try {
+        await deleteAccount(c); // throws if the deletion failed; then residue-scans C
+        await removeMember(o, r); // throws if the removal failed
+      } finally {
+        await db(
+          'ALTER TABLE public.account_notices DROP CONSTRAINT IF EXISTS rls_force_notice_failure'
+        );
+      }
+
+      // The changes happened exactly as without notices...
+      expect((await row<{ created_by: string }>('households', h))?.created_by).toBe(m);
+      expect(await row<{ user_id: string; name: string }>('categories', cShared)).toMatchObject({
+        user_id: m,
+        name: 'Food15 2',
+      });
+      expect(await countRows('household_members', { household_id: h2, user_id: r })).toBe(0);
+      expect(await row<{ user_id: string; name: string }>('categories', rShared)).toMatchObject({
+        user_id: o,
+        name: 'Gym15 2',
+      });
+      // ...and the forced failure really did stop every notice (the control).
+      expect(await noticesFor(m)).toEqual([]);
+      expect(await noticesFor(o)).toEqual([]);
+    });
+
+    it("16. notices are read-own and written only by the server: no client can insert, update, delete or see another person's; the new functions are definer-only with a pinned search_path", async () => {
+      const o = await makeUser('o16');
+      const p = await makeUser('p16');
+      const outsider = await makeUser('x16');
+      const h = await household('H16', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: p, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      await goal(p, 'Goal16', h, 0);
+      await deleteAccount(p);
+      const [own] = await noticesFor(o, true);
+      expect(own).toBeDefined(); // MUST-FIND: there is a notice to protect
+      const ownId = own!.id!;
+
+      const asOwner = await signInAsTestUser(emailOf('o16'), PWD);
+      const asOutsider = await signInAsTestUser(emailOf('x16'), PWD);
+
+      // Read: own yes, someone else's no.
+      const mine = await asOwner.from('account_notices').select('id').eq('id', ownId);
+      expect(mine.error).toBeNull();
+      expect(mine.data).toHaveLength(1);
+      const theirs = await asOutsider.from('account_notices').select('id').eq('id', ownId);
+      expect(theirs.error).toBeNull();
+      expect(theirs.data).toHaveLength(0);
+
+      // Write: nothing, not even the recipient dismissing through PostgREST.
+      const ins = await asOwner.from('account_notices').insert({
+        recipient_id: o,
+        kind: 'household_transferred',
+        cause: 'account_deleted',
+        params: {},
+      });
+      expect(ins.error?.code).toBe('42501');
+      const upd = await asOwner
+        .from('account_notices')
+        .update({ dismissed_at: new Date().toISOString() })
+        .eq('id', ownId)
+        .select('id');
+      expect(upd.error?.code).toBe('42501');
+      const del = await asOwner.from('account_notices').delete().eq('id', ownId).select('id');
+      expect(del.error?.code).toBe('42501');
+      expect(
+        (await row<{ dismissed_at: string | null }>('account_notices', ownId))?.dismissed_at
+      ).toBeNull();
+      void outsider;
+
+      // The functions: SECURITY DEFINER, search_path pinned, no client EXECUTE.
+      const fns = await db<{
+        fn: string;
+        definer: boolean;
+        config: string[] | null;
+        client_exec: boolean;
+      }>(
+        `select p.oid::regprocedure::text as fn, p.prosecdef as definer, p.proconfig as config,
+                (has_function_privilege('anon', p.oid, 'EXECUTE')
+                 or has_function_privilege('authenticated', p.oid, 'EXECUTE')) as client_exec
+           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where (n.nspname, p.proname) in (('private', 'record_account_notice'),
+                                           ('private', 'move_member_shared_objects'))
+          order by 1`
+      );
+      expect(fns.map((f) => f.fn)).toEqual([
+        'private.move_member_shared_objects(uuid,uuid,text)',
+        'private.record_account_notice(uuid,text,text,uuid,jsonb)',
+      ]);
+      for (const f of fns) {
+        expect({ fn: f.fn, definer: f.definer, clientExec: f.client_exec }).toEqual({
+          fn: f.fn,
+          definer: true,
+          clientExec: false,
+        });
+        expect(f.config).toEqual(expect.arrayContaining(['search_path=public']));
+      }
     });
   }
 );
