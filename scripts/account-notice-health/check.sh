@@ -52,7 +52,8 @@ cat <<'TXT'
 
 Each one was CONTAINED: the deletion or removal completed, and a notice for a
 person who stays was lost. stage: 'publish' = the auth.users trigger,
-'stage' = a deletion's preparation, 'write' = a member's removal.
+'stage' = a deletion's preparation, 'write' = a member's removal,
+'refusal' = the neutral notice for a refused deletion.
 Read them in the Supabase SQL editor:
   SELECT * FROM private.account_notice_failures
    WHERE acknowledged_at IS NULL ORDER BY created_at;

@@ -631,31 +631,38 @@ describe('/api/user/account DELETE', () => {
       expect(since).toBeLessThanOrEqual(afterCall - 60_000);
     });
 
-    it.each([
-      [
-        'the auth delete is refused',
-        () =>
-          mockDeleteUserAccount.mockRejectedValue(
-            new AccountDeletionRefusedError(
-              { ownershipTransferred: true, sharedObjectsMoved: true },
-              'refused'
-            )
-          ),
-      ],
-      ['the deletion fails', () => mockDeleteUserAccount.mockRejectedValue(new Error('boom'))],
-    ])(
-      'schedules NOTHING when %s: nothing was published, so nobody is told',
-      async (_l, arrange) => {
-        authenticated();
-        arrange();
-        mockResolveRefusalNames.mockResolvedValue({ household: 'H', owner: 'o@example.test' });
+    it('a CONFIRMED refusal schedules delivery too: its neutral notice for the new owner may now exist (spec-refused-deletion-notice)', async () => {
+      authenticated();
+      mockDeleteUserAccount.mockRejectedValue(
+        new AccountDeletionRefusedError(
+          { ownershipTransferred: true, sharedObjectsMoved: true },
+          'refused'
+        )
+      );
+      mockResolveRefusalNames.mockResolvedValue({ household: 'H', owner: 'o@example.test' });
+      const before = Date.now();
 
-        const response = await DELETE(request());
+      const response = await DELETE(request());
+      const afterCall = Date.now();
 
-        expect(response.status).toBe(500);
-        expect(mockAfter).not.toHaveBeenCalled();
-      }
-    );
+      expect(response.status).toBe(500); // the refusal answer is unchanged
+      expect(mockAfter).toHaveBeenCalledTimes(1);
+      expect(mockDeliver).not.toHaveBeenCalled(); // nothing delivered inside the request
+      await (mockAfter.mock.calls[0]![0] as () => Promise<unknown>)();
+      const since = (mockDeliver.mock.calls[0]![0] as { since: Date }).since.getTime();
+      expect(since).toBeGreaterThanOrEqual(before - 60_000);
+      expect(since).toBeLessThanOrEqual(afterCall - 60_000);
+    });
+
+    it('schedules NOTHING when the deletion fails without a confirmed refusal: nothing was published', async () => {
+      authenticated();
+      mockDeleteUserAccount.mockRejectedValue(new Error('boom'));
+
+      const response = await DELETE(request());
+
+      expect(response.status).toBe(500);
+      expect(mockAfter).not.toHaveBeenCalled();
+    });
 
     it('schedules nothing when the password is wrong (nothing was prepared)', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser }, error: null });

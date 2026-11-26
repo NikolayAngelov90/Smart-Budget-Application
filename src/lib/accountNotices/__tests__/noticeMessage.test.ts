@@ -41,6 +41,29 @@ describe('noticeMessage', () => {
     }
   });
 
+  test('household_transferred after a REFUSED deletion -> the neutral texts only: no "its creator deleted", no seniority', () => {
+    for (const seniority of [true, false, undefined]) {
+      expect(
+        noticeMessage(
+          notice(
+            'household_transferred',
+            { household: 'Вкъщи', seniority },
+            { cause: 'deletion_refused' }
+          ),
+          'bg'
+        )
+      ).toEqual({
+        titleKey: 'householdTransferredRefusedTitle',
+        bodyKey: 'householdTransferredRefusedBody',
+        values: { household: 'Вкъщи' },
+      });
+    }
+    // ...and never shown with a hole in it.
+    expect(
+      noticeMessage(notice('household_transferred', {}, { cause: 'deletion_refused' }), 'en')
+    ).toBeNull();
+  });
+
   test('categories_copied -> the names joined for the LOCALE; "a household member" ONLY when shared', () => {
     const n = notice('categories_copied', {
       categories: ['Храна', 'Транспорт', 'Сметки'],

@@ -145,6 +145,12 @@ export async function DELETE(request: NextRequest) {
       deleteSuccess = await deleteUserAccount(user.id);
     } catch (error) {
       if (error instanceof AccountDeletionRefusedError) {
+        // A CONFIRMED refusal may have published the new owner's neutral notice
+        // (spec-refused-deletion-notice): push it after the response, as for a
+        // deletion. Nothing on an unconfirmed failure, which publishes nothing.
+        after(() =>
+          deliverAccountNoticePushes({ since: new Date(requestStart - NOTICE_CLOCK_SKEW_MS) })
+        );
         const refused = await refusalResponse(
           error,
           supabase as unknown as SupabaseClient,
@@ -169,8 +175,9 @@ export async function DELETE(request: NextRequest) {
 
     // The deletion published the notices for the people who stay (the auth.users
     // trigger, inside the deletion's own transaction); their PUSHES go out after
-    // the response, off the critical path. Only after SUCCESS: a refused deletion
-    // published nothing, so nobody is told about a deletion that did not happen.
+    // the response, off the critical path. A refused deletion published no
+    // DELETION notice, so nobody is told about a deletion that did not happen;
+    // its only notice is the neutral transfer one, pushed from the catch above.
     after(() =>
       deliverAccountNoticePushes({ since: new Date(requestStart - NOTICE_CLOCK_SKEW_MS) })
     );

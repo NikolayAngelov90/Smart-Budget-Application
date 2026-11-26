@@ -1131,6 +1131,8 @@
     "householdTransferredTitle": "You now own {household}",
     "householdTransferredBody": "Its creator deleted their account, so the household passed to you as its longest-standing member. You are now its owner and admin.",
     "householdTransferredBodyNoSeniority": "Its creator deleted their account, so the household passed to you. You are now its owner and admin.",
+    "householdTransferredRefusedTitle": "{household} is now yours",
+    "householdTransferredRefusedBody": "You are its owner and admin.",
     "categoriesCopiedTitle": "Your categories were kept",
     "categoriesCopiedBody": "A household member deleted their account. You had been using categories they created ({categories}), so you now have your own copies, and your entries point to them.",
     "categoriesCopiedBodyOutside": "Someone whose categories you used ({categories}) deleted their account, so you now have your own copies and your entries point to them.",

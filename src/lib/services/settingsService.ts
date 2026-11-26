@@ -331,7 +331,9 @@ export async function updatePreferences(
  * A REFUSED auth delete is checked by effect before anything is claimed
  * (spec-account-deletion-refused-message): getUserById decides what happened.
  *  - the user still exists -> AccountDeletionRefusedError, carrying what the
- *    preparation reported, so the dialog can say what changed;
+ *    preparation reported, so the dialog can say what changed; and a household
+ *    the preparation transferred gets its NEUTRAL notice for the new owner
+ *    (best-effort, spec-refused-deletion-notice);
  *  - the user is gone -> the deletion DID happen; success;
  *  - the lookup fails, or prepare's result was unrecognisable -> a generic Error.
  *
@@ -384,7 +386,16 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
         );
         return true;
       }
-      if (lookupError || lookup?.user?.id !== userId) {
+      const confirmedRefusal = !lookupError && lookup?.user?.id === userId;
+      if (confirmedRefusal) {
+        // The account verifiably still exists: the refusal is CONFIRMED. A
+        // household the preparation transferred stays transferred, so its new
+        // owner is told now - neutrally, nothing about a deletion - and the staged
+        // "its creator deleted their account" is withdrawn, so a later successful
+        // retry cannot tell the same transfer twice (spec-refused-deletion-notice).
+        await publishRefusedDeletionNotices(adminClient as unknown as SupabaseClient, userId);
+      }
+      if (!confirmedRefusal) {
         logger.warn(
           'SettingsService',
           'refused deletion NOT described: the existence check was inconclusive',
@@ -405,6 +416,29 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
   } catch (error) {
     logger.error('SettingsService', 'deleteUserAccount error:', error);
     throw error;
+  }
+}
+
+/**
+ * The neutral notice for a CONFIRMED refused deletion (migration
+ * 20261126120000). BEST-EFFORT: the refusal stands whatever happens here, so a
+ * failure is logged and swallowed - it never changes what the dialog says. The
+ * function contains and records its own per-notice failures; this catch is for
+ * the call itself (network, a missing function on an older schema).
+ */
+async function publishRefusedDeletionNotices(
+  adminClient: SupabaseClient,
+  userId: string
+): Promise<void> {
+  try {
+    const { error } = await adminClient.rpc('publish_refused_deletion_notices', {
+      p_user: userId,
+    });
+    if (error) {
+      logger.warn('SettingsService', 'refused-deletion notice not published:', error);
+    }
+  } catch (error) {
+    logger.warn('SettingsService', 'refused-deletion notice not published:', error);
   }
 }
 

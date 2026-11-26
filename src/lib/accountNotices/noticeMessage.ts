@@ -16,7 +16,12 @@ export type AccountNoticeKind =
   | 'category_renamed'
   | 'shared_plans_received';
 
-export type AccountNoticeCause = 'account_deleted' | 'member_removed';
+/**
+ * Why the change happened. `deletion_refused`: a deletion was REFUSED after the
+ * household was transferred - the transfer stands, so the new owner is told, but
+ * the text says nothing about a deletion (spec-refused-deletion-notice).
+ */
+export type AccountNoticeCause = 'account_deleted' | 'member_removed' | 'deletion_refused';
 
 export interface AccountNotice {
   id: string;
@@ -69,6 +74,15 @@ export function noticeMessage(notice: AccountNotice, locale: string): NoticeMess
     case 'household_transferred': {
       const household = text(p.household);
       if (!household) return null;
+      // A refused deletion: only the transfer, which really happened - no
+      // "its creator deleted their account", no seniority.
+      if (notice.cause === 'deletion_refused') {
+        return {
+          titleKey: 'householdTransferredRefusedTitle',
+          bodyKey: 'householdTransferredRefusedBody',
+          values: { household },
+        };
+      }
       // "As its longest-standing member" only when the database KNEW it (every
       // candidate had a join date). Absent means not known: no claim.
       return {
