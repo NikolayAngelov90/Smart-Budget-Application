@@ -55,7 +55,8 @@ It claims only the transfer, which really happened, and nothing about a deletion
   - a confirmed refusal whose preparation result was unreadable publishes the notice but is answered with a generic error, so its push comes from the daily crons (02:00 / 09:00 UTC), not at once.
 - **A later successful retry:**
   - the transfer was withdrawn, so it is told ONCE, neutrally;
-  - the attempt's OTHER staged notices (renames, copies, moved plans) stay staged and publish on that successful retry, when "deleted their account" becomes true. **For Niki to confirm** (the edge-case hunter's note): your wording "the staged deletion notices of that refused attempt must not ALSO publish later" is met literally only for the transfer. The others were never told, so they are told once, when true.
+  - the attempt's OTHER staged notices (renames, copies, moved plans) stay staged and publish on that successful retry, when "deleted their account" becomes true. This meets Niki's wording ("the staged deletion notices of that refused attempt must not ALSO publish later") literally only for the transfer; the edge-case hunter flagged it.
+  - **DECIDED by Niki, 2026-11-26:** the same treatment for the others, in a SEPARATE small story after this one. The renamed or copied categories and the moved goals and budgets are real changes after a refusal; only the reason "deleted their account" is false, and holding them until a retry means nobody is told if no retry comes. That story: on a confirmed refusal, withdraw ALL of the attempt's staged notices and write neutral variants under NEW kinds (the old-client reason); test what a later successful retry produces (Niki expects nothing for these, because the preparation finds nothing left to move: verify, don't assume); Bulgarian strings for Niki; #108's release order if it needs a migration. This story is unchanged by that decision.
 - **Text:** Niki's two sentences, split into the card's title and body, with his words only:
   - title `householdNowYoursTitle`: "{household} is now yours" / "Домакинството {household} вече е ваше";
   - body `householdNowYoursBody`: "You are its owner and admin." / "Сега вие сте собственик и администратор."
@@ -84,17 +85,25 @@ It claims only the transfer, which really happened, and nothing about a deletion
 
 ## Tasks
 
-- [ ] `supabase/migrations/20261126120000_refused_deletion_notice.sql`
-- [ ] `noticeMessage.ts`: the `deletion_refused` cause and its keys. `messages/{en,bg}.json`: 2 keys.
-- [ ] `settingsService.deleteUserAccount`: call the function in the confirmed branch only, best-effort.
-- [ ] The account route: `after()` delivery on a confirmed refusal.
-- [ ] Tests:
+- [x] `supabase/migrations/20261126120000_refused_deletion_notice.sql`
+- [x] `noticeMessage.ts`: the `household_now_yours` kind (review 1 replaced the planned `deletion_refused` cause) and its keys. `messages/{en,bg}.json`: 2 keys.
+- [x] `settingsService.deleteUserAccount`: call the function in the confirmed branch only, best-effort.
+- [x] The account route: `after()` delivery on a confirmed refusal.
+- [x] Tests:
   - RLS test 11 (the refusal now tells the new owner neutrally; the retry tells the transfer once);
   - new RLS test 20 (the function: a deleted person; ownership changed; a contained failure keeps the staged row; privileges);
   - test 16's function list;
   - unit tests (service, route, mapping, real-ICU rendering).
-- [ ] Mutants, old × new, three-layer review, then #108's release order.
+- [x] Mutants, old × new, three-layer review, then #108's release order.
 
 ## Verification
 
-(filled in as the work lands)
+- Local: full RLS 14/14 suites, 91/91 tests; mutants 30/30 killed, each by its expected test; old code (main e630273) × new schema 14/14, 90/90.
+- CI on 485a148: `Tests:       91 skipped, 2952 passed, 3043 total`; pinned order `ok: 2952 tests ran, in the pinned order 20261029`; RLS `Tests:       91 passed, 91 total`.
+- **APPLIED to production on 2026-11-26** from `485a1484fad1b3b634ce71f07fe2f5f98bd4d73f`, on Niki's yes for sha256 `84a8e6781d780a5310e14ca18f88475431118853f14bc1acdc95caaf9b1a0034` (asserted, with the blob and a clean tree, in the same command as the push). The migration file is now FROZEN.
+  - Dry run listed only `20261126120000_refused_deletion_notice.sql`.
+  - Before → after: the two CHECKs gained `household_now_yours` / `ownership_transferred`; the function appeared with EXECUTE for service_role only (ACL `postgres=X/postgres,service_role=X/postgres`); ledger 49 → 50. 22 of 31 snapshot rows unchanged.
+  - All 9 function definitions (owner, definer, config, md5) identical to the local stack the full RLS suite ran on, rebuilt from 485a148.
+  - Ledger matches the repo one-for-one, 50/50.
+  - Drift run 45883950221 on this branch: `hard failures : 0`, `pending : 0`, `DRIFT CHECK PASSED.`
+  - schema_reader can execute only `public.account_notice_failure_summary()`, holds 0 relation privileges, no USAGE on `private`. No client EXECUTE on any notice function; no client writes on the three notice tables. 0 rows of the new kind; no unacknowledged failures.
