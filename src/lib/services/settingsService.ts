@@ -430,17 +430,35 @@ async function publishRefusedDeletionNotices(
   adminClient: SupabaseClient,
   userId: string
 ): Promise<void> {
+  // The refusal answer must not wait on a slow database: GoTrue's "Database
+  // error deleting user" often comes WITH database trouble, and supabase-js has
+  // no fetch timeout. After this cap the answer goes out; a call still running
+  // completes or fails on its own (the function is idempotent per staged row).
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const capped = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), REFUSED_NOTICE_TIMEOUT_MS);
+  });
   try {
-    const { error } = await adminClient.rpc('publish_refused_deletion_notices', {
-      p_user: userId,
-    });
-    if (error) {
-      logger.warn('SettingsService', 'refused-deletion notice not published:', error);
+    const outcome = await Promise.race([
+      Promise.resolve(
+        adminClient.rpc('publish_refused_deletion_notices', { p_user: userId })
+      ) as Promise<{ error: unknown }>,
+      capped,
+    ]);
+    if (outcome === 'timeout') {
+      logger.warn('SettingsService', 'refused-deletion notice: no answer within the cap');
+    } else if (outcome.error) {
+      logger.warn('SettingsService', 'refused-deletion notice not published:', outcome.error);
     }
   } catch (error) {
     logger.warn('SettingsService', 'refused-deletion notice not published:', error);
+  } finally {
+    clearTimeout(timer);
   }
 }
+
+/** How long a refusal answer may wait for the neutral notice (exported for tests). */
+export const REFUSED_NOTICE_TIMEOUT_MS = 3000;
 
 /**
  * GoTrue answers getUserById for a missing user with 404 AND code

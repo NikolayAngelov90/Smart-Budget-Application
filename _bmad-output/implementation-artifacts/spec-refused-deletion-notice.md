@@ -29,28 +29,58 @@ It claims only the transfer, which really happened, and nothing about a deletion
 
 </frozen-after-approval>
 
-## Decisions (Claude: mechanics)
+## Decisions (Claude: mechanics), as built after review 1
 
 - **A migration IS needed** (checked read-only against production on 2026-11-26):
   - `private.record_account_notice` cannot be reached by the app: there is no EXECUTE for service_role, and `private` is not exposed.
-  - The app could INSERT into `account_notices` (service_role has INSERT), but its `cause` CHECK allows only `account_deleted` and `member_removed`. Reusing `account_deleted` would store a false fact.
-  - Discarding the staged transfer means a write to `private.pending_account_notices`, in the same transaction as the neutral notice.
+  - The app could INSERT into `account_notices` (service_role has INSERT), but its kind and cause CHECKs allow neither a neutral kind nor a true cause.
+  - Withdrawing the staged transfer means a write to `private.pending_account_notices`, in the same transaction as the neutral notice.
 - **The migration** (additive, apply-first; 20261125100000 stays frozen):
-  - `account_notices.cause` gains `deletion_refused`;
-  - a new function, `public.publish_refused_deletion_notices(uuid)`, service_role only.
-- **What the function does, per staged `household_transferred` row of that person,** in ONE guarded block: write the neutral notice (kind `household_transferred`, cause `deletion_refused`, params `{household}`) AND delete the staged row, or neither. A failure is recorded (stage `refusal`), and the staged row is then kept.
-- **Only when the text is true now:** the recipient still owns that household. Otherwise nothing is published and the staged row is left as it was. A person who no longer exists needs no check: their staged rows cascade away with their auth row. An "exists?" check could never change an outcome, so there is none (Rule 6).
-- **Serialised with the person's own deletion:** the function first locks their auth row FOR NO KEY UPDATE, inside a guard. A deletion (which takes FOR UPDATE) therefore cannot publish the staged transfer in the window between "read" and "withdraw". A deletion already in flight makes the function give up after the 1 s lock_timeout; that is recorded, and the deletion tells the new owner truthfully, once.
-- **When it runs:** the service calls it inside the existing CONFIRMED branch of `deleteUserAccount` (an outcome-known auth error, and `getUserById` finds the same user). It is best-effort: its failure never changes what the dialog says. It is never called on an unknown outcome, a "user is gone", or an inconclusive lookup.
-- **Self-healing:** it acts on whatever transfer is still staged for that person. A transfer staged by an earlier attempt, whose confirmation failed, is published neutrally on the next confirmed refusal. A second refusal finds nothing staged and publishes nothing.
+  - ONE `ALTER TABLE` widens both CHECKs, with no `IF EXISTS` (both names verified in production): kind `household_now_yours`, cause `ownership_transferred`;
+  - a new function, `public.publish_refused_deletion_notices(uuid)`, service_role only;
+  - the apply waits at most 500 ms for its lock, so a deletion's notice publish never queues behind it.
+- **Why a NEW KIND** (review 1, HIGH; blind hunter, edge-case hunter and verification gap): every app version before this maps `household_transferred` to "Its creator deleted their account..." whatever the cause. An open tab from before the deploy, or a rollback, would show the neutral notice as exactly that false claim. For an unknown kind those versions return no message. Checked at e630273: the card drops it, the push skips it, the mapping's `default: return null`.
+- **Why cause `ownership_transferred`** and not `deletion_refused` (edge-case hunter): the recipient's API payload, persisted in their browser, must not reveal what the text withholds, namely that someone tried to delete their account.
+- **What the function does,** under ONE outer guard:
+  - it locks the person's auth row FOR NO KEY UPDATE, which serialises it with their own deletion and with a parallel call;
+  - per staged `household_transferred` row of THAT person, whose recipient still OWNS and still ADMINISTERS the household (read FOR SHARE, so neither can change mid-call), ONE guarded block WITHDRAWS the staged row first, and writes the neutral notice, under the household's CURRENT name, only if a row really was withdrawn;
+  - every failure (the lock, reading the rows, one notice) is recorded at stage `refusal`, and a failed notice keeps its staged row;
+  - a person who no longer exists needs no check: their staged rows cascade away with their auth row.
+- **When it runs:** the service calls it inside the existing CONFIRMED branch (an outcome-known auth error, and `getUserById` finds the same user with no error).
+  - It is awaited, so the push after the response finds the notice, but capped at 3 s, so a slow database never delays the refusal answer.
+  - It is best-effort: a failure never changes what the dialog says.
+  - It is never called on an unknown outcome, a "user is gone", an inconclusive lookup, a different user, or the same user returned with an error.
+- **Push:**
+  - the route schedules `after()` delivery after an AccountDeletionRefusedError;
+  - a confirmed refusal whose preparation result was unreadable publishes the notice but is answered with a generic error, so its push comes from the daily crons (02:00 / 09:00 UTC), not at once.
 - **A later successful retry:**
-  - the staged transfer is gone, so the trigger cannot publish "its creator deleted their account", and the new owner is told the transfer ONCE, neutrally;
-  - the attempt's OTHER staged notices (renames, copies, moved plans) stay staged and publish on that successful retry, when "deleted their account" becomes true. Each change is told once, and only when its text is true.
-- **Push:** the route schedules `after()` delivery on a confirmed refusal too, as a notice now exists. The daily crons retry, as for every notice.
-- **Text:** the card shows a title and a body. Niki's two sentences are split, using his words only:
-  - title `householdTransferredRefusedTitle`: "{household} is now yours" / "Домакинството {household} вече е ваше";
-  - body `householdTransferredRefusedBody`: "You are its owner and admin." / "Сега вие сте собственик и администратор."
-  - Read together, they are exactly his text.
+  - the transfer was withdrawn, so it is told ONCE, neutrally;
+  - the attempt's OTHER staged notices (renames, copies, moved plans) stay staged and publish on that successful retry, when "deleted their account" becomes true. **For Niki to confirm** (the edge-case hunter's note): your wording "the staged deletion notices of that refused attempt must not ALSO publish later" is met literally only for the transfer. The others were never told, so they are told once, when true.
+- **Text:** Niki's two sentences, split into the card's title and body, with his words only:
+  - title `householdNowYoursTitle`: "{household} is now yours" / "Домакинството {household} вече е ваше";
+  - body `householdNowYoursBody`: "You are its owner and admin." / "Сега вие сте собственик и администратор."
+  - The rendered text is pinned to exactly that, in both languages.
+
+## Spec Change Log
+
+- **2026-11-26, review 1** (blind hunter, edge-case hunter, verification gap; the three ran on commit 601abc5 through git while mutants ran).
+  - **HIGH:** the reused kind would be mis-rendered as "its creator deleted their account" by older app code. Fixed by the new kind.
+  - **Also fixed:**
+    - the cause no longer reveals the refusal;
+    - the CHECK swap is one statement, with no `IF EXISTS`;
+    - the apply's lock wait is 500 ms;
+    - withdraw-then-tell, with a check that a row was withdrawn;
+    - ownership and admin are read FOR SHARE, and the current household name is used;
+    - an outer guard over the lock and the read;
+    - the 3 s cap on the call;
+    - per-stage meanings in the health check's text;
+    - tests: person scoping, the household-row lock, concurrent withdrawal, a failed withdrawal, "record impossible" (both levels), the `await`, the cap, the `!lookupError` conjunct, the exact rendered strings, and two households (one failure loses only itself).
+  - **To the board:**
+    - RPC-level failures (network, timeout) are only logged, not recorded nightly, because the app cannot write the private failure log. The staged transfer then survives and is told on a successful retry.
+    - Exotic chains (a household handed back and forth across refusals) can leave a stale staged transfer that #108's trigger publishes later. This is pre-existing (#108), already on the board as stale notices.
+    - The present-tense neutral text can go stale if the household later changes hands; #108's texts share this.
+    - Benign concurrency `refusal` markers (55P03) also turn the nightly check red, by design.
+  - **Not tested, argued:** the serialisation's success path (the function first, a deletion arriving while it holds the lock). That holds by Postgres semantics: DELETE takes FOR UPDATE on the auth row before the BEFORE trigger fires. Withdraw-first makes it hold even if that ever changed.
 
 ## Tasks
 

@@ -147,7 +147,10 @@ export async function DELETE(request: NextRequest) {
       if (error instanceof AccountDeletionRefusedError) {
         // A CONFIRMED refusal may have published the new owner's neutral notice
         // (spec-refused-deletion-notice): push it after the response, as for a
-        // deletion. Nothing on an unconfirmed failure, which publishes nothing.
+        // deletion. An unconfirmed failure publishes nothing, so nothing here.
+        // One confirmed case lands below instead: a refusal whose preparation
+        // result was unreadable publishes the notice but is answered with a
+        // generic error - its push comes from the daily crons (02:00 / 09:00 UTC).
         after(() =>
           deliverAccountNoticePushes({ since: new Date(requestStart - NOTICE_CLOCK_SKEW_MS) })
         );

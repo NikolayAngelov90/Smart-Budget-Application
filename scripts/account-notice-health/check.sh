@@ -50,10 +50,16 @@ printf '%s\n' "$ROWS" | while IFS='|' read -r stage kind state n first last; do
 done
 cat <<'TXT'
 
-Each one was CONTAINED: the deletion or removal completed, and a notice for a
-person who stays was lost. stage: 'publish' = the auth.users trigger,
-'stage' = a deletion's preparation, 'write' = a member's removal,
-'refusal' = the neutral notice for a refused deletion.
+Each one was CONTAINED; what it means depends on the stage:
+  'publish' - the auth.users trigger: the deletion completed and a notice for a
+              person who stays was lost.
+  'stage'   - a deletion's preparation: that notice was never staged.
+  'write'   - a member's removal: the removal completed, that notice was lost.
+  'refusal' - a REFUSED deletion: the deletion did NOT happen, and the new owner
+              was not told neutrally. The staged notice usually still stands
+              and is told if that person's deletion later succeeds. With
+              sqlstate 55P03 and no kind, that person's own deletion was most
+              likely in flight and told the new owner itself.
 Read them in the Supabase SQL editor:
   SELECT * FROM private.account_notice_failures
    WHERE acknowledged_at IS NULL ORDER BY created_at;

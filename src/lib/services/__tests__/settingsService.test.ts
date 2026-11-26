@@ -8,6 +8,7 @@ import {
   updateUserProfile,
   updatePreferences,
   deleteUserAccount,
+  REFUSED_NOTICE_TIMEOUT_MS,
 } from '@/lib/services/settingsService';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { AccountDeletionRefusedError } from '@/lib/services/accountDeletionRefusal';
@@ -571,6 +572,42 @@ describe('settingsService', () => {
           expect(publishCalls()).toEqual([[PUBLISH, { p_user: mockUserId }]]);
         });
 
+        test('the refusal answer WAITS for the publish (so the push after the response finds the notice) - but never longer than the cap', async () => {
+          // 1. It waits: until the publish answers, the refusal is not reported.
+          let answer!: (v: { data: number; error: null }) => void;
+          mockServiceRpc.mockImplementation((fn: string) =>
+            fn === PUBLISH
+              ? new Promise((resolve) => {
+                  answer = resolve;
+                })
+              : Promise.resolve(prepared(true, 0))
+          );
+          mockGetUserById.mockResolvedValue({ data: { user: { id: mockUserId } }, error: null });
+          let settled = false;
+          const pending = deleteUserAccount(mockUserId).catch((e: unknown) => {
+            settled = true;
+            return e;
+          });
+          for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
+          expect(publishCalls()).toHaveLength(1); // CONTROL: the publish was called...
+          expect(settled).toBe(false); // ...and the answer is waiting for it
+          answer({ data: 1, error: null });
+          expect(await pending).toBeInstanceOf(AccountDeletionRefusedError);
+
+          // 2. The cap: a publish that never answers does not hold the refusal.
+          jest.useFakeTimers();
+          try {
+            mockServiceRpc.mockImplementation((fn: string) =>
+              fn === PUBLISH ? new Promise(() => undefined) : Promise.resolve(prepared(true, 0))
+            );
+            const capped = deleteUserAccount(mockUserId).catch((e: unknown) => e);
+            await jest.advanceTimersByTimeAsync(REFUSED_NOTICE_TIMEOUT_MS);
+            expect(await capped).toBeInstanceOf(AccountDeletionRefusedError);
+          } finally {
+            jest.useRealTimers();
+          }
+        });
+
         test.each([
           ['returns an error', () => ({ data: null, error: { message: 'boom' } })],
           [
@@ -620,6 +657,11 @@ describe('settingsService', () => {
             'a DIFFERENT user returned',
             { message: 'Database error deleting user', status: 500 },
             { data: { user: { id: 'someone-else' } }, error: null },
+          ],
+          [
+            'the SAME user returned together WITH an error',
+            { message: 'Database error deleting user', status: 500 },
+            { data: { user: { id: mockUserId } }, error: { message: 'partial', status: 500 } },
           ],
         ])('never published on %s', async (_label, authError, lookup) => {
           mockServiceRpc.mockResolvedValue(prepared(true, 2));
