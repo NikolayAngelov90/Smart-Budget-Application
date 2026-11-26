@@ -8,6 +8,7 @@ import {
   updateUserProfile,
   updatePreferences,
   deleteUserAccount,
+  REFUSED_NOTICE_TIMEOUT_MS,
 } from '@/lib/services/settingsService';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { AccountDeletionRefusedError } from '@/lib/services/accountDeletionRefusal';
@@ -539,6 +540,142 @@ describe('settingsService', () => {
         const thrown = await deleteUserAccount(mockUserId).catch((e: unknown) => e);
         expect(thrown).not.toBeInstanceOf(AccountDeletionRefusedError);
         expect((thrown as Error).message).toMatch(/^Failed to delete user account/);
+      });
+
+      /*
+       * The new owner's NEUTRAL notice (spec-refused-deletion-notice): published
+       * only on a CONFIRMED refusal, best-effort, never on an ambiguous outcome.
+       */
+      describe("the new owner's neutral notice", () => {
+        const PUBLISH = 'publish_refused_deletion_notices';
+        const publishCalls = () => mockServiceRpc.mock.calls.filter(([fn]) => fn === PUBLISH);
+
+        test('a CONFIRMED refusal publishes it - for THIS user, after the confirmation, before the error is thrown', async () => {
+          mockServiceRpc.mockResolvedValue(prepared(true, 0));
+          mockGetUserById.mockResolvedValue({ data: { user: { id: mockUserId } }, error: null });
+
+          const thrown = await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+
+          expect(thrown).toBeInstanceOf(AccountDeletionRefusedError);
+          expect(publishCalls()).toEqual([[PUBLISH, { p_user: mockUserId }]]);
+          const publishAt = mockServiceRpc.mock.calls.findIndex(([fn]) => fn === PUBLISH);
+          expect(mockGetUserById.mock.invocationCallOrder[0]!).toBeLessThan(
+            mockServiceRpc.mock.invocationCallOrder[publishAt]!
+          );
+        });
+
+        test("confirmed even when prepare's result was unrecognisable: the transfer is read from what was STAGED, not from that result", async () => {
+          mockServiceRpc.mockResolvedValue({ data: { ownership_transferred: 'yes' }, error: null });
+          mockGetUserById.mockResolvedValue({ data: { user: { id: mockUserId } }, error: null });
+
+          await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+          expect(publishCalls()).toEqual([[PUBLISH, { p_user: mockUserId }]]);
+        });
+
+        test('the refusal answer WAITS for the publish (so the push after the response finds the notice) - but never longer than the cap', async () => {
+          // 1. It waits: until the publish answers, the refusal is not reported.
+          let answer!: (v: { data: number; error: null }) => void;
+          mockServiceRpc.mockImplementation((fn: string) =>
+            fn === PUBLISH
+              ? new Promise((resolve) => {
+                  answer = resolve;
+                })
+              : Promise.resolve(prepared(true, 0))
+          );
+          mockGetUserById.mockResolvedValue({ data: { user: { id: mockUserId } }, error: null });
+          let settled = false;
+          const pending = deleteUserAccount(mockUserId).catch((e: unknown) => {
+            settled = true;
+            return e;
+          });
+          for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
+          expect(publishCalls()).toHaveLength(1); // CONTROL: the publish was called...
+          expect(settled).toBe(false); // ...and the answer is waiting for it
+          answer({ data: 1, error: null });
+          expect(await pending).toBeInstanceOf(AccountDeletionRefusedError);
+
+          // 2. The cap: a publish that never answers does not hold the refusal.
+          jest.useFakeTimers();
+          try {
+            mockServiceRpc.mockImplementation((fn: string) =>
+              fn === PUBLISH ? new Promise(() => undefined) : Promise.resolve(prepared(true, 0))
+            );
+            const capped = deleteUserAccount(mockUserId).catch((e: unknown) => e);
+            await jest.advanceTimersByTimeAsync(REFUSED_NOTICE_TIMEOUT_MS);
+            expect(await capped).toBeInstanceOf(AccountDeletionRefusedError);
+          } finally {
+            jest.useRealTimers();
+          }
+        });
+
+        test.each([
+          ['returns an error', () => ({ data: null, error: { message: 'boom' } })],
+          [
+            'rejects',
+            () => {
+              throw new Error('fetch failed');
+            },
+          ],
+        ])(
+          'BEST-EFFORT: when publishing %s, the refusal is still reported exactly as before',
+          async (_label, publishResult) => {
+            mockServiceRpc.mockImplementation(async (fn: string) =>
+              fn === PUBLISH ? publishResult() : prepared(true, 2)
+            );
+            mockGetUserById.mockResolvedValue({ data: { user: { id: mockUserId } }, error: null });
+
+            const thrown = await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+
+            expect(publishCalls()).toHaveLength(1); // CONTROL: it was attempted
+            expect(thrown).toBeInstanceOf(AccountDeletionRefusedError);
+            expect(thrown).toMatchObject({ ownershipTransferred: true, sharedObjectsMoved: true });
+          }
+        );
+
+        test.each([
+          [
+            'an UNKNOWN outcome (no response)',
+            { message: 'fetch failed', status: 0, name: 'AuthRetryableFetchError' },
+            null,
+          ],
+          [
+            'an UNKNOWN outcome (gateway timeout)',
+            { message: 'Gateway Timeout', status: 504 },
+            null,
+          ],
+          [
+            'the user is GONE (the deletion happened)',
+            { message: 'Database error deleting user', status: 500 },
+            { data: { user: null }, error: { message: 'x', status: 404, code: 'user_not_found' } },
+          ],
+          [
+            'an INCONCLUSIVE lookup',
+            { message: 'Database error deleting user', status: 500 },
+            { data: { user: null }, error: { message: 'upstream timeout', status: 504 } },
+          ],
+          [
+            'a DIFFERENT user returned',
+            { message: 'Database error deleting user', status: 500 },
+            { data: { user: { id: 'someone-else' } }, error: null },
+          ],
+          [
+            'the SAME user returned together WITH an error',
+            { message: 'Database error deleting user', status: 500 },
+            { data: { user: { id: mockUserId } }, error: { message: 'partial', status: 500 } },
+          ],
+        ])('never published on %s', async (_label, authError, lookup) => {
+          mockServiceRpc.mockResolvedValue(prepared(true, 2));
+          mockAdminDeleteUser.mockResolvedValue({ data: null, error: authError });
+          if (lookup) mockGetUserById.mockResolvedValue(lookup);
+
+          await deleteUserAccount(mockUserId).catch((e: unknown) => e);
+
+          // CONTROL: the preparation ran, so "not published" is the guard working.
+          expect(mockServiceRpc).toHaveBeenCalledWith('prepare_account_deletion', {
+            p_user: mockUserId,
+          });
+          expect(publishCalls()).toEqual([]);
+        });
       });
     });
 

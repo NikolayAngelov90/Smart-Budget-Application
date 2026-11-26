@@ -1313,29 +1313,39 @@ rlsDescribe(
       const asLoner = await signInAsTestUser(emailOf('loner11'), PWD);
       await expect(resolveRefusalNames(asLoner, loner)).resolves.toBeNull();
 
-      // A NOTICE EXISTS ONLY IF ITS EVENT HAPPENED: the refused deletion told M
-      // nothing (no "its creator deleted their account" while C still exists).
-      // All three are STAGED, waiting for a deletion that may still come.
-      expect(await noticesFor(m)).toEqual([]);
-      expect(await stagedFor(c)).toBe(3);
+      // A NOTICE EXISTS ONLY IF ITS EVENT HAPPENED. The refusal was CONFIRMED and
+      // the household really is M's now, so M is told THAT - neutrally, nothing
+      // about a deletion (spec-refused-deletion-notice) - and the staged "its
+      // creator deleted their account" is withdrawn. The rename and the copy stay
+      // STAGED, waiting for a deletion that may still come.
+      const neutral = {
+        kind: 'household_now_yours',
+        cause: 'ownership_transferred',
+        household_id: h,
+        params: { household: 'H11' },
+      };
+      expect(await noticesFor(m)).toEqual([neutral]);
+      expect(await stagedFor(c)).toBe(2);
 
       // SOMEONE ELSE's deletion publishes only THEIR notices: the loner goes
-      // first, while C's are still staged, and M is still told nothing.
+      // first, while C's are still staged, and M is told nothing more.
       await deleteAccount(loner);
-      expect(await noticesFor(m)).toEqual([]);
-      expect(await stagedFor(c)).toBe(3);
+      expect(await noticesFor(m)).toEqual([neutral]);
+      expect(await stagedFor(c)).toBe(2);
 
       // With the blocker gone, C's retry is a deletion that happens (afterAll
       // would delete them too; doing it here residue-scans inside this test).
       await deleteAccount(c);
       await deleteAccount(p);
 
-      // So its notices are published, each kind once - and the staged rows, the
-      // only place C's id was held, went with C's auth row.
-      expect((await noticesFor(m)).map((n) => n.kind)).toEqual([
-        'categories_copied',
-        'category_renamed',
-        'household_transferred',
+      // So its notices are published, each kind ONCE: the rename and the copy now,
+      // when "deleted their account" is true, and the transfer was already told -
+      // neutrally - so the retry does NOT tell it again. The staged rows, the only
+      // place C's id was held, went with C's auth row.
+      expect((await noticesFor(m)).map((n) => `${n.kind}/${n.cause}`)).toEqual([
+        'categories_copied/account_deleted',
+        'category_renamed/account_deleted',
+        'household_now_yours/ownership_transferred',
       ]);
       expect(await stagedFor(c)).toBe(0);
 
@@ -1715,6 +1725,7 @@ rlsDescribe(
           where (n.nspname, p.proname) in (('private', 'record_account_notice'),
                                            ('private', 'move_member_shared_objects'),
                                            ('private', 'publish_account_notices'),
+                                           ('public', 'publish_refused_deletion_notices'),
                                            ('public', 'remove_household_member'))
           order by 1`
       );
@@ -1722,6 +1733,7 @@ rlsDescribe(
         'private.move_member_shared_objects(uuid,uuid,text)',
         'private.publish_account_notices()',
         'private.record_account_notice(uuid,text,text,uuid,jsonb,uuid)',
+        'publish_refused_deletion_notices(uuid)',
         'remove_household_member(uuid,uuid)',
       ]);
       for (const f of fns) {
@@ -2171,6 +2183,325 @@ rlsDescribe(
       });
       expect(await noticesFor(o)).toEqual([]);
       expect(await failuresSince(since)).toEqual([]);
+    });
+
+    it("20. the NEUTRAL notice for a refused deletion (publish_refused_deletion_notices): only THIS person's staged transfer, only while the recipient still owns AND administers the household, under its current name; withdrawn before it is told; every failure kept and recorded; a deletion in flight wins; service_role only", async () => {
+      const url = process.env.LOCAL_DB_URL;
+      if (!url) throw new Error('NOT MEASURED - LOCAL_DB_URL is unset');
+      const rpc = (userId: string) =>
+        svc().rpc('publish_refused_deletion_notices', { p_user: userId });
+      const setUp = async (tag: string) => {
+        const c = await makeUser(`c20${tag}`);
+        const m = await makeUser(`m20${tag}`);
+        const h = await household(`H20-${tag}`, c, [
+          { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+          { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        ]);
+        expect((await prepare(c)).ownership_transferred).toBe(true);
+        expect(await stagedFor(c)).toBe(1); // CONTROL: the transfer is staged
+        return { c, m, h };
+      };
+      /**
+       * Another session holding a lock (or an uncommitted change) for `ms`, then
+       * ending it - whatever happens - so a mutant that waits shows red, not a hang.
+       */
+      const hold = async (sql: string, params: unknown[], ms: number, superuser = false) => {
+        const conn = new URL(url);
+        if (superuser) conn.username = 'supabase_admin'; // may lock auth.users rows (test 18)
+        const client = new Client({ connectionString: conn.toString() });
+        await client.connect();
+        await client.query('BEGIN');
+        await client.query(sql, params);
+        const done = new Promise<void>((resolve) => {
+          setTimeout(() => {
+            void client
+              .query('COMMIT')
+              .catch(() => undefined)
+              .finally(() => {
+                void client.end().finally(() => resolve());
+              });
+          }, ms);
+        });
+        // Wrapped, NOT returned bare: an async function ADOPTS a returned promise,
+        // so `await hold(...)` would wait for the release and the lock would be
+        // gone before the call under test even started.
+        return { done };
+      };
+      const timed = async (userId: string) => {
+        const started = Date.now();
+        const result = await rpc(userId);
+        return { result, waited: Date.now() - started };
+      };
+
+      // (1) Only THIS person's staged transfer, under the household's CURRENT
+      // name: another person's staged transfer is untouched.
+      {
+        const one = await setUp('g1');
+        const two = await setUp('g2');
+        await db("update public.households set name = 'H20-g1 renamed' where id = $1", [one.h]);
+        const { data, error } = await rpc(one.c);
+        expect({ data, error }).toEqual({ data: 1, error: null });
+        expect(await noticesFor(one.m)).toEqual([
+          {
+            kind: 'household_now_yours',
+            cause: 'ownership_transferred',
+            household_id: one.h,
+            params: { household: 'H20-g1 renamed' },
+          },
+        ]);
+        expect(await stagedFor(one.c)).toBe(0);
+        expect(await noticesFor(two.m)).toEqual([]);
+        expect(await stagedFor(two.c)).toBe(1);
+      }
+
+      // (2) "is now yours" would be false - the household changed hands - or
+      // "...and admin" would be: nothing published, nothing withdrawn.
+      for (const [tag, change] of [
+        ['a', 'owner'],
+        ['a2', 'admin'],
+      ] as const) {
+        const { c, m, h } = await setUp(tag);
+        if (change === 'owner') {
+          const other = await makeUser(`o20${tag}`);
+          await db('update public.households set created_by = $1 where id = $2', [other, h]);
+        } else {
+          await db(
+            "update public.household_members set role = 'member' where household_id = $1 and user_id = $2",
+            [h, m]
+          );
+        }
+        const since = await dbNow();
+        const { data, error } = await rpc(c);
+        expect({ change, data, error }).toEqual({ change, data: 0, error: null });
+        expect(await noticesFor(m)).toEqual([]);
+        expect(await stagedFor(c)).toBe(1);
+        expect(await failuresSince(since)).toEqual([]);
+      }
+
+      // (3) The neutral notice cannot be written: the staged notice is KEPT (a
+      // successful retry still tells the transfer, once) and the loss recorded -
+      // and with the failure log missing too, the call still returns cleanly.
+      for (const logMissing of [false, true]) {
+        const { c, m } = await setUp(logMissing ? 'b2' : 'b');
+        const since = await dbNow();
+        await db(
+          `ALTER TABLE public.account_notices ADD CONSTRAINT rls_force_refusal_notice
+             CHECK (cause <> 'ownership_transferred') NOT VALID`
+        );
+        if (logMissing) {
+          await db(
+            'ALTER TABLE private.account_notice_failures RENAME TO account_notice_failures_rls_forced'
+          );
+        }
+        let result: unknown;
+        try {
+          result = await rpc(c);
+        } finally {
+          await db(
+            'ALTER TABLE public.account_notices DROP CONSTRAINT IF EXISTS rls_force_refusal_notice'
+          );
+          await db(
+            'ALTER TABLE IF EXISTS private.account_notice_failures_rls_forced RENAME TO account_notice_failures'
+          );
+        }
+        expect({ logMissing, result }).toMatchObject({
+          logMissing,
+          result: { data: 0, error: null },
+        });
+        expect(await noticesFor(m)).toEqual([]);
+        expect(await stagedFor(c)).toBe(1);
+        expect(await failuresSince(since)).toEqual(
+          logMissing ? [] : [{ stage: 'refusal', kind: 'household_now_yours', sqlstate: '23514' }]
+        );
+      }
+
+      // (4) The person's deletion is IN FLIGHT (it holds their auth row): the
+      // function gives up after the lock_timeout, publishes and withdraws
+      // nothing, and records it - the deletion will tell the new owner, once.
+      {
+        const { c, m } = await setUp('c');
+        const since = await dbNow();
+        const { done } = await hold(
+          'SELECT 1 FROM auth.users WHERE id = $1 FOR UPDATE',
+          [c],
+          6000,
+          true
+        );
+        const { result, waited } = await timed(c);
+        await done;
+        expect(result).toMatchObject({ data: 0, error: null });
+        expect(waited).toBeGreaterThanOrEqual(900); // it WAITED for the lock...
+        expect(waited).toBeLessThan(5000); // ...and gave up after ~1 s
+        expect(await noticesFor(m)).toEqual([]);
+        expect(await stagedFor(c)).toBe(1);
+        expect(await failuresSince(since)).toEqual([
+          { stage: 'refusal', kind: null, sqlstate: '55P03' },
+        ]);
+      }
+
+      // (4b) The same, with the failure log missing too: the outer block's own
+      // record is guarded, so the call still returns cleanly.
+      {
+        const { c, m } = await setUp('c2');
+        const { done } = await hold(
+          'SELECT 1 FROM auth.users WHERE id = $1 FOR UPDATE',
+          [c],
+          6000,
+          true
+        );
+        await db(
+          'ALTER TABLE private.account_notice_failures RENAME TO account_notice_failures_rls_forced'
+        );
+        let result: unknown;
+        try {
+          ({ result } = await timed(c));
+        } finally {
+          await db(
+            'ALTER TABLE IF EXISTS private.account_notice_failures_rls_forced RENAME TO account_notice_failures'
+          );
+          await done;
+        }
+        expect(result).toMatchObject({ data: 0, error: null });
+        expect(await noticesFor(m)).toEqual([]);
+        expect(await stagedFor(c)).toBe(1);
+      }
+
+      // (5) Someone is CHANGING the household (it holds the row): ownership is
+      // read under FOR SHARE, so the function cannot read it mid-change - it
+      // gives up, and records it, rather than claim "is now yours" on a guess.
+      {
+        const { c, m, h } = await setUp('f');
+        const since = await dbNow();
+        const { done } = await hold(
+          'SELECT 1 FROM public.households WHERE id = $1 FOR UPDATE',
+          [h],
+          6000
+        );
+        const { result, waited } = await timed(c);
+        await done;
+        expect(result).toMatchObject({ data: 0, error: null });
+        expect(waited).toBeLessThan(5000);
+        expect(await noticesFor(m)).toEqual([]);
+        expect(await stagedFor(c)).toBe(1);
+        expect(await failuresSince(since)).toEqual([
+          { stage: 'refusal', kind: null, sqlstate: '55P03' },
+        ]);
+      }
+
+      // (6) The staged transfer is taken by SOMEONE ELSE while this call runs
+      // (here: deleted in another session that commits after 500 ms). It is
+      // withdrawn BEFORE the neutral notice is written, so finding it gone means
+      // telling nothing - never a second telling of the same transfer.
+      {
+        const { c, m } = await setUp('i');
+        const since = await dbNow();
+        const { done } = await hold(
+          'DELETE FROM private.pending_account_notices WHERE departing_user = $1',
+          [c],
+          500
+        );
+        const { result } = await timed(c);
+        await done;
+        expect(result).toMatchObject({ data: 0, error: null });
+        expect(await noticesFor(m)).toEqual([]);
+        expect(await failuresSince(since)).toEqual([]);
+      }
+
+      // (7) The withdrawal itself FAILS (the staged row is locked past the
+      // lock_timeout): nothing is told, the staged row is kept, and it is recorded.
+      {
+        const { c, m } = await setUp('j');
+        const since = await dbNow();
+        const { done } = await hold(
+          'SELECT 1 FROM private.pending_account_notices WHERE departing_user = $1 FOR UPDATE',
+          [c],
+          2500
+        );
+        const { result } = await timed(c);
+        await done;
+        expect(result).toMatchObject({ data: 0, error: null });
+        expect(await noticesFor(m)).toEqual([]);
+        expect(await stagedFor(c)).toBe(1);
+        expect(await failuresSince(since)).toEqual([
+          { stage: 'refusal', kind: 'household_now_yours', sqlstate: '55P03' },
+        ]);
+      }
+
+      // (10) ONE neutral notice that cannot be written loses only ITSELF - even
+      // when its failure cannot be recorded either: the person created two
+      // households, and the other new owner is still told.
+      {
+        const c = await makeUser('c20k');
+        const m1 = await makeUser('m20k1');
+        const m2 = await makeUser('m20k2');
+        await household('H20-k1', c, [
+          { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+          { id: m1, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        ]);
+        await household('H20-k2', c, [
+          { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+          { id: m2, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        ]);
+        expect((await prepare(c)).ownership_transferred).toBe(true);
+        expect(await stagedFor(c)).toBe(2); // CONTROL: two transfers are staged
+        await db(
+          `ALTER TABLE public.account_notices ADD CONSTRAINT rls_force_one_neutral
+             CHECK (params->>'household' IS DISTINCT FROM 'H20-k1') NOT VALID`
+        );
+        await db(
+          'ALTER TABLE private.account_notice_failures RENAME TO account_notice_failures_rls_forced'
+        );
+        let result: unknown;
+        try {
+          result = await rpc(c);
+        } finally {
+          await db(
+            'ALTER TABLE public.account_notices DROP CONSTRAINT IF EXISTS rls_force_one_neutral'
+          );
+          await db(
+            'ALTER TABLE IF EXISTS private.account_notice_failures_rls_forced RENAME TO account_notice_failures'
+          );
+        }
+        expect(result).toMatchObject({ data: 1, error: null });
+        expect(await noticesFor(m1)).toEqual([]);
+        expect((await noticesFor(m2)).map((n) => n.params.household)).toEqual(['H20-k2']);
+        expect(await stagedFor(c)).toBe(1); // H20-k1's staged transfer is KEPT
+      }
+
+      // (8) A person who is gone: their staged rows went with their auth row, so
+      // there is nothing to publish - and their deletion told the new owner.
+      {
+        const { c, m } = await setUp('d');
+        await deleteAccount(c);
+        expect((await noticesFor(m)).map((n) => `${n.kind}/${n.cause}`)).toEqual([
+          'household_transferred/account_deleted',
+        ]);
+        const { data, error } = await rpc(c);
+        expect({ data, error }).toEqual({ data: 0, error: null });
+        expect((await noticesFor(m)).length).toBe(1);
+      }
+
+      // (9) service_role only; definer; search_path and lock_timeout pinned.
+      const [fn] = await db<{
+        definer: boolean;
+        config: string[] | null;
+        anon: boolean;
+        authed: boolean;
+        server: boolean;
+      }>(
+        `select p.prosecdef as definer, p.proconfig as config,
+                has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+                has_function_privilege('authenticated', p.oid, 'EXECUTE') as authed,
+                has_function_privilege('service_role', p.oid, 'EXECUTE') as server
+           from pg_proc p where p.oid = 'public.publish_refused_deletion_notices(uuid)'::regprocedure`
+      );
+      expect(fn).toEqual({
+        definer: true,
+        config: ['search_path=public', 'lock_timeout=1s'],
+        anon: false,
+        authed: false,
+        server: true,
+      });
     });
 
     it('18. a contained failure is SEEN: the failure log names no one, leaves the database only as counts - to the server and the drift credential (schema_reader), which still reads no row of any table - and an acknowledged failure stops counting', async () => {

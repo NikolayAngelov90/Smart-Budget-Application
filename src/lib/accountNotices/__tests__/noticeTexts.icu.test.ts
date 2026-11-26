@@ -68,6 +68,7 @@ const notice = (
 const CASES = [
   notice('household_transferred', { household: 'Вкъщи', seniority: true }),
   notice('household_transferred', { household: 'Вкъщи', seniority: false }),
+  notice('household_now_yours', { household: 'Вкъщи' }, 'ownership_transferred'),
   notice('categories_copied', { categories: ['Храна', 'Сметки'], shared_household: true }),
   notice('categories_copied', { categories: ['Храна', 'Сметки'], shared_household: false }),
   notice('category_renamed', { household: 'Вкъщи', from: 'Храна', to: 'Храна 2' }),
@@ -101,8 +102,21 @@ describe.each(['en', 'bg'] as const)('account-notice texts under real ICU (%s)',
     }
   );
 
+  test('the neutral notice reads EXACTLY as Niki approved it - and claims no deletion', () => {
+    const message = noticeMessage(CASES.find((c) => c.kind === 'household_now_yours')!, locale)!;
+    const [title, body] = render(locale, [
+      [message.titleKey, message.values],
+      [message.bodyKey, message.values],
+    ]);
+    expect(`${title}. ${body}`).toBe(
+      locale === 'en'
+        ? 'Вкъщи is now yours. You are its owner and admin.'
+        : 'Домакинството Вкъщи вече е ваше. Сега вие сте собственик и администратор.'
+    );
+  });
+
   test('the list of copied categories reads naturally in this language', () => {
-    const message = noticeMessage(CASES[2]!, locale)!;
+    const message = noticeMessage(CASES.find((c) => c.kind === 'categories_copied')!, locale)!;
     const [body] = render(locale, [[message.bodyKey, message.values]]);
     expect(body).toContain(locale === 'en' ? 'Храна and Сметки' : 'Храна и Сметки');
   });

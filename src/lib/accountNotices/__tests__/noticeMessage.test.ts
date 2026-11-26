@@ -41,6 +41,34 @@ describe('noticeMessage', () => {
     }
   });
 
+  test('household_now_yours (a REFUSED deletion) -> the neutral texts only: no "its creator deleted", no seniority', () => {
+    for (const seniority of [true, false, undefined]) {
+      expect(
+        noticeMessage(
+          notice(
+            'household_now_yours',
+            { household: 'Вкъщи', seniority },
+            { cause: 'ownership_transferred' }
+          ),
+          'bg'
+        )
+      ).toEqual({
+        titleKey: 'householdNowYoursTitle',
+        bodyKey: 'householdNowYoursBody',
+        values: { household: 'Вкъщи' },
+      });
+    }
+    // ...and never shown with a hole in it.
+    expect(
+      noticeMessage(notice('household_now_yours', {}, { cause: 'ownership_transferred' }), 'en')
+    ).toBeNull();
+    // An UNKNOWN kind gets no message at all - the property that keeps an older
+    // app from ever mis-rendering this notice (it is hidden, never falsified).
+    expect(
+      noticeMessage(notice('a_kind_from_the_future' as never, { household: 'Вкъщи' }), 'en')
+    ).toBeNull();
+  });
+
   test('categories_copied -> the names joined for the LOCALE; "a household member" ONLY when shared', () => {
     const n = notice('categories_copied', {
       categories: ['Храна', 'Транспорт', 'Сметки'],

@@ -331,7 +331,9 @@ export async function updatePreferences(
  * A REFUSED auth delete is checked by effect before anything is claimed
  * (spec-account-deletion-refused-message): getUserById decides what happened.
  *  - the user still exists -> AccountDeletionRefusedError, carrying what the
- *    preparation reported, so the dialog can say what changed;
+ *    preparation reported, so the dialog can say what changed; and a household
+ *    the preparation transferred gets its NEUTRAL notice for the new owner
+ *    (best-effort, spec-refused-deletion-notice);
  *  - the user is gone -> the deletion DID happen; success;
  *  - the lookup fails, or prepare's result was unrecognisable -> a generic Error.
  *
@@ -384,7 +386,16 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
         );
         return true;
       }
-      if (lookupError || lookup?.user?.id !== userId) {
+      const confirmedRefusal = !lookupError && lookup?.user?.id === userId;
+      if (confirmedRefusal) {
+        // The account verifiably still exists: the refusal is CONFIRMED. A
+        // household the preparation transferred stays transferred, so its new
+        // owner is told now - neutrally, nothing about a deletion - and the staged
+        // "its creator deleted their account" is withdrawn, so a later successful
+        // retry cannot tell the same transfer twice (spec-refused-deletion-notice).
+        await publishRefusedDeletionNotices(adminClient as unknown as SupabaseClient, userId);
+      }
+      if (!confirmedRefusal) {
         logger.warn(
           'SettingsService',
           'refused deletion NOT described: the existence check was inconclusive',
@@ -407,6 +418,47 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
     throw error;
   }
 }
+
+/**
+ * The neutral notice for a CONFIRMED refused deletion (migration
+ * 20261126120000). BEST-EFFORT: the refusal stands whatever happens here, so a
+ * failure is logged and swallowed - it never changes what the dialog says. The
+ * function contains and records its own per-notice failures; this catch is for
+ * the call itself (network, a missing function on an older schema).
+ */
+async function publishRefusedDeletionNotices(
+  adminClient: SupabaseClient,
+  userId: string
+): Promise<void> {
+  // The refusal answer must not wait on a slow database: GoTrue's "Database
+  // error deleting user" often comes WITH database trouble, and supabase-js has
+  // no fetch timeout. After this cap the answer goes out; a call still running
+  // completes or fails on its own (the function is idempotent per staged row).
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const capped = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), REFUSED_NOTICE_TIMEOUT_MS);
+  });
+  try {
+    const outcome = await Promise.race([
+      Promise.resolve(
+        adminClient.rpc('publish_refused_deletion_notices', { p_user: userId })
+      ) as Promise<{ error: unknown }>,
+      capped,
+    ]);
+    if (outcome === 'timeout') {
+      logger.warn('SettingsService', 'refused-deletion notice: no answer within the cap');
+    } else if (outcome.error) {
+      logger.warn('SettingsService', 'refused-deletion notice not published:', outcome.error);
+    }
+  } catch (error) {
+    logger.warn('SettingsService', 'refused-deletion notice not published:', error);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** How long a refusal answer may wait for the neutral notice (exported for tests). */
+export const REFUSED_NOTICE_TIMEOUT_MS = 3000;
 
 /**
  * GoTrue answers getUserById for a missing user with 404 AND code

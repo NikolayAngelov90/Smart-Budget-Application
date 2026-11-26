@@ -14,9 +14,23 @@ export type AccountNoticeKind =
   | 'household_transferred'
   | 'categories_copied'
   | 'category_renamed'
-  | 'shared_plans_received';
+  | 'shared_plans_received'
+  /**
+   * A deletion was REFUSED after the household was transferred: the transfer
+   * stands, so the new owner is told - neutrally, nothing about a deletion
+   * (spec-refused-deletion-notice). Its own kind ON PURPOSE: an older app maps
+   * household_transferred to "its creator deleted their account" whatever the
+   * cause, but returns no message for a kind it does not know (hidden, never
+   * falsified).
+   */
+  | 'household_now_yours';
 
-export type AccountNoticeCause = 'account_deleted' | 'member_removed';
+/**
+ * Why the change happened. `ownership_transferred` (household_now_yours only)
+ * names the change itself, not the refused deletion behind it: the payload must
+ * not reveal what the neutral text withholds.
+ */
+export type AccountNoticeCause = 'account_deleted' | 'member_removed' | 'ownership_transferred';
 
 export interface AccountNotice {
   id: string;
@@ -30,6 +44,7 @@ export interface AccountNotice {
 /** Shown and pushed in this order: the biggest change first. */
 export const NOTICE_PRIORITY: readonly AccountNoticeKind[] = [
   'household_transferred',
+  'household_now_yours',
   'categories_copied',
   'shared_plans_received',
   'category_renamed',
@@ -77,6 +92,18 @@ export function noticeMessage(notice: AccountNotice, locale: string): NoticeMess
           p.seniority === true ? 'householdTransferredBody' : 'householdTransferredBodyNoSeniority',
         values: { household },
       };
+    }
+    case 'household_now_yours': {
+      // Only the transfer, which really happened: no "its creator deleted their
+      // account", no seniority.
+      const household = text(p.household);
+      return household
+        ? {
+            titleKey: 'householdNowYoursTitle',
+            bodyKey: 'householdNowYoursBody',
+            values: { household },
+          }
+        : null;
     }
     case 'categories_copied': {
       const names = Array.isArray(p.categories)
