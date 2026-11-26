@@ -121,8 +121,10 @@ jobs:
 
       - name: Dump production's catalog
         env:
-          # The ONLY use of this secret. Never echoed, never interpolated into a
-          # connection string that could appear in an error.
+          # Never echoed, never interpolated into a connection string that could
+          # appear in an error. Its one other user is account-notice-health.yml
+          # (one EXECUTE, counts only); neither may ever run on pull_request -
+          # scripts/__tests__/production-credential-triggers.test.ts.
           PGPASSWORD: ${{ secrets.SCHEMA_READER_PASSWORD }}
         run: |
           if [ -z "$PGPASSWORD" ]; then

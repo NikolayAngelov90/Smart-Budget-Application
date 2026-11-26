@@ -119,7 +119,7 @@ context:
 
 **Acceptance Criteria:**
 - Given a creator with a member deletes their account, when the member next opens the dashboard, then they see the M1 notice (and any M2a/M2b/plans notices) in their UI language, until they dismiss it.
-- Given the notice insert fails, when an account is deleted or a member removed, then the operation completes exactly as before.
+- Given any notice statement fails - staging, writing, publishing inside the auth delete, or the writer itself missing - when an account is deleted or a member removed, then the operation completes exactly as before, AND the failure is recorded in `private.account_notice_failures`, where the nightly Account Notice Health check reads it (if even that record is impossible, a Postgres WARNING, and the operation still completes).
 - Given any deletion in the RLS suite, when the residue scan runs, then no column holds the departed person's id, email or display name, and the living user's name is found.
 - Given a recipient with a push subscription, when the notice is recorded, then one push in their stored language is sent after the response, and the daily cron retries a deferred or failed one for 7 days.
 
@@ -148,6 +148,36 @@ context:
     - FK indexes;
     - the residue scan now also covers the `private` schema;
     - test gaps: the push language from the file, the selected columns, sorted and distinct names, the dashboard mount.
+- **2026-11-25, Niki's pre-apply conditions (NOT YET A YES).**
+  - **Trigger:** the publish runs INSIDE the `auth.users` delete, so notice logic is on the deletion's critical path by construction. The inner savepoint contained a failure, but only as a `RAISE WARNING` nothing reads: one more silent catch. Notice PARAMETERS (the seniority read, the copied-names list) were also computed outside any guard, and a missing writer function would have raised at every call site.
+  - **Amended:**
+    - every handler records a marker row in `private.account_notice_failures` (stage, kind, SQLSTATE; no person, no message text). The OUTER transaction keeps it, so it commits with the deletion. The marker insert is itself guarded, and a WARNING is the last resort;
+    - every call site is guarded, with each notice's parameters computed inside its guard. The critical-path loops only append to arrays;
+    - a counts-only reader, `public.account_notice_failure_summary()`. EXECUTE goes to service_role and `schema_reader`, the drift check's grantless role, created NOLOGIN locally when missing;
+    - `.github/workflows/account-notice-health.yml` (06:30 UTC) fails while any marker is unacknowledged, and the scheduled-failure watchdog keeps one issue open;
+    - `scripts/__tests__/production-credential-triggers.test.ts` keeps every workflow holding that secret off `pull_request`.
+  - **Known-bad state avoided:** a notice failure that is contained but never seen. Also avoided: a notice computation or a missing writer that fails a deletion.
+  - **KEEP:** everything from review 1. Function signatures and return shapes are unchanged.
+- **2026-11-26, review 2: three layers, on the migration only, with Niki's four questions.**
+  - **Result:** no layer found a HIGH.
+  - **Fixed:**
+    - **The publish was all-or-nothing.** One `INSERT … SELECT` meant one bad row lost every notice of that deletion. Now each notice is published in its own guarded block, under an outer guard, and the staging table carries the same `kind`/`cause` CHECKs as `account_notices`. All three layers found this.
+    - **An unbounded lock wait was the one way out.** `WHEN OTHERS` cannot catch `query_canceled`, and production's `supabase_auth_admin` has neither a statement_timeout nor a lock_timeout. The publish now has `SET lock_timeout = '1s'`, which turns a wait into a caught, recorded 55P03 (test 17e).
+    - **The apply itself** now runs under `SET lock_timeout = '5s'`.
+    - **The watchdog signature left out the count and the time.** A silenced cause would therefore have hidden every later failure of that cause. The edge-case hunter found this. Each FAILED line now carries its count and last time.
+    - **The acknowledgement** is scoped by created_at, so it cannot sweep up rows nobody has read.
+    - **The credential guard** is now an allowlist (schedule, workflow_dispatch, push to main) with a parser that fails closed.
+    - **The health script's exit codes** and the workflow's load-bearing `set -o pipefail` are pinned by `scripts/__tests__/account-notice-health.test.ts`.
+    - **Test gaps (verification-gap layer):**
+      - surviving review-1-class mutants (test 11 now stages all three kinds on refusal and deletes someone else first);
+      - the legacy wrapper's no-notice behaviour (test 19);
+      - the inner guards (17b, 17c, 17d and 17 modes with the log missing);
+      - a writer narrowed to one error class (17c forces P0001);
+      - full privilege sweeps (test 18);
+      - a private-schema HIT must-find (test 4);
+      - test 3's assertion, which could not fail.
+  - **Process:** the mutation harness mutates scratch copies only. It checks sha256 of the repo files after every case, requires each case's expected killer test, aborts on a failed restore, and ends with an unmutated run.
+  - **To the board:** the refused-then-abandoned deletion (a product question); a GitHub Environment for the secret (a settings decision); benign-concurrency markers; SQLERRM in the logs (accepted); `FOR NO KEY UPDATE` (declined, with the reason).
 
 ## Design Notes
 
@@ -156,7 +186,7 @@ context:
   - Removal notices commit in the same transaction as the membership delete.
   - Either way, a savepoint keeps a failed notice from ever failing the event, and the push runs after the response, via `after()`.
   - The departing person's id is held only in the staged row, which goes with their auth row. `account_notices` never holds it.
-- **Same signatures, same return shapes, so this is apply-first.** Old code × new schema: main's `deleteUserAccount` reads the same keys, and main's `removeMember` calls the same 2-arg function, which now also records the owner's notices. Notices recorded before the app deploys simply wait to be shown, because they never expire.
+- **Same signatures, same return shapes, so this is apply-first.** Old code × new schema: main's `deleteUserAccount` reads the same keys, and main's `removeMember` calls the same 2-arg function. That function records NO notices, because its separate membership delete can still fail after it returns. Notices recorded before the app deploys simply wait to be shown, because they never expire.
 - **Claim-then-send.** The route's `after()` and the cron can overlap, so a run claims the delivery row before sending and releases it unless the push was `sent`. Duplicates are impossible, and retries keep the marker-absence rule.
 - **Household name is snapshotted into params.** The recipient may later lose RLS read access to the household. The name is the household's, not the departed person's.
 - **Migration release order is #103's:** CI green and review done on the PR commit, a compatibility proof, then Niki's yes for that SHA, then a CLI `db push --dry-run` gate, the apply, a before/after diff and the drift check, and only then the merge.
@@ -210,3 +240,13 @@ context:
 
   A24 and A25 targeted the SWR rollback that was REPLACED: they first survived, and a new in-flight test then showed a real race, where a refetch landing while an earlier dismissal was pending brought that notice back. The hook now keeps a per-id hidden set.
 - **Browser (dev server, QA account, `/api/notices` intercepted, `reachedServer: []`):** en and bg rendered, with list formatting, plurals, priority order, the removal text, dismissal, and focus moving to the next notice. The cached fixture was removed afterwards and the cookie restored.
+
+**Evidence (local, 2026-11-26, after Niki's conditions and review 2):**
+- RLS (full) -- `Test Suites: 14 passed, 14 total`, `Tests: 90 passed, 90 total`.
+- `npm run verify` -- `verify: OK - every runnable step of the CI test job passed` (`Tests: 90 skipped, 2936 passed, 3026 total`).
+- `npm run test:order` -- `Tests: 90 skipped, 2936 passed, 3026 total`.
+- `next build` -- `Compiled successfully`.
+- **Old code × new schema:** main (`ed5147a`), full RLS suite, against the local DB holding the FINAL migration (publish `lock_timeout=1s`, the staging CHECKs and the summary verified first) -- `Test Suites: 14 passed, 14 total`, `Tests: 77 passed, 77 total`. Main's two service suites alone -- `Test Suites: 2 passed, 2 total`, `Tests: 16 passed, 16 total`. 0 failure markers and 0 `member_removed` notices were recorded during main's run.
+- **Database mutants:** 46 of 46 killed, each by its EXPECTED test (`notice_mutants_v5.py`). The unmutated whole file afterwards gave `Tests: 24 passed, 24 total`, with the repo files byte-identical (sha256). Test 17's own control mutant was red (`Expected: 0`, `Received: 1`).
+- **Script and workflow guards:** 4 of 4 mutants red (S1 exit-2 branch, S2 count in the signature, S3 pipefail, S4 a PR-relative trigger).
+- **`check.sh` against the real local DB, as schema_reader:** exit 1 with FAILED lines, exit 2 as a role without the grant, exit 0 after acknowledging.

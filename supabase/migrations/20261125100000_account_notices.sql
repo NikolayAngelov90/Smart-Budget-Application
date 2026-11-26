@@ -25,10 +25,34 @@
 -- residue scan in account-deletion.rls.test.ts searches every column (public,
 -- storage, private) for their id, email and display name.
 --
--- OFF THE CRITICAL PATH: every notice write sits behind an EXCEPTION block (a
--- savepoint). A failed write is rolled back ALONE and logged as a WARNING; the
--- deletion or removal carries on exactly as before.
+-- OFF THE CRITICAL PATH (Niki): a notice failure never fails or rolls back a
+-- deletion or a removal. Every notice statement - computing what a notice says,
+-- calling the writer, staging, writing, publishing - runs inside an EXCEPTION
+-- block (a savepoint), so a failure rolls back that block ALONE and the deletion
+-- or removal carries on exactly as before. That includes the publish, which runs
+-- inside the auth.users delete itself (section 5).
+--
+-- A CONTAINED FAILURE IS NEVER SILENT. Every handler writes ONE marker row (per
+-- contained exception) to private.account_notice_failures, which the OUTER
+-- transaction keeps: a 'publish' marker commits with the deletion, a 'write'
+-- marker with the removal, a 'stage' marker with the preparation (which commits
+-- even if the deletion is then refused). The nightly "Account Notice Health"
+-- workflow reads the unacknowledged count through
+-- public.account_notice_failure_summary() as schema_reader (the drift check's
+-- read-only role) and fails while any are unacknowledged; its watchdog keeps ONE
+-- GitHub issue open until then. If even the marker cannot be written, a WARNING
+-- in the Postgres log is the last resort, and the operation still completes.
+--
+-- "Never fails" means every error a handler can catch. The one class PL/pgSQL
+-- cannot catch, query_canceled, is kept out of the publish by a lock_timeout
+-- (section 5): there is no other long wait in it.
 -- =============================================================================
+
+-- Applying this takes SHARE ROW EXCLUSIVE on auth.users (three foreign keys and
+-- a trigger) and on households. Never queue every sign-up and sign-in behind a
+-- long transaction: if the locks are not free within 5 s, the apply fails cleanly
+-- and is retried.
+SET lock_timeout = '5s';
 
 -- -----------------------------------------------------------------------------
 -- 1. The notices people see. Until dismissed, no expiry (Niki, 2026-11-20).
@@ -88,8 +112,13 @@ CREATE TABLE IF NOT EXISTS private.pending_account_notices (
   -- account exists: this row goes with their auth row.
   departing_user UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   recipient_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  kind TEXT NOT NULL,
-  cause TEXT NOT NULL,
+  -- The same CHECKs as account_notices: a value that could never be published
+  -- fails HERE, at staging, where it is recorded and loses only itself - not at
+  -- publication, inside the deletion.
+  kind TEXT NOT NULL CHECK (kind IN (
+    'household_transferred', 'categories_copied', 'category_renamed', 'shared_plans_received'
+  )),
+  cause TEXT NOT NULL CHECK (cause IN ('account_deleted', 'member_removed')),
   household_id UUID REFERENCES public.households(id) ON DELETE CASCADE,
   params JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -108,9 +137,80 @@ COMMENT ON TABLE private.pending_account_notices IS
   'Account-deletion notices staged by prepare_account_deletion. Published to public.account_notices by the auth.users BEFORE DELETE trigger, in the deletion''s own transaction; a refused deletion publishes nothing. Rows go with the departing user''s auth row.';
 
 -- -----------------------------------------------------------------------------
--- 3. The ONE writer. p_departing set = a deletion's notice: STAGE it.
+-- 3. Where a CONTAINED failure goes, so that it is SEEN.
+--    One row per failure: which stage, which notice kind, the SQLSTATE. Nothing
+--    about any person - no ids, no names, and no error message, which can quote
+--    a value; the full message goes to the Postgres log as a WARNING.
+--    Deliberately no constraint beyond the key: this insert runs inside an error
+--    handler, and every CHECK would be one more way for it to fail.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS private.account_notice_failures (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- 'stage' (a deletion's notice, staged by prepare) | 'write' (a removal's) |
+  -- 'publish' (the auth.users trigger)
+  stage TEXT,
+  -- The notice kind; NULL when a whole publication failed.
+  kind TEXT,
+  sqlstate TEXT,
+  -- Set by a person who has read it. The health check counts the rest.
+  acknowledged_at TIMESTAMPTZ
+);
+ALTER TABLE private.account_notice_failures ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.account_notice_failures FROM PUBLIC;
+REVOKE ALL ON private.account_notice_failures FROM anon;
+REVOKE ALL ON private.account_notice_failures FROM authenticated;
+COMMENT ON TABLE private.account_notice_failures IS
+  'One row per CONTAINED account-notice failure (stage, kind, SQLSTATE; never a person). Written by the notice functions'' error handlers, kept by the outer transaction. Read only as counts, through public.account_notice_failure_summary(); acknowledge with UPDATE ... SET acknowledged_at = now().';
+
+-- The only way to read it from outside: counts per (stage, kind, sqlstate),
+-- unacknowledged only. EXECUTE for the server and for schema_reader, the
+-- grantless role the drift check already logs in as, so the nightly health check
+-- needs no new credential and gains no access to any row of any table.
+CREATE OR REPLACE FUNCTION public.account_notice_failure_summary()
+RETURNS TABLE (
+  stage TEXT,
+  kind TEXT,
+  sqlstate TEXT,
+  failures BIGINT,
+  first_at TIMESTAMPTZ,
+  last_at TIMESTAMPTZ
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT f.stage, f.kind, f.sqlstate, count(*), min(f.created_at), max(f.created_at)
+    FROM private.account_notice_failures f
+   WHERE f.acknowledged_at IS NULL
+   GROUP BY f.stage, f.kind, f.sqlstate
+   ORDER BY f.stage, f.kind, f.sqlstate;
+$$;
+
+REVOKE ALL ON FUNCTION public.account_notice_failure_summary() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.account_notice_failure_summary() FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.account_notice_failure_summary() TO service_role;
+-- schema_reader exists in production, made by hand for the drift check (see
+-- .github/workflows/schema-drift.yml: LOGIN, NOINHERIT, no memberships, no
+-- table grants). A fresh local or CI database has no such role, so it is made
+-- here NOLOGIN; the GRANT is then the same statement everywhere, and the RLS
+-- suite exercises it.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'schema_reader') THEN
+    CREATE ROLE schema_reader NOLOGIN NOINHERIT;
+  END IF;
+END
+$$;
+GRANT EXECUTE ON FUNCTION public.account_notice_failure_summary() TO schema_reader;
+COMMENT ON FUNCTION public.account_notice_failure_summary() IS
+  'Unacknowledged account-notice failures, as counts per (stage, kind, sqlstate). Read nightly by .github/workflows/account-notice-health.yml as schema_reader. service_role and schema_reader only.';
+
+-- -----------------------------------------------------------------------------
+-- 4. The ONE writer. p_departing set = a deletion's notice: STAGE it.
 --    p_departing NULL = a removal's notice, already inside the removal's
---    transaction: write it. Either way a failure is a WARNING, never an error.
+--    transaction: write it. A failure is recorded (section 3), never raised.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION private.record_account_notice(
   p_recipient UUID,
@@ -125,6 +225,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_state TEXT;
+  v_message TEXT;
 BEGIN
   IF p_departing IS NOT NULL THEN
     INSERT INTO private.pending_account_notices
@@ -136,38 +239,94 @@ BEGIN
   END IF;
 EXCEPTION WHEN OTHERS THEN
   -- The insert alone is rolled back; the caller's deletion or removal is not.
-  RAISE WARNING 'account notice not recorded (kind %, recipient %): % (%)',
-    p_kind, p_recipient, SQLERRM, SQLSTATE;
+  v_state := SQLSTATE;
+  v_message := SQLERRM;
+  BEGIN
+    INSERT INTO private.account_notice_failures (stage, kind, sqlstate)
+    VALUES (CASE WHEN p_departing IS NULL THEN 'write' ELSE 'stage' END, p_kind, v_state);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'account notice failure could not be recorded: % (%)', SQLERRM, SQLSTATE;
+  END;
+  RAISE WARNING 'account notice not recorded (kind %): % (%)', p_kind, v_message, v_state;
 END;
 $$;
 
 REVOKE ALL ON FUNCTION private.record_account_notice(UUID, TEXT, TEXT, UUID, JSONB, UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.record_account_notice(UUID, TEXT, TEXT, UUID, JSONB, UUID) FROM anon, authenticated;
 COMMENT ON FUNCTION private.record_account_notice(UUID, TEXT, TEXT, UUID, JSONB, UUID) IS
-  'The only writer of account notices: stages a deletion''s (p_departing set), writes a removal''s. A failure is a WARNING, never an error. Called only by the definer functions below.';
+  'The only writer of account notices: stages a deletion''s (p_departing set), writes a removal''s. A failure is recorded in private.account_notice_failures, never raised. Called only by the definer functions below.';
 
 -- -----------------------------------------------------------------------------
--- 4. PUBLISH a deletion's notices - in the deletion's own transaction.
+-- 5. PUBLISH a deletion's notices - in the deletion's own transaction, so a
+--    refused deletion publishes nothing. This runs INSIDE the auth.users delete:
+--    if it raised, every account deletion would roll back. So:
+--      - each notice is published in ITS OWN guarded block: one that cannot be
+--        published (a recipient whose own deletion is in flight, a bad value)
+--        loses only itself, and is recorded with its kind (section 3);
+--      - reading the staged notices is guarded too: if even that fails, nothing
+--        is published, and that is recorded (kind NULL);
+--      - lock_timeout: a notice's foreign keys KEY SHARE-lock its recipient's
+--        auth row and its household's row, which the departing person's own
+--        delete does NOT touch. An unbounded wait there would hold up the
+--        deletion, and a statement_timeout firing during it (query_canceled) is
+--        the one error WHEN OTHERS cannot catch. With the timeout, a wait ends in
+--        lock_not_available, which the per-notice block catches and records;
+--      - if even the record fails, a WARNING is the last resort;
+--      - the trigger always returns OLD, so the delete proceeds.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION private.publish_account_notices()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SET lock_timeout = '1s'
 AS $$
+DECLARE
+  v_notice RECORD;
+  v_state TEXT;
+  v_message TEXT;
 BEGIN
   BEGIN
-    INSERT INTO public.account_notices (recipient_id, kind, cause, household_id, params, created_at)
-    SELECT p.recipient_id, p.kind, p.cause, p.household_id, p.params, now()
-      FROM private.pending_account_notices p
-     WHERE p.departing_user = OLD.id
-       AND p.recipient_id <> OLD.id;
+    FOR v_notice IN
+      SELECT p.recipient_id, p.kind, p.cause, p.household_id, p.params
+        FROM private.pending_account_notices p
+       WHERE p.departing_user = OLD.id
+         AND p.recipient_id <> OLD.id
+       ORDER BY p.created_at, p.id
+    LOOP
+      BEGIN
+        INSERT INTO public.account_notices (recipient_id, kind, cause, household_id, params, created_at)
+        VALUES (v_notice.recipient_id, v_notice.kind, v_notice.cause, v_notice.household_id,
+                v_notice.params, now());
+      EXCEPTION WHEN OTHERS THEN
+        -- This notice is lost, the deletion and the other notices are not - and
+        -- the loss is recorded where the nightly health check reads it.
+        v_state := SQLSTATE;
+        v_message := SQLERRM;
+        BEGIN
+          INSERT INTO private.account_notice_failures (stage, kind, sqlstate)
+          VALUES ('publish', v_notice.kind, v_state);
+        EXCEPTION WHEN OTHERS THEN
+          RAISE WARNING 'account notice failure could not be recorded: % (%)', SQLERRM, SQLSTATE;
+        END;
+        RAISE WARNING 'account notice not published (kind %): % (%)', v_notice.kind, v_message, v_state;
+      END;
+    END LOOP;
   EXCEPTION WHEN OTHERS THEN
-    -- Never veto a deletion: the notices are lost, the deletion is not.
-    RAISE WARNING 'account notices not published for a deletion: % (%)', SQLERRM, SQLSTATE;
+    -- The staged notices could not even be read: none is published.
+    v_state := SQLSTATE;
+    v_message := SQLERRM;
+    BEGIN
+      INSERT INTO private.account_notice_failures (stage, kind, sqlstate)
+      VALUES ('publish', NULL, v_state);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'account notice failure could not be recorded: % (%)', SQLERRM, SQLSTATE;
+    END;
+    RAISE WARNING 'account notices not published for a deletion: % (%)', v_message, v_state;
   END;
-  -- The staged rows go with the auth row (ON DELETE CASCADE). If this DELETE is
-  -- refused later in the statement, everything above rolls back with it.
+  -- The staged rows go with the auth row (ON DELETE CASCADE, after this BEFORE
+  -- trigger). If this DELETE is refused later in the statement, everything above
+  -- rolls back with it.
   RETURN OLD;
 END;
 $$;
@@ -175,7 +334,7 @@ $$;
 REVOKE ALL ON FUNCTION private.publish_account_notices() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.publish_account_notices() FROM anon, authenticated;
 COMMENT ON FUNCTION private.publish_account_notices() IS
-  'BEFORE DELETE on auth.users: turns the departing user''s staged notices into account_notices, in the deletion''s transaction. Never raises.';
+  'BEFORE DELETE on auth.users: turns the departing user''s staged notices into account_notices, in the deletion''s transaction. Never raises: a failure is recorded in private.account_notice_failures and the delete proceeds.';
 
 DROP TRIGGER IF EXISTS publish_account_notices_on_user_delete ON auth.users;
 CREATE TRIGGER publish_account_notices_on_user_delete
@@ -183,11 +342,13 @@ CREATE TRIGGER publish_account_notices_on_user_delete
   FOR EACH ROW EXECUTE FUNCTION private.publish_account_notices();
 
 -- -----------------------------------------------------------------------------
--- 5. Where a departing member's shared objects go - the rule from 20261119100000,
+-- 6. Where a departing member's shared objects go - the rule from 20261119100000,
 --    unchanged - now telling the owner what arrived.
 --    p_cause: 'account_deleted' (staged, for publication on deletion),
 --             'member_removed' (written, inside the removal's transaction),
---             NULL (no notices: the old two-step removal path, see 6).
+--             NULL (no notices: the old two-step removal path, see 7).
+--    The moves are the critical path; the loop only REMEMBERS the renames. Every
+--    notice statement runs in one guarded block at the end.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION private.move_member_shared_objects(
   p_household UUID,
@@ -209,6 +370,12 @@ DECLARE
   v_moved INTEGER := 0;
   v_budgets INTEGER := 0;
   v_goals INTEGER := 0;
+  v_renamed_from TEXT[] := '{}';
+  v_renamed_to TEXT[] := '{}';
+  v_i INTEGER;
+  v_kind TEXT;
+  v_state TEXT;
+  v_message TEXT;
 BEGIN
   SELECT created_by, name INTO v_owner, v_household_name
     FROM public.households WHERE id = p_household;
@@ -240,13 +407,10 @@ BEGIN
     v_moved := v_moved + 1;
 
     -- A renamed category is the surprise worth a notice; an unrenamed one keeps
-    -- the name the owner already saw.
-    IF p_cause IS NOT NULL AND v_name <> v_cat.name THEN
-      PERFORM private.record_account_notice(
-        v_owner, 'category_renamed', p_cause, p_household,
-        jsonb_build_object('household', v_household_name, 'from', v_cat.name, 'to', v_name),
-        v_departing
-      );
+    -- the name the owner already saw. Remembered here, told below.
+    IF v_name <> v_cat.name THEN
+      v_renamed_from := v_renamed_from || v_cat.name::text;
+      v_renamed_to := v_renamed_to || v_name;
     END IF;
   END LOOP;
 
@@ -262,12 +426,39 @@ BEGIN
 
   v_moved := v_moved + v_budgets + v_goals;
 
-  IF p_cause IS NOT NULL AND v_budgets + v_goals > 0 THEN
-    PERFORM private.record_account_notice(
-      v_owner, 'shared_plans_received', p_cause, p_household,
-      jsonb_build_object('household', v_household_name, 'goals', v_goals, 'budgets', v_budgets),
-      v_departing
-    );
+  -- The owner's notices, OFF THE CRITICAL PATH: a failure here - even the writer
+  -- missing - rolls back these notices alone and is recorded (section 3).
+  IF p_cause IS NOT NULL THEN
+    BEGIN
+      v_kind := 'category_renamed';
+      FOR v_i IN 1 .. coalesce(array_length(v_renamed_from, 1), 0) LOOP
+        PERFORM private.record_account_notice(
+          v_owner, 'category_renamed', p_cause, p_household,
+          jsonb_build_object('household', v_household_name,
+                             'from', v_renamed_from[v_i], 'to', v_renamed_to[v_i]),
+          v_departing
+        );
+      END LOOP;
+
+      v_kind := 'shared_plans_received';
+      IF v_budgets + v_goals > 0 THEN
+        PERFORM private.record_account_notice(
+          v_owner, 'shared_plans_received', p_cause, p_household,
+          jsonb_build_object('household', v_household_name, 'goals', v_goals, 'budgets', v_budgets),
+          v_departing
+        );
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
+      v_state := SQLSTATE;
+      v_message := SQLERRM;
+      BEGIN
+        INSERT INTO private.account_notice_failures (stage, kind, sqlstate)
+        VALUES (CASE WHEN v_departing IS NULL THEN 'write' ELSE 'stage' END, v_kind, v_state);
+      EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'account notice failure could not be recorded: % (%)', SQLERRM, SQLSTATE;
+      END;
+      RAISE WARNING 'owner notices not recorded (kind %): % (%)', v_kind, v_message, v_state;
+    END;
   END IF;
 
   RETURN v_moved;
@@ -280,9 +471,10 @@ COMMENT ON FUNCTION private.move_member_shared_objects(UUID, UUID, TEXT) IS
   'The single definition of where a departing member''s shared categories/budgets/goals go (the household owner), and the notices that tell the owner. p_cause: account_deleted (staged) | member_removed (written) | NULL (none).';
 
 -- -----------------------------------------------------------------------------
--- 6. Removal, as ONE transaction: the move, its notices and the membership
+-- 7. Removal, as ONE transaction: the move, its notices and the membership
 --    delete commit together or not at all, so "a member was removed" is never
---    told about a removal that failed.
+--    told about a removal that failed. A NOTICE failure is contained inside the
+--    move (section 6): it never fails the removal.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.remove_household_member(p_household UUID, p_member UUID)
 RETURNS INTEGER
@@ -342,8 +534,9 @@ COMMENT ON FUNCTION public.reassign_member_shared_objects(UUID, UUID) IS
   'Legacy two-step removal entry point (kept for code deployed before 20261125100000): private.move_member_shared_objects with no notices. New code calls remove_household_member. service_role only.';
 
 -- -----------------------------------------------------------------------------
--- 7. The preparatory half of account deletion - unchanged rules, same return
---    keys - now STAGING the notices for the people who stay.
+-- 8. The preparatory half of account deletion - unchanged rules, same return
+--    keys - now STAGING the notices for the people who stay. The changes are
+--    the critical path; every notice statement is in a guarded block.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.prepare_account_deletion(p_user UUID)
 RETURNS JSONB
@@ -363,8 +556,14 @@ DECLARE
   v_count INTEGER;
   v_target UUID;
   r RECORD;
-  v_copies JSONB := '{}'::jsonb;   -- recipient -> [names of categories copied to them]
-  v_recipient TEXT;
+  -- What was COPIED, to whom: two parallel arrays, appended to on the critical
+  -- path (an append cannot fail) and turned into notices in a guarded block.
+  v_copy_to UUID[] := '{}';
+  v_copy_name TEXT[] := '{}';
+  v_recipient UUID;
+  v_names JSONB;
+  v_state TEXT;
+  v_message TEXT;
 BEGIN
   -- (a) OWNERSHIP + (b) SHARED OBJECTS, per household the user belongs to.
   -- One household per user is enforced in the service; looping is defensive.
@@ -382,13 +581,6 @@ BEGIN
        LIMIT 1;
 
       IF v_new_owner IS NOT NULL THEN
-        -- "Longest-standing" is only KNOWN when every candidate has a join date;
-        -- otherwise the pick fell back to id order and the text must not claim it.
-        v_seniority := NOT EXISTS (
-          SELECT 1 FROM public.household_members
-           WHERE household_id = v_household AND user_id <> p_user AND joined_at IS NULL
-        );
-
         UPDATE public.households SET created_by = v_new_owner, updated_at = now()
          WHERE id = v_household
          RETURNING name INTO v_household_name;
@@ -401,11 +593,33 @@ BEGIN
          WHERE household_id = v_household AND user_id = p_user;
         v_transferred := true;
 
-        PERFORM private.record_account_notice(
-          v_new_owner, 'household_transferred', 'account_deleted', v_household,
-          jsonb_build_object('household', v_household_name, 'seniority', v_seniority),
-          p_user
-        );
+        -- The new owner's notice, OFF THE CRITICAL PATH: everything it needs is
+        -- computed in here, and a failure - even the writer missing - rolls back
+        -- this block alone and is recorded (section 3).
+        BEGIN
+          -- "Longest-standing" is only KNOWN when every candidate has a join
+          -- date; otherwise the pick fell back to id order and the text must not
+          -- claim it. (joined_at is untouched by the role updates above.)
+          v_seniority := NOT EXISTS (
+            SELECT 1 FROM public.household_members
+             WHERE household_id = v_household AND user_id <> p_user AND joined_at IS NULL
+          );
+          PERFORM private.record_account_notice(
+            v_new_owner, 'household_transferred', 'account_deleted', v_household,
+            jsonb_build_object('household', v_household_name, 'seniority', v_seniority),
+            p_user
+          );
+        EXCEPTION WHEN OTHERS THEN
+          v_state := SQLSTATE;
+          v_message := SQLERRM;
+          BEGIN
+            INSERT INTO private.account_notice_failures (stage, kind, sqlstate)
+            VALUES ('stage', 'household_transferred', v_state);
+          EXCEPTION WHEN OTHERS THEN
+            RAISE WARNING 'account notice failure could not be recorded: % (%)', SQLERRM, SQLSTATE;
+          END;
+          RAISE WARNING 'new-owner notice not staged: % (%)', v_message, v_state;
+        END;
       END IF;
       -- Sole member: nothing to transfer. The auth.users cascade deletes the
       -- household, as before (P2).
@@ -448,10 +662,8 @@ BEGIN
       RETURNING id INTO v_target;
       v_copied := v_copied + 1;
       -- Only a real COPY is reported: a reused same-name category was already theirs.
-      v_copies := jsonb_set(
-        v_copies, ARRAY[r.other_user::text],
-        COALESCE(v_copies -> r.other_user::text, '[]'::jsonb) || to_jsonb(r.name::text)
-      );
+      v_copy_to := v_copy_to || r.other_user;
+      v_copy_name := v_copy_name || r.name::text;
     END IF;
 
     UPDATE public.transactions SET category_id = v_target
@@ -489,24 +701,38 @@ BEGIN
 
   -- One notice per person who received copies: the names sorted and distinct,
   -- and whether they share a household with the person leaving ("a household
-  -- member" is only claimed when they do).
-  FOR v_recipient IN SELECT jsonb_object_keys(v_copies) LOOP
-    PERFORM private.record_account_notice(
-      v_recipient::uuid, 'categories_copied', 'account_deleted', NULL,
-      jsonb_build_object(
-        'categories', (
-          SELECT jsonb_agg(DISTINCT n ORDER BY n)
-            FROM jsonb_array_elements_text(v_copies -> v_recipient) AS n
+  -- member" is only claimed when they do). OFF THE CRITICAL PATH, as above.
+  BEGIN
+    FOR v_recipient, v_names IN
+      SELECT t.recipient, jsonb_agg(DISTINCT t.name ORDER BY t.name)
+        FROM unnest(v_copy_to, v_copy_name) AS t(recipient, name)
+       GROUP BY t.recipient
+       ORDER BY t.recipient
+    LOOP
+      PERFORM private.record_account_notice(
+        v_recipient, 'categories_copied', 'account_deleted', NULL,
+        jsonb_build_object(
+          'categories', v_names,
+          'shared_household', EXISTS (
+            SELECT 1 FROM public.household_members a
+              JOIN public.household_members b ON b.household_id = a.household_id
+             WHERE a.user_id = p_user AND b.user_id = v_recipient
+          )
         ),
-        'shared_household', EXISTS (
-          SELECT 1 FROM public.household_members a
-            JOIN public.household_members b ON b.household_id = a.household_id
-           WHERE a.user_id = p_user AND b.user_id = v_recipient::uuid
-        )
-      ),
-      p_user
-    );
-  END LOOP;
+        p_user
+      );
+    END LOOP;
+  EXCEPTION WHEN OTHERS THEN
+    v_state := SQLSTATE;
+    v_message := SQLERRM;
+    BEGIN
+      INSERT INTO private.account_notice_failures (stage, kind, sqlstate)
+      VALUES ('stage', 'categories_copied', v_state);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'account notice failure could not be recorded: % (%)', SQLERRM, SQLSTATE;
+    END;
+    RAISE WARNING 'copied-categories notices not staged: % (%)', v_message, v_state;
+  END;
 
   RETURN jsonb_build_object(
     'ownership_transferred', v_transferred,

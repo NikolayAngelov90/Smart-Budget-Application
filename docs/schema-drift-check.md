@@ -547,3 +547,27 @@ to reach someone, or the check is decoration with a cron schedule.
 not a check. When adding a scheduled workflow, add its failure path to something
 that reaches a person in the same change — otherwise the first thing it measures
 is how long a silent failure can last.
+
+## The credential's second user: account-notice health (2026-11-25)
+
+`schema_reader` now has ONE grant beyond the catalog: `EXECUTE` on
+`public.account_notice_failure_summary()` (migration `20261125100000`). The
+function returns counts per `(stage, kind, sqlstate)` of CONTAINED account-notice
+failures, and nothing about any person; the role still reads no row of any table.
+RLS test 18 checks this two ways. As the role, it probes four tables. As a sweep,
+it confirms the role holds no privilege of any kind on any relation in public,
+private, storage or auth, and that the summary is the ONLY SECURITY DEFINER
+function it may execute. Production had none before this migration (checked
+read-only on 2026-11-26).
+
+`.github/workflows/account-notice-health.yml` logs in with it nightly at 06:30
+UTC and fails while any failure is unacknowledged. Following the standing rule
+above, its failure path reaches a person in the same change: the scheduled-failure
+watchdog, label `watchdog/account-notices`. Both workflows that hold the secret
+are kept off `pull_request` by `scripts/__tests__/production-credential-triggers.test.ts`,
+which finds them by the secret itself.
+
+The function is created by the migration, so the drift check compares it like
+any other. Locally and in CI the migration creates `schema_reader` NOLOGIN when
+it is missing, so the grant is the same statement everywhere. In production the
+role already exists, and the `CREATE ROLE` branch never runs.
