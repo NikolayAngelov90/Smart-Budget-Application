@@ -10,7 +10,7 @@
  * Cascading deletes for all user data
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { deleteUserAccount } from '@/lib/services/settingsService';
@@ -22,6 +22,10 @@ import {
 } from '@/lib/services/accountDeletionRefusal';
 import type { DeleteAccountPayload, DeleteAccountResponse } from '@/types/user.types';
 import { logger } from '@/lib/utils/logger';
+import {
+  deliverAccountNoticePushes,
+  NOTICE_CLOCK_SKEW_MS,
+} from '@/lib/services/accountNoticeService';
 
 /**
  * DELETE /api/user/account
@@ -134,6 +138,8 @@ export async function DELETE(request: NextRequest) {
     // admin.deleteUser, whose auth.users cascade removes the user's own rows,
     // user_profiles included. A throw from either step lands in the catch: 500,
     // except a CONFIRMED refusal, which the dialog explains in the user's language.
+    const requestStart = Date.now();
+
     let deleteSuccess: boolean;
     try {
       deleteSuccess = await deleteUserAccount(user.id);
@@ -160,6 +166,14 @@ export async function DELETE(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // The deletion published the notices for the people who stay (the auth.users
+    // trigger, inside the deletion's own transaction); their PUSHES go out after
+    // the response, off the critical path. Only after SUCCESS: a refused deletion
+    // published nothing, so nobody is told about a deletion that did not happen.
+    after(() =>
+      deliverAccountNoticePushes({ since: new Date(requestStart - NOTICE_CLOCK_SKEW_MS) })
+    );
 
     // Return success response
     const response: DeleteAccountResponse = {

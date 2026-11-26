@@ -41,6 +41,14 @@ jest.mock('@/lib/utils/logger', () => ({
   logger: { info: jest.fn(), error: jest.fn() },
 }));
 
+// Account notices ride this daily run for their push retry
+// (spec-account-deletion-notifications); its own module, with its own tests.
+// Resolves by default (the real one always returns a promise); tests override ONCE,
+// so nothing leaks into the next test in a randomised order.
+jest.mock('@/lib/services/accountNoticeService', () => ({
+  deliverAccountNoticePushes: jest.fn().mockResolvedValue(null),
+}));
+
 jest.mock('date-fns', () => ({
   startOfWeek: jest.fn(() => new Date('2026-03-23T00:00:00Z')),
   subWeeks: jest.fn(() => new Date('2026-03-26T08:00:00Z')),
@@ -50,6 +58,7 @@ import { NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { createSupabaseMock } from '@/test-utils/supabaseChain';
 import { generateDigestForUser } from '@/lib/services/digestService';
+import { deliverAccountNoticePushes } from '@/lib/services/accountNoticeService';
 
 const mockCreateServiceRoleClient = createServiceRoleClient as jest.MockedFunction<
   typeof createServiceRoleClient
@@ -113,6 +122,37 @@ describe('GET /api/cron/weekly-digest', () => {
   it('returns 401 when Authorization header is missing', async () => {
     const response = (await GET(makeRequest())) as { status: number; json: () => Promise<unknown> };
     expect(response.status).toBe(401);
+    expect(deliverAccountNoticePushes).not.toHaveBeenCalled();
+  });
+
+  it('retries owed account-notice pushes once per run, and reports their counts', async () => {
+    const counts = { considered: 2, sent: 1, deferred: 1, notDelivered: 0, skipped: 0 };
+    (deliverAccountNoticePushes as jest.Mock).mockResolvedValueOnce(counts);
+    mockCreateServiceRoleClient.mockReturnValue(digestDb({ data: [], error: null }) as never);
+
+    const response = (await GET(makeRequest(CRON_SECRET))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
+
+    expect(response.status).toBe(200);
+    // No `since`: the cron takes the whole 7-day retry window.
+    expect(deliverAccountNoticePushes).toHaveBeenCalledTimes(1);
+    expect(deliverAccountNoticePushes).toHaveBeenCalledWith();
+    expect(((await response.json()) as { noticePushes: unknown }).noticePushes).toEqual(counts);
+  });
+
+  it('a failing notice retry never fails the digest', async () => {
+    (deliverAccountNoticePushes as jest.Mock).mockRejectedValueOnce(new Error('regression'));
+    mockCreateServiceRoleClient.mockReturnValue(digestDb({ data: [], error: null }) as never);
+
+    const response = (await GET(makeRequest(CRON_SECRET))) as {
+      status: number;
+      json: () => Promise<unknown>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { noticePushes: unknown }).noticePushes).toBeNull();
   });
 
   it('returns 401 when CRON_SECRET is wrong', async () => {

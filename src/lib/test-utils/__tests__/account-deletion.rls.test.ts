@@ -33,10 +33,16 @@ import {
   assertAppPinnedToLocalStack,
 } from '@/lib/test-utils/rlsClient';
 import { deleteUserAccount } from '@/lib/services/settingsService';
+import { removeMember } from '@/lib/services/householdMemberService';
 import {
   AccountDeletionRefusedError,
   resolveRefusalNames,
 } from '@/lib/services/accountDeletionRefusal';
+
+// Each real deletion is followed by a residue scan of every column in three
+// schemas (hundreds of catalog queries); a test that deletes three people does
+// that three times. Jest's 5 s default timed test 11 out in a full run.
+jest.setTimeout(60_000);
 
 const PWD = 'rls-test-passw0rd!';
 const stamp = Date.now();
@@ -48,6 +54,13 @@ const toCleanUp: string[] = [];
 // null = the account has NO email (phone/OAuth-without-email, or blanked):
 // there is nothing of that kind to leave behind. undefined = never recorded.
 const emails = new Map<string, string | null>();
+/**
+ * Every test user's DISPLAY NAME: the scan looks for it too (P2). A notice that
+ * said "Ivan left" would store the departing person's name without their id or
+ * email, so neither of those scans could see it. Same convention as `emails`:
+ * null = the account has no display name; undefined = never recorded.
+ */
+const displayNames = new Map<string, string | null>();
 
 function forget(userId: string): void {
   const i = toCleanUp.indexOf(userId);
@@ -58,11 +71,25 @@ function emailOf(tag: string): string {
   return `rls-del-${tag}-${stamp}@example.test`;
 }
 
+/** Distinctive on purpose: a substring scan must not match ordinary text. */
+function displayNameOf(tag: string): string {
+  return `Rls Person ${tag} ${stamp}`;
+}
+
+/** Sets the profile's display name (the signup trigger made the row) and records it. */
+async function giveDisplayName(id: string, tag: string): Promise<void> {
+  const name = displayNameOf(tag);
+  const { error } = await svc().from('user_profiles').update({ display_name: name }).eq('id', id);
+  if (error) throw new Error(`seed display name for ${tag}: ${error.message}`);
+  displayNames.set(id, name);
+}
+
 async function makeUser(tag: string): Promise<string> {
   const email = emailOf(tag);
   const id = await createTestUser(email, PWD);
   toCleanUp.push(id);
   emails.set(id, email);
+  await giveDisplayName(id, tag);
   return id;
 }
 
@@ -265,6 +292,58 @@ async function countRows(table: string, filters: Record<string, string | null>):
   return count ?? -1;
 }
 
+type Notice = {
+  id?: string;
+  kind: string;
+  cause: string;
+  household_id: string | null;
+  params: Record<string, unknown>;
+};
+
+/** A person's account notices, sorted by kind, read with the service role. */
+async function noticesFor(userId: string, withId = false): Promise<Notice[]> {
+  const { data, error } = await svc()
+    .from('account_notices')
+    .select('id, kind, cause, household_id, params')
+    .eq('recipient_id', userId)
+    .order('kind');
+  if (error) throw new Error(`read notices for ${userId}: ${error.message}`);
+  return ((data ?? []) as Required<Notice>[]).map(({ id, ...rest }) =>
+    withId ? { id, ...rest } : rest
+  );
+}
+
+/** Notices STAGED for a deletion that has not happened (yet), read directly. */
+async function stagedFor(departingUserId: string): Promise<number> {
+  const rows = await db<{ n: number }>(
+    'select count(*)::int as n from private.pending_account_notices where departing_user = $1',
+    [departingUserId]
+  );
+  return rows[0]!.n;
+}
+
+type Failure = { stage: string | null; kind: string | null; sqlstate: string | null };
+
+/** The database's own clock: the start of a "failures recorded since" window. */
+async function dbNow(): Promise<string> {
+  const rows = await db<{ t: string }>('select clock_timestamp()::text as t');
+  return rows[0]!.t;
+}
+
+/**
+ * CONTAINED notice failures recorded since `since` (private.account_notice_failures,
+ * where the nightly health check reads them). The log names no one, so it cannot be
+ * scoped to a person: the RLS suite runs in band, and `since` is taken in the test.
+ */
+async function failuresSince(since: string): Promise<Failure[]> {
+  return db<Failure>(
+    `select stage, kind, sqlstate from private.account_notice_failures
+      where created_at >= $1::timestamptz
+      order by created_at, stage, kind`,
+    [since]
+  );
+}
+
 async function rolesIn(householdId: string): Promise<Array<{ user_id: string; role: string }>> {
   const { data, error } = await svc()
     .from('household_members')
@@ -293,7 +372,8 @@ async function expectAuthUserGone(userId: string): Promise<void> {
 }
 
 /**
- * Every column of every app table (schemas public and storage) that could hold a
+ * Every column of every app table (schemas public, storage and private - where
+ * staged account notices wait) that could hold a
  * user id - uuid, uuid[], and text-like (text, varchar, json, jsonb, arrays of
  * them) - enumerated from the catalog NOW, and which of them still hold `userId`.
  *
@@ -309,7 +389,8 @@ async function expectAuthUserGone(userId: string): Promise<void> {
  */
 async function referencesTo(
   userId: string,
-  email?: string
+  email?: string,
+  displayName?: string
 ): Promise<{ fkColumns: string[]; scanned: string[]; hits: string[] }> {
   const url = process.env.LOCAL_DB_URL;
   if (!url) throw new Error('NOT MEASURED - LOCAL_DB_URL is unset, so the catalog cannot be read');
@@ -336,7 +417,7 @@ async function referencesTo(
          from pg_attribute a
          join pg_class t on t.oid = a.attrelid
          join pg_namespace n on n.oid = t.relnamespace
-        where n.nspname in ('public', 'storage') and t.relkind in ('r', 'p')
+        where n.nspname in ('public', 'storage', 'private') and t.relkind in ('r', 'p')
           and a.attnum > 0 and not a.attisdropped
           and a.atttypid in ('uuid'::regtype, 'uuid[]'::regtype,
                              'text'::regtype, 'varchar'::regtype, 'json'::regtype, 'jsonb'::regtype,
@@ -376,6 +457,16 @@ async function referencesTo(
         );
         if (er.rows[0]!.n > 0) hits.push(`${name(r)}: ${er.rows[0]!.n} (email)`);
       }
+      // The DISPLAY NAME, the same way: what a stored notice naming the person
+      // would hold, with neither their id nor their email in it.
+      if (displayName && r.kind === 'text') {
+        const dr = await pg.query<{ n: number }>(
+          `select count(*)::int as n from ${pg.escapeIdentifier(r.sch)}.${pg.escapeIdentifier(r.tbl)}
+            where position(lower($1) in lower(${col}::text)) > 0`,
+          [displayName]
+        );
+        if (dr.rows[0]!.n > 0) hits.push(`${name(r)}: ${dr.rows[0]!.n} (display name)`);
+      }
     }
     return { fkColumns, scanned: rows.map(name), hits };
   } finally {
@@ -394,7 +485,12 @@ async function expectNoResidue(userId: string, allowed: Allowance[] = []): Promi
   const email = emails.get(userId);
   if (email === undefined)
     throw new Error(`NOT MEASURED - no email recorded for ${userId}, so the email scan cannot run`);
-  const { hits } = await referencesTo(userId, email ?? undefined);
+  const displayName = displayNames.get(userId);
+  if (displayName === undefined)
+    throw new Error(
+      `NOT MEASURED - no display name recorded for ${userId}, so the display-name scan cannot run`
+    );
+  const { hits } = await referencesTo(userId, email ?? undefined, displayName ?? undefined);
   const allowedHits = allowed.map((a) => a.hit);
   expect({ userId, allowedFound: allowedHits.filter((h) => hits.includes(h)) }).toEqual({
     userId,
@@ -693,6 +789,10 @@ rlsDescribe(
       // Sole member: nobody to transfer to and nothing to move - a literal no-op
       // (observed directly; the service then re-runs it, still a no-op, and deletes).
       expect(await prepare(c)).toEqual(NO_OP);
+      // Nobody stays, so nobody is told: the preparation staged NOTHING. (Checked
+      // before the deletion: afterwards, anything staged for C, or any notice for
+      // C, would have gone with C's auth row whatever the code did.)
+      expect(await stagedFor(c)).toBe(0);
       await deleteAccount(c);
 
       expect(await row('households', h)).toBeNull();
@@ -733,8 +833,16 @@ rlsDescribe(
         { id: inviter, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
       ]);
       await invite(h4b, emailOf('live').toUpperCase(), inviter);
+      // A presence control in the PRIVATE schema: a notice staged by the living
+      // user for themselves (never published: the trigger skips the departing
+      // person's own notices; it goes with their auth row).
+      await db(
+        `insert into private.pending_account_notices (departing_user, recipient_id, kind, cause)
+         values ($1, $1, 'household_transferred', 'account_deleted')`,
+        [live]
+      );
 
-      const r = await referencesTo(live, emailOf('live'));
+      const r = await referencesTo(live, emailOf('live'), displayNameOf('live').toUpperCase());
       // The enumeration: the auth.users FKs are all inside it (the 26 classified in
       // the spec; more is allowed, fewer means it is broken), and it is WIDER than
       // them - otherwise it could never fail.
@@ -744,6 +852,14 @@ rlsDescribe(
       expect(r.fkColumns.length).toBeGreaterThanOrEqual(26);
       expect(r.scanned).toEqual(expect.arrayContaining(r.fkColumns));
       expect(r.scanned.length).toBeGreaterThan(r.fkColumns.length);
+      // MUST-FIND: the private schema is scanned too - where staged account
+      // notices wait, holding a departing person's id until their deletion.
+      expect(r.scanned).toEqual(
+        expect.arrayContaining([
+          'private.pending_account_notices.departing_user',
+          'private.pending_account_notices.params',
+        ])
+      );
       // PRESENCE: the counter finds a user who exists - through uuid FK columns AND
       // through the text-like path (a jsonb payload). Without this, "no hits" for a
       // deleted user is also what a broken counter returns.
@@ -754,6 +870,13 @@ rlsDescribe(
           'public.analytics_events.event_properties: 1',
           // found case-insensitively: the invitation spells the address in capitals
           'public.household_invitations.email: 1 (email)',
+          // MUST-FIND for the display-name scan, searched for in capitals: the
+          // living user's own profile. Without it, "no display-name hits" for a
+          // deleted user is also what a scan that never looks returns.
+          'public.user_profiles.display_name: 1 (display name)',
+          // MUST-FIND in the private schema: enumerated is not enough - it must
+          // also COUNT there.
+          'private.pending_account_notices.departing_user: 1',
         ])
       );
     });
@@ -986,6 +1109,7 @@ rlsDescribe(
       const mixed = await createTestUser(mixedAccount, PWD);
       toCleanUp.push(mixed);
       emails.set(mixed, mixedAccount);
+      await giveDisplayName(mixed, tag);
       const lower = mixedAccount.toLowerCase();
 
       const owner = await makeUser('own9');
@@ -1092,6 +1216,7 @@ rlsDescribe(
       const squatter = created.user.id;
       toCleanUp.push(squatter);
       emails.set(squatter, squatAddr);
+      await giveDisplayName(squatter, 'squat10');
       const realOwnersInvite = await invite(h, squatAddr, owner);
 
       await deleteAccount(squatter, [
@@ -1114,6 +1239,13 @@ rlsDescribe(
         { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
       ]);
       const shared = await category(c, 'C11-Shared', h);
+      // M already has that name, so the move RENAMES it; and C's PERSONAL
+      // category that M used is COPIED. So the refused attempt stages all three
+      // kinds a creator's deletion can stage for M - transfer, rename, copy - and
+      // each must wait, unpublished, for a deletion that may still come.
+      await category(m, 'C11-Shared');
+      const personal = await category(c, 'Hobby11');
+      await tx(m, personal);
       // A PLAIN member with a shared category in another household: nothing is
       // transferred, but the category goes to that household's owner.
       const o = await makeUser('o11');
@@ -1181,11 +1313,31 @@ rlsDescribe(
       const asLoner = await signInAsTestUser(emailOf('loner11'), PWD);
       await expect(resolveRefusalNames(asLoner, loner)).resolves.toBeNull();
 
-      // With the blocker gone, the retry deletes both (afterAll would too; doing it
-      // here residue-scans them inside this test).
+      // A NOTICE EXISTS ONLY IF ITS EVENT HAPPENED: the refused deletion told M
+      // nothing (no "its creator deleted their account" while C still exists).
+      // All three are STAGED, waiting for a deletion that may still come.
+      expect(await noticesFor(m)).toEqual([]);
+      expect(await stagedFor(c)).toBe(3);
+
+      // SOMEONE ELSE's deletion publishes only THEIR notices: the loner goes
+      // first, while C's are still staged, and M is still told nothing.
+      await deleteAccount(loner);
+      expect(await noticesFor(m)).toEqual([]);
+      expect(await stagedFor(c)).toBe(3);
+
+      // With the blocker gone, C's retry is a deletion that happens (afterAll
+      // would delete them too; doing it here residue-scans inside this test).
       await deleteAccount(c);
       await deleteAccount(p);
-      await deleteAccount(loner);
+
+      // So its notices are published, each kind once - and the staged rows, the
+      // only place C's id was held, went with C's auth row.
+      expect((await noticesFor(m)).map((n) => n.kind)).toEqual([
+        'categories_copied',
+        'category_renamed',
+        'household_transferred',
+      ]);
+      expect(await stagedFor(c)).toBe(0);
 
       // The REAL shape of "this user does not exist", which deleteUserAccount
       // reads as "the deletion happened": 404 AND code user_not_found. A bare 404
@@ -1193,6 +1345,977 @@ rlsDescribe(
       const { data: gone, error: goneError } = await svc().auth.admin.getUserById(c);
       expect(gone.user).toBeNull();
       expect(goneError).toMatchObject({ status: 404, code: 'user_not_found' });
+    });
+    // -------------------------------------------------------------------------
+    // ACCOUNT NOTICES (spec-account-deletion-notifications). A deletion's notices
+    // are STAGED by prepare and PUBLISHED by the auth.users trigger in the
+    // deletion's own transaction; a removal's are written in the removal's one
+    // transaction. The residue scan above (id, email, DISPLAY NAME; public,
+    // storage, private) runs inside every deleteAccount().
+    // -------------------------------------------------------------------------
+
+    it('12. a creator leaves: the new owner is told everything that changed for them - and nothing names the creator', async () => {
+      const c = await makeUser('c12');
+      const m = await makeUser('m12');
+      const h = await household('H12', c, [
+        { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      // C's SHARED category whose name M already uses: moved to M and renamed.
+      const shared = await category(c, 'Food12', h);
+      await category(m, 'Food12');
+      // A shared category M does NOT have: moved, not renamed - no notice for it.
+      await category(c, 'Unique12', h);
+      // C's shared goal and budget: moved to M.
+      await goal(c, 'Trip12', h, 0);
+      await seedSingle(
+        svc()
+          .from('category_budgets')
+          .insert({
+            user_id: c,
+            household_id: h,
+            category_id: shared,
+            period: 'monthly',
+            limit_amount: 50,
+          })
+          .select('id')
+          .single(),
+        "C's shared budget"
+      );
+      // C's PERSONAL category that M used: copied to M.
+      const personal = await category(c, 'Hobby12');
+      await tx(m, personal);
+      // C's personal category whose name M ALREADY has: M's rows move to M's own
+      // "Books12" (REUSED, not copied), so it must not be listed as a copy.
+      const cBooks = await category(c, 'Books12');
+      await category(m, 'Books12');
+      await tx(m, cBooks);
+      // Two more copies, to pin "sorted, distinct": a name that sorts FIRST, and
+      // the SAME name as Hobby12 but of the other type (copied too, listed once).
+      const art = await category(c, 'Art12');
+      await tx(m, art);
+      const hobbyIncome = await seedSingle<{ id: string }>(
+        svc()
+          .from('categories')
+          .insert({ user_id: c, name: 'Hobby12', color: '#123456', type: 'income' })
+          .select('id')
+          .single(),
+        "C's income Hobby12"
+      );
+      await tx(m, hobbyIncome.id, null, { type: 'income' });
+
+      await deleteAccount(c); // its residue scan searches C's id, email AND display name
+
+      expect(await noticesFor(m)).toEqual([
+        {
+          kind: 'categories_copied',
+          cause: 'account_deleted',
+          household_id: null,
+          params: { categories: ['Art12', 'Hobby12'], shared_household: true },
+        },
+        {
+          kind: 'category_renamed',
+          cause: 'account_deleted',
+          household_id: h,
+          params: { household: 'H12', from: 'Food12', to: 'Food12 2' },
+        },
+        {
+          kind: 'household_transferred',
+          cause: 'account_deleted',
+          household_id: h,
+          // every candidate had a join date, so "longest-standing" is KNOWN
+          params: { household: 'H12', seniority: true },
+        },
+        {
+          kind: 'shared_plans_received',
+          cause: 'account_deleted',
+          household_id: h,
+          params: { household: 'H12', goals: 1, budgets: 1 },
+        },
+      ]);
+
+      // A recipient's notices go with their OWN account.
+      await deleteAccount(m);
+      expect(await noticesFor(m)).toEqual([]);
+    });
+
+    it('12b. the texts claim only what the database knew: no seniority without join dates, no "household member" for someone outside the household', async () => {
+      const c = await makeUser('c12b');
+      const m = await makeUser('m12b');
+      const outsider = await makeUser('x12b');
+      const h = await household('H12b', c, [
+        { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m, role: 'member', joinedAt: null }, // no join date: the pick fell back to id order
+      ]);
+      // Someone NOT in C's household whose rows use C's category (e.g. a former member).
+      const cCat = await category(c, 'Shared12b');
+      await tx(outsider, cCat);
+
+      await deleteAccount(c);
+
+      expect((await noticesFor(m)).find((n) => n.kind === 'household_transferred')).toMatchObject({
+        household_id: h,
+        params: { household: 'H12b', seniority: false },
+      });
+      expect(await noticesFor(outsider)).toEqual([
+        {
+          kind: 'categories_copied',
+          cause: 'account_deleted',
+          household_id: null,
+          params: { categories: ['Shared12b'], shared_household: false },
+        },
+      ]);
+    });
+
+    it('13. a plain member leaves: the owner is told about the renamed category and the shared goal; nobody else is told anything', async () => {
+      const o = await makeUser('o13');
+      const p = await makeUser('p13');
+      const bystander = await makeUser('b13');
+      const h = await household('H13', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: p, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        { id: bystander, role: 'member', joinedAt: '2026-03-01T00:00:00Z' },
+      ]);
+      await category(p, 'Rent13', h);
+      await category(o, 'Rent13');
+      await goal(p, 'Sofa13', h, 0);
+
+      await deleteAccount(p);
+
+      expect(await noticesFor(o)).toEqual([
+        {
+          kind: 'category_renamed',
+          cause: 'account_deleted',
+          household_id: h,
+          params: { household: 'H13', from: 'Rent13', to: 'Rent13 2' },
+        },
+        {
+          kind: 'shared_plans_received',
+          cause: 'account_deleted',
+          household_id: h,
+          params: { household: 'H13', goals: 1, budgets: 0 },
+        },
+      ]);
+      expect(await noticesFor(bystander)).toEqual([]);
+    });
+
+    it('14. removeMember: the owner is told with cause member_removed; the removed person gets no notice', async () => {
+      const o = await makeUser('o14');
+      const r = await makeUser('r14');
+      const h = await household('H14', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: r, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      const rCat = await category(r, 'Gym14', h);
+      await category(o, 'Gym14');
+      await seedSingle(
+        svc()
+          .from('category_budgets')
+          .insert({
+            user_id: r,
+            household_id: h,
+            category_id: rCat,
+            period: 'monthly',
+            limit_amount: 30,
+          })
+          .select('id')
+          .single(),
+        "R's shared budget"
+      );
+
+      await removeMember(o, r); // the real service, as the route calls it
+
+      expect(await noticesFor(o)).toEqual([
+        {
+          kind: 'category_renamed',
+          cause: 'member_removed',
+          household_id: h,
+          params: { household: 'H14', from: 'Gym14', to: 'Gym14 2' },
+        },
+        {
+          kind: 'shared_plans_received',
+          cause: 'member_removed',
+          household_id: h,
+          params: { household: 'H14', goals: 0, budgets: 1 },
+        },
+      ]);
+      expect(await noticesFor(r)).toEqual([]);
+      expect(await countRows('household_members', { household_id: h, user_id: r })).toBe(0);
+
+      // ONE TRANSACTION: a removal that fails rolls back the move AND its notice.
+      // Someone who still owns a shared category in H but is no longer a member:
+      // the move would succeed, the membership delete finds nothing and raises.
+      const ghost = await makeUser('g14');
+      await db(
+        'insert into public.household_members (household_id, user_id, role) values ($1, $2, $3)',
+        [h, ghost, 'member']
+      );
+      const ghostCat = await category(ghost, 'Gym14', h);
+      await db('delete from public.household_members where household_id = $1 and user_id = $2', [
+        h,
+        ghost,
+      ]);
+      const before = (await noticesFor(o)).length;
+
+      const { error } = await svc().rpc('remove_household_member', {
+        p_household: h,
+        p_member: ghost,
+      });
+
+      expect(error).not.toBeNull();
+      expect(await row<{ user_id: string; name: string }>('categories', ghostCat)).toMatchObject({
+        user_id: ghost, // not moved: rolled back
+        name: 'Gym14',
+      });
+      expect((await noticesFor(o)).length).toBe(before); // no "a member was removed"
+    });
+
+    it('15. OFF THE CRITICAL PATH: a notice that cannot be STAGED, PUBLISHED or WRITTEN never stops a deletion or a removal', async () => {
+      const c = await makeUser('c15');
+      const m = await makeUser('m15');
+      const h = await household('H15', c, [
+        { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      const cShared = await category(c, 'Food15', h);
+      await category(m, 'Food15');
+      const o = await makeUser('o15');
+      const r = await makeUser('r15');
+      const h2 = await household('H15-b', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: r, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      const rShared = await category(r, 'Gym15', h2);
+      await category(o, 'Gym15');
+      const c2 = await makeUser('c15b');
+      const m2 = await makeUser('m15b');
+      const h3 = await household('H15-c', c2, [
+        { id: c2, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m2, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+
+      const force = async (table: string) => {
+        await db(`ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS rls_force_notice_failure`);
+        await db(
+          `ALTER TABLE ${table} ADD CONSTRAINT rls_force_notice_failure CHECK (false) NOT VALID`
+        );
+      };
+      const release = (table: string) =>
+        db(`ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS rls_force_notice_failure`);
+
+      // PHASE A - staging WORKS, publication and the removal's write FAIL. Run the
+      // preparation first so there IS something staged for the trigger to try to
+      // publish (otherwise its INSERT selects nothing and its savepoint is never
+      // exercised - the gap mutant V3 found).
+      expect((await prepare(c)).ownership_transferred).toBe(true);
+      expect(await stagedFor(c)).toBeGreaterThan(0); // the control: publication WILL be attempted
+      const since = await dbNow();
+      await force('public.account_notices');
+      try {
+        await deleteAccount(c); // throws if the deletion failed; then residue-scans C
+        await removeMember(o, r); // throws if the removal failed
+      } finally {
+        await release('public.account_notices');
+      }
+
+      // PHASE B - STAGING fails (prepare's notice for the new owner).
+      await force('private.pending_account_notices');
+      try {
+        await deleteAccount(c2);
+      } finally {
+        await release('private.pending_account_notices');
+      }
+
+      // The changes happened exactly as without notices...
+      expect((await row<{ created_by: string }>('households', h))?.created_by).toBe(m);
+      expect(await row<{ user_id: string; name: string }>('categories', cShared)).toMatchObject({
+        user_id: m,
+        name: 'Food15 2',
+      });
+      expect(await countRows('household_members', { household_id: h2, user_id: r })).toBe(0);
+      expect(await row<{ user_id: string; name: string }>('categories', rShared)).toMatchObject({
+        user_id: o,
+        name: 'Gym15 2',
+      });
+      expect((await row<{ created_by: string }>('households', h3))?.created_by).toBe(m2);
+      // ...and the forced failures really did stop every notice (the controls).
+      expect(await noticesFor(m)).toEqual([]);
+      expect(await noticesFor(o)).toEqual([]);
+      expect(await noticesFor(m2)).toEqual([]);
+      expect(await stagedFor(c)).toBe(0); // went with C's auth row
+      // ...and not one of them was SILENT: each is recorded where the nightly
+      // health check reads it - one row per lost notice, with its kind. Ordered by
+      // transaction (created_at is now(), the transaction's start), then kind.
+      expect(await failuresSince(since)).toEqual([
+        // C's deletion: the trigger lost both of C's staged notices for M
+        { stage: 'publish', kind: 'category_renamed', sqlstate: '23514' },
+        { stage: 'publish', kind: 'household_transferred', sqlstate: '23514' },
+        { stage: 'write', kind: 'category_renamed', sqlstate: '23514' }, // R's removal
+        { stage: 'stage', kind: 'household_transferred', sqlstate: '23514' }, // C2's preparation
+      ]);
+    });
+
+    it("16. notices are read-own and written only by the server: no client can insert, update, delete or see another person's; the new functions are definer-only with a pinned search_path", async () => {
+      const o = await makeUser('o16');
+      const p = await makeUser('p16');
+      const outsider = await makeUser('x16');
+      const h = await household('H16', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: p, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      await goal(p, 'Goal16', h, 0);
+      await deleteAccount(p);
+      const [own] = await noticesFor(o, true);
+      expect(own).toBeDefined(); // MUST-FIND: there is a notice to protect
+      const ownId = own!.id!;
+
+      const asOwner = await signInAsTestUser(emailOf('o16'), PWD);
+      const asOutsider = await signInAsTestUser(emailOf('x16'), PWD);
+
+      // Read: own yes, someone else's no.
+      const mine = await asOwner.from('account_notices').select('id').eq('id', ownId);
+      expect(mine.error).toBeNull();
+      expect(mine.data).toHaveLength(1);
+      const theirs = await asOutsider.from('account_notices').select('id').eq('id', ownId);
+      expect(theirs.error).toBeNull();
+      expect(theirs.data).toHaveLength(0);
+
+      // Write: nothing, not even the recipient dismissing through PostgREST.
+      const ins = await asOwner.from('account_notices').insert({
+        recipient_id: o,
+        kind: 'household_transferred',
+        cause: 'account_deleted',
+        params: {},
+      });
+      expect(ins.error?.code).toBe('42501');
+      const upd = await asOwner
+        .from('account_notices')
+        .update({ dismissed_at: new Date().toISOString() })
+        .eq('id', ownId)
+        .select('id');
+      expect(upd.error?.code).toBe('42501');
+      const del = await asOwner.from('account_notices').delete().eq('id', ownId).select('id');
+      expect(del.error?.code).toBe('42501');
+      expect(
+        (await row<{ dismissed_at: string | null }>('account_notices', ownId))?.dismissed_at
+      ).toBeNull();
+      void outsider;
+
+      // The functions: SECURITY DEFINER, search_path pinned, no client EXECUTE.
+      const fns = await db<{
+        fn: string;
+        definer: boolean;
+        config: string[] | null;
+        client_exec: boolean;
+      }>(
+        `select p.oid::regprocedure::text as fn, p.prosecdef as definer, p.proconfig as config,
+                (has_function_privilege('anon', p.oid, 'EXECUTE')
+                 or has_function_privilege('authenticated', p.oid, 'EXECUTE')) as client_exec
+           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where (n.nspname, p.proname) in (('private', 'record_account_notice'),
+                                           ('private', 'move_member_shared_objects'),
+                                           ('private', 'publish_account_notices'),
+                                           ('public', 'remove_household_member'))
+          order by 1`
+      );
+      expect(fns.map((f) => f.fn)).toEqual([
+        'private.move_member_shared_objects(uuid,uuid,text)',
+        'private.publish_account_notices()',
+        'private.record_account_notice(uuid,text,text,uuid,jsonb,uuid)',
+        'remove_household_member(uuid,uuid)',
+      ]);
+      for (const f of fns) {
+        expect({ fn: f.fn, definer: f.definer, clientExec: f.client_exec }).toEqual({
+          fn: f.fn,
+          definer: true,
+          clientExec: false,
+        });
+        expect(f.config).toEqual(expect.arrayContaining(['search_path=public']));
+      }
+
+      // The staging table holds a departing person's id while they exist: no
+      // client may touch it at all.
+      const staged = await db<{ priv: string; anon: boolean; authed: boolean }>(
+        `select p.priv,
+                has_table_privilege('anon', 'private.pending_account_notices', p.priv) as anon,
+                has_table_privilege('authenticated', 'private.pending_account_notices', p.priv) as authed
+           from unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) as p(priv)`
+      );
+      expect(staged.filter((x) => x.anon || x.authed)).toEqual([]);
+      expect(staged).toHaveLength(4); // MUST-FIND: all four privileges were checked
+    });
+
+    it('17. THE PUBLISH FAILS INSIDE THE AUTH DELETE - a CHECK violation, a missing table, a missing column, the staged notices unreadable - and every deletion completes, the account is gone, and the failure is RECORDED; with even the record impossible, the deletion still completes', async () => {
+      const unrenameColumn = `DO $$ BEGIN
+          IF EXISTS (SELECT 1 FROM pg_attribute
+                      WHERE attrelid = 'public.account_notices'::regclass
+                        AND attname = 'params_rls_forced' AND NOT attisdropped) THEN
+            ALTER TABLE public.account_notices RENAME COLUMN params_rls_forced TO params;
+          END IF;
+        END $$`;
+      const modes: Array<{
+        tag: string;
+        recorded: Failure[];
+        force: string[];
+        undo: string[];
+      }> = [
+        {
+          tag: 'check',
+          // One row per lost notice, with its kind (the per-notice block).
+          recorded: [{ stage: 'publish', kind: 'household_transferred', sqlstate: '23514' }], // check_violation
+          force: [
+            'ALTER TABLE public.account_notices ADD CONSTRAINT rls_force_publish CHECK (false) NOT VALID',
+          ],
+          undo: ['ALTER TABLE public.account_notices DROP CONSTRAINT IF EXISTS rls_force_publish'],
+        },
+        {
+          tag: 'table',
+          recorded: [{ stage: 'publish', kind: 'household_transferred', sqlstate: '42P01' }], // undefined_table
+          force: ['ALTER TABLE public.account_notices RENAME TO account_notices_rls_forced'],
+          undo: [
+            'ALTER TABLE IF EXISTS public.account_notices_rls_forced RENAME TO account_notices',
+          ],
+        },
+        {
+          tag: 'column',
+          recorded: [{ stage: 'publish', kind: 'household_transferred', sqlstate: '42703' }], // undefined_column
+          force: ['ALTER TABLE public.account_notices RENAME COLUMN params TO params_rls_forced'],
+          undo: [unrenameColumn],
+        },
+        {
+          // The staged notices cannot even be READ (the outer block): none is
+          // published, and that is one row with no kind.
+          tag: 'staged-table',
+          recorded: [{ stage: 'publish', kind: null, sqlstate: '42P01' }],
+          force: [
+            'ALTER TABLE private.pending_account_notices RENAME TO pending_account_notices_rls_forced',
+          ],
+          undo: [
+            'ALTER TABLE IF EXISTS private.pending_account_notices_rls_forced RENAME TO pending_account_notices',
+          ],
+        },
+        {
+          // Unreadable staged notices AND no failure log: the outer block's own
+          // record is guarded too, and the deletion must STILL complete.
+          tag: 'staged-unrecordable',
+          recorded: [],
+          force: [
+            'ALTER TABLE private.pending_account_notices RENAME TO pending_account_notices_rls_forced',
+            'ALTER TABLE private.account_notice_failures RENAME TO account_notice_failures_rls_forced',
+          ],
+          undo: [
+            'ALTER TABLE IF EXISTS private.pending_account_notices_rls_forced RENAME TO pending_account_notices',
+            'ALTER TABLE IF EXISTS private.account_notice_failures_rls_forced RENAME TO account_notice_failures',
+          ],
+        },
+        {
+          // The marker itself cannot be written either: the Postgres log is the
+          // last resort, and the deletion must STILL complete.
+          tag: 'unrecordable',
+          recorded: [],
+          force: [
+            'ALTER TABLE public.account_notices ADD CONSTRAINT rls_force_publish CHECK (false) NOT VALID',
+            'ALTER TABLE private.account_notice_failures RENAME TO account_notice_failures_rls_forced',
+          ],
+          undo: [
+            'ALTER TABLE public.account_notices DROP CONSTRAINT IF EXISTS rls_force_publish',
+            'ALTER TABLE IF EXISTS private.account_notice_failures_rls_forced RENAME TO account_notice_failures',
+          ],
+        },
+      ];
+
+      for (const mode of modes) {
+        const c = await makeUser(`c17${mode.tag}`);
+        const m = await makeUser(`m17${mode.tag}`);
+        const h = await household(`H17-${mode.tag}`, c, [
+          { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+          { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        ]);
+        // CONTROL: something IS staged, so the trigger WILL try to publish.
+        expect((await prepare(c)).ownership_transferred).toBe(true);
+        expect(await stagedFor(c)).toBeGreaterThan(0);
+
+        const since = await dbNow();
+        for (const sql of mode.force) await db(sql);
+        let outcome: unknown = 'completed';
+        try {
+          // The REAL deletion: GoTrue's own DELETE on auth.users fires the
+          // trigger. Then the residue scan.
+          await deleteAccount(c).catch((e: unknown) => {
+            outcome = e instanceof Error ? e.message : e;
+          });
+        } finally {
+          for (const sql of mode.undo) await db(sql);
+        }
+
+        expect({ mode: mode.tag, outcome }).toEqual({ mode: mode.tag, outcome: 'completed' });
+        await expectAuthUserGone(c);
+        expect((await row<{ created_by: string }>('households', h))?.created_by).toBe(m);
+        // Read directly, not through PostgREST: renaming account_notices made it
+        // reload its schema cache, and a read racing that reload is not the test.
+        const published = await db<{ n: number }>(
+          'select count(*)::int as n from public.account_notices where recipient_id = $1',
+          [m]
+        );
+        expect(published[0]!.n).toBe(0); // the publish really failed (the control)
+        expect(await stagedFor(c)).toBe(0); // the staged rows went with the auth row
+        expect({ mode: mode.tag, recorded: await failuresSince(since) }).toEqual({
+          mode: mode.tag,
+          recorded: mode.recorded,
+        });
+      }
+    });
+
+    it('17b. THE WRITER ITSELF MISSING: every call site is guarded - a deletion with a transfer, a copy and moved plans, and a removal with a rename, all complete and each call site records its own failure; with the failure log missing too, they STILL complete', async () => {
+      const sig = '(uuid, text, text, uuid, jsonb, uuid)';
+      const modes: Array<{ tag: string; logMissing: boolean; recorded: Failure[] }> = [
+        {
+          tag: 'w',
+          logMissing: false,
+          // Each guarded call site, its own undefined_function.
+          recorded: [
+            { stage: 'stage', kind: 'categories_copied', sqlstate: '42883' },
+            { stage: 'stage', kind: 'household_transferred', sqlstate: '42883' },
+            { stage: 'stage', kind: 'shared_plans_received', sqlstate: '42883' },
+            { stage: 'write', kind: 'category_renamed', sqlstate: '42883' },
+          ],
+        },
+        // The handlers' OWN record cannot be written either: each call site's
+        // inner guard is what keeps the deletion and the removal alive.
+        { tag: 'wl', logMissing: true, recorded: [] },
+      ];
+
+      for (const mode of modes) {
+        const c = await makeUser(`c17b${mode.tag}`);
+        const m = await makeUser(`m17b${mode.tag}`);
+        const h = await household(`H17b-${mode.tag}`, c, [
+          { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+          { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        ]);
+        const hobby = `Hobby17b${mode.tag}`;
+        const trip = `Trip17b${mode.tag}`;
+        const gym = `Gym17b${mode.tag}`;
+        const personal = await category(c, hobby); // C's PERSONAL category M used: copied
+        await tx(m, personal);
+        await goal(c, trip, h, 0); // C's SHARED goal: moved to the new owner
+        const o = await makeUser(`o17b${mode.tag}`);
+        const r = await makeUser(`r17b${mode.tag}`);
+        const h2 = await household(`H17b2-${mode.tag}`, o, [
+          { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+          { id: r, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        ]);
+        const rShared = await category(r, gym, h2); // renamed on removal
+        await category(o, gym);
+
+        const since = await dbNow();
+        await db(
+          `ALTER FUNCTION private.record_account_notice${sig} RENAME TO record_account_notice_rls_forced`
+        );
+        if (mode.logMissing) {
+          await db(
+            'ALTER TABLE private.account_notice_failures RENAME TO account_notice_failures_rls_forced'
+          );
+        }
+        let deletion: unknown = 'completed';
+        let removal: unknown = 'completed';
+        try {
+          await deleteAccount(c).catch((e: unknown) => {
+            deletion = e instanceof Error ? e.message : e;
+          });
+          await removeMember(o, r).catch((e: unknown) => {
+            removal = e instanceof Error ? e.message : e;
+          });
+        } finally {
+          await db(`DO $$ BEGIN
+              IF to_regprocedure('private.record_account_notice_rls_forced${sig}') IS NOT NULL THEN
+                ALTER FUNCTION private.record_account_notice_rls_forced${sig} RENAME TO record_account_notice;
+              END IF;
+            END $$`);
+          await db(
+            'ALTER TABLE IF EXISTS private.account_notice_failures_rls_forced RENAME TO account_notice_failures'
+          );
+        }
+
+        expect({ mode: mode.tag, deletion, removal }).toEqual({
+          mode: mode.tag,
+          deletion: 'completed',
+          removal: 'completed',
+        });
+        await expectAuthUserGone(c);
+        // Every change stands...
+        expect((await row<{ created_by: string }>('households', h))?.created_by).toBe(m);
+        expect(await countRows('categories', { user_id: m, name: hobby })).toBe(1);
+        expect(await countRows('goals', { user_id: m, name: trip })).toBe(1);
+        expect(await countRows('household_members', { household_id: h2, user_id: r })).toBe(0);
+        expect(await row<{ user_id: string; name: string }>('categories', rShared)).toMatchObject({
+          user_id: o,
+          name: `${gym} 2`,
+        });
+        // ...no notice was possible (the control)...
+        expect(await noticesFor(m)).toEqual([]);
+        expect(await noticesFor(o)).toEqual([]);
+        // ...and what each call site recorded (nothing, when the log was missing).
+        expect({ mode: mode.tag, recorded: await failuresSince(since) }).toEqual({
+          mode: mode.tag,
+          recorded: mode.recorded,
+        });
+      }
+    });
+
+    it('17c. ONE failing notice loses only ITSELF: the writer contains its own failure - of ANY class, not only a CHECK - so the other notices of the same removal still arrive, even when the failure log is missing too', async () => {
+      const modes: Array<{ tag: string; logMissing: boolean; recorded: Failure[] }> = [
+        {
+          tag: 'l',
+          logMissing: false,
+          recorded: [{ stage: 'write', kind: 'category_renamed', sqlstate: 'P0001' }],
+        },
+        // The writer's own record cannot be written: its inner guard must keep
+        // the failure inside the writer, or the caller's block loses GymB too.
+        { tag: 'n', logMissing: true, recorded: [] },
+      ];
+
+      for (const mode of modes) {
+        const o = await makeUser(`o17c${mode.tag}`);
+        const r = await makeUser(`r17c${mode.tag}`);
+        const h = await household(`H17c-${mode.tag}`, o, [
+          { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+          { id: r, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        ]);
+        // Two shared categories, both renamed on removal: two notices for O.
+        const gymA = `GymA17c${mode.tag}`;
+        const gymB = `GymB17c${mode.tag}`;
+        await category(r, gymA, h);
+        await category(o, gymA);
+        await category(r, gymB, h);
+        await category(o, gymB);
+
+        const since = await dbNow();
+        // Only the FIRST notice (GymA, moved first) fails - with raise_exception
+        // (P0001), so a writer that caught only check_violation would let it out.
+        await db(`CREATE OR REPLACE FUNCTION public.rls_force_one_notice() RETURNS trigger
+                  LANGUAGE plpgsql AS $$
+                  BEGIN
+                    IF NEW.params->>'to' = '${gymA} 2' THEN
+                      RAISE EXCEPTION 'rls: forced failure of one notice';
+                    END IF;
+                    RETURN NEW;
+                  END $$`);
+        await db(`CREATE TRIGGER rls_force_one_notice BEFORE INSERT ON public.account_notices
+                  FOR EACH ROW EXECUTE FUNCTION public.rls_force_one_notice()`);
+        if (mode.logMissing) {
+          await db(
+            'ALTER TABLE private.account_notice_failures RENAME TO account_notice_failures_rls_forced'
+          );
+        }
+        try {
+          await removeMember(o, r); // throws if the removal failed
+        } finally {
+          await db('DROP TRIGGER IF EXISTS rls_force_one_notice ON public.account_notices');
+          await db('DROP FUNCTION IF EXISTS public.rls_force_one_notice()');
+          await db(
+            'ALTER TABLE IF EXISTS private.account_notice_failures_rls_forced RENAME TO account_notice_failures'
+          );
+        }
+
+        expect({ mode: mode.tag, told: (await noticesFor(o)).map((n) => n.params.to) }).toEqual({
+          mode: mode.tag,
+          told: [`${gymB} 2`],
+        });
+        expect({ mode: mode.tag, recorded: await failuresSince(since) }).toEqual({
+          mode: mode.tag,
+          recorded: mode.recorded,
+        });
+      }
+    });
+
+    it('17d. ONE notice that cannot be PUBLISHED loses only itself: the others of the same deletion are published - even when its failure cannot be recorded; and a value that could never be published fails at STAGING, where it is recorded', async () => {
+      const modes: Array<{ tag: string; logMissing: boolean; recorded: Failure[] }> = [
+        {
+          tag: 'l',
+          logMissing: false,
+          recorded: [{ stage: 'publish', kind: 'category_renamed', sqlstate: '23514' }],
+        },
+        // The lost notice's record cannot be written: that must not abort the
+        // loop (and roll back the notice that WAS published).
+        { tag: 'n', logMissing: true, recorded: [] },
+      ];
+
+      for (const mode of modes) {
+        const c = await makeUser(`c17d${mode.tag}`);
+        const m = await makeUser(`m17d${mode.tag}`);
+        const h = await household(`H17d-${mode.tag}`, c, [
+          { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+          { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+        ]);
+        const food = `Food17d${mode.tag}`;
+        await category(c, food, h); // shared, and M has the name: renamed
+        await category(m, food);
+        expect((await prepare(c)).ownership_transferred).toBe(true);
+        expect(await stagedFor(c)).toBe(2); // CONTROL: transfer + rename are staged
+
+        // A value the staging table refuses: recorded at STAGING, nothing staged.
+        const before = await dbNow();
+        await db(
+          `select private.record_account_notice($1, 'not_a_kind', 'account_deleted', null, '{}'::jsonb, $2)`,
+          [m, c]
+        );
+        expect(await stagedFor(c)).toBe(2);
+        expect(await failuresSince(before)).toEqual([
+          { stage: 'stage', kind: 'not_a_kind', sqlstate: '23514' },
+        ]);
+
+        // Only the RENAME notice cannot be published.
+        const since = await dbNow();
+        await db(
+          `ALTER TABLE public.account_notices ADD CONSTRAINT rls_force_one_kind
+             CHECK (kind <> 'category_renamed') NOT VALID`
+        );
+        if (mode.logMissing) {
+          await db(
+            'ALTER TABLE private.account_notice_failures RENAME TO account_notice_failures_rls_forced'
+          );
+        }
+        try {
+          await deleteAccount(c);
+        } finally {
+          await db(
+            'ALTER TABLE public.account_notices DROP CONSTRAINT IF EXISTS rls_force_one_kind'
+          );
+          await db(
+            'ALTER TABLE IF EXISTS private.account_notice_failures_rls_forced RENAME TO account_notice_failures'
+          );
+        }
+
+        expect({ mode: mode.tag, told: (await noticesFor(m)).map((n) => n.kind) }).toEqual({
+          mode: mode.tag,
+          told: ['household_transferred'],
+        });
+        expect({ mode: mode.tag, recorded: await failuresSince(since) }).toEqual({
+          mode: mode.tag,
+          recorded: mode.recorded,
+        });
+      }
+    });
+
+    it('17e. A LOCK WAIT never holds up the deletion: a notice whose household row is locked by someone else gives up after the lock_timeout, the deletion completes, and the wait is recorded', async () => {
+      const c = await makeUser('c17e');
+      const m = await makeUser('m17e');
+      const h = await household('H17e', c, [
+        { id: c, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: m, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      expect((await prepare(c)).ownership_transferred).toBe(true);
+      expect(await stagedFor(c)).toBe(1); // CONTROL: the transfer notice, for household H
+
+      const url = process.env.LOCAL_DB_URL;
+      if (!url) throw new Error('NOT MEASURED - LOCAL_DB_URL is unset');
+      // Someone else holds H's row. The notice's foreign key needs a KEY SHARE
+      // lock on it, which FOR UPDATE blocks; the departing person's own delete
+      // does not touch H (the household is M's now), so only the notice waits.
+      const holder = new Client({ connectionString: url });
+      await holder.connect();
+      await holder.query('BEGIN');
+      await holder.query('SELECT 1 FROM public.households WHERE id = $1 FOR UPDATE', [h]);
+      // Released after 6 s whatever happens: without the timeout the deletion
+      // would wait this long and then publish - which is the red state.
+      const release = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          void holder.query('COMMIT').finally(() => resolve());
+        }, 6000);
+      });
+      const since = await dbNow();
+      const started = Date.now();
+      let outcome: unknown = 'completed';
+      let waited = -1;
+      try {
+        // A RAW delete: the service's preparation would itself wait on H.
+        await deleteRaw(c).catch((e: unknown) => {
+          outcome = e instanceof Error ? e.message : e;
+        });
+        waited = Date.now() - started; // the deletion's own time, not the hold's
+      } finally {
+        await release;
+        await holder.end();
+      }
+
+      expect(outcome).toBe('completed');
+      await expectAuthUserGone(c);
+      expect(waited).toBeLessThan(5000); // gave up after ~1 s, not after the 6 s hold
+      expect(await noticesFor(m)).toEqual([]);
+      expect(await failuresSince(since)).toEqual([
+        { stage: 'publish', kind: 'household_transferred', sqlstate: '55P03' }, // lock_not_available
+      ]);
+    });
+
+    it("19. the LEGACY two-step entry point (main's removeMember, during the deploy window) records NO notice: its separate membership delete could still fail after it returns", async () => {
+      const o = await makeUser('o19');
+      const r = await makeUser('r19');
+      const h = await household('H19', o, [
+        { id: o, role: 'admin', joinedAt: '2026-01-01T00:00:00Z' },
+        { id: r, role: 'member', joinedAt: '2026-02-01T00:00:00Z' },
+      ]);
+      const rShared = await category(r, 'Gym19', h); // would be a rename notice
+      await category(o, 'Gym19');
+      await goal(r, 'Trip19', h, 0); // would be a plans notice
+
+      const since = await dbNow();
+      const { data, error } = await svc().rpc('reassign_member_shared_objects', {
+        p_household: h,
+        p_member: r,
+      });
+      expect(error).toBeNull();
+      expect(data).toBe(2); // CONTROL: the moves happened (category + goal)
+      expect(await row<{ user_id: string; name: string }>('categories', rShared)).toMatchObject({
+        user_id: o,
+        name: 'Gym19 2',
+      });
+      expect(await noticesFor(o)).toEqual([]);
+      expect(await failuresSince(since)).toEqual([]);
+    });
+
+    it('18. a contained failure is SEEN: the failure log names no one, leaves the database only as counts - to the server and the drift credential (schema_reader), which still reads no row of any table - and an acknowledged failure stops counting', async () => {
+      const marker = `RLS18-${stamp}`;
+      await db(
+        `insert into private.account_notice_failures (stage, kind, sqlstate) values ('publish', null, $1)`,
+        [marker]
+      );
+
+      // AS schema_reader. The local stack's superuser (same password as postgres
+      // there) may SET ROLE to any role with no membership at all. NOT a
+      // membership grant to postgres: `GRANT schema_reader TO CURRENT_USER WITH
+      // SET TRUE` SEGFAULTED the local Postgres 17.6 (supautils) on 2026-11-25.
+      const url = process.env.LOCAL_DB_URL;
+      if (!url) throw new Error('NOT MEASURED - LOCAL_DB_URL is unset');
+      const su = new URL(url);
+      su.username = 'supabase_admin';
+      const pg = new Client({ connectionString: su.toString() });
+      await pg.connect();
+      try {
+        await pg.query('BEGIN');
+        await pg.query('SET LOCAL ROLE schema_reader');
+        const seen = await pg.query(
+          `select stage, kind, sqlstate, failures::int as failures
+             from public.account_notice_failure_summary() where sqlstate = $1`,
+          [marker]
+        );
+        // MUST-FIND: the health check's own query sees the failure.
+        expect(seen.rows).toEqual([
+          { stage: 'publish', kind: null, sqlstate: marker, failures: 1 },
+        ]);
+        for (const table of [
+          'private.account_notice_failures',
+          'private.pending_account_notices',
+          'public.account_notices',
+          'public.transactions',
+        ]) {
+          await pg.query('SAVEPOINT probe');
+          const code = await pg.query(`select 1 from ${table} limit 1`).then(
+            () => 'READABLE',
+            (e: { code?: string }) => e.code
+          );
+          await pg.query('ROLLBACK TO SAVEPOINT probe');
+          expect({ table, code }).toEqual({ table, code: '42501' });
+        }
+      } finally {
+        await pg.query('ROLLBACK').catch(() => undefined);
+        await pg.end();
+      }
+
+      // SWEEPS, not samples. schema_reader: no privilege of any kind on any
+      // relation in public, private, storage or auth - the probe above is four
+      // tables; this is all of them.
+      const readable = await db<{ rel: string }>(
+        `select n.nspname || '.' || c.relname || ' ' || x.p as rel
+           from pg_class c
+           join pg_namespace n on n.oid = c.relnamespace
+          cross join unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) as x(p)
+          where n.nspname in ('public', 'private', 'storage', 'auth')
+            and c.relkind in ('r', 'p', 'v', 'm', 'f')
+            and has_table_privilege('schema_reader', c.oid, x.p)
+          order by 1`
+      );
+      expect(readable).toEqual([]);
+      // ...and the one SECURITY DEFINER function it may execute is the summary
+      // (a PUBLIC-executable definer function would be a side channel the table
+      // probe cannot see). Production had NONE before this migration.
+      const definers = await db<{ fn: string }>(
+        `select n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' as fn
+           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname not in ('pg_catalog', 'information_schema')
+            and p.prosecdef
+            and has_function_privilege('schema_reader', p.oid, 'EXECUTE')
+            and has_schema_privilege('schema_reader', n.oid, 'USAGE')
+          order by 1`
+      );
+      expect(definers.map((d) => d.fn)).toEqual(['public.account_notice_failure_summary()']);
+
+      // The three tables x every privilege x every client role and the two
+      // server-side roles: the ONLY grant is authenticated reading its own notices.
+      const grants = await db<{ g: string }>(
+        `select r.rolname || ' ' || t.tbl || ' ' || x.p as g
+           from unnest(array['anon', 'authenticated', 'service_role', 'schema_reader']) as r(rolname)
+          cross join unnest(array['public.account_notices',
+                                  'private.pending_account_notices',
+                                  'private.account_notice_failures']) as t(tbl)
+          cross join unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) as x(p)
+          where has_table_privilege(r.rolname, t.tbl, x.p)
+            and not (r.rolname = 'service_role' and t.tbl = 'public.account_notices')
+          order by 1`
+      );
+      expect(grants.map((x) => x.g)).toEqual(['authenticated public.account_notices SELECT']);
+      // MUST-FIND for that sweep: it does see a grant that exists.
+      const serverGrants = await db<{ n: number }>(
+        `select count(*)::int as n
+           from unnest(array['SELECT','INSERT','UPDATE','DELETE']) as x(p)
+          where has_table_privilege('service_role', 'public.account_notices', x.p)`
+      );
+      expect(serverGrants[0]!.n).toBe(4);
+
+      // The summary: counts for the server and schema_reader; no client.
+      const exec = await db<{ role: string; exec: boolean }>(
+        `select r.rolname as role,
+                has_function_privilege(r.oid, 'public.account_notice_failure_summary()', 'EXECUTE') as exec
+           from pg_roles r
+          where r.rolname in ('anon', 'authenticated', 'schema_reader', 'service_role')
+          order by 1`
+      );
+      expect(exec).toEqual([
+        { role: 'anon', exec: false },
+        { role: 'authenticated', exec: false },
+        { role: 'schema_reader', exec: true },
+        { role: 'service_role', exec: true },
+      ]);
+      const [fn] = await db<{ definer: boolean; config: string[] | null }>(
+        `select p.prosecdef as definer, p.proconfig as config
+           from pg_proc p where p.oid = 'public.account_notice_failure_summary()'::regprocedure`
+      );
+      expect(fn).toEqual({ definer: true, config: ['search_path=public'] });
+
+      // It names no one: no column that could hold a person.
+      const cols = await db<{ name: string }>(
+        `select attname as name from pg_attribute
+          where attrelid = 'private.account_notice_failures'::regclass
+            and attnum > 0 and not attisdropped order by attnum`
+      );
+      expect(cols.map((x) => x.name)).toEqual([
+        'id',
+        'created_at',
+        'stage',
+        'kind',
+        'sqlstate',
+        'acknowledged_at',
+      ]);
+
+      // Acknowledged = read by a person: it no longer counts.
+      await db(
+        `update private.account_notice_failures set acknowledged_at = now() where sqlstate = $1`,
+        [marker]
+      );
+      const after = await db<{ n: number }>(
+        `select count(*)::int as n from public.account_notice_failure_summary() where sqlstate = $1`,
+        [marker]
+      );
+      expect(after[0]!.n).toBe(0);
     });
   }
 );

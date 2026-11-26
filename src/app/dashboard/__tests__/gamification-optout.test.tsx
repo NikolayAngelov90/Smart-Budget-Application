@@ -79,6 +79,12 @@ jest.mock('@/lib/hooks/useComeback', () => ({
   useComeback: () => ({ data: undefined, error: undefined, isLoading: false, mutate: jest.fn() }),
   COMEBACK_KEY: '/api/comeback',
 }));
+// Account notices (spec-account-deletion-notifications): the REAL card renders;
+// only its data hook is stubbed - no notices by default, so the tests below see
+// the page as before.
+jest.mock('@/lib/hooks/useAccountNotices', () => ({
+  useAccountNotices: jest.fn(() => ({ notices: [], isLoading: false, dismiss: jest.fn() })),
+}));
 // THE gate input — the real useGamification + real gamification components run
 jest.mock('@/lib/hooks/useUserPreferences', () => ({
   useUserPreferences: jest.fn(),
@@ -147,5 +153,43 @@ describe('Dashboard with gamification OPTED OUT (Story 15.6, AC 2)', () => {
 
     expect(screen.getByTestId('balance-hero')).toBeInTheDocument();
     expect(screen.getByTestId('recent-transactions')).toBeInTheDocument();
+  });
+});
+
+describe('Dashboard shows the account-notices card (spec-account-deletion-notifications)', () => {
+  beforeAll(() => {
+    Object.assign(window.performance, {
+      mark: jest.fn(),
+      measure: jest.fn(),
+      getEntriesByName: jest.fn(() => []),
+    });
+  });
+
+  it('a notice for this person appears on the dashboard, with or without gamification', () => {
+    const { useAccountNotices } = jest.requireMock('@/lib/hooks/useAccountNotices') as {
+      useAccountNotices: jest.Mock;
+    };
+    useAccountNotices.mockReturnValue({
+      notices: [
+        {
+          id: 'n-1',
+          kind: 'household_transferred',
+          cause: 'account_deleted',
+          household_id: 'h',
+          params: { household: 'Home', seniority: true },
+          created_at: '2026-11-25T10:00:00Z',
+        },
+      ],
+      isLoading: false,
+      dismiss: jest.fn(),
+    });
+
+    for (const gamification of [false, true]) {
+      mockUsePrefs.mockReturnValue(prefs(gamification));
+      const { unmount } = renderPage();
+      // The card's own landmark, on the real page: the mount is unconditional.
+      expect(screen.getByRole('region', { name: 'What changed for you' })).toBeInTheDocument();
+      unmount();
+    }
   });
 });

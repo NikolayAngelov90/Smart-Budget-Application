@@ -62,6 +62,7 @@ import { advanceStreak, localDayKey } from '@/lib/ai/streakEngine';
 import type { StreakResponse } from '@/types/database.types';
 import { FirstTransactionPrompt } from '@/components/dashboard/FirstTransactionPrompt';
 import { FeatureIntroCard } from '@/components/dashboard/FeatureIntroCard';
+import { AccountNoticesCard } from '@/components/dashboard/AccountNoticesCard';
 import { useDashboardStats, DASHBOARD_STATS_KEY } from '@/lib/hooks/useDashboardStats';
 import { useSpendingByCategory } from '@/lib/hooks/useSpendingByCategory';
 import { isDashboardPeriod, type DashboardPeriod } from '@/lib/utils/dashboardPeriod';
@@ -248,6 +249,11 @@ export default function DashboardPage() {
           renders null unless a usage threshold has newly been crossed. Carries
           its own bottom margin so a non-pending user gets no phantom gap. */}
       <FeatureIntroCard />
+
+      {/* What an account deletion or member removal changed for this person
+          (spec-account-deletion-notifications). Single mount; renders null when
+          there is nothing to tell, and carries its own bottom margin. */}
+      <AccountNoticesCard />
 
       {/* Story 11.1: First Transaction Prompt — shown when user has 0 transactions */}
       {hasNoTransactions && (

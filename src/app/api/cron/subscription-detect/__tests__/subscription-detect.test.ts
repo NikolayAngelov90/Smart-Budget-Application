@@ -29,6 +29,13 @@ jest.mock('@/lib/services/subscriptionService', () => ({
   hasEnoughHistory: jest.fn(),
 }));
 
+// The second daily retry slot for account-notice pushes (spec-account-deletion-notifications).
+// Resolves by default (the real one always returns a promise); tests override ONCE,
+// so nothing leaks into the next test in a randomised order.
+jest.mock('@/lib/services/accountNoticeService', () => ({
+  deliverAccountNoticePushes: jest.fn().mockResolvedValue(null),
+}));
+
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
     debug: jest.fn(),
@@ -41,6 +48,7 @@ jest.mock('@/lib/utils/logger', () => ({
 import { NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { createSupabaseMock } from '@/test-utils/supabaseChain';
+import { deliverAccountNoticePushes } from '@/lib/services/accountNoticeService';
 import {
   detectSubscriptions,
   flagUnusedSubscriptions,
@@ -117,6 +125,36 @@ describe('GET /api/cron/subscription-detect', () => {
     expect(mockJsonResponse).toHaveBeenCalledWith(
       expect.objectContaining({ success: false, error: 'Unauthorized' }),
       expect.objectContaining({ status: 401 })
+    );
+  });
+
+  it('is the SECOND retry slot for account-notice pushes: runs once, even with no users, and reports its counts', async () => {
+    const counts = { considered: 1, sent: 1, deferred: 0, notDelivered: 0, skipped: 0 };
+    (deliverAccountNoticePushes as jest.Mock).mockResolvedValueOnce(counts);
+    mockCreateServiceRoleClient.mockReturnValue(
+      usersDb([]) as unknown as ReturnType<typeof createServiceRoleClient>
+    );
+
+    await GET(createRequest(CRON_SECRET));
+
+    expect(deliverAccountNoticePushes).toHaveBeenCalledTimes(1);
+    expect(mockJsonResponse).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, noticePushes: counts }),
+      expect.objectContaining({ status: 200 })
+    );
+  });
+
+  it('a failing notice retry never fails this job', async () => {
+    (deliverAccountNoticePushes as jest.Mock).mockRejectedValueOnce(new Error('regression'));
+    mockCreateServiceRoleClient.mockReturnValue(
+      usersDb([]) as unknown as ReturnType<typeof createServiceRoleClient>
+    );
+
+    await GET(createRequest(CRON_SECRET));
+
+    expect(mockJsonResponse).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, noticePushes: null }),
+      expect.objectContaining({ status: 200 })
     );
   });
 

@@ -38,6 +38,7 @@ import {
   hasEnoughHistory,
 } from '@/lib/services/subscriptionService';
 import { logger } from '@/lib/utils/logger';
+import { deliverAccountNoticePushes } from '@/lib/services/accountNoticeService';
 
 /**
  * GET handler for scheduled cron job
@@ -64,6 +65,16 @@ export async function GET(request: NextRequest) {
 
     logger.info('SubscriptionCron', 'Starting weekly subscription detection scan');
 
+    // Account notices (spec-account-deletion-notifications): the SECOND daily
+    // retry slot for a deferred or failed notice push, seven hours from the
+    // digest's (09:00 UTC). One fixed hour can sit inside someone's quiet hours
+    // every day; two slots this far apart cannot both. Run before this job's own
+    // work so its early returns cannot skip it; never fails it.
+    const noticePushes = await deliverAccountNoticePushes().catch((error: unknown) => {
+      logger.error('SubscriptionCron', 'account notice retry failed (non-fatal):', error);
+      return null;
+    });
+
     // 2. Query all user IDs from user_profiles
     const supabase = createServiceRoleClient();
     const { data: users, error: usersError } = await supabase
@@ -87,6 +98,7 @@ export async function GET(request: NextRequest) {
           totalUsers: 0,
           subscriptionsDetected: 0,
           subscriptionsFlagged: 0,
+          noticePushes,
           errors: [],
           errorCount: 0,
           elapsedMs: Date.now() - startTime,
@@ -148,6 +160,7 @@ export async function GET(request: NextRequest) {
         totalUsers: usersToProcess.length,
         subscriptionsDetected: totalDetected,
         subscriptionsFlagged: totalFlagged,
+        noticePushes,
         errors: errors.length > 0 ? errors.slice(0, 10) : [],
         errorCount: errors.length,
         elapsedMs,

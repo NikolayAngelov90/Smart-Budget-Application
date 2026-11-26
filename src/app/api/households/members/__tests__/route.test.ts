@@ -6,7 +6,10 @@
  * @jest-environment node
  */
 
+// `after()` RECORDS its callback (spec-account-deletion-notifications): the tests
+// assert the notice push is scheduled, and run it to see what it calls.
 jest.mock('next/server', () => ({
+  after: jest.fn(),
   NextResponse: {
     json: jest.fn((body: unknown, init?: { status?: number }) => ({
       status: init?.status ?? 200,
@@ -24,6 +27,10 @@ jest.mock('@/lib/services/householdMemberService', () => ({
 jest.mock('@/lib/services/invitationService', () => ({
   NotHouseholdAdminError: class NotHouseholdAdminError extends Error {},
 }));
+jest.mock('@/lib/services/accountNoticeService', () => ({
+  deliverAccountNoticePushes: jest.fn().mockResolvedValue({}),
+  NOTICE_CLOCK_SKEW_MS: 60_000,
+}));
 jest.mock('@/lib/utils/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
@@ -36,6 +43,8 @@ import {
   MemberNotFoundError,
 } from '@/lib/services/householdMemberService';
 import { NotHouseholdAdminError } from '@/lib/services/invitationService';
+import { after } from 'next/server';
+import { deliverAccountNoticePushes } from '@/lib/services/accountNoticeService';
 import { GET } from '../route';
 import { DELETE } from '../[userId]/route';
 
@@ -96,5 +105,70 @@ describe('DELETE /api/households/members/[userId]', () => {
     mockCreateClient.mockResolvedValue(authClient({ id: 'admin' }) as never);
     mockRemove.mockRejectedValue(new MemberNotFoundError());
     expect((await DELETE({} as never, { params })).status).toBe(404);
+  });
+
+  describe("account notices: the owner's push goes out AFTER the response", () => {
+    const mockAfter = after as unknown as jest.Mock;
+    const mockDeliver = deliverAccountNoticePushes as jest.Mock;
+    beforeEach(() => {
+      mockAfter.mockClear();
+      mockDeliver.mockClear();
+    });
+
+    it('a successful removal schedules delivery after the response, scoped to notices since the request began', async () => {
+      mockCreateClient.mockResolvedValue(authClient({ id: 'admin' }) as never);
+      mockRemove.mockResolvedValue(undefined);
+      const before = Date.now();
+
+      const res = await DELETE({} as never, { params });
+      const afterCall = Date.now();
+
+      expect(res.status).toBe(200);
+      expect(mockAfter).toHaveBeenCalledTimes(1);
+      // Scheduled once the removal SUCCEEDED (its transaction wrote the notices)...
+      expect(mockRemove.mock.invocationCallOrder[0]!).toBeLessThan(
+        mockAfter.mock.invocationCallOrder[0]!
+      );
+      // ...and nothing was delivered inside the request.
+      expect(mockDeliver).not.toHaveBeenCalled();
+
+      await (mockAfter.mock.calls[0]![0] as () => Promise<unknown>)();
+      expect(mockDeliver).toHaveBeenCalledTimes(1);
+      const since = (mockDeliver.mock.calls[0]![0] as { since: Date }).since.getTime();
+      // since = request start - 60s, and the request started inside [before, afterCall].
+      expect(since).toBeGreaterThanOrEqual(before - 60_000);
+      expect(since).toBeLessThanOrEqual(afterCall - 60_000);
+    });
+
+    it.each([
+      ['the removal fails', () => mockRemove.mockRejectedValue(new Error('x')), 500],
+      [
+        'the caller is not an admin',
+        () => mockRemove.mockRejectedValue(new NotHouseholdAdminError()),
+        403,
+      ],
+      [
+        'the target is not a member',
+        () => mockRemove.mockRejectedValue(new MemberNotFoundError()),
+        404,
+      ],
+    ])(
+      'schedules NOTHING when %s (no notice was written, and no scan for a refused caller)',
+      async (_l, arrange, status) => {
+        mockCreateClient.mockResolvedValue(authClient({ id: 'admin' }) as never);
+        arrange();
+
+        const res = await DELETE({} as never, { params });
+
+        expect(res.status).toBe(status);
+        expect(mockAfter).not.toHaveBeenCalled();
+      }
+    );
+
+    it('schedules nothing for an unauthenticated request', async () => {
+      mockCreateClient.mockResolvedValue(authClient(null) as never);
+      await DELETE({} as never, { params });
+      expect(mockAfter).not.toHaveBeenCalled();
+    });
   });
 });

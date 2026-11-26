@@ -1,0 +1,114 @@
+name: Account Notice Health
+
+# A notice failure never fails or rolls back an account deletion or a member's
+# removal: each one is CONTAINED and leaves a marker row in
+# private.account_notice_failures, which commits with the deletion (migration
+# 20261125100000). A contained failure nobody reads is a silent catch, so this
+# reads them - as counts only - and fails while any are unacknowledged. The
+# watchdog then keeps ONE issue open, retitled with its duration, until a
+# scheduled run passes. See scripts/account-notice-health/check.sh for what to do
+# about a failure, and how to acknowledge it.
+#
+# ===========================================================================
+# THE CREDENTIAL
+# ===========================================================================
+# The drift check's: schema_reader (LOGIN, NOINHERIT, no memberships, no table
+# grants). Its only grant beyond the catalog is EXECUTE on
+# public.account_notice_failure_summary(), which returns counts per
+# (stage, kind, sqlstate) and nothing about any person. Host, port and user are
+# the same as .github/workflows/schema-drift.yml; read that file for why aws-1
+# and why 5432.
+#
+# NEVER ON pull_request, for the reason schema-drift.yml gives: for a same-repo
+# branch, `pull_request` runs the workflow FROM THE BRANCH, so a branch could
+# print the secret. scripts/__tests__/production-credential-triggers.test.ts
+# fails if any workflow that uses this secret gains such a trigger.
+
+on:
+  schedule:
+    # 06:30 UTC daily: after the drift check (06:00), so a morning's two issues,
+    # if any, arrive together.
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+
+# issues: write is for the watchdog. contents: read is the default this would
+# otherwise lose by naming the block.
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: account-notice-health
+  cancel-in-progress: false
+
+jobs:
+  health:
+    name: Unacknowledged account-notice failures (production)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Tee'd to a file so the watchdog can derive a SIGNATURE from what failed.
+      # `set -o pipefail` keeps the exit status the script's rather than tee's.
+      - name: Read production's failure log (counts only)
+        env:
+          # Never echoed, never interpolated into a connection string.
+          PGPASSWORD: ${{ secrets.SCHEMA_READER_PASSWORD }}
+          PGHOST: aws-1-eu-north-1.pooler.supabase.com
+          PGPORT: '5432'
+          PGUSER: schema_reader.rlcgqvqpuqkkxtczalpi
+          PGDATABASE: postgres
+          PGSSLMODE: require
+        run: |
+          set -o pipefail
+          if [ -z "$PGPASSWORD" ]; then
+            echo "::error::SCHEMA_READER_PASSWORD is not set - the failure log would be unreadable, and an unreadable log must never read as a healthy one."
+            exit 1
+          fi
+          bash scripts/account-notice-health/check.sh 2>&1 | tee health.log
+
+      # SCHEDULED RUNS ONLY, as in schema-drift.yml: a dispatched run is already
+      # attributable to whoever started it.
+      - name: Describe what failed, for the watchdog
+        id: sig
+        if: always() && github.event_name == 'schedule'
+        run: |
+          set -euo pipefail
+          if [ ! -f health.log ]; then
+            SIG=did-not-run
+          elif grep -q '^ok: no unacknowledged' health.log; then
+            SIG=none
+          else
+            # The fingerprint is the FAILED lines WITH their count and last time.
+            # Those change only when a new failure is recorded (the summary counts
+            # unacknowledged rows only), so a NEW lost notice always changes the
+            # signature and reopens the issue - a silence granted for one failure
+            # can never hide the next. No FAILED line = the log was unreadable.
+            CAUSE=$(grep -E '^  FAILED ' health.log | sort -u || true)
+            if [ -z "$CAUSE" ]; then
+              SIG=unreadable
+            else
+              SIG=$(printf '%s' "$CAUSE" | sha256sum | cut -c1-12)
+            fi
+          fi
+          echo "signature=$SIG" >> "$GITHUB_OUTPUT"
+          echo "cause fingerprint: $SIG"
+          {
+            echo 'details<<WATCHDOG_EOF'
+            if [ -f health.log ]; then head -40 health.log; else echo 'The check did not run.'; fi
+            echo 'WATCHDOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Scheduled-failure watchdog
+        if: always() && github.event_name == 'schedule'
+        uses: ./.github/actions/scheduled-failure-watchdog
+        with:
+          check-name: Account Notice Health
+          label: watchdog/account-notices
+          outcome: ${{ job.status }}
+          signature: ${{ steps.sig.outputs.signature }}
+          details: ${{ steps.sig.outputs.details }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          cadence: nights
+          token: ${{ secrets.GITHUB_TOKEN }}
