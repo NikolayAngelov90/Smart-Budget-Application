@@ -97,6 +97,7 @@ context:
     - falling back to #109's function when the new one is missing: the release order excludes it, and a failed call keeps every row staged;
     - extra params checks: the staging writers always set them, and `households.name` / `categories.name` are NOT NULL.
   - **KEEP:** a new function (expand/contract); the outer guard only before any write; plain types only; withdraw-before-write.
+- **2026-11-27, Niki's decisions.** (1) A waiting notice whose claim is no longer true is WITHDRAWN AND TOLD TO NO ONE, as built: a false notice is worse than none, and the current state is visible in the app anyway. (2) The Bulgarian strings are accepted as drafted. (3) Taking back the member/category locks was right: a lock no test can observe is a claim, not a guard.
 
 ## Design Notes
 
@@ -124,6 +125,19 @@ context:
 - verify steps except `npm ci` (the VS Code Jest runner holds a file it needs): type-check, lint and format OK; `Tests:       93 skipped, 2981 passed, 3074 total`; coverage scope and threshold OK. `test:order`: the same tally. `next build`: compiled.
 - Mutants: 41 of 41 killed by their expected test, the RLS ones in their expected case of test 21. The first run killed 35. Four were errors of mine, fixed and rerun: a harness pattern (D29) and a `test.each` title printing the wrong argument (A2-A4). Two were a real masking (D26, D27): a FOR UPDATE holder also blocks the notice's foreign-key check, so (5b/5c) now hold an uncommitted household RENAME, which only the claim's lock waits for.
 - Old code x new schema: main b035f1d's full RLS suite on this migration: `Test Suites: 14 passed, 14 total` / `Tests:       91 passed, 91 total`. 0 new-kind notices were written. The 4 `refusal` failures recorded are exactly main's test 20 forced cases on #109's function: (3) 23514, (4) and (5) 55P03 with no kind, (7) 55P03 with its kind.
+
+**APPLIED to production on 2026-11-27** from `8aa979cd43b39e7297744a733cb004a75badec1e`, on Niki's yes for sha256 `76a8ed64eaab9ae35b6f79db45d9c6ff07a8f3cf8c70f706395497b76698baa3` (asserted, with the blob and a clean tree, in the same command as the push). The migration file is now FROZEN.
+- The dry run listed only `20261126210000_refused_deletion_changes.sql`.
+- Pre-apply, production: both constraint names present; 0 rows that would violate the kind/cause pairing; postgres holds UPDATE on auth.users.
+- Before -> after:
+  - the kind and cause CHECKs widened, and `account_notices_kind_cause_check` added;
+  - the new function appeared, executable by service_role only (ACL `postgres=X/postgres,service_role=X/postgres`);
+  - the ledger went 50 -> 51;
+  - #109's function is unchanged (md5 b4bba9725bab), and 29 of 39 snapshot rows are unchanged.
+- All 10 function definitions and all 3 constraint definitions are identical to the local stack the full RLS suite ran on, rebuilt from 8aa979c (`Tests: 93 passed, 93 total`).
+- The ledger matches the repo one-for-one, 51/51.
+- Drift run 46044755274 on this branch: `hard failures : 0`, `pending : 0`, `DRIFT CHECK PASSED.`
+- schema_reader can still execute only `public.account_notice_failure_summary()`; it holds 0 relation privileges and no USAGE on `private`. No client may EXECUTE any of the 9 notice functions or write to the three notice tables. 0 neutral-kind rows; no unacknowledged failures.
 
 ## Suggested Review Order
 
