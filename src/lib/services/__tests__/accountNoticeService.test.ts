@@ -393,6 +393,37 @@ describe('renderAccountNotice / toSupportedLocale', () => {
     });
   });
 
+  // spec-refused-deletion-neutral-variants: the push renders every neutral kind
+  // with its OWN texts (an unrenderable notice would be skipped, never pushed).
+  test.each([
+    ['household_now_yours', 'ownership_transferred', { household: 'Вкъщи' }, 'householdNowYours'],
+    [
+      'shared_plans_now_yours',
+      'ownership_transferred',
+      { household: 'Вкъщи' },
+      'sharedPlansNowYours',
+    ],
+    [
+      'shared_category_renamed',
+      'ownership_transferred',
+      { household: 'Вкъщи', from: 'Храна', to: 'Храна 2' },
+      'sharedCategoryRenamed',
+    ],
+    ['category_copies_made', 'copies_made', { categories: ['Храна'] }, 'categoryCopiesMade'],
+  ] as const)('%s is pushed with its neutral texts', (kind, cause, params, key) => {
+    const r = renderAccountNotice('bg', {
+      id: 'n',
+      kind,
+      cause,
+      household_id: kind === 'category_copies_made' ? null : 'h',
+      params,
+      created_at: '2026-11-26T11:00:00Z',
+    });
+    const texts = bgMessages.accountNotices as Record<string, string>;
+    expect(r?.title).toContain(texts[`${key}Title`]!.split('{')[0]!);
+    expect(r?.body.startsWith(`bg|${texts[`${key}Body`]}|`)).toBe(true);
+  });
+
   test('a translator error (e.g. a missing key) renders NOTHING, so a key path is never pushed', () => {
     const notice = {
       id: 'n',

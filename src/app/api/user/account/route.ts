@@ -145,12 +145,13 @@ export async function DELETE(request: NextRequest) {
       deleteSuccess = await deleteUserAccount(user.id);
     } catch (error) {
       if (error instanceof AccountDeletionRefusedError) {
-        // A CONFIRMED refusal may have published the new owner's neutral notice
-        // (spec-refused-deletion-notice): push it after the response, as for a
-        // deletion. An unconfirmed failure publishes nothing, so nothing here.
+        // A CONFIRMED refusal may have published neutral notices of what the
+        // preparation changed (spec-refused-deletion-notice, -neutral-variants):
+        // push them after the response, as for a deletion. An unconfirmed failure
+        // publishes nothing, so nothing here.
         // One confirmed case lands below instead: a refusal whose preparation
-        // result was unreadable publishes the notice but is answered with a
-        // generic error - its push comes from the daily crons (02:00 / 09:00 UTC).
+        // result was unreadable publishes the notices but is answered with a
+        // generic error - their pushes come from the daily crons (02:00 / 09:00 UTC).
         after(() =>
           deliverAccountNoticePushes({ since: new Date(requestStart - NOTICE_CLOCK_SKEW_MS) })
         );
@@ -180,7 +181,7 @@ export async function DELETE(request: NextRequest) {
     // trigger, inside the deletion's own transaction); their PUSHES go out after
     // the response, off the critical path. A refused deletion published no
     // DELETION notice, so nobody is told about a deletion that did not happen;
-    // its only notice is the neutral transfer one, pushed from the catch above.
+    // its only notices are the neutral ones, pushed from the catch above.
     after(() =>
       deliverAccountNoticePushes({ since: new Date(requestStart - NOTICE_CLOCK_SKEW_MS) })
     );

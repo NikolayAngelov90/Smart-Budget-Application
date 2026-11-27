@@ -133,6 +133,83 @@ describe('noticeMessage', () => {
     ).toBe('sharedPlansReceivedBodyRemoved');
   });
 
+  // spec-refused-deletion-neutral-variants: a REFUSED deletion's other changes,
+  // told neutrally. Each maps to its OWN keys - never a deletion text, never the
+  // cause-dependent bodies - and names no one.
+  test('category_copies_made -> the neutral texts, the names listed for the locale; no subject, whatever shared_household or the cause says', () => {
+    for (const [shared_household, cause] of [
+      [true, 'copies_made'],
+      [false, 'account_deleted'],
+      [undefined, 'member_removed'],
+    ] as const) {
+      expect(
+        noticeMessage(
+          notice(
+            'category_copies_made',
+            { categories: ['Храна', 'Сметки'], shared_household },
+            { cause, household_id: null }
+          ),
+          'bg'
+        )
+      ).toEqual({
+        titleKey: 'categoryCopiesMadeTitle',
+        bodyKey: 'categoryCopiesMadeBody',
+        values: { categories: 'Храна и Сметки' },
+      });
+    }
+    expect(
+      noticeMessage(notice('category_copies_made', { categories: ['A', ' ', 'B'] }), 'en')?.values
+    ).toEqual({ categories: 'A and B' });
+  });
+
+  test('shared_category_renamed -> from, to AND the household, for every cause; never the deletion-era keys', () => {
+    for (const cause of ['ownership_transferred', 'account_deleted', 'member_removed'] as const) {
+      expect(
+        noticeMessage(
+          notice(
+            'shared_category_renamed',
+            { household: 'Вкъщи', from: 'Храна', to: 'Храна 2' },
+            { cause }
+          ),
+          'bg'
+        )
+      ).toEqual({
+        titleKey: 'sharedCategoryRenamedTitle',
+        bodyKey: 'sharedCategoryRenamedBody',
+        values: { from: 'Храна', to: 'Храна 2', household: 'Вкъщи' },
+      });
+    }
+  });
+
+  // A deletion text claims a deletion (or a removal): shown ONLY with the cause
+  // that backs it. A neutral cause on a deletion kind is never rendered as one -
+  // the database refuses that pairing too (account_notices_kind_cause_check).
+  test.each([
+    ['household_transferred', 'ownership_transferred', { household: 'H', seniority: true }],
+    ['household_transferred', 'member_removed', { household: 'H' }],
+    ['categories_copied', 'copies_made', { categories: ['Храна'] }],
+    ['categories_copied', 'member_removed', { categories: ['Храна'] }],
+    ['shared_plans_received', 'ownership_transferred', { household: 'H' }],
+    ['shared_plans_received', 'copies_made', { household: 'H' }],
+  ] as const)('%s with cause %s -> null (fail closed)', (kind, cause, params) => {
+    expect(noticeMessage(notice(kind, params, { cause }), 'en')).toBeNull();
+  });
+
+  test('shared_plans_now_yours -> the neutral texts for EVERY cause (no "deleted", no "removed")', () => {
+    for (const cause of ['ownership_transferred', 'account_deleted', 'member_removed'] as const) {
+      expect(
+        noticeMessage(
+          notice('shared_plans_now_yours', { household: 'Вкъщи', goals: 1, budgets: 2 }, { cause }),
+          'en'
+        )
+      ).toEqual({
+        titleKey: 'sharedPlansNowYoursTitle',
+        bodyKey: 'sharedPlansNowYoursBody',
+        values: { household: 'Вкъщи' },
+      });
+    }
+  });
+
   test.each([
     ['household_transferred without a household', notice('household_transferred', {})],
     [
@@ -146,6 +223,27 @@ describe('noticeMessage', () => {
     ],
     ['category_renamed without "to"', notice('category_renamed', { from: 'A' })],
     ['shared_plans_received without a household', notice('shared_plans_received', { goals: 1 })],
+    ['category_copies_made with no names', notice('category_copies_made', { categories: [] })],
+    [
+      'category_copies_made with names that are not a list',
+      notice('category_copies_made', { categories: 'Храна' }),
+    ],
+    [
+      'shared_category_renamed without "from"',
+      notice('shared_category_renamed', { household: 'H', to: 'A 2' }),
+    ],
+    [
+      'shared_category_renamed without "to"',
+      notice('shared_category_renamed', { household: 'H', from: 'A' }),
+    ],
+    [
+      'shared_category_renamed without a household',
+      notice('shared_category_renamed', { from: 'A', to: 'A 2' }),
+    ],
+    [
+      'shared_plans_now_yours with a blank household',
+      notice('shared_plans_now_yours', { household: '  ' }),
+    ],
     ['an unknown kind', notice('something_new' as AccountNoticeKind, { household: 'H' })],
   ])('%s -> null (never a text with a hole)', (_label, n) => {
     expect(noticeMessage(n, 'en')).toBeNull();
@@ -153,6 +251,29 @@ describe('noticeMessage', () => {
 });
 
 describe('byPriority', () => {
+  test('each neutral kind sits right after its deletion counterpart', () => {
+    const list = [
+      notice('shared_category_renamed', {}, { id: 'R' }),
+      notice('category_renamed', {}, { id: 'r' }),
+      notice('shared_plans_now_yours', {}, { id: 'P' }),
+      notice('shared_plans_received', {}, { id: 'p' }),
+      notice('category_copies_made', {}, { id: 'C' }),
+      notice('categories_copied', {}, { id: 'c' }),
+      notice('household_now_yours', {}, { id: 'T' }),
+      notice('household_transferred', {}, { id: 't' }),
+    ];
+    expect([...list].sort(byPriority).map((n) => n.id)).toEqual([
+      't',
+      'T',
+      'c',
+      'C',
+      'p',
+      'P',
+      'r',
+      'R',
+    ]);
+  });
+
   test('the biggest change first, then the oldest', () => {
     const list = [
       notice('category_renamed', {}, { id: 'r', created_at: '2026-11-25T10:00:00Z' }),
