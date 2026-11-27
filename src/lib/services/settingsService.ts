@@ -388,12 +388,13 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
       }
       const confirmedRefusal = !lookupError && lookup?.user?.id === userId;
       if (confirmedRefusal) {
-        // The account verifiably still exists: the refusal is CONFIRMED. A
-        // household the preparation transferred stays transferred, so its new
-        // owner is told now - neutrally, nothing about a deletion - and the staged
-        // "its creator deleted their account" is withdrawn, so a later successful
-        // retry cannot tell the same transfer twice (spec-refused-deletion-notice).
-        await publishRefusedDeletionNotices(adminClient as unknown as SupabaseClient, userId);
+        // The account verifiably still exists: the refusal is CONFIRMED. What the
+        // preparation changed stays changed - the household, shared categories,
+        // goals and budgets, copies of categories - so the staged deletion notices
+        // are withdrawn and each change still true is told now, neutrally, nothing
+        // about a deletion; a later successful retry cannot tell the same change
+        // twice (spec-refused-deletion-notice, spec-refused-deletion-neutral-variants).
+        await publishRefusedDeletionChanges(adminClient as unknown as SupabaseClient, userId);
       }
       if (!confirmedRefusal) {
         logger.warn(
@@ -420,13 +421,18 @@ export async function deleteUserAccount(userId: string): Promise<boolean> {
 }
 
 /**
- * The neutral notice for a CONFIRMED refused deletion (migration
- * 20261126120000). BEST-EFFORT: the refusal stands whatever happens here, so a
- * failure is logged and swallowed - it never changes what the dialog says. The
- * function contains and records its own per-notice failures; this catch is for
- * the call itself (network, a missing function on an older schema).
+ * The neutral notices for a CONFIRMED refused deletion (migration
+ * 20261126210000, which supersedes 20261126120000's household-only function).
+ * BEST-EFFORT: the refusal stands whatever happens here, so a failure is logged
+ * and swallowed - it never changes what the dialog says. The function contains
+ * and records its own per-notice failures; this catch is for the call itself
+ * (network, a missing function on an older schema). A call that FAILED leaves
+ * every staged notice in place, so a later successful deletion still tells each
+ * once. A call that only outlived the cap may still complete in the database;
+ * its notices are then pushed by the daily crons rather than right after this
+ * response.
  */
-async function publishRefusedDeletionNotices(
+async function publishRefusedDeletionChanges(
   adminClient: SupabaseClient,
   userId: string
 ): Promise<void> {
@@ -441,7 +447,7 @@ async function publishRefusedDeletionNotices(
   try {
     const outcome = await Promise.race([
       Promise.resolve(
-        adminClient.rpc('publish_refused_deletion_notices', { p_user: userId })
+        adminClient.rpc('publish_refused_deletion_changes', { p_user: userId })
       ) as Promise<{ error: unknown }>,
       capped,
     ]);
@@ -457,7 +463,7 @@ async function publishRefusedDeletionNotices(
   }
 }
 
-/** How long a refusal answer may wait for the neutral notice (exported for tests). */
+/** How long a refusal answer may wait for the neutral notices (exported for tests). */
 export const REFUSED_NOTICE_TIMEOUT_MS = 3000;
 
 /**

@@ -23,14 +23,27 @@ export type AccountNoticeKind =
    * cause, but returns no message for a kind it does not know (hidden, never
    * falsified).
    */
-  | 'household_now_yours';
+  | 'household_now_yours'
+  /**
+   * The same, for the refused attempt's OTHER changes, which stand too
+   * (spec-refused-deletion-neutral-variants): shared goals or budgets and a
+   * renamed shared category moved to the owner, and copies made for someone who
+   * used the person's categories. New kinds for the same reason.
+   */
+  | 'shared_plans_now_yours'
+  | 'shared_category_renamed'
+  | 'category_copies_made';
 
 /**
- * Why the change happened. `ownership_transferred` (household_now_yours only)
- * names the change itself, not the refused deletion behind it: the payload must
- * not reveal what the neutral text withholds.
+ * Why the change happened. The neutral kinds' causes - `ownership_transferred`,
+ * `copies_made` - name the change itself, not the refused deletion behind it:
+ * the payload must not reveal what the neutral text withholds.
  */
-export type AccountNoticeCause = 'account_deleted' | 'member_removed' | 'ownership_transferred';
+export type AccountNoticeCause =
+  | 'account_deleted'
+  | 'member_removed'
+  | 'ownership_transferred'
+  | 'copies_made';
 
 export interface AccountNotice {
   id: string;
@@ -46,8 +59,11 @@ export const NOTICE_PRIORITY: readonly AccountNoticeKind[] = [
   'household_transferred',
   'household_now_yours',
   'categories_copied',
+  'category_copies_made',
   'shared_plans_received',
+  'shared_plans_now_yours',
   'category_renamed',
+  'shared_category_renamed',
 ];
 
 export function byPriority(a: AccountNotice, b: AccountNotice): number {
@@ -67,6 +83,10 @@ export interface NoticeMessage {
 
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
 
+/** The copied names, or [] when the params cannot name them. */
+const copiedNames = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((n): n is string => text(n) !== null) : [];
+
 /** "A, B and C" for the locale; a plain join where Intl.ListFormat is missing (old Safari). */
 function formatList(names: string[], locale: string): string {
   return typeof Intl.ListFormat === 'function'
@@ -76,14 +96,16 @@ function formatList(names: string[], locale: string): string {
 
 /**
  * The keys and values for a notice, or `null` when its params cannot fill the
- * text. A notice is never shown with a hole in it.
+ * text. A notice is never shown with a hole in it - nor with a claim its cause
+ * does not back: a text that says someone deleted their account, or that you
+ * removed a member, needs exactly that cause (the database pairs them too).
  */
 export function noticeMessage(notice: AccountNotice, locale: string): NoticeMessage | null {
   const p = notice.params ?? {};
   switch (notice.kind) {
     case 'household_transferred': {
       const household = text(p.household);
-      if (!household) return null;
+      if (!household || notice.cause !== 'account_deleted') return null;
       // "As its longest-standing member" only when the database KNEW it (every
       // candidate had a join date). Absent means not known: no claim.
       return {
@@ -106,18 +128,27 @@ export function noticeMessage(notice: AccountNotice, locale: string): NoticeMess
         : null;
     }
     case 'categories_copied': {
-      const names = Array.isArray(p.categories)
-        ? p.categories.filter((n): n is string => text(n) !== null)
-        : [];
-      if (names.length === 0) return null;
+      const copied = copiedNames(p.categories);
+      if (copied.length === 0 || notice.cause !== 'account_deleted') return null;
       // "A household member" only when the recipient shares the household with
       // the person who left; otherwise (e.g. a former member) a neutral subject.
       return {
         titleKey: 'categoriesCopiedTitle',
         bodyKey:
           p.shared_household === true ? 'categoriesCopiedBody' : 'categoriesCopiedBodyOutside',
-        values: { categories: formatList(names, locale) },
+        values: { categories: formatList(copied, locale) },
       };
+    }
+    case 'category_copies_made': {
+      // No subject at all: whose categories they were, and why, is not told.
+      const copied = copiedNames(p.categories);
+      return copied.length > 0
+        ? {
+            titleKey: 'categoryCopiesMadeTitle',
+            bodyKey: 'categoryCopiesMadeBody',
+            values: { categories: formatList(copied, locale) },
+          }
+        : null;
     }
     case 'category_renamed': {
       const from = text(p.from);
@@ -126,17 +157,38 @@ export function noticeMessage(notice: AccountNotice, locale: string): NoticeMess
         ? { titleKey: 'categoryRenamedTitle', bodyKey: 'categoryRenamedBody', values: { from, to } }
         : null;
     }
+    case 'shared_category_renamed': {
+      const from = text(p.from);
+      const to = text(p.to);
+      const household = text(p.household);
+      return from && to && household
+        ? {
+            titleKey: 'sharedCategoryRenamedTitle',
+            bodyKey: 'sharedCategoryRenamedBody',
+            values: { from, to, household },
+          }
+        : null;
+    }
+    case 'shared_plans_now_yours': {
+      const household = text(p.household);
+      return household
+        ? {
+            titleKey: 'sharedPlansNowYoursTitle',
+            bodyKey: 'sharedPlansNowYoursBody',
+            values: { household },
+          }
+        : null;
+    }
     case 'shared_plans_received': {
       const household = text(p.household);
-      if (!household) return null;
-      return {
-        titleKey: 'sharedPlansReceivedTitle',
-        bodyKey:
-          notice.cause === 'member_removed'
-            ? 'sharedPlansReceivedBodyRemoved'
-            : 'sharedPlansReceivedBodyDeleted',
-        values: { household },
-      };
+      const bodyKey =
+        notice.cause === 'member_removed'
+          ? 'sharedPlansReceivedBodyRemoved'
+          : notice.cause === 'account_deleted'
+            ? 'sharedPlansReceivedBodyDeleted'
+            : null;
+      if (!household || !bodyKey) return null;
+      return { titleKey: 'sharedPlansReceivedTitle', bodyKey, values: { household } };
     }
     default:
       return null;

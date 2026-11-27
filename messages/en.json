@@ -1136,11 +1136,17 @@
     "categoriesCopiedTitle": "Your categories were kept",
     "categoriesCopiedBody": "A household member deleted their account. You had been using categories they created ({categories}), so you now have your own copies, and your entries point to them.",
     "categoriesCopiedBodyOutside": "Someone whose categories you used ({categories}) deleted their account, so you now have your own copies and your entries point to them.",
+    "categoryCopiesMadeTitle": "You now have your own copies of categories",
+    "categoryCopiesMadeBody": "You used someone else's categories ({categories}). Your entries point to the copies.",
     "categoryRenamedTitle": "A shared category was renamed",
     "categoryRenamedBody": "The shared category \"{from}\" now belongs to you. You already had one with that name, so it is now called \"{to}\".",
+    "sharedCategoryRenamedTitle": "A shared category was renamed: \"{from}\" → \"{to}\"",
+    "sharedCategoryRenamedBody": "It belonged to another member of {household} and is now yours. You already had a category with the original name.",
     "sharedPlansReceivedTitle": "Shared goals or budgets are now yours",
     "sharedPlansReceivedBodyDeleted": "A household member deleted their account. Shared goals or budgets they created in {household} now belong to you.",
     "sharedPlansReceivedBodyRemoved": "You removed a member from {household}. Shared goals or budgets that member created are now yours.",
+    "sharedPlansNowYoursTitle": "Shared goals or budgets are now yours",
+    "sharedPlansNowYoursBody": "They belonged to another member of {household}.",
     "dismiss": "Got it",
     "more": "{count, plural, one {# more notice} other {# more notices}}"
   }

@@ -74,7 +74,56 @@ const CASES = [
   notice('category_renamed', { household: 'Вкъщи', from: 'Храна', to: 'Храна 2' }),
   notice('shared_plans_received', { household: 'Вкъщи', goals: 1, budgets: 1 }),
   notice('shared_plans_received', { household: 'Вкъщи', goals: 0, budgets: 2 }, 'member_removed'),
+  // spec-refused-deletion-neutral-variants
+  notice('category_copies_made', { categories: ['Храна', 'Сметки'] }, 'copies_made'),
+  notice(
+    'shared_category_renamed',
+    { household: 'Вкъщи', from: 'Храна', to: 'Храна 2' },
+    'ownership_transferred'
+  ),
+  notice(
+    'shared_plans_now_yours',
+    { household: 'Вкъщи', goals: 1, budgets: 1 },
+    'ownership_transferred'
+  ),
 ];
+
+/** The refused deletion's neutral notices, exactly as they read (title, then body). */
+const NEUTRAL: Record<'en' | 'bg', Record<string, [title: string, body: string]>> = {
+  en: {
+    household_now_yours: ['Вкъщи is now yours', 'You are its owner and admin.'],
+    category_copies_made: [
+      'You now have your own copies of categories',
+      "You used someone else's categories (Храна and Сметки). Your entries point to the copies.",
+    ],
+    shared_category_renamed: [
+      'A shared category was renamed: "Храна" → "Храна 2"',
+      'It belonged to another member of Вкъщи and is now yours. You already had a category with the original name.',
+    ],
+    shared_plans_now_yours: [
+      'Shared goals or budgets are now yours',
+      'They belonged to another member of Вкъщи.',
+    ],
+  },
+  bg: {
+    household_now_yours: [
+      'Домакинството Вкъщи вече е ваше',
+      'Сега вие сте собственик и администратор.',
+    ],
+    category_copies_made: [
+      'Вече имате собствени копия на категории',
+      'Използвахте чужди категории (Храна и Сметки). Записите ви са прехвърлени към копията.',
+    ],
+    shared_category_renamed: [
+      'Обща категория беше преименувана: „Храна“ → „Храна 2“',
+      'Принадлежеше на друг член на домакинството Вкъщи, а сега е ваша. Вече имахте категория с първоначалното име.',
+    ],
+    shared_plans_now_yours: [
+      'Общи цели или бюджети вече са ваши',
+      'Принадлежаха на друг член на домакинството Вкъщи.',
+    ],
+  },
+};
 
 describe.each(['en', 'bg'] as const)('account-notice texts under real ICU (%s)', (locale) => {
   const file = (locale === 'en' ? enMessages : bgMessages).accountNotices as Record<string, string>;
@@ -113,6 +162,27 @@ describe.each(['en', 'bg'] as const)('account-notice texts under real ICU (%s)',
         ? 'Вкъщи is now yours. You are its owner and admin.'
         : 'Домакинството Вкъщи вече е ваше. Сега вие сте собственик и администратор.'
     );
+  });
+
+  test('every neutral notice reads EXACTLY as proposed to Niki - and none mentions a deletion or a removal', () => {
+    const kinds = Object.keys(NEUTRAL[locale]);
+    expect(kinds).toHaveLength(4);
+    for (const kind of kinds) {
+      const message = noticeMessage(CASES.find((c) => c.kind === kind)!, locale)!;
+      const [title, body] = render(locale, [
+        [message.titleKey, message.values],
+        [message.bodyKey, message.values],
+      ]);
+      expect({ kind, title, body }).toEqual({
+        kind,
+        title: NEUTRAL[locale][kind]![0],
+        body: NEUTRAL[locale][kind]![1],
+      });
+      // The refused deletion behind them is never claimed or hinted at, in either
+      // language: no deleting, removing, leaving, and no account.
+      const said = `${kind}: ${title} ${body}`;
+      expect(said).not.toMatch(/delet|remov|account|left|изтри|премахн|акаунт|напусн/i);
+    }
   });
 
   test('the list of copied categories reads naturally in this language', () => {

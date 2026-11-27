@@ -55,11 +55,19 @@ Each one was CONTAINED; what it means depends on the stage:
               person who stays was lost.
   'stage'   - a deletion's preparation: that notice was never staged.
   'write'   - a member's removal: the removal completed, that notice was lost.
-  'refusal' - a REFUSED deletion: the deletion did NOT happen, and the new owner
-              was not told neutrally. The staged notice usually still stands
-              and is told if that person's deletion later succeeds. With
-              sqlstate 55P03 and no kind, that person's own deletion was most
-              likely in flight and told the new owner itself.
+  'refusal' - a REFUSED deletion: the deletion did NOT happen, and someone it
+              changed something for was not told neutrally. The kind is the
+              NEUTRAL notice that was not written - household_now_yours,
+              shared_plans_now_yours, shared_category_renamed or
+              category_copies_made, for a staged household_transferred,
+              shared_plans_received, category_renamed or categories_copied.
+              That staged notice still stands and is told if that person's
+              deletion later succeeds.
+              55P03 WITH a kind: a row it needed (the household, a member, a
+              category, or the staged notice) was locked by someone else for
+              over 1 s. NO kind means nothing was told: 55P03 - that person's
+              own deletion was most likely in flight and told everyone itself;
+              42P01 - the staged notices could not be read at all.
 Read them in the Supabase SQL editor:
   SELECT * FROM private.account_notice_failures
    WHERE acknowledged_at IS NULL ORDER BY created_at;

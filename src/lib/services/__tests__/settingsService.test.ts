@@ -543,12 +543,26 @@ describe('settingsService', () => {
       });
 
       /*
-       * The new owner's NEUTRAL notice (spec-refused-deletion-notice): published
-       * only on a CONFIRMED refusal, best-effort, never on an ambiguous outcome.
+       * The NEUTRAL notices of what a refused deletion changed
+       * (spec-refused-deletion-notice, spec-refused-deletion-neutral-variants):
+       * published only on a CONFIRMED refusal, best-effort, never on an
+       * ambiguous outcome - through the function that tells EVERY change.
        */
-      describe("the new owner's neutral notice", () => {
-        const PUBLISH = 'publish_refused_deletion_notices';
+      describe('the neutral notices of a refused deletion', () => {
+        const PUBLISH = 'publish_refused_deletion_changes';
+        /** #109's household-only function: kept for older deployments, never called now. */
+        const HOUSEHOLD_ONLY = 'publish_refused_deletion_notices';
         const publishCalls = () => mockServiceRpc.mock.calls.filter(([fn]) => fn === PUBLISH);
+
+        test("one call tells every change: #109's household-only function is never called", async () => {
+          mockServiceRpc.mockResolvedValue(prepared(true, 2));
+          mockGetUserById.mockResolvedValue({ data: { user: { id: mockUserId } }, error: null });
+
+          await deleteUserAccount(mockUserId).catch(() => undefined);
+
+          expect(publishCalls()).toHaveLength(1);
+          expect(mockServiceRpc.mock.calls.filter(([fn]) => fn === HOUSEHOLD_ONLY)).toEqual([]);
+        });
 
         test('a CONFIRMED refusal publishes it - for THIS user, after the confirmation, before the error is thrown', async () => {
           mockServiceRpc.mockResolvedValue(prepared(true, 0));
