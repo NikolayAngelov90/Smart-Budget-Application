@@ -37,6 +37,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { nameProblemOf, nameSchema } from '@/lib/validation/names';
 import { logger } from '@/lib/utils/logger';
 
 /**
@@ -171,16 +172,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Validation schema for category creation
+// Validation schema for category creation. The name rule is the shared one
+// (any script; normalised to NFC, trimmed, spaces collapsed): spec-cyrillic-names.
 const createCategorySchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Category name is required')
-    .max(100, 'Category name too long')
-    .trim()
-    .refine((val) => /^[a-zA-Z0-9\s]+$/.test(val), {
-      message: 'Only letters, numbers, and spaces allowed',
-    }),
+  name: nameSchema('category'),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color format'),
   type: z.enum(['income', 'expense']),
   shared: z.boolean().optional(), // Story 13.5: create as a shared household category
@@ -191,7 +186,7 @@ const createCategorySchema = z.object({
  * Creates a new custom category
  *
  * Request body:
- * - name: string (1-100 chars, alphanumeric + spaces)
+ * - name: string (1-100 characters, any script: see src/lib/validation/names.ts)
  * - color: string (hex format #RRGGBB)
  * - type: 'income' | 'expense'
  *
@@ -225,6 +220,8 @@ export async function POST(request: NextRequest) {
         {
           error: 'Validation error',
           details: validation.error.flatten().fieldErrors,
+          // The name rule's code (spec-cyrillic-names), when the name is what failed.
+          problem: nameProblemOf(validation.error),
         },
         { status: 400 }
       );

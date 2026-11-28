@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { nameProblemOf, nameSchema } from '@/lib/validation/names';
 import { createClient } from '@/lib/supabase/server';
 import {
   createHousehold,
@@ -21,11 +22,8 @@ import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 
 const createHouseholdSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, 'Household name is required')
-    .max(100, 'Household name is too long'),
+  // The shared name rule (spec-cyrillic-names): any script, normalised.
+  name: nameSchema('household'),
 });
 
 export async function POST(request: NextRequest) {
@@ -44,7 +42,13 @@ export async function POST(request: NextRequest) {
     const parsed = createHouseholdSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: { message: 'Validation failed', details: parsed.error.flatten().fieldErrors } },
+        {
+          error: {
+            message: 'Validation failed',
+            details: parsed.error.flatten().fieldErrors,
+            problem: nameProblemOf(parsed.error),
+          },
+        },
         { status: 400 }
       );
     }

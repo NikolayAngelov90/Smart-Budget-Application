@@ -29,6 +29,10 @@ jest.mock('next-intl', () => ({
       common: {
         skip: 'Skip',
       },
+      // the shared name rule (spec-cyrillic-names)
+      names: {
+        invalidCharacters: 'Use only letters, digits, spaces and these signs',
+      },
     };
     return translations[namespace]?.[key] || key;
   },
@@ -171,5 +175,60 @@ describe('OnboardingModal', () => {
       expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Get Started' })).toBeInTheDocument();
     });
+  });
+});
+
+// spec-cyrillic-names: the display name, when given, follows the shared rule.
+describe('OnboardingModal - names in any script', () => {
+  const props = () => ({
+    isOpen: true,
+    onComplete: jest.fn(),
+    onSkip: jest.fn(),
+    defaultDisplayName: '',
+  });
+
+  it('passes a Bulgarian display name on, normalised', async () => {
+    const p = props();
+    renderWithChakra(<OnboardingModal {...p} />);
+    fireEvent.change(screen.getByLabelText('Display Name'), {
+      target: { value: '  Иван   Петров ' },
+    });
+    fireEvent.click(screen.getByText('Get Started'));
+    await waitFor(() =>
+      expect(p.onComplete).toHaveBeenCalledWith({
+        displayName: 'Иван Петров',
+        currencyFormat: 'EUR',
+      })
+    );
+  });
+
+  it('refuses a zero-width space: the translated message, and onboarding does not complete', async () => {
+    const p = props();
+    renderWithChakra(<OnboardingModal {...p} />);
+    fireEvent.change(screen.getByLabelText('Display Name'), { target: { value: 'Ива\u200Bн' } });
+    fireEvent.click(screen.getByText('Get Started'));
+    expect(
+      await screen.findByText('Use only letters, digits, spaces and these signs')
+    ).toBeInTheDocument();
+    expect(p.onComplete).not.toHaveBeenCalled();
+  });
+
+  // The pre-fill comes from the sign-in provider, not from the person.
+  it('shows the provider name normalised', () => {
+    renderWithChakra(<OnboardingModal {...props()} defaultDisplayName="  Иван   Петров " />);
+    expect((screen.getByLabelText('Display Name') as HTMLInputElement).value).toBe('Иван Петров');
+  });
+
+  it('a provider name the rule refuses is not shown, so the field does not open with an error; finishing leaves the stored name alone', async () => {
+    const p = props();
+    renderWithChakra(
+      <OnboardingModal {...p} defaultDisplayName={'Ivan \u{1F468}\u200D\u{1F469}'} />
+    );
+    expect((screen.getByLabelText('Display Name') as HTMLInputElement).value).toBe('');
+    fireEvent.click(screen.getByText('Get Started'));
+    await waitFor(() =>
+      expect(p.onComplete).toHaveBeenCalledWith({ displayName: undefined, currencyFormat: 'EUR' })
+    );
+    expect(screen.queryByText('Use only letters, digits, spaces and these signs')).toBeNull();
   });
 });

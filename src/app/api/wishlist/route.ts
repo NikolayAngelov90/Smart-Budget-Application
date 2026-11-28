@@ -12,6 +12,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { nameApiMessage, nameProblemOf, nameSchema } from '@/lib/validation/names';
+
+/** A refused NAME says so, with its code (spec-cyrillic-names); other failures keep the generic message. */
+function nameFailure(error: z.ZodError) {
+  const problem = nameProblemOf(error);
+  return problem
+    ? { error: { message: nameApiMessage('Wishlist item', problem, 100), problem } }
+    : null;
+}
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { listWishlist, createItem, WishlistCategoryError } from '@/lib/services/wishlistService';
@@ -30,7 +39,7 @@ import { resolvePreferredCurrency } from '@/lib/services/preferredCurrency';
 export const dynamic = 'force-dynamic';
 
 const createSchema = z.object({
-  name: z.string().trim().min(1).max(100),
+  name: nameSchema('wishlistItem'), // the shared name rule (spec-cyrillic-names)
   price: z
     .number()
     .positive()
@@ -281,7 +290,7 @@ export async function POST(request: NextRequest) {
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        {
+        nameFailure(parsed.error) ?? {
           error: {
             message: 'A name (1–100 chars) and a positive price (max 2 decimals) are required',
           },

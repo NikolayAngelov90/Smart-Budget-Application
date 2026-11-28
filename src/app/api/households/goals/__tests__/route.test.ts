@@ -118,3 +118,44 @@ describe('POST /api/households/goals/[id]/contribute', () => {
     expect((await CONTRIBUTE(req({ amount: 50 }), { params })).status).toBe(404);
   });
 });
+
+// spec-cyrillic-names: the shared name rule at the API layer.
+describe('POST /api/households/goals - names in any script', () => {
+  it('creates with the name normalised', async () => {
+    mockCreateClient.mockResolvedValue(authClient({ id: 'u' }) as never);
+    mockCreate.mockResolvedValue({ id: 'g1' } as never);
+    const res = await POST(req({ name: '  Храна   за  дома ', target_amount: 1000 }));
+    expect(res.status).toBe(200);
+    expect(mockCreate).toHaveBeenCalledWith('u', { name: 'Храна за дома', target_amount: 1000 });
+  });
+
+  const MESSAGES: Record<string, string> = {
+    invalidCharacters: 'Goal name contains characters that are not allowed',
+    empty: 'Goal name is required',
+    needsLetter: 'Goal name needs at least one letter or digit',
+    tooLong: 'Goal name must be 100 characters or fewer',
+  };
+
+  it.each([
+    ['Хра\u200Bна', 'invalidCharacters'],
+    ['Хра\tна', 'invalidCharacters'],
+    ['   ', 'empty'],
+    ['- -', 'needsLetter'],
+    ['ж'.repeat(101), 'tooLong'],
+  ])('refuses %j with 400 and problem %s, before any write', async (name, problem) => {
+    mockCreateClient.mockResolvedValue(authClient({ id: 'u' }) as never);
+    const res = await POST(req({ name, target_amount: 1000 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toEqual({ message: MESSAGES[problem], problem });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('a bad TARGET with a good name keeps the generic message, with no name problem', async () => {
+    mockCreateClient.mockResolvedValue(authClient({ id: 'u' }) as never);
+    const res = await POST(req({ name: 'Ваканция', target_amount: -1 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toEqual({
+      message: 'A valid name and target amount are required',
+    });
+  });
+});

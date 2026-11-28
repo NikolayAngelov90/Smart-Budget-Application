@@ -177,3 +177,59 @@ describe('PATCH /api/values/reorder', () => {
     expect(svc.reorderValues).toHaveBeenCalledWith('user-1', [UUID]);
   });
 });
+
+// spec-cyrillic-names: the shared name rule at the API layer.
+describe('values - names in any script', () => {
+  it('POST creates with the name normalised', async () => {
+    mockCreateClient.mockResolvedValue(authClient({ id: 'user-1' }) as never);
+    (svc.createValue as jest.Mock).mockResolvedValue({ id: 'v1' });
+    const res = await POST(req({ name: '  Здраве   и спорт ' }));
+    expect(res.status).toBe(201);
+    expect(svc.createValue).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ name: 'Здраве и спорт' })
+    );
+  });
+
+  it('PATCH renames with the name normalised', async () => {
+    mockCreateClient.mockResolvedValue(authClient({ id: 'user-1' }) as never);
+    const res = await PATCH_ID(req({ name: ' Семейство ' }), params('v1'));
+    expect(res.status).toBe(200);
+    expect(svc.updateValue).toHaveBeenCalledWith('user-1', 'v1', { name: 'Семейство' });
+  });
+
+  const MESSAGES: Record<string, string> = {
+    invalidCharacters: 'Value name contains characters that are not allowed',
+    empty: 'Value name is required',
+    needsLetter: 'Value name needs at least one letter or digit',
+    tooLong: 'Value name must be 50 characters or fewer',
+  };
+
+  it.each([
+    ['Хра\u200Bна', 'invalidCharacters'],
+    ['Хра\tна', 'invalidCharacters'],
+    ['   ', 'empty'],
+    ['- -', 'needsLetter'],
+    ['ж'.repeat(51), 'tooLong'],
+  ])(
+    'POST and PATCH refuse %j with 400 and problem %s, before any write',
+    async (name, problem) => {
+      mockCreateClient.mockResolvedValue(authClient({ id: 'user-1' }) as never);
+      const posted = await POST(req({ name }));
+      expect(posted.status).toBe(400);
+      expect((await posted.json()).error).toEqual({ message: MESSAGES[problem], problem });
+      const patched = await PATCH_ID(req({ name }), params('v1'));
+      expect(patched.status).toBe(400);
+      expect((await patched.json()).error).toEqual({ message: MESSAGES[problem], problem });
+      expect(svc.createValue).not.toHaveBeenCalled();
+      expect(svc.updateValue).not.toHaveBeenCalled();
+    }
+  );
+
+  it('PATCH with nothing valid keeps the generic message, with no name problem', async () => {
+    mockCreateClient.mockResolvedValue(authClient({ id: 'user-1' }) as never);
+    const res = await PATCH_ID(req({}), params('v1'));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toEqual({ message: 'A valid name or priority is required' });
+  });
+});

@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { logger } from '@/lib/utils/logger';
+import { checkName } from '@/lib/validation/names';
 
 /**
  * GET handler for OAuth callback
@@ -66,19 +67,31 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Story 11.1: Pre-fill display_name from OAuth metadata if available
+      // Story 11.1: Pre-fill display_name from OAuth metadata if available.
+      // The provider's name follows the shared name rule (spec-cyrillic-names):
+      // stored normalised, and only if it passes - a name the rule refuses (an
+      // emoji, a zero-width joiner) is not pre-filled, the person can set one in
+      // settings, and the database would refuse it anyway.
       const oauthDisplayName =
         data.user.user_metadata?.full_name || data.user.user_metadata?.name || null;
+      const oauthName = oauthDisplayName ? checkName(oauthDisplayName, 'displayName') : null;
 
-      if (oauthDisplayName) {
+      if (oauthName?.ok) {
         try {
-          await supabase
+          // supabase-js RETURNS a refused write (e.g. the database CHECK) as
+          // { error } rather than throwing it: log both.
+          const { error: prefillError } = await supabase
             .from('user_profiles')
-            .update({ display_name: oauthDisplayName })
+            .update({ display_name: oauthName.name })
             .eq('id', userId);
+          if (prefillError) {
+            logger.error('AuthCallback', 'Failed to pre-fill display name:', prefillError.message);
+          }
         } catch (nameError) {
           logger.error('AuthCallback', 'Failed to pre-fill display name:', nameError);
         }
+      } else if (oauthName) {
+        logger.warn('AuthCallback', `OAuth display name not pre-filled: ${oauthName.problem}`);
       }
     }
 

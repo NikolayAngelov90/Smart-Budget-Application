@@ -21,7 +21,7 @@ import type { Goal } from '@/types/database.types';
 // ============================================================================
 
 jest.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => {
+  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     const map: Record<string, string> = {
       createGoal: 'Create Goal',
       editGoal: 'Edit Goal',
@@ -33,8 +33,12 @@ jest.mock('next-intl', () => ({
       cancel: 'Cancel',
       createSuccess: 'Goal created!',
       updateSuccess: 'Goal updated!',
+      // names namespace (the shared name rule, spec-cyrillic-names)
+      empty: 'Enter a name.',
+      invalidCharacters: 'Use only letters, digits, spaces and these signs',
+      tooLong: 'Use at most {max} characters.',
     };
-    return map[key] ?? key;
+    return (map[key] ?? key).replace('{max}', String(params?.max ?? '{max}'));
   },
 }));
 
@@ -98,7 +102,8 @@ describe('GoalForm', () => {
     fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
-      expect(screen.getByText(/Goal name is required/i)).toBeInTheDocument();
+      // The shared name rule's message, from the `names` namespace (spec-cyrillic-names).
+      expect(screen.getByText('Enter a name.')).toBeInTheDocument();
     });
   });
 
@@ -168,5 +173,45 @@ describe('GoalForm', () => {
     await waitFor(() => {
       expect(onSuccess).not.toHaveBeenCalled();
     });
+  });
+});
+
+// spec-cyrillic-names: the goal form accepts names in any script, normalised.
+describe('GoalForm - names in any script', () => {
+  const fill = (name: string) => {
+    fireEvent.change(screen.getByPlaceholderText('e.g. Emergency Fund'), {
+      target: { value: name },
+    });
+    fireEvent.change(screen.getByRole('spinbutton'), {
+      target: { value: '500', valueAsNumber: 500 },
+    });
+    fireEvent.click(screen.getByText('Save'));
+  };
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: jest.fn().mockResolvedValue({}) });
+  });
+
+  it('sends a Bulgarian name normalised', async () => {
+    renderWithChakra(<GoalForm isOpen={true} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    fill('  Почивка   на  морето ');
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(body.name).toBe('Почивка на морето');
+  });
+
+  it('a name past 200 characters is refused with the GOAL limit, 200', async () => {
+    renderWithChakra(<GoalForm isOpen={true} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    fill('ж'.repeat(201));
+    expect(await screen.findByText('Use at most 200 characters.')).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('refuses a zero-width space: the translated message, and nothing is sent', async () => {
+    renderWithChakra(<GoalForm isOpen={true} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    fill('Почи\u200Bвка');
+    expect(
+      await screen.findByText('Use only letters, digits, spaces and these signs')
+    ).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

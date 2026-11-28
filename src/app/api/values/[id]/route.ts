@@ -8,6 +8,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { nameApiMessage, nameProblemOf, nameSchema } from '@/lib/validation/names';
+
+/** A refused NAME says so, with its code (spec-cyrillic-names); other failures keep the generic message. */
+function nameFailure(error: z.ZodError) {
+  const problem = nameProblemOf(error);
+  return problem ? { error: { message: nameApiMessage('Value', problem, 50), problem } } : null;
+}
 import { createClient } from '@/lib/supabase/server';
 import { updateValue, deleteValue } from '@/lib/services/valuesService';
 import { logger } from '@/lib/utils/logger';
@@ -16,7 +23,7 @@ export const dynamic = 'force-dynamic';
 
 const updateSchema = z
   .object({
-    name: z.string().trim().min(1).max(50).optional(),
+    name: nameSchema('value').optional(), // the shared name rule (spec-cyrillic-names)
     priority: z.number().int().min(0).optional(),
   })
   .refine((d) => d.name !== undefined || d.priority !== undefined, {
@@ -39,7 +46,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: { message: 'A valid name or priority is required' } },
+        nameFailure(parsed.error) ?? { error: { message: 'A valid name or priority is required' } },
         { status: 400 }
       );
     }

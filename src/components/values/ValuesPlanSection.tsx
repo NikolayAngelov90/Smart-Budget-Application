@@ -45,6 +45,8 @@ import {
 } from '@chakra-ui/icons';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
+import { checkName, normalizeName } from '@/lib/validation/names';
+import { useNameMessage } from '@/lib/validation/useNameMessage';
 import { useValues } from '@/lib/hooks/useValues';
 import type { ValueWithCategories } from '@/types/database.types';
 import type { Category } from '@/types/category.types';
@@ -57,6 +59,7 @@ const categoriesFetcher = async (url: string) => {
 
 export function ValuesPlanSection() {
   const t = useTranslations('values');
+  const nameMessage = useNameMessage();
   const toast = useToast();
   const { values, isLoading, mutate } = useValues();
   const { data: categoriesData } = useSWR('/api/categories', categoriesFetcher);
@@ -72,8 +75,14 @@ export function ValuesPlanSection() {
     toast({ title: msg, status: 'success', duration: 2500, isClosable: true });
 
   const handleAdd = async () => {
-    const name = newName.trim();
-    if (!name) return;
+    if (!newName.trim()) return;
+    // The shared name rule (spec-cyrillic-names): any script, normalised.
+    const check = checkName(newName, 'value');
+    if (!check.ok) {
+      fail(nameMessage(check.problem, 'value'));
+      return;
+    }
+    const name = check.name;
     setIsAdding(true);
     try {
       const res = await fetch('/api/values', {
@@ -93,7 +102,14 @@ export function ValuesPlanSection() {
     }
   };
 
-  const handleRename = async (id: string, name: string) => {
+  /** True once saved; false if refused or failed, so the editor stays open with what was typed. */
+  const handleRename = async (id: string, rawName: string): Promise<boolean> => {
+    const check = checkName(rawName, 'value');
+    if (!check.ok) {
+      fail(nameMessage(check.problem, 'value'));
+      return false;
+    }
+    const name = check.name;
     try {
       const res = await fetch(`/api/values/${id}`, {
         method: 'PATCH',
@@ -104,8 +120,10 @@ export function ValuesPlanSection() {
       if (!res.ok) throw new Error(res.status === 409 ? t('duplicateName') : json?.error?.message);
       await mutate();
       ok(t('updated'));
+      return true;
     } catch (e) {
       fail(e instanceof Error ? e.message : undefined);
+      return false;
     }
   };
 
@@ -185,7 +203,6 @@ export function ValuesPlanSection() {
                 if (e.key === 'Enter') handleAdd();
               }}
               placeholder={t('namePlaceholder')}
-              maxLength={50}
             />
             <Button
               leftIcon={<AddIcon />}
@@ -240,7 +257,7 @@ interface ValueRowProps {
   total: number;
   categories: Category[];
   categoryById: Map<string, Category>;
-  onRename: (id: string, name: string) => void;
+  onRename: (id: string, name: string) => Promise<boolean>;
   onDelete: (id: string) => void;
   onReorder: (index: number, direction: -1 | 1) => void;
   onSetCategories: (id: string, categoryIds: string[]) => void;
@@ -285,7 +302,6 @@ function ValueRow({
                 size="sm"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                maxLength={50}
                 autoFocus
               />
               <IconButton
@@ -293,10 +309,16 @@ function ValueRow({
                 icon={<CheckIcon />}
                 size="sm"
                 colorScheme="green"
-                onClick={() => {
-                  if (editName.trim() && editName.trim() !== value.name)
-                    onRename(value.id, editName.trim());
-                  setIsEditing(false);
+                onClick={async () => {
+                  // Nothing to save (empty, or the same name once normalised): close.
+                  const next = normalizeName(editName);
+                  if (!next || next === value.name) {
+                    setEditName(value.name);
+                    setIsEditing(false);
+                    return;
+                  }
+                  // A refused or failed rename keeps the editor open with what was typed.
+                  if (await onRename(value.id, editName)) setIsEditing(false);
                 }}
               />
               <IconButton

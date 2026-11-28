@@ -179,7 +179,7 @@ describe('POST /api/goals', () => {
     await POST(req);
 
     expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ error: { message: 'Goal name is required' } }),
+      expect.objectContaining({ error: { message: 'Goal name is required', problem: 'empty' } }),
       expect.objectContaining({ status: 400 })
     );
   });
@@ -191,7 +191,9 @@ describe('POST /api/goals', () => {
     await POST(req);
 
     expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ error: { message: 'Goal name must be 200 characters or fewer' } }),
+      expect.objectContaining({
+        error: { message: 'Goal name must be 200 characters or fewer', problem: 'tooLong' },
+      }),
       expect.objectContaining({ status: 400 })
     );
   });
@@ -248,6 +250,37 @@ describe('POST /api/goals', () => {
     expect(mockJsonResponse).toHaveBeenCalledWith(
       expect.objectContaining({ error: { message: 'Failed to manage goals' } }),
       expect.objectContaining({ status: 500 })
+    );
+  });
+});
+
+// spec-cyrillic-names: the shared name rule at the API layer.
+describe('POST /api/goals - names in any script', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('stores a Bulgarian name normalised', async () => {
+    mockAuthUser();
+    mockCreateGoal.mockResolvedValue(sampleGoal as never);
+    await POST(buildRequest({ name: '  Храна   за  дома ', target_amount: 100 }));
+    expect(mockCreateGoal).toHaveBeenCalledWith(
+      expect.anything(),
+      'user-1',
+      expect.objectContaining({ name: 'Храна за дома' })
+    );
+  });
+
+  it.each([
+    ['Хра\u200Bна', 'invalidCharacters', 'Goal name contains characters that are not allowed'],
+    ['Хра\tна', 'invalidCharacters', 'Goal name contains characters that are not allowed'],
+    ['   ', 'empty', 'Goal name is required'],
+    ['- -', 'needsLetter', 'Goal name needs at least one letter or digit'],
+  ])('refuses %j with 400 and problem %s, before any write', async (name, problem, message) => {
+    mockAuthUser();
+    await POST(buildRequest({ name, target_amount: 100 }));
+    expect(mockCreateGoal).not.toHaveBeenCalled();
+    expect(mockJsonResponse).toHaveBeenCalledWith(
+      expect.objectContaining({ error: { message, problem } }),
+      expect.objectContaining({ status: 400 })
     );
   });
 });

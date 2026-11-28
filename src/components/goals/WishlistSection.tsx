@@ -32,6 +32,8 @@ import {
 } from '@chakra-ui/react';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
+import { checkName } from '@/lib/validation/names';
+import { useNameMessage } from '@/lib/validation/useNameMessage';
 import { useWishlist } from '@/lib/hooks/useWishlist';
 import { logger } from '@/lib/utils/logger';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
@@ -55,6 +57,7 @@ const PRICE_PATTERN = /^\d+([.,]\d{1,2})?$/;
 
 export function WishlistSection() {
   const t = useTranslations('wishlist');
+  const nameMessage = useNameMessage();
   const toast = useToast();
   const { data, error, isLoading, mutate } = useWishlist();
   const { preferences } = useUserPreferences();
@@ -111,17 +114,19 @@ export function WishlistSection() {
   const handleAdd = async () => {
     if (isSaving) return;
 
-    const trimmedName = name.trim();
+    // The shared name rule (spec-cyrillic-names): any script, normalised.
+    const nameCheck = checkName(name, 'wishlistItem');
     // The second of the two inline copies, replaced by the shared helper. This
     // one had no live defect: PRICE_PATTERN already accepted both separators and
     // gated the parse, so the `.replace(',', '.')` could not truncate. It is
     // replaced anyway, because three implementations is how the next one
     // diverges — and the one that diverged was the primary amount input.
     const parsedPrice = parseDecimalInput(price);
-    if (!trimmedName || trimmedName.length > 100) {
-      setNameError(t('invalidName'));
+    if (!nameCheck.ok) {
+      setNameError(nameMessage(nameCheck.problem, 'wishlistItem') ?? '');
       return;
     }
+    const trimmedName = nameCheck.name;
     if (
       !PRICE_PATTERN.test(price.trim()) ||
       parsedPrice === null ||
@@ -238,7 +243,6 @@ export function WishlistSection() {
               </FormLabel>
               <Input
                 value={name}
-                maxLength={100}
                 placeholder={t('itemNamePlaceholder')}
                 onChange={(e) => {
                   setName(e.target.value);

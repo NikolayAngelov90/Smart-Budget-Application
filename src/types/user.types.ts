@@ -107,7 +107,8 @@ export interface UserProfile {
  * Used by PUT /api/user/profile endpoint
  */
 export interface UpdateUserProfilePayload {
-  display_name?: string;
+  /** Any script (src/lib/validation/names.ts); null or empty clears it. */
+  display_name?: string | null;
   profile_picture_url?: string;
   preferences?: Partial<UserPreferences>;
 }

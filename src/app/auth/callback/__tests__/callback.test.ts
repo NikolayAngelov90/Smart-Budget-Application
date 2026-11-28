@@ -23,6 +23,7 @@ jest.mock('next/server', () => ({
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createSupabaseMock, type SupabaseMock } from '@/test-utils/supabaseChain';
+import { logger } from '@/lib/utils/logger';
 
 jest.mock('@/lib/supabase/server');
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -165,5 +166,70 @@ describe('GET /auth/callback', () => {
     expect(mockSupabase.rpc).toHaveBeenCalledWith('seed_user_categories', {
       target_user_id: mockUserId,
     });
+  });
+
+  // spec-cyrillic-names: the provider's name follows the shared name rule.
+  it.each([
+    ['a Bulgarian name, normalised', '  Иван   Петров ', 'Иван Петров'],
+    ['a decomposed letter, composed (NFC)', 'Чай'.normalize('NFD'), 'Чай'],
+  ])('pre-fills %s', async (_label, fullName, stored) => {
+    mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({
+      data: { user: { id: mockUserId, user_metadata: { full_name: fullName } } },
+      error: null,
+    });
+    const { GET } = await import('@/app/auth/callback/route');
+    await GET(new Request('http://localhost:3000/auth/callback?code=test-code') as never);
+    expect(db.allCallsTo('user_profiles', 'update')).toEqual([[{ display_name: stored }]]);
+  });
+
+  it.each([
+    ['an emoji family (zero-width joiners)', 'Ivan \u{1F468}\u200D\u{1F469}\u200D\u{1F467}'],
+    ['a control character', 'Iva\u0007n'],
+  ])(
+    'does not pre-fill a name the rule refuses: %s - sign-in still completes',
+    async (_label, fullName) => {
+      mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({
+        data: { user: { id: mockUserId, user_metadata: { full_name: fullName } } },
+        error: null,
+      });
+      const { GET } = await import('@/app/auth/callback/route');
+      const response = await GET(
+        new Request('http://localhost:3000/auth/callback?code=test-code') as never
+      );
+      expect(db.allCallsTo('user_profiles', 'update')).toEqual([]);
+      expect(response.headers.get('location')).toBe('http://localhost:3000/');
+    }
+  );
+
+  // supabase-js RETURNS a refused write as { error }; the pre-fill logs it, and sign-in still completes.
+  it('logs a refused display-name pre-fill (returned, not thrown) and still signs in', async () => {
+    const errorSpy = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
+    db = createSupabaseMock({
+      tables: {
+        categories: { data: [], error: null },
+        user_profiles: {
+          data: null,
+          error: { message: 'violates check constraint', code: '23514' },
+        },
+      },
+    });
+    mockSupabase = db.client;
+    mockSupabase.auth.exchangeCodeForSession = jest.fn().mockResolvedValue({
+      data: { user: { id: mockUserId, user_metadata: { full_name: 'Иван' } } },
+      error: null,
+    });
+    mockCreateClient.mockResolvedValue(mockSupabase);
+    const { GET } = await import('@/app/auth/callback/route');
+    const response = await GET(
+      new Request('http://localhost:3000/auth/callback?code=test-code') as never
+    );
+    expect(db.allCallsTo('user_profiles', 'update')).toEqual([[{ display_name: 'Иван' }]]);
+    expect(errorSpy).toHaveBeenCalledWith(
+      'AuthCallback',
+      'Failed to pre-fill display name:',
+      'violates check constraint'
+    );
+    expect(response.headers.get('location')).toBe('http://localhost:3000/');
+    errorSpy.mockRestore();
   });
 });

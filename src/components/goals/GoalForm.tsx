@@ -29,6 +29,8 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
+import { nameSchema } from '@/lib/validation/names';
+import { useNameMessage } from '@/lib/validation/useNameMessage';
 import type { Goal } from '@/types/database.types';
 
 // ============================================================================
@@ -37,7 +39,7 @@ import type { Goal } from '@/types/database.types';
 
 const goalSchema = z
   .object({
-    name: z.string().min(1, 'Goal name is required').max(200).trim(),
+    name: nameSchema('goal'), // the shared rule: any script, normalised (spec-cyrillic-names)
     target_amount: z.number({ error: 'Amount is required' }).positive('Must be greater than 0'),
     deadline: z.string().optional().nullable(),
   })
@@ -69,6 +71,7 @@ interface GoalFormProps {
 
 export function GoalForm({ isOpen, onClose, onSuccess, existingGoal }: GoalFormProps) {
   const t = useTranslations('goals');
+  const nameMessage = useNameMessage();
   const toast = useToast();
   const isEditMode = existingGoal !== undefined;
 
@@ -153,7 +156,7 @@ export function GoalForm({ isOpen, onClose, onSuccess, existingGoal }: GoalFormP
               <FormControl isInvalid={!!errors.name}>
                 <FormLabel>{t('name')}</FormLabel>
                 <Input placeholder={t('namePlaceholder')} {...register('name')} />
-                <FormErrorMessage>{errors.name?.message}</FormErrorMessage>
+                <FormErrorMessage>{nameMessage(errors.name?.message, 'goal')}</FormErrorMessage>
               </FormControl>
 
               <FormControl isInvalid={!!errors.target_amount}>

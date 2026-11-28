@@ -122,6 +122,18 @@ describe('createHousehold', () => {
     await expect(createHousehold('user-1', 'x'.repeat(101))).rejects.toThrow(/1–100 characters/);
   });
 
+  // spec-cyrillic-names: 100 CHARACTERS, counted as Postgres counts. Each of these
+  // letters (CJK Extension B) is two UTF-16 units, so .length says 200.
+  it('accepts 100 characters outside the Basic Multilingual Plane (the shared rule counts code points)', async () => {
+    const { db, client } = makeAdminMock({});
+    mockCreateServiceRoleClient.mockReturnValue(client as never);
+    const name = '\u{20000}'.repeat(100);
+    expect(name.length).toBe(200); // CONTROL: UTF-16 would call it too long
+    const result = await createHousehold('user-1', name).catch((e: unknown) => e);
+    expect(String(result)).not.toMatch(/1–100 characters/);
+    expect(db.allCallsTo('households', 'insert')).toEqual([[expect.objectContaining({ name })]]);
+  });
+
   it('rolls back the household when the membership insert fails', async () => {
     const { db, client } = makeAdminMock({ memberErr: { message: 'boom' } });
     mockCreateServiceRoleClient.mockReturnValue(client as never);

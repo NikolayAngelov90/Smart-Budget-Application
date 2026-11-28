@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getGoal, updateGoal, deleteGoal } from '@/lib/services/goalService';
 import { logger } from '@/lib/utils/logger';
+import { checkName, nameApiMessage } from '@/lib/validation/names';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -70,20 +71,19 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const updates: Record<string, unknown> = {};
 
     if (body.name !== undefined) {
-      const name = typeof body.name === 'string' ? body.name.trim() : '';
-      if (!name) {
+      // The shared name rule (spec-cyrillic-names): any script, normalised.
+      const nameCheck = checkName(body.name, 'goal');
+      if (!nameCheck.ok) {
+        const message =
+          nameCheck.problem === 'empty'
+            ? 'Goal name cannot be empty'
+            : nameApiMessage('Goal', nameCheck.problem, nameCheck.max);
         return NextResponse.json(
-          { error: { message: 'Goal name cannot be empty' } },
+          { error: { message, problem: nameCheck.problem } },
           { status: 400 }
         );
       }
-      if (name.length > 200) {
-        return NextResponse.json(
-          { error: { message: 'Goal name must be 200 characters or fewer' } },
-          { status: 400 }
-        );
-      }
-      updates.name = name;
+      updates.name = nameCheck.name;
     }
 
     if (body.target_amount !== undefined) {

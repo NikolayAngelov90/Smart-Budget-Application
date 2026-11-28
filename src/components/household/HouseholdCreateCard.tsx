@@ -14,6 +14,8 @@ import {
   Button,
   Card,
   CardBody,
+  FormControl,
+  FormErrorMessage,
   Heading,
   Input,
   Stack,
@@ -24,6 +26,8 @@ import {
 import { useTranslations } from 'next-intl';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 import { PendingInviteBanner } from '@/components/household/PendingInviteBanner';
+import { checkName, type NameProblem } from '@/lib/validation/names';
+import { useNameMessage } from '@/lib/validation/useNameMessage';
 
 export function HouseholdCreateCard() {
   const t = useTranslations('household');
@@ -31,16 +35,23 @@ export function HouseholdCreateCard() {
   const { mutate } = useHousehold();
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nameError, setNameError] = useState<NameProblem | undefined>();
+  const nameMessage = useNameMessage();
 
   const handleCreate = async () => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
+    // The shared name rule (spec-cyrillic-names): any script, normalised.
+    const check = checkName(name, 'household');
+    if (!check.ok) {
+      setNameError(check.problem);
+      return;
+    }
+    setNameError(undefined);
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/households', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed }),
+        body: JSON.stringify({ name: check.name }),
       });
       if (!response.ok) throw new Error(t('createFailed'));
       await mutate();
@@ -71,14 +82,19 @@ export function HouseholdCreateCard() {
               {t('emptyPrompt')}
             </Text>
             <Stack direction={{ base: 'column', sm: 'row' }} spacing={2}>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('namePlaceholder')}
-                maxLength={100}
-                aria-label={t('namePlaceholder')}
-                minH={{ base: '44px', sm: '40px' }}
-              />
+              <FormControl isInvalid={!!nameError}>
+                <Input
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setNameError(undefined);
+                  }}
+                  placeholder={t('namePlaceholder')}
+                  aria-label={t('namePlaceholder')}
+                  minH={{ base: '44px', sm: '40px' }}
+                />
+                <FormErrorMessage>{nameMessage(nameError, 'household')}</FormErrorMessage>
+              </FormControl>
               <Button
                 colorScheme="brand"
                 onClick={handleCreate}
