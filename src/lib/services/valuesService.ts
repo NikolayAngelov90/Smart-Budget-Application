@@ -8,6 +8,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { checkName } from '@/lib/validation/names';
 import { logger } from '@/lib/utils/logger';
 import type {
   ValueWithCategories,
@@ -15,14 +16,13 @@ import type {
   UpdateValueInput,
 } from '@/types/database.types';
 
-const NAME_MAX = 50;
-
+/** The shared name rule (spec-cyrillic-names), counting characters as Postgres does. */
 function validName(name: string): string {
-  const trimmed = (name ?? '').trim();
-  if (trimmed.length < 1 || trimmed.length > NAME_MAX) {
+  const check = checkName(name, 'value');
+  if (!check.ok) {
     throw new Error('Value name must be 1–50 characters');
   }
-  return trimmed;
+  return check.name;
 }
 
 /** Returns the user's values (priority ASC), each with its mapped category ids. */

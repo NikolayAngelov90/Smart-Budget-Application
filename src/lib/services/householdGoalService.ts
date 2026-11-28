@@ -18,6 +18,7 @@ import { logSavingsContribution } from '@/lib/services/savingsTransactionService
 import { dispatchCategorizedPush } from '@/lib/services/pushService';
 import { logger } from '@/lib/utils/logger';
 import { DEFAULT_CURRENCY } from '@/lib/utils/constants';
+import { checkName, nameApiMessage } from '@/lib/validation/names';
 import type {
   Goal,
   HouseholdGoal,
@@ -110,8 +111,10 @@ export async function createHouseholdGoal(
   userId: string,
   input: CreateHouseholdGoalInput
 ): Promise<HouseholdGoal> {
-  const name = (input.name ?? '').trim();
-  if (!name) throw new Error('Goal name is required');
+  // The shared name rule (spec-cyrillic-names) - the same one the route applied.
+  const check = checkName(input.name, 'sharedGoal');
+  if (!check.ok) throw new Error(nameApiMessage('Goal', check.problem, check.max));
+  const name = check.name;
   const target = Number(input.target_amount);
   if (!Number.isFinite(target) || target <= 0)
     throw new Error('Target amount must be greater than 0');

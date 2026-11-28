@@ -765,6 +765,36 @@ All error responses follow this format:
 
 See [Status Code Guidelines](#status-code-guidelines) for specific error codes.
 
+### A refused name: the `problem` code
+
+Every route that writes a name a person chose follows the one shared rule in
+`src/lib/validation/names.ts` (spec-cyrillic-names). These are categories, goals,
+shared goals, the household name, wishlist items, values and the display name.
+When the NAME is what failed, the 400 response carries a machine-readable code
+next to the English message:
+
+| `problem` | Meaning |
+|---|---|
+| `empty` | nothing left after trimming |
+| `tooLong` | over the field's limit, counted in characters (code points) as Postgres counts them |
+| `invalidCharacters` | a character outside letters of any script, combining marks, digits, the space and `& - ' . , ( ) /`; or an invisible or control character |
+| `needsLetter` | no letter or digit at all |
+
+The code goes in the same place as the message. In the routes with an
+`{ "error": "..." }` shape (`/api/categories`, `/api/categories/[id]`) it is a
+top-level `problem`; in the routes with an `{ "error": { "message": ... } }`
+shape it is `error.problem`. A client translates the code with the `names`
+namespace of `messages/{en,bg}.json`; the English message is for API callers
+and logs. When something other than the name failed, `problem` is absent and
+the route's usual message is unchanged.
+
+A route stores the name NORMALISED (NFC, every space separator as a plain space,
+typographic apostrophes and dashes as `'` and `-`, trimmed, runs of spaces
+collapsed). The database refuses the never-allowed half on all six columns
+(`public.is_clean_name`, migration `20261127190000_clean_names.sql`), so a
+write that skips the route still cannot store a control character, an
+invisible character, untrimmed or doubled spaces, or a non-NFC name.
+
 ---
 
 ## Query Parameter Conventions

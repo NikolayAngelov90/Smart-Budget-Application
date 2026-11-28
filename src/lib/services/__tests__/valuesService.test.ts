@@ -152,6 +152,18 @@ describe('createValue', () => {
     await expect(createValue('user-1', { name: 'x'.repeat(51) })).rejects.toThrow(/1–50/);
   });
 
+  // spec-cyrillic-names: 50 CHARACTERS, counted as Postgres counts (each of these
+  // letters is two UTF-16 units).
+  it('accepts 50 characters outside the Basic Multilingual Plane (the shared rule counts code points)', async () => {
+    const db = makeClient({});
+    mockCreateClient.mockResolvedValue(db.client as never);
+    const name = '\u{20000}'.repeat(50);
+    expect(name.length).toBe(100); // CONTROL: UTF-16 would call it too long
+    const result = await createValue('user-1', { name }).catch((e: unknown) => e);
+    expect(String(result)).not.toMatch(/1–50/);
+    expect(db.allCallsTo('user_values', 'insert')).toEqual([[expect.objectContaining({ name })]]);
+  });
+
   it('maps a duplicate-name DB error to a friendly message', async () => {
     mockCreateClient.mockResolvedValue(
       makeClient({

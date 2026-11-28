@@ -182,7 +182,9 @@ describe('PUT /api/goals/[id]', () => {
     mockAuthUser();
     await PUT(buildRequest({ name: 'a'.repeat(201) }), buildContext('goal-1'));
     expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ error: { message: 'Goal name must be 200 characters or fewer' } }),
+      expect.objectContaining({
+        error: { message: 'Goal name must be 200 characters or fewer', problem: 'tooLong' },
+      }),
       expect.objectContaining({ status: 400 })
     );
   });
@@ -191,7 +193,9 @@ describe('PUT /api/goals/[id]', () => {
     mockAuthUser();
     await PUT(buildRequest({ name: '  ' }), buildContext('goal-1'));
     expect(mockJsonResponse).toHaveBeenCalledWith(
-      expect.objectContaining({ error: { message: 'Goal name cannot be empty' } }),
+      expect.objectContaining({
+        error: { message: 'Goal name cannot be empty', problem: 'empty' },
+      }),
       expect.objectContaining({ status: 400 })
     );
   });
@@ -292,6 +296,38 @@ describe('DELETE /api/goals/[id]', () => {
     expect(mockJsonResponse).toHaveBeenCalledWith(
       expect.objectContaining({ error: { message: 'Failed to manage goals' } }),
       expect.objectContaining({ status: 500 })
+    );
+  });
+});
+
+// spec-cyrillic-names: the shared name rule at the API layer.
+describe('PUT /api/goals/[id] - names in any script', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('stores a Bulgarian name normalised', async () => {
+    mockAuthUser();
+    mockUpdateGoal.mockResolvedValue(sampleGoal as never);
+    await PUT(buildRequest({ name: '  Кафе  (вкъщи) ' }), buildContext('goal-1'));
+    expect(mockUpdateGoal).toHaveBeenCalledWith(
+      expect.anything(),
+      'user-1',
+      'goal-1',
+      expect.objectContaining({ name: 'Кафе (вкъщи)' })
+    );
+  });
+
+  it('refuses a zero-width space with 400, before any write', async () => {
+    mockAuthUser();
+    await PUT(buildRequest({ name: 'Хра\u200Bна' }), buildContext('goal-1'));
+    expect(mockUpdateGoal).not.toHaveBeenCalled();
+    expect(mockJsonResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: {
+          message: 'Goal name contains characters that are not allowed',
+          problem: 'invalidCharacters',
+        },
+      }),
+      expect.objectContaining({ status: 400 })
     );
   });
 });

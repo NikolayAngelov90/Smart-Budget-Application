@@ -321,4 +321,78 @@ describe('/api/user/profile', () => {
       expect(data.error.message).toBe('Failed to update user profile');
     });
   });
+
+  // spec-cyrillic-names: the display name follows the shared rule.
+  describe('PUT display_name - names in any script', () => {
+    const put = (body: unknown) =>
+      PUT(
+        new NextRequest('http://localhost:3000/api/user/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+      );
+    beforeEach(() => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123', email: 'test@example.com' } },
+        error: null,
+      });
+      mockUpdateUserProfile.mockResolvedValue({ id: 'user-123' } as never);
+    });
+
+    test('stores a Bulgarian name normalised', async () => {
+      const res = await put({ display_name: '  Иван   Петров ' });
+      expect(res.status).toBe(200);
+      expect(mockUpdateUserProfile).toHaveBeenCalledWith('user-123', {
+        display_name: 'Иван Петров',
+      });
+    });
+
+    test.each([
+      ['empty', ''],
+      ['only spaces', '   '],
+      ['null', null],
+    ])('%s CLEARS the name (stored as NULL, never as an empty string)', async (_label, value) => {
+      const res = await put({ display_name: value });
+      expect(res.status).toBe(200);
+      expect(mockUpdateUserProfile).toHaveBeenCalledWith('user-123', { display_name: null });
+    });
+
+    test.each(['Ива\u200Bн', 'Ива\tн', 'Иван 🙂'])(
+      'refuses %j with 400, before any write',
+      async (name) => {
+        const res = await put({ display_name: name });
+        expect(res.status).toBe(400);
+        expect((await res.json()).error.problem).toBe('invalidCharacters');
+        expect(mockUpdateUserProfile).not.toHaveBeenCalled();
+      }
+    );
+
+    test.each([
+      ['ж'.repeat(101), 'tooLong'],
+      ['- -', 'needsLetter'],
+    ])('refuses %j with 400 and problem %s', async (name, problem) => {
+      const res = await put({ display_name: name });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.problem).toBe(problem);
+      expect(mockUpdateUserProfile).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      ['a number', 42],
+      ['an object', { name: 'Иван' }],
+      ['an array', ['Иван']],
+    ])(
+      'a display_name that is %s is a malformed request (400), not a cleared name',
+      async (_l, value) => {
+        const res = await put({ display_name: value });
+        expect(res.status).toBe(400);
+        expect((await res.json()).error).toEqual({
+          message: 'Invalid request',
+          details: 'display_name must be a string or null',
+        });
+        expect(mockUpdateUserProfile).not.toHaveBeenCalled();
+      }
+    );
+  });
 });

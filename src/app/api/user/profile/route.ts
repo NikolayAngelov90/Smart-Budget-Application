@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getUserProfile, updateUserProfile } from '@/lib/services/settingsService';
 import type { UpdateUserProfilePayload } from '@/types/user.types';
 import { logger } from '@/lib/utils/logger';
+import { checkName, nameApiMessage, normalizeName } from '@/lib/validation/names';
 
 /**
  * GET /api/user/profile
@@ -102,6 +103,39 @@ export async function PUT(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // The display name follows the shared name rule (spec-cyrillic-names): any
+    // script, normalised before it is stored. Empty after normalising - or null -
+    // CLEARS it (stored as NULL, never as ''), as clearing the field means.
+    if (updates.display_name !== undefined) {
+      const raw: unknown = updates.display_name;
+      if (raw !== null && typeof raw !== 'string') {
+        return NextResponse.json(
+          {
+            error: { message: 'Invalid request', details: 'display_name must be a string or null' },
+          },
+          { status: 400 }
+        );
+      }
+      if (raw === null || normalizeName(raw) === '') {
+        updates.display_name = null;
+      } else {
+        const nameCheck = checkName(raw, 'displayName');
+        if (!nameCheck.ok) {
+          return NextResponse.json(
+            {
+              error: {
+                message: 'Invalid request',
+                details: nameApiMessage('Display', nameCheck.problem, nameCheck.max),
+                problem: nameCheck.problem,
+              },
+            },
+            { status: 400 }
+          );
+        }
+        updates.display_name = nameCheck.name;
+      }
     }
 
     // Update profile

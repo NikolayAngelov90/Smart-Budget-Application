@@ -45,19 +45,16 @@ import {
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { nameSchema } from '@/lib/validation/names';
+import { useNameMessage } from '@/lib/validation/useNameMessage';
 import type { Category } from '@/types/category.types';
 import { useHousehold } from '@/lib/hooks/useHousehold';
 
-// Validation schema (used for both create and edit)
+// Validation schema (used for both create and edit). The name follows the
+// shared rule - any script, normalised - and its error is a problem code that
+// is shown translated (spec-cyrillic-names).
 const createCategorySchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Category name is required')
-    .max(100, 'Category name too long')
-    .trim()
-    .refine((val) => /^[a-zA-Z0-9\s]+$/.test(val), {
-      message: 'Only letters, numbers, and spaces allowed',
-    }),
+  name: nameSchema('category'),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format'),
   type: z.enum(['income', 'expense']),
 });
@@ -109,6 +106,7 @@ export function CategoryModal({
   const t = useTranslations('categories');
   const tCommon = useTranslations('common');
   const tTransactions = useTranslations('transactions');
+  const nameMessage = useNameMessage();
 
   const {
     register,
@@ -282,11 +280,10 @@ export function CategoryModal({
                   <Input
                     {...register('name')}
                     placeholder={t('categoryNamePlaceholder')}
-                    maxLength={100}
                     autoFocus
                   />
                 </HStack>
-                <FormErrorMessage>{errors.name?.message}</FormErrorMessage>
+                <FormErrorMessage>{nameMessage(errors.name?.message, 'category')}</FormErrorMessage>
               </FormControl>
 
               {/* Type Selector */}

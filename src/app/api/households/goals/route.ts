@@ -8,6 +8,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { nameApiMessage, nameProblemOf, nameSchema } from '@/lib/validation/names';
+
+/** A refused NAME says so, with its code (spec-cyrillic-names); other failures keep the generic message. */
+function nameFailure(error: z.ZodError) {
+  const problem = nameProblemOf(error);
+  return problem ? { error: { message: nameApiMessage('Goal', problem, 100), problem } } : null;
+}
 import { createClient } from '@/lib/supabase/server';
 import { getHouseholdGoals, createHouseholdGoal } from '@/lib/services/householdGoalService';
 import { NotHouseholdMemberError } from '@/lib/services/householdService';
@@ -16,7 +23,7 @@ import { logger } from '@/lib/utils/logger';
 export const dynamic = 'force-dynamic';
 
 const createSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required').max(100),
+  name: nameSchema('sharedGoal'), // the shared name rule (spec-cyrillic-names)
   target_amount: z.number().positive('Target must be greater than 0'),
   deadline: z
     .string()
@@ -55,7 +62,9 @@ export async function POST(request: NextRequest) {
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: { message: 'A valid name and target amount are required' } },
+        nameFailure(parsed.error) ?? {
+          error: { message: 'A valid name and target amount are required' },
+        },
         { status: 400 }
       );
     }

@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getGoals, createGoal } from '@/lib/services/goalService';
 import { logger } from '@/lib/utils/logger';
+import { checkName, nameApiMessage } from '@/lib/validation/names';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -60,20 +61,24 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as Record<string, unknown>;
-    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    // The shared name rule (spec-cyrillic-names): any script, normalised.
+    const nameCheck = checkName(body.name, 'goal');
     const target_amount = Number(body.target_amount);
     const deadline = body.deadline != null ? String(body.deadline) : null;
 
     // Validate
-    if (!name) {
-      return NextResponse.json({ error: { message: 'Goal name is required' } }, { status: 400 });
-    }
-    if (name.length > 200) {
+    if (!nameCheck.ok) {
       return NextResponse.json(
-        { error: { message: 'Goal name must be 200 characters or fewer' } },
+        {
+          error: {
+            message: nameApiMessage('Goal', nameCheck.problem, nameCheck.max),
+            problem: nameCheck.problem,
+          },
+        },
         { status: 400 }
       );
     }
+    const name = nameCheck.name;
     if (isNaN(target_amount) || target_amount <= 0) {
       return NextResponse.json(
         { error: { message: 'target_amount must be greater than 0' } },

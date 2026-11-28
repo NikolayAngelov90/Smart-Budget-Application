@@ -78,6 +78,28 @@ describe('createHouseholdGoal', () => {
     const result = await createHouseholdGoal('u', { name: 'Vacation', target_amount: 1000 });
     expect(result).toEqual(GOAL);
   });
+
+  // spec-cyrillic-names: the service checks with the shared rule, not its own copy.
+  it('stores the name normalised by the shared rule', async () => {
+    mockCreateClient.mockResolvedValue(
+      db({ household_members: { data: { household_id: 'h' }, error: null } }).client
+    );
+    const admin = db({ goals: { data: { id: 'g1' }, error: null } });
+    mockServiceClient.mockReturnValue(admin.client);
+    await createHouseholdGoal('u', { name: '  Ваканция   на  морето ', target_amount: 1000 });
+    expect(admin.allCallsTo('goals', 'insert')).toEqual([
+      [expect.objectContaining({ name: 'Ваканция на морето' })],
+    ]);
+  });
+
+  it.each([
+    ['Хра\u200Bна', 'Goal name contains characters that are not allowed'],
+    ['   ', 'Goal name is required'],
+    ['ж'.repeat(101), 'Goal name must be 100 characters or fewer'],
+  ])('refuses %j before touching the DB', async (name, message) => {
+    await expect(createHouseholdGoal('u', { name, target_amount: 100 })).rejects.toThrow(message);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
 });
 
 describe('contributeToHouseholdGoal', () => {

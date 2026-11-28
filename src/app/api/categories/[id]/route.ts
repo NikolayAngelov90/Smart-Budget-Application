@@ -15,19 +15,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { getCurrentHousehold } from '@/lib/services/householdService';
 import { z } from 'zod';
+import { nameProblemOf, nameSchema } from '@/lib/validation/names';
 import { logger } from '@/lib/utils/logger';
 
 // Validation schema for update
 const updateCategorySchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Category name is required')
-    .max(100, 'Category name too long')
-    .trim()
-    .refine((val) => /^[a-zA-Z0-9\s]+$/.test(val), {
-      message: 'Only letters, numbers, and spaces allowed',
-    })
-    .optional(),
+  // The shared name rule (spec-cyrillic-names): any script, normalised.
+  name: nameSchema('category').optional(),
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format')
@@ -62,6 +56,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         {
           error: 'Validation error',
           details: validation.error.flatten().fieldErrors,
+          // The name rule's code (spec-cyrillic-names), when the name is what failed.
+          problem: nameProblemOf(validation.error),
         },
         { status: 400 }
       );

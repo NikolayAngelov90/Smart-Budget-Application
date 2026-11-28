@@ -378,3 +378,44 @@ describe('PATCH /api/wishlist/:id', () => {
     expect(res.status).toBe(404);
   });
 });
+
+// spec-cyrillic-names: the shared name rule at the API layer.
+describe('POST /api/wishlist - names in any script', () => {
+  it('creates with the name normalised', async () => {
+    mockCreateClient.mockResolvedValue(makeSupabase() as never);
+    mockCreateItem.mockResolvedValue(ITEM);
+    const res = await POST(makeRequest({ name: '  Дрехи  & обувки ', price: 100 }));
+    expect(res.status).toBe(201);
+    expect(mockCreateItem).toHaveBeenCalledWith('user-1', 'Дрехи & обувки', 100, null);
+  });
+
+  const MESSAGES: Record<string, string> = {
+    invalidCharacters: 'Wishlist item name contains characters that are not allowed',
+    empty: 'Wishlist item name is required',
+    needsLetter: 'Wishlist item name needs at least one letter or digit',
+    tooLong: 'Wishlist item name must be 100 characters or fewer',
+  };
+
+  it.each([
+    ['Хра\u200Bна', 'invalidCharacters'],
+    ['Хра\tна', 'invalidCharacters'],
+    ['   ', 'empty'],
+    ['- -', 'needsLetter'],
+    ['ж'.repeat(101), 'tooLong'],
+  ])('refuses %j with 400 and problem %s, before any write', async (name, problem) => {
+    mockCreateClient.mockResolvedValue(makeSupabase() as never);
+    const res = await POST(makeRequest({ name, price: 100 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toEqual({ message: MESSAGES[problem], problem });
+    expect(mockCreateItem).not.toHaveBeenCalled();
+  });
+
+  it('a bad PRICE with a good name keeps the generic message, with no name problem', async () => {
+    mockCreateClient.mockResolvedValue(makeSupabase() as never);
+    const res = await POST(makeRequest({ name: 'Обувки', price: -1 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toEqual({
+      message: 'A name (1–100 chars) and a positive price (max 2 decimals) are required',
+    });
+  });
+});

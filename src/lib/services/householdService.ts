@@ -12,6 +12,7 @@
  */
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { checkName } from '@/lib/validation/names';
 import { logger } from '@/lib/utils/logger';
 import type {
   Household,
@@ -71,18 +72,19 @@ function presetVisibility(preset: HouseholdPreset, categoryName: string): Visibi
   return isBillCategory(categoryName) ? 'shared' : 'private';
 }
 
-const MAX_NAME_LENGTH = 100;
-
 /**
  * Creates a household with the given user as its admin member.
  * @throws HouseholdExistsError if the user is already a member of a household.
  * @throws Error on validation failure or a database error.
  */
 export async function createHousehold(userId: string, name: string): Promise<HouseholdWithRole> {
-  const trimmed = (name ?? '').trim();
-  if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) {
+  // The shared name rule (spec-cyrillic-names) - the same one the route applied,
+  // counting characters as Postgres does, not UTF-16 units.
+  const check = checkName(name, 'household');
+  if (!check.ok) {
     throw new Error('Household name must be 1–100 characters');
   }
+  const trimmed = check.name;
 
   const admin = createServiceRoleClient();
 

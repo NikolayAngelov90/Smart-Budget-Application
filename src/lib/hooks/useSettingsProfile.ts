@@ -18,6 +18,7 @@ import { PROFILE_KEY, refreshProfile } from '@/hooks/useUserProfile';
 import { DISCLOSURE_KEY } from '@/lib/hooks/useFeatureDisclosure';
 import type { UserProfile } from '@/types/user.types';
 import type { SupportedLocale } from '@/i18n/routing';
+import { checkName, normalizeName, type NameProblem } from '@/lib/validation/names';
 
 export type SettingsProfileStatus = 'loading' | 'failed' | 'ready';
 
@@ -98,6 +99,9 @@ export function useSettingsProfile() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [displayName, setDisplayName] = useState('');
+  /** A refused display name (spec-cyrillic-names), cleared as soon as it is edited. */
+  const [displayNameError, setDisplayNameError] = useState<NameProblem | undefined>();
+  useEffect(() => setDisplayNameError(undefined), [displayName]);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // DERIVED, not mirrored into state. These used to be `useState` defaults kept
@@ -131,17 +135,29 @@ export function useSettingsProfile() {
   const updateProfile = useCallback(async () => {
     if (!profile) return;
 
+    // The shared name rule (spec-cyrillic-names): any script, normalised. An empty
+    // field CLEARS the name (null), which is what clearing it means.
+    let nextName: string | null = null;
+    if (normalizeName(displayName) !== '') {
+      const check = checkName(displayName, 'displayName');
+      if (!check.ok) {
+        setDisplayNameError(check.problem);
+        return;
+      }
+      nextName = check.name;
+    }
+
     setIsSavingProfile(true);
 
     try {
-      const optimisticProfile = { ...profile, display_name: displayName };
+      const optimisticProfile = { ...profile, display_name: nextName };
       setProfile(optimisticProfile);
       mutate(PROFILE_KEY, optimisticProfile, false);
 
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ display_name: displayName }),
+        body: JSON.stringify({ display_name: nextName }),
       });
 
       if (!response.ok) {
@@ -270,6 +286,7 @@ export function useSettingsProfile() {
     // form state
     displayName,
     setDisplayName,
+    displayNameError,
     isSavingProfile,
     currencyFormat,
     dateFormat,

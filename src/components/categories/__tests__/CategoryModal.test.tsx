@@ -13,21 +13,25 @@
  * dismissal is wired. Between them the file stops being untested.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider } from '@chakra-ui/react';
 import { CategoryModal } from '../CategoryModal';
 
 jest.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => {
+  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     const t: Record<string, string> = {
       addCategory: 'Add Category',
       editCategory: 'Edit Category',
       categoryName: 'Name',
       cancel: 'Cancel',
       save: 'Save',
+      // names namespace (the shared name rule, spec-cyrillic-names)
+      empty: 'Enter a name.',
+      invalidCharacters: 'Use only letters, digits, spaces and these signs',
+      tooLong: 'Use at most {max} characters.',
     };
-    return t[key] ?? key;
+    return (t[key] ?? key).replace('{max}', String(params?.max ?? '{max}'));
   },
 }));
 
@@ -81,5 +85,62 @@ describe('CategoryModal', () => {
     const close = screen.getByRole('button', { name: /close/i });
     await userEvent.click(close);
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+// spec-cyrillic-names: the form accepts names in any script and sends them
+// normalised; what the shared rule refuses is shown, translated, and not sent.
+describe('CategoryModal - names in any script', () => {
+  const fetchMock = jest.fn();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { id: 'c1', name: 'x', color: '#4299e1', type: 'expense' } }),
+    });
+    global.fetch = fetchMock as never;
+  });
+
+  const submit = async (name: string) => {
+    const view = renderModal();
+    fireEvent.change(screen.getByPlaceholderText('categoryNamePlaceholder'), {
+      target: { value: name },
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    return view;
+  };
+  const sentName = () => JSON.parse(fetchMock.mock.calls[0]![1].body).name;
+
+  it.each(['Храна', 'Сметки за ток', 'Дрехи & обувки', 'Кафе (вкъщи)', 'Café Кафе 2'])(
+    'accepts %s and sends it as typed',
+    async (name) => {
+      await submit(name);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      expect(sentName()).toBe(name);
+    }
+  );
+
+  it('sends the name NORMALISED: trimmed, spaces collapsed, NFC', async () => {
+    const first = await submit('  Храна   за  дома ');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(sentName()).toBe('Храна за дома');
+
+    fetchMock.mockClear();
+    first.unmount();
+    await submit('Чай'.normalize('NFD'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(sentName()).toBe('Чай');
+  });
+
+  it.each([
+    ['a zero-width space', 'Хра\u200Bна', 'Use only letters, digits, spaces and these signs'],
+    ['a control character', 'Хра\u0007на', 'Use only letters, digits, spaces and these signs'],
+    ['only spaces', '   ', 'Enter a name.'],
+    // The CATEGORY limit: a form wired to another field would show another number.
+    ['a name past 100 characters', 'ж'.repeat(101), 'Use at most 100 characters.'],
+  ])('refuses %s: the translated message, and nothing is sent', async (_label, name, message) => {
+    await submit(name);
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

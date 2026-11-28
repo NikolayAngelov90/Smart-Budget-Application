@@ -40,13 +40,15 @@ jest.mock('next-intl', () => ({
       subtitle: 'See what a purchase would do.',
       itemName: 'Item',
       itemNamePlaceholder: 'e.g., New headphones',
+      // names namespace (the shared name rule, spec-cyrillic-names)
+      invalidCharacters: 'Use only letters, digits, spaces and these signs',
+      tooLong: 'Use at most {max} characters.',
       price: 'Price',
       categoryOptional: 'Category (optional)',
       noCategory: 'No category',
       categoriesUnavailable:
         "Categories couldn't be loaded — you can still add the item without one.",
       addItem: 'Add to wishlist',
-      invalidName: 'Enter a name (1–100 characters)',
       invalidPrice: 'Enter a valid positive price (max 2 decimals)',
       addFailed: 'Failed to add wishlist item',
       updateFailed: 'Failed to update wishlist item',
@@ -59,6 +61,7 @@ jest.mock('next-intl', () => ({
       removed: 'Removed',
       hideHistory: 'Hide history',
     };
+    if (key === 'tooLong') return `Use at most ${params?.max} characters.`;
     if (key === 'addedSuccess') return `${params?.name} added`;
     if (key === 'alignsWith') return `Aligns with ${params?.value}`;
     if (key === 'leavesBudget')
@@ -457,5 +460,58 @@ describe('WishlistSection category picker', () => {
       expect(screen.getByText(HINT)).toBeInTheDocument();
       expect(screen.getByRole('combobox')).toBeDisabled();
     });
+  });
+});
+
+// spec-cyrillic-names: wishlist item names in any script, normalised.
+describe('WishlistSection - names in any script', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) });
+  });
+
+  it('sends a Bulgarian name normalised', async () => {
+    mockUseWishlist.mockReturnValue(hookResult({ data: { items: [] }, mutate: jest.fn() }));
+    renderWithChakra(<WishlistSection />);
+    fireEvent.change(screen.getByPlaceholderText('e.g., New headphones'), {
+      target: { value: '  Дрехи  & обувки ' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '49,90' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to wishlist' }));
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/wishlist',
+        expect.objectContaining({
+          body: JSON.stringify({ name: 'Дрехи & обувки', price: 49.9, category_id: null }),
+        })
+      )
+    );
+  });
+
+  it('refuses a zero-width space: the translated message, and nothing is sent', async () => {
+    mockUseWishlist.mockReturnValue(hookResult({ data: { items: [] }, mutate: jest.fn() }));
+    renderWithChakra(<WishlistSection />);
+    (global.fetch as jest.Mock).mockClear();
+    fireEvent.change(screen.getByPlaceholderText('e.g., New headphones'), {
+      target: { value: 'Дре\u200Bхи' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '49,90' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to wishlist' }));
+    expect(
+      await screen.findByText('Use only letters, digits, spaces and these signs')
+    ).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalledWith('/api/wishlist', expect.anything());
+  });
+
+  it('a name past 100 characters: the WISHLIST ITEM limit, and nothing is sent', async () => {
+    mockUseWishlist.mockReturnValue(hookResult({ data: { items: [] }, mutate: jest.fn() }));
+    renderWithChakra(<WishlistSection />);
+    (global.fetch as jest.Mock).mockClear();
+    const input = screen.getByPlaceholderText('e.g., New headphones');
+    expect(input).not.toHaveAttribute('maxLength');
+    fireEvent.change(input, { target: { value: 'ж'.repeat(101) } });
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '49,90' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to wishlist' }));
+    expect(await screen.findByText('Use at most 100 characters.')).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalledWith('/api/wishlist', expect.anything());
   });
 });

@@ -32,6 +32,8 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { useTranslations } from 'next-intl';
+import { checkName, optionalNameSchema } from '@/lib/validation/names';
+import { useNameMessage } from '@/lib/validation/useNameMessage';
 import {
   getEnabledCurrencies,
   DEFAULT_CURRENCY,
@@ -41,11 +43,8 @@ import {
 const supportedCodes = SUPPORTED_CURRENCIES.map((c) => c.code) as [string, ...string[]];
 
 const onboardingSchema = z.object({
-  displayName: z
-    .string()
-    .max(100, 'Name must be 100 characters or less')
-    .optional()
-    .or(z.literal('')),
+  // Optional; when given, the shared name rule applies (spec-cyrillic-names).
+  displayName: optionalNameSchema('displayName'),
   currencyFormat: z.enum(supportedCodes),
 });
 
@@ -66,8 +65,13 @@ export function OnboardingModal({
 }: OnboardingModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const t = useTranslations('onboarding');
+  const nameMessage = useNameMessage();
   const tCommon = useTranslations('common');
   const enabledCurrencies = getEnabledCurrencies();
+  // The pre-filled name (from the sign-in provider) is shown normalised, and
+  // only if the shared rule accepts it: a field the person did not type must
+  // not open with an error. Left empty, the stored name is not changed.
+  const prefill = checkName(defaultDisplayName, 'displayName');
 
   const {
     register,
@@ -76,7 +80,7 @@ export function OnboardingModal({
   } = useForm<OnboardingFormData>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      displayName: defaultDisplayName,
+      displayName: prefill.ok ? prefill.name : '',
       currencyFormat: DEFAULT_CURRENCY,
     },
   });
@@ -158,7 +162,9 @@ export function OnboardingModal({
                   }}
                 />
                 {errors.displayName && (
-                  <FormErrorMessage>{errors.displayName.message}</FormErrorMessage>
+                  <FormErrorMessage>
+                    {nameMessage(errors.displayName.message, 'displayName')}
+                  </FormErrorMessage>
                 )}
               </FormControl>
 

@@ -117,6 +117,7 @@
     "perCategoryLink": "Go to categories"
   },
   "householdGoals": {
+    "invalidTarget": "Enter a target amount greater than 0.",
     "heading": "Shared goals",
     "newGoal": "New goal",
     "name": "Goal name",
@@ -127,7 +128,6 @@
     "none": "No shared goals yet.",
     "created": "Shared goal created",
     "createFailed": "Couldn't create the goal. Please try again.",
-    "invalidGoal": "Enter a name and a target amount greater than 0",
     "contribute": "Contribute",
     "contributeAmount": "Amount",
     "save": "Save",
@@ -943,7 +943,6 @@
     "categoryOptional": "Category (optional)",
     "noCategory": "No category",
     "addItem": "Add to wishlist",
-    "invalidName": "Enter a name (1–100 characters)",
     "invalidPrice": "Enter a valid positive price (max 2 decimals)",
     "addedSuccess": "{name} added to your wishlist",
     "addFailed": "Failed to add wishlist item",
@@ -1149,5 +1148,11 @@
     "sharedPlansNowYoursBody": "They belonged to another member of {household}.",
     "dismiss": "Got it",
     "more": "{count, plural, one {# more notice} other {# more notices}}"
+  },
+  "names": {
+    "needsLetter": "Include at least one letter or digit.",
+    "empty": "Enter a name.",
+    "tooLong": "Use at most {max} characters.",
+    "invalidCharacters": "Use only letters, digits, spaces and these signs: & - ' . , ( ) /"
   }
 }

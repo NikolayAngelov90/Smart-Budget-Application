@@ -10,6 +10,7 @@ import {
   Card,
   CardBody,
   FormControl,
+  FormErrorMessage,
   FormLabel,
   Input,
   Text,
@@ -20,6 +21,7 @@ import { useTranslations } from 'next-intl';
 import { ProfilePictureUpload } from '@/components/settings/ProfilePictureUpload';
 import { useSettingsProfile } from '@/lib/hooks/useSettingsProfile';
 import { SettingsSectionGate } from '@/components/settings/SettingsSectionGate';
+import { useNameMessage } from '@/lib/validation/useNameMessage';
 
 export function AccountSection() {
   const t = useTranslations('settings');
@@ -30,9 +32,11 @@ export function AccountSection() {
     profile,
     displayName,
     setDisplayName,
+    displayNameError,
     isSavingProfile,
     updateProfile,
   } = useSettingsProfile();
+  const nameMessage = useNameMessage();
 
   return (
     <SettingsSectionGate status={status} error={error} onRetry={reload}>
@@ -70,13 +74,14 @@ export function AccountSection() {
                 })()}
             </VStack>
 
-            <FormControl>
+            <FormControl isInvalid={!!displayNameError}>
               <FormLabel>{t('displayName')}</FormLabel>
               <Input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder={t('displayNamePlaceholder')}
               />
+              <FormErrorMessage>{nameMessage(displayNameError, 'displayName')}</FormErrorMessage>
             </FormControl>
 
             <FormControl>

@@ -14,6 +14,8 @@ import { useState } from 'react';
 import {
   Card,
   CardBody,
+  FormControl,
+  FormErrorMessage,
   VStack,
   HStack,
   Heading,
@@ -30,6 +32,8 @@ import { useTranslations } from 'next-intl';
 import { useHouseholdGoals } from '@/lib/hooks/useHouseholdGoals';
 import { useUserPreferences } from '@/lib/hooks/useUserPreferences';
 import { formatAmount } from '@/lib/utils/formatAmount';
+import { checkName, type NameProblem } from '@/lib/validation/names';
+import { useNameMessage } from '@/lib/validation/useNameMessage';
 
 export function SharedGoalsCard() {
   const t = useTranslations('householdGoals');
@@ -45,11 +49,20 @@ export function SharedGoalsCard() {
   const [busy, setBusy] = useState(false);
   const [contributeFor, setContributeFor] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
+  const [nameError, setNameError] = useState<NameProblem | undefined>();
+  const nameMessage = useNameMessage();
 
   const handleCreate = async () => {
+    // The shared name rule (spec-cyrillic-names): any script, normalised.
+    const check = checkName(name, 'sharedGoal');
+    if (!check.ok) {
+      setNameError(check.problem);
+      return;
+    }
+    setNameError(undefined);
     const targetNum = parseDecimalInput(target);
-    if (!name.trim() || targetNum === null || targetNum <= 0) {
-      toast({ title: t('invalidGoal'), status: 'error', duration: 3000, isClosable: true });
+    if (targetNum === null || targetNum <= 0) {
+      toast({ title: t('invalidTarget'), status: 'error', duration: 3000, isClosable: true });
       return;
     }
     setBusy(true);
@@ -58,7 +71,7 @@ export function SharedGoalsCard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name.trim(),
+          name: check.name,
           target_amount: targetNum,
           deadline: deadline || null,
         }),
@@ -135,15 +148,20 @@ export function SharedGoalsCard() {
 
           {creating && (
             <VStack align="stretch" spacing={2} bg="surface.sunken" p={3} borderRadius="md">
-              <Input
-                size="sm"
-                placeholder={t('name')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={100}
-                aria-label={t('name')}
-                minH={{ base: '44px', sm: '32px' }}
-              />
+              <FormControl isInvalid={!!nameError}>
+                <Input
+                  size="sm"
+                  placeholder={t('name')}
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setNameError(undefined);
+                  }}
+                  aria-label={t('name')}
+                  minH={{ base: '44px', sm: '32px' }}
+                />
+                <FormErrorMessage>{nameMessage(nameError, 'sharedGoal')}</FormErrorMessage>
+              </FormControl>
               <Stack direction={{ base: 'column', sm: 'row' }} spacing={2}>
                 <Input
                   size="sm"

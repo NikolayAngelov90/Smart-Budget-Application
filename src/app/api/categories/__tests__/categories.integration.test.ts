@@ -456,4 +456,108 @@ describe('Categories API Integration Tests (AC-10.9.3)', () => {
       expect(response.status).toBe(401);
     });
   });
+
+  // spec-cyrillic-names: the shared name rule at the API layer.
+  describe('names in any script (POST and PUT)', () => {
+    test('POST stores a Bulgarian name NORMALISED: the duplicate check and the insert both get it', async () => {
+      wire({
+        categories: [
+          { data: null, error: null },
+          {
+            data: { id: catId, name: 'Храна за дома', color: '#4ECDC4', type: 'expense' },
+            error: null,
+          },
+        ],
+      });
+      const response = await POST(
+        createMockRequest('http://localhost:3000/api/categories', 'POST', {
+          name: '  Храна   за  дома ',
+          color: '#4ECDC4',
+          type: 'expense',
+        })
+      );
+      expect(response.status).toBe(201);
+      expect(calls('categories', 'eq')).toContainEqual(['name', 'Храна за дома']);
+      expect(JSON.stringify(calls('categories', 'insert'))).toContain('"name":"Храна за дома"');
+    });
+
+    test.each([
+      ['Хра\u200Bна', 'invalidCharacters'],
+      ['Хра\tна', 'invalidCharacters'],
+      ['   ', 'empty'],
+      ['ж'.repeat(101), 'tooLong'],
+      ['- -', 'needsLetter'],
+    ])('POST refuses %j with 400 and problem %s, before ANY query', async (name, problem) => {
+      wire();
+      const response = await POST(
+        createMockRequest('http://localhost:3000/api/categories', 'POST', {
+          name,
+          color: '#4ECDC4',
+          type: 'expense',
+        })
+      );
+      expect(response.status).toBe(400);
+      expect((await response.json()).problem).toBe(problem);
+      expect(db.from).not.toHaveBeenCalled();
+    });
+
+    test('POST: a bad COLOUR is a 400 without a name problem', async () => {
+      wire();
+      const response = await POST(
+        createMockRequest('http://localhost:3000/api/categories', 'POST', {
+          name: 'Храна',
+          color: 'red',
+          type: 'expense',
+        })
+      );
+      expect(response.status).toBe(400);
+      expect((await response.json()).problem).toBeUndefined();
+    });
+
+    test('POST: "Чай" typed decomposed is the SAME name as a stored "Чай" - 409, and the check used the composed form', async () => {
+      wire({ categories: { data: { id: 'existing-cat', name: 'Чай' }, error: null } });
+      const decomposed = 'Чай'.normalize('NFD');
+      expect(decomposed).not.toBe('Чай'); // CONTROL: the inputs really differ
+      const response = await POST(
+        createMockRequest('http://localhost:3000/api/categories', 'POST', {
+          name: decomposed,
+          color: '#4ECDC4',
+          type: 'expense',
+        })
+      );
+      expect(response.status).toBe(409);
+      expect(calls('categories', 'eq')).toContainEqual(['name', 'Чай']);
+      expect(calls('categories', 'insert')).toEqual([]);
+    });
+
+    test('PUT renames to a Bulgarian name NORMALISED; refuses a zero-width space', async () => {
+      const params = Promise.resolve({ id: catId });
+      wire({
+        categories: [
+          { data: { id: catId, name: 'Old', is_predefined: false, type: 'expense' }, error: null },
+          { data: null, error: null },
+          { data: { id: catId, name: 'Кафе (вкъщи)' }, error: null },
+        ],
+      });
+      const ok = await PUT(
+        createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'PUT', {
+          name: '  Кафе  (вкъщи) ',
+        }),
+        { params }
+      );
+      expect(ok.status).toBe(200);
+      expect(JSON.stringify(calls('categories', 'update'))).toContain('"name":"Кафе (вкъщи)"');
+
+      wire();
+      const refused = await PUT(
+        createMockRequest(`http://localhost:3000/api/categories/${catId}`, 'PUT', {
+          name: 'Хра\u200Bна',
+        }),
+        { params }
+      );
+      expect(refused.status).toBe(400);
+      expect((await refused.json()).problem).toBe('invalidCharacters');
+      expect(db.from).not.toHaveBeenCalled();
+    });
+  });
 });

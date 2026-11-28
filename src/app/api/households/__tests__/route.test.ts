@@ -133,3 +133,28 @@ describe('GET /api/households', () => {
     expect((await res.json()).data).toBeNull();
   });
 });
+
+// spec-cyrillic-names: the shared name rule at the API layer.
+describe('POST /api/households - names in any script', () => {
+  it('creates with the name normalised', async () => {
+    mockCreateClient.mockResolvedValue(authClient({ id: 'user-1' }) as never);
+    mockCreate.mockResolvedValue(HOUSEHOLD);
+    const res = await POST(req({ name: '  Вкъщи   нова ' }));
+    expect(res.status).toBe(201);
+    expect(mockCreate).toHaveBeenCalledWith('user-1', 'Вкъщи нова');
+  });
+
+  it.each([
+    ['Хра\u200Bна', 'invalidCharacters'],
+    ['Хра\tна', 'invalidCharacters'],
+    ['   ', 'empty'],
+    ['- -', 'needsLetter'],
+    ['ж'.repeat(101), 'tooLong'],
+  ])('refuses %j with 400 and problem %s, before any write', async (name, problem) => {
+    mockCreateClient.mockResolvedValue(authClient({ id: 'user-1' }) as never);
+    const res = await POST(req({ name }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatchObject({ message: 'Validation failed', problem });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
